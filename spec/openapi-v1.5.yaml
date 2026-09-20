@@ -1,6 +1,6 @@
 openapi: 3.1.0
 info:
-  title: Requirements Version Management System API
+  title: IterFlow API
   version: 1.5.0
   description: 独立部署版 V1.5 完整开发基线接口契约。所有关键写操作通过 revision 乐观锁避免多人编辑静默覆盖。
 servers:
@@ -414,7 +414,8 @@ paths:
     patch:
       tags:
       - Version
-      summary: 变更版本状态
+      summary: 变更版本状态（禁止进入 RELEASED）
+      description: READY 可退回 TESTING，但必须填写 reason。RELEASED 只能通过发布接口进入。
       security: *id001
       parameters:
       - name: version_id
@@ -435,12 +436,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Version'
+        '409':
+          description: revision 或状态机冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conflict'
   /versions/{version_id}/publish:
     post:
       tags:
       - Version
       summary: 发布版本
-      description: 只允许 READY。Release + Version + DONE Requirement -> ONLINE + Feedback -> ONLINE 同一业务事务。
+      description: 只允许 READY，且 V1.5 仅支持成功发布。Release(SUCCESS) + Version + DONE Requirement -> ONLINE + Feedback -> ONLINE 同一业务事务。
       security: *id001
       parameters:
       - name: version_id
@@ -592,7 +599,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
+                $ref: '#/components/schemas/UserPage'
     post:
       tags:
       - System
@@ -610,7 +617,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
+                $ref: '#/components/schemas/User'
   /users/{user_id}/status:
     patch:
       tags:
@@ -623,22 +630,25 @@ paths:
         required: true
         schema:
           type: integer
-      - name: status
-        in: query
+      requestBody:
         required: true
-        schema:
-          type: string
-          enum:
-          - ACTIVE
-          - DISABLED
-          - LOCKED
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserStatusChange'
       responses:
         '200':
           description: 成功
           content:
             application/json:
               schema:
-                type: object
+                $ref: '#/components/schemas/User'
+        '409':
+          description: revision 冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conflict'
   /roles:
     get:
       tags:
@@ -808,6 +818,7 @@ components:
       properties:
         title:
           type: string
+          minLength: 2
           maxLength: 200
         feedback_type:
           type: string
@@ -835,6 +846,7 @@ components:
           - 'null'
         description:
           type: string
+          minLength: 2
         expected_result:
           type:
           - string
@@ -848,15 +860,55 @@ components:
           - string
           - 'null'
     FeedbackUpdate:
-      allOf:
-      - $ref: '#/components/schemas/FeedbackCreate'
-      - type: object
-        required:
-        - revision
-        properties:
-          revision:
-            type: integer
-            minimum: 1
+      type: object
+      required:
+      - revision
+      properties:
+        title:
+          type: string
+          minLength: 2
+          maxLength: 200
+        feedback_type:
+          type: string
+          enum:
+          - NEW_FEATURE
+          - FEATURE_OPTIMIZATION
+          - SYSTEM_ISSUE
+          - DATA_ISSUE
+          - UI_UX
+          - OTHER
+        urgency:
+          type: string
+          enum:
+          - NORMAL
+          - URGENT
+          - CRITICAL
+        system_id:
+          type:
+          - integer
+          - 'null'
+        module_id:
+          type:
+          - integer
+          - 'null'
+        description:
+          type: string
+          minLength: 2
+        expected_result:
+          type:
+          - string
+          - 'null'
+        actual_result:
+          type:
+          - string
+          - 'null'
+        reproduce_steps:
+          type:
+          - string
+          - 'null'
+        revision:
+          type: integer
+          minimum: 1
     FeedbackConvertRequest:
       type: object
       required:
@@ -906,10 +958,32 @@ components:
           type: string
         feedback_type:
           type: string
+          enum:
+          - NEW_FEATURE
+          - FEATURE_OPTIMIZATION
+          - SYSTEM_ISSUE
+          - DATA_ISSUE
+          - UI_UX
+          - OTHER
         urgency:
           type: string
+          enum:
+          - NORMAL
+          - URGENT
+          - CRITICAL
         status:
           type: string
+          enum:
+          - NEW
+          - ACCEPTED
+          - REQUIREMENT_LINKED
+          - PLANNED
+          - DEVELOPING
+          - TESTING
+          - ONLINE
+          - DUPLICATE
+          - CANNOT_REPRODUCE
+          - CLOSED
         system_id:
           type:
           - integer
@@ -981,6 +1055,12 @@ components:
           type: string
         priority:
           type: string
+          enum:
+          - P0
+          - P1
+          - P2
+          - P3
+          - P4
         system_id:
           type:
           - integer
@@ -1017,9 +1097,14 @@ components:
           - DEVELOPING
           - TESTING
           - DONE
-          - ONLINE
           - PAUSED
           - CANCELED
+        reason:
+          type:
+          - string
+          - 'null'
+          maxLength: 500
+          description: DONE 退回 DEVELOPING 时必填；ONLINE 只能由成功发布事务产生。
         revision:
           type: integer
           minimum: 1
@@ -1051,10 +1136,29 @@ components:
           type: string
         source:
           type: string
+          enum:
+          - DIRECT
+          - FEEDBACK
         priority:
           type: string
+          enum:
+          - P0
+          - P1
+          - P2
+          - P3
+          - P4
         status:
           type: string
+          enum:
+          - DRAFT
+          - CONFIRMED
+          - PLANNED
+          - DEVELOPING
+          - TESTING
+          - DONE
+          - ONLINE
+          - PAUSED
+          - CANCELED
         owner_id:
           type:
           - integer
@@ -1130,27 +1234,27 @@ components:
           - DEVELOPING
           - TESTING
           - READY
-          - RELEASED
           - CANCELED
         revision:
           type: integer
+          minimum: 1
+        reason:
+          type:
+          - string
+          - 'null'
+          maxLength: 500
+          description: READY 退回 TESTING 时必填；RELEASED 只能通过发布接口进入。
     PublishVersionRequest:
       type: object
+      additionalProperties: false
       required:
       - released_at
-      - result
       - release_notes
       - revision
       properties:
         released_at:
           type: string
           format: date-time
-        result:
-          type: string
-          enum:
-          - SUCCESS
-          - PARTIAL
-          - ROLLED_BACK
         release_notes:
           type: string
         revision:
@@ -1167,6 +1271,13 @@ components:
           type: string
         status:
           type: string
+          enum:
+          - PLANNING
+          - DEVELOPING
+          - TESTING
+          - READY
+          - RELEASED
+          - CANCELED
         owner_id:
           type:
           - integer
@@ -1208,6 +1319,66 @@ components:
           type: array
           items:
             type: integer
+    User:
+      type: object
+      required:
+      - id
+      - username
+      - display_name
+      - status
+      - revision
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        display_name:
+          type: string
+        email:
+          type:
+          - string
+          - 'null'
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - DISABLED
+          - LOCKED
+        revision:
+          type: integer
+          minimum: 1
+    UserPage:
+      type: object
+      required:
+      - items
+      - page
+      - page_size
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+        page:
+          type: integer
+          minimum: 1
+        page_size:
+          type: integer
+          minimum: 1
+    UserStatusChange:
+      type: object
+      required:
+      - status
+      - revision
+      properties:
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - DISABLED
+          - LOCKED
+        revision:
+          type: integer
+          minimum: 1
     RoleCreate:
       type: object
       required:

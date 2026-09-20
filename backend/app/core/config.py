@@ -1,29 +1,33 @@
 from functools import lru_cache
+from typing import ClassVar
+
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=("../.env", ".env"), extra="ignore")
 
-    app_name: str = "Requirements Version Management System"
-    app_env: str = "development"
-    api_prefix: str = "/api/v1"
-    secret_key: str = "CHANGE_ME"
-    access_token_minutes: int = 30
-    refresh_token_days: int = 14
-    database_url: str = "postgresql+psycopg://rvms:CHANGE_ME@localhost:5432/rvms"
-    redis_url: str = "redis://localhost:6379/0"
-    s3_endpoint: str = "http://localhost:9000"
-    s3_access_key: str = "minioadmin"
-    s3_secret_key: str = "CHANGE_ME"
-    s3_bucket: str = "rvms"
-    cors_origins: str = "http://localhost:5173"
+    app_name: ClassVar[str] = "迭程 IterFlow · 需求与版本协作管理系统"
+    api_prefix: ClassVar[str] = "/api/v1"
+    database_url: str = Field(min_length=1)
+    redis_url: str = Field(min_length=1)
+    jwt_secret: SecretStr = Field(min_length=32)
+    jwt_access_ttl_minutes: int = Field(default=30, gt=0)
+    jwt_refresh_ttl_days: int = Field(default=14, gt=0)
+    minio_endpoint: str = Field(min_length=1)
+    minio_access_key: str = Field(min_length=1)
+    minio_secret_key: SecretStr = Field(min_length=1)
+    minio_bucket: str = Field(min_length=1)
+    init_admin_username: str | None = None
+    init_admin_password: SecretStr | None = None
 
     @property
     def cors_origin_list(self) -> list[str]:
-        return [x.strip() for x in self.cors_origins.split(",") if x.strip()]
+        return ["http://localhost:5173", "http://localhost:8080"]
 
 
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()
+    # Required values are populated from the environment by pydantic-settings.
+    return Settings()  # type: ignore[call-arg]

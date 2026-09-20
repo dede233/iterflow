@@ -17,11 +17,13 @@
 - [ ] 检查 Alembic
 - [ ] 列出“缺失实现 / 占位实现 / 规格冲突”
 - [ ] 确保 Python 工程可导入/编译
+- [ ] 确保 `pip install -e ".[dev]"` 成功
 - [ ] 确保 Frontend 可构建
 - [ ] 确保基础设施容器可启动
 
 ### Phase 0 验收
 - [ ] `/health` 返回成功
+- [ ] `/ready` 实际检查 PostgreSQL / Redis / MinIO 并返回成功
 - [ ] PostgreSQL 可连接
 - [ ] Redis 可连接
 - [ ] MinIO 可连接

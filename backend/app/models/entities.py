@@ -1,18 +1,50 @@
 from __future__ import annotations
-from datetime import date, datetime, timezone
-from sqlalchemy import BigInteger, Boolean, Date, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, Index, JSON
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from datetime import UTC, date, datetime
+
+from sqlalchemy import (
+    JSON,
+    BigInteger,
+    Boolean,
+    Date,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
+from sqlalchemy import Enum as SAEnum
+from sqlalchemy.orm import Mapped, mapped_column
+
 from app.core.database import Base
+from app.models.enums import (
+    DataScope,
+    FeedbackStatus,
+    FeedbackType,
+    FeedbackUrgency,
+    Priority,
+    ReleaseResult,
+    RequirementSource,
+    RequirementStatus,
+    UserStatus,
+    VersionStatus,
+)
 
 
 def utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class AuditMixin:
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, nullable=False
+    )
     created_by: Mapped[int | None] = mapped_column(BigInteger)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False
+    )
     updated_by: Mapped[int | None] = mapped_column(BigInteger)
     revision: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
 
@@ -25,7 +57,17 @@ class User(Base, AuditMixin):
     password_hash: Mapped[str] = mapped_column(String(255))
     email: Mapped[str | None] = mapped_column(String(255))
     mobile: Mapped[str | None] = mapped_column(String(32))
-    status: Mapped[str] = mapped_column(String(16), default="ACTIVE", index=True)
+    status: Mapped[UserStatus] = mapped_column(
+        SAEnum(
+            UserStatus,
+            name="user_status",
+            native_enum=False,
+            create_constraint=True,
+            validate_strings=True,
+        ),
+        default=UserStatus.ACTIVE,
+        index=True,
+    )
     must_change_password: Mapped[bool] = mapped_column(Boolean, default=True)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
@@ -35,7 +77,16 @@ class Role(Base, AuditMixin):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     code: Mapped[str] = mapped_column(String(64), unique=True)
     name: Mapped[str] = mapped_column(String(100))
-    data_scope: Mapped[str] = mapped_column(String(16), default="ALL")
+    data_scope: Mapped[DataScope] = mapped_column(
+        SAEnum(
+            DataScope,
+            name="data_scope",
+            native_enum=False,
+            create_constraint=True,
+            validate_strings=True,
+        ),
+        default=DataScope.ALL,
+    )
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
@@ -56,7 +107,9 @@ class UserRole(Base):
 class RolePermission(Base):
     __tablename__ = "sys_role_permission"
     role_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("sys_role.id"), primary_key=True)
-    permission_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("sys_permission.id"), primary_key=True)
+    permission_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("sys_permission.id"), primary_key=True
+    )
 
 
 class BusinessSystem(Base, AuditMixin):
@@ -71,7 +124,9 @@ class BusinessSystem(Base, AuditMixin):
 class BusinessModule(Base, AuditMixin):
     __tablename__ = "sys_business_module"
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    system_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("sys_business_system.id"), index=True)
+    system_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("sys_business_system.id"), index=True
+    )
     code: Mapped[str] = mapped_column(String(64))
     name: Mapped[str] = mapped_column(String(100))
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -85,13 +140,46 @@ class Requirement(Base, AuditMixin):
     requirement_no: Mapped[str] = mapped_column(String(32), unique=True, index=True)
     title: Mapped[str] = mapped_column(String(200))
     requirement_type: Mapped[str] = mapped_column(String(32))
-    source: Mapped[str] = mapped_column(String(16), default="DIRECT")
-    priority: Mapped[str] = mapped_column(String(8), default="P2", index=True)
-    status: Mapped[str] = mapped_column(String(32), default="DRAFT", index=True)
+    source: Mapped[RequirementSource] = mapped_column(
+        SAEnum(
+            RequirementSource,
+            name="requirement_source",
+            native_enum=False,
+            create_constraint=True,
+            validate_strings=True,
+        ),
+        default=RequirementSource.DIRECT,
+    )
+    priority: Mapped[Priority] = mapped_column(
+        SAEnum(
+            Priority,
+            name="priority",
+            native_enum=False,
+            create_constraint=True,
+            validate_strings=True,
+        ),
+        default=Priority.P2,
+        index=True,
+    )
+    status: Mapped[RequirementStatus] = mapped_column(
+        SAEnum(
+            RequirementStatus,
+            name="requirement_status",
+            native_enum=False,
+            create_constraint=True,
+            validate_strings=True,
+        ),
+        default=RequirementStatus.DRAFT,
+        index=True,
+    )
     system_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("sys_business_system.id"))
     module_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("sys_business_module.id"))
     owner_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("sys_user.id"), index=True)
-    current_version_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("rd_version.id", use_alter=True, name="fk_requirement_current_version"), index=True)
+    current_version_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        ForeignKey("rd_version.id", use_alter=True, name="fk_requirement_current_version"),
+        index=True,
+    )
     description: Mapped[str] = mapped_column(Text)
     acceptance_criteria: Mapped[str | None] = mapped_column(Text)
 
@@ -101,9 +189,36 @@ class Feedback(Base, AuditMixin):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     feedback_no: Mapped[str] = mapped_column(String(32), unique=True, index=True)
     title: Mapped[str] = mapped_column(String(200))
-    feedback_type: Mapped[str] = mapped_column(String(32))
-    urgency: Mapped[str] = mapped_column(String(16), default="NORMAL")
-    status: Mapped[str] = mapped_column(String(32), default="NEW", index=True)
+    feedback_type: Mapped[FeedbackType] = mapped_column(
+        SAEnum(
+            FeedbackType,
+            name="feedback_type",
+            native_enum=False,
+            create_constraint=True,
+            validate_strings=True,
+        )
+    )
+    urgency: Mapped[FeedbackUrgency] = mapped_column(
+        SAEnum(
+            FeedbackUrgency,
+            name="feedback_urgency",
+            native_enum=False,
+            create_constraint=True,
+            validate_strings=True,
+        ),
+        default=FeedbackUrgency.NORMAL,
+    )
+    status: Mapped[FeedbackStatus] = mapped_column(
+        SAEnum(
+            FeedbackStatus,
+            name="feedback_status",
+            native_enum=False,
+            create_constraint=True,
+            validate_strings=True,
+        ),
+        default=FeedbackStatus.NEW,
+        index=True,
+    )
     system_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("sys_business_system.id"))
     module_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("sys_business_module.id"))
     submitter_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("sys_user.id"), index=True)
@@ -111,7 +226,9 @@ class Feedback(Base, AuditMixin):
     expected_result: Mapped[str | None] = mapped_column(Text)
     actual_result: Mapped[str | None] = mapped_column(Text)
     reproduce_steps: Mapped[str | None] = mapped_column(Text)
-    main_requirement_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("rd_requirement.id"), index=True)
+    main_requirement_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("rd_requirement.id"), index=True
+    )
     duplicate_of_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("rd_feedback.id"))
 
 
@@ -120,7 +237,17 @@ class Version(Base, AuditMixin):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     version_no: Mapped[str] = mapped_column(String(32), unique=True, index=True)
     name: Mapped[str] = mapped_column(String(100))
-    status: Mapped[str] = mapped_column(String(32), default="PLANNING", index=True)
+    status: Mapped[VersionStatus] = mapped_column(
+        SAEnum(
+            VersionStatus,
+            name="version_status",
+            native_enum=False,
+            create_constraint=True,
+            validate_strings=True,
+        ),
+        default=VersionStatus.PLANNING,
+        index=True,
+    )
     owner_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("sys_user.id"))
     planned_release_date: Mapped[date | None] = mapped_column(Date)
     released_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -130,8 +257,12 @@ class Version(Base, AuditMixin):
 class RequirementFeedback(Base):
     __tablename__ = "rd_requirement_feedback"
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    requirement_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("rd_requirement.id", ondelete="CASCADE"), index=True)
-    feedback_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("rd_feedback.id", ondelete="CASCADE"), index=True)
+    requirement_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("rd_requirement.id", ondelete="CASCADE"), index=True
+    )
+    feedback_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("rd_feedback.id", ondelete="CASCADE"), index=True
+    )
     is_primary: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
@@ -139,8 +270,12 @@ class RequirementFeedback(Base):
 class VersionRequirement(Base):
     __tablename__ = "rd_version_requirement"
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    version_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("rd_version.id", ondelete="CASCADE"), index=True)
-    requirement_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("rd_requirement.id", ondelete="CASCADE"), index=True)
+    version_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("rd_version.id", ondelete="CASCADE"), index=True
+    )
+    requirement_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("rd_requirement.id", ondelete="CASCADE"), index=True
+    )
     active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
     added_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     added_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("sys_user.id"))
@@ -154,7 +289,16 @@ class Release(Base, AuditMixin):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     version_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("rd_version.id"), index=True)
     released_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    result: Mapped[str] = mapped_column(String(16))
+    result: Mapped[ReleaseResult] = mapped_column(
+        SAEnum(
+            ReleaseResult,
+            name="release_result",
+            native_enum=False,
+            create_constraint=True,
+            validate_strings=True,
+        ),
+        default=ReleaseResult.SUCCESS,
+    )
     release_notes: Mapped[str] = mapped_column(Text)
     rollback_notes: Mapped[str | None] = mapped_column(Text)
 
@@ -203,12 +347,16 @@ class OperationLog(Base):
     entity_type: Mapped[str] = mapped_column(String(32), index=True)
     entity_id: Mapped[int | None] = mapped_column(BigInteger, index=True)
     action: Mapped[str] = mapped_column(String(64), index=True)
-    operator_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("sys_user.id"), index=True)
+    operator_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("sys_user.id"), index=True
+    )
     request_id: Mapped[str | None] = mapped_column(String(64), index=True)
     ip_address: Mapped[str | None] = mapped_column(String(64))
     before_data: Mapped[dict | None] = mapped_column(JSON)
     after_data: Mapped[dict | None] = mapped_column(JSON)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, index=True
+    )
 
 
 Index("ix_feedback_system_module", Feedback.system_id, Feedback.module_id)

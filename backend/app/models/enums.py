@@ -1,6 +1,33 @@
 from enum import StrEnum
 
 
+class UserStatus(StrEnum):
+    ACTIVE = "ACTIVE"
+    DISABLED = "DISABLED"
+    LOCKED = "LOCKED"
+
+
+class DataScope(StrEnum):
+    SELF = "SELF"
+    TEAM = "TEAM"
+    ALL = "ALL"
+
+
+class FeedbackType(StrEnum):
+    NEW_FEATURE = "NEW_FEATURE"
+    FEATURE_OPTIMIZATION = "FEATURE_OPTIMIZATION"
+    SYSTEM_ISSUE = "SYSTEM_ISSUE"
+    DATA_ISSUE = "DATA_ISSUE"
+    UI_UX = "UI_UX"
+    OTHER = "OTHER"
+
+
+class FeedbackUrgency(StrEnum):
+    NORMAL = "NORMAL"
+    URGENT = "URGENT"
+    CRITICAL = "CRITICAL"
+
+
 class FeedbackStatus(StrEnum):
     NEW = "NEW"
     ACCEPTED = "ACCEPTED"
@@ -26,6 +53,30 @@ class RequirementStatus(StrEnum):
     CANCELED = "CANCELED"
 
 
+class ManualRequirementStatus(StrEnum):
+    DRAFT = "DRAFT"
+    CONFIRMED = "CONFIRMED"
+    PLANNED = "PLANNED"
+    DEVELOPING = "DEVELOPING"
+    TESTING = "TESTING"
+    DONE = "DONE"
+    PAUSED = "PAUSED"
+    CANCELED = "CANCELED"
+
+
+class RequirementSource(StrEnum):
+    DIRECT = "DIRECT"
+    FEEDBACK = "FEEDBACK"
+
+
+class Priority(StrEnum):
+    P0 = "P0"
+    P1 = "P1"
+    P2 = "P2"
+    P3 = "P3"
+    P4 = "P4"
+
+
 class VersionStatus(StrEnum):
     PLANNING = "PLANNING"
     DEVELOPING = "DEVELOPING"
@@ -35,7 +86,19 @@ class VersionStatus(StrEnum):
     CANCELED = "CANCELED"
 
 
+class ManualVersionStatus(StrEnum):
+    PLANNING = "PLANNING"
+    DEVELOPING = "DEVELOPING"
+    TESTING = "TESTING"
+    READY = "READY"
+    CANCELED = "CANCELED"
+
+
 class ReleaseResult(StrEnum):
     SUCCESS = "SUCCESS"
-    PARTIAL = "PARTIAL"
-    ROLLED_BACK = "ROLLED_BACK"
+
+
+class EditingEntityType(StrEnum):
+    FEEDBACK = "FEEDBACK"
+    REQUIREMENT = "REQUIREMENT"
+    VERSION = "VERSION"

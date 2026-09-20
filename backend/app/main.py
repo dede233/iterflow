@@ -1,10 +1,13 @@
 from uuid import uuid4
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+
 from app.api.v1.router import api_router
 from app.core.config import get_settings
 from app.core.exceptions import AppError
+from app.core.readiness import readiness_status
 
 settings = get_settings()
 app = FastAPI(title=settings.app_name, version="1.5.0")
@@ -43,3 +46,15 @@ async def app_error_handler(request: Request, exc: AppError):
 @app.get("/health")
 def health():
     return {"status": "ok", "version": "1.5.0"}
+
+
+@app.get("/ready")
+def ready():
+    is_ready, components = readiness_status()
+    payload = {
+        "status": "ok" if is_ready else "unavailable",
+        "components": components,
+    }
+    if not is_ready:
+        return JSONResponse(status_code=503, content=payload)
+    return payload

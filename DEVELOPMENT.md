@@ -85,14 +85,16 @@ cp .env.example .env
 - DATABASE_URL
 - REDIS_URL
 - JWT_SECRET
-- JWT_ACCESS_TTL
-- JWT_REFRESH_TTL
+- JWT_ACCESS_TTL_MINUTES
+- JWT_REFRESH_TTL_DAYS
 - MINIO_ENDPOINT
 - MINIO_ACCESS_KEY
 - MINIO_SECRET_KEY
 - MINIO_BUCKET
 - INIT_ADMIN_USERNAME
 - INIT_ADMIN_PASSWORD
+
+Docker Compose 另需 `POSTGRES_PASSWORD` 用于初始化 PostgreSQL；该变量不会传入 API。`.env.example` 中所有凭据均留空，启动前必须显式填写。Docker 内的 `DATABASE_URL` 需使用服务名 `db`，`MINIO_ENDPOINT` 需使用 `http://minio:9000`。
 
 ## 5. 基础设施启动
 
@@ -166,6 +168,13 @@ API 文档：
 
 ```text
 http://localhost:8000/docs
+```
+
+健康检查：
+
+```text
+GET http://localhost:8000/health  # 仅进程存活
+GET http://localhost:8000/ready   # PostgreSQL / Redis / MinIO 就绪
 ```
 
 ## 7. Frontend
@@ -285,6 +294,16 @@ WHERE id = :id
 - 返回 409
 - 前端显示冲突界面
 - 不自动重试覆盖
+
+反馈转需求、需求迁版和版本发布等跨表事务也必须先执行带 revision 条件的原子更新；禁止用“先读取 revision、再普通 ORM 赋值”替代条件更新。
+
+## 12.1 状态终态规则
+
+- `Version.RELEASED` 只能由 `POST /versions/{id}/publish` 成功发布事务产生。
+- 普通 Version 状态接口禁止设置 `RELEASED`；`READY -> TESTING` 必须填写原因并审计。
+- `Requirement.ONLINE` 只能由成功发布事务产生。
+- `DONE -> DEVELOPING` 仅限所属 Version 尚未发布，必须填写原因并审计。
+- V1.5 MVP 的 publish 不接收 result 参数，成功后固定写入 `Release.result = SUCCESS`。
 
 ## 13. Redis 编辑提示
 

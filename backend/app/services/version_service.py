@@ -1,19 +1,52 @@
-from datetime import datetime, timezone
-from sqlalchemy import select
+from typing import Any, cast
+
+from sqlalchemy import select, update
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
+
 from app.core.exceptions import AppError, ConflictError, NotFoundError
-from app.models.entities import Version, VersionRequirement, Requirement, Release, RequirementFeedback, Feedback, Notification
+from app.models.entities import (
+    Feedback,
+    Notification,
+    Release,
+    Requirement,
+    RequirementFeedback,
+    Version,
+    VersionRequirement,
+)
+from app.models.enums import (
+    FeedbackStatus,
+    ManualVersionStatus,
+    ReleaseResult,
+    RequirementStatus,
+    VersionStatus,
+)
 from app.repositories.version_repository import VersionRepository
-from app.schemas.version import VersionCreate, VersionUpdate, VersionStatusChange, PublishVersionRequest
+from app.schemas.version import (
+    PublishVersionRequest,
+    VersionCreate,
+    VersionStatusChange,
+    VersionUpdate,
+)
 from app.services.audit_service import AuditService
 
-VERSION_TRANSITIONS = {
-    "PLANNING": {"DEVELOPING", "CANCELED"},
-    "DEVELOPING": {"TESTING", "CANCELED"},
-    "TESTING": {"DEVELOPING", "READY", "CANCELED"},
-    "READY": {"TESTING", "RELEASED"},
-    "RELEASED": set(),
-    "CANCELED": set(),
+VERSION_TRANSITIONS: dict[VersionStatus, set[ManualVersionStatus]] = {
+    VersionStatus.PLANNING: {
+        ManualVersionStatus.DEVELOPING,
+        ManualVersionStatus.CANCELED,
+    },
+    VersionStatus.DEVELOPING: {
+        ManualVersionStatus.TESTING,
+        ManualVersionStatus.CANCELED,
+    },
+    VersionStatus.TESTING: {
+        ManualVersionStatus.DEVELOPING,
+        ManualVersionStatus.READY,
+        ManualVersionStatus.CANCELED,
+    },
+    VersionStatus.READY: {ManualVersionStatus.TESTING},
+    VersionStatus.RELEASED: set(),
+    VersionStatus.CANCELED: set(),
 }
 
 
@@ -27,13 +60,17 @@ class VersionService:
         item = Version(created_by=operator_id, updated_by=operator_id, **payload.model_dump())
         self.db.add(item)
         self.db.flush()
-        self.audit.log("VERSION", item.id, "CREATE", operator_id, after={"version_no": item.version_no})
+        self.audit.log(
+            "VERSION", item.id, "CREATE", operator_id, after={"version_no": item.version_no}
+        )
         self.db.commit()
         self.db.refresh(item)
         return item
 
     def update(self, version_id: int, payload: VersionUpdate, operator_id: int) -> Version:
-        values = payload.model_dump(exclude_none=True, exclude={"revision"}) | {"updated_by": operator_id}
+        values = payload.model_dump(exclude_unset=True, exclude={"revision"}) | {
+            "updated_by": operator_id
+        }
         if not self.repo.update_with_revision(version_id, payload.revision, values):
             latest = self.repo.get(version_id)
             if not latest:
@@ -41,37 +78,77 @@ class VersionService:
             raise ConflictError("版本已被其他用户修改", {"current_revision": latest.revision})
         self.audit.log("VERSION", version_id, "UPDATE", operator_id, after=values)
         self.db.commit()
-        return self.repo.get(version_id)
+        updated = self.repo.get(version_id)
+        assert updated is not None
+        return updated
 
-    def change_status(self, version_id: int, payload: VersionStatusChange, operator_id: int) -> Version:
+    def change_status(
+        self, version_id: int, payload: VersionStatusChange, operator_id: int
+    ) -> Version:
         current = self.repo.get(version_id)
         if not current:
             raise NotFoundError("版本不存在")
-        if payload.status not in VERSION_TRANSITIONS.get(current.status, set()):
+        current_status = VersionStatus(current.status)
+        if payload.status not in VERSION_TRANSITIONS[current_status]:
             raise AppError(40921, f"不允许从 {current.status} 变更为 {payload.status}", 409)
-        if not self.repo.update_with_revision(version_id, payload.revision, {"status": payload.status, "updated_by": operator_id}):
+        if (
+            current.status == VersionStatus.READY
+            and payload.status == ManualVersionStatus.TESTING
+            and (not payload.reason or not payload.reason.strip())
+        ):
+            raise AppError(42222, "READY 退回 TESTING 必须填写原因", 422)
+        if not self.repo.update_with_revision(
+            version_id,
+            payload.revision,
+            {"status": VersionStatus(payload.status.value), "updated_by": operator_id},
+        ):
             raise ConflictError("版本状态已发生变化")
-        self.audit.log("VERSION", version_id, "STATUS_CHANGE", operator_id, before={"status": current.status}, after={"status": payload.status})
+        self.audit.log(
+            "VERSION",
+            version_id,
+            "STATUS_CHANGE",
+            operator_id,
+            before={"status": current.status},
+            after={"status": payload.status, "reason": payload.reason},
+        )
         self.db.commit()
-        return self.repo.get(version_id)
+        updated = self.repo.get(version_id)
+        assert updated is not None
+        return updated
 
     def publish(self, version_id: int, payload: PublishVersionRequest, operator_id: int) -> Release:
         version = self.repo.get(version_id)
         if not version:
             raise NotFoundError("版本不存在")
-        if version.revision != payload.revision:
-            raise ConflictError("版本已被其他用户修改")
-        if version.status != "READY":
+        if version.status != VersionStatus.READY:
             raise AppError(40922, "只有待发布版本可以执行发布", 409)
-
-        version.status = "RELEASED"
-        version.released_at = payload.released_at
-        version.updated_by = operator_id
-        version.revision += 1
+        result = cast(
+            CursorResult[Any],
+            self.db.execute(
+                update(Version)
+                .where(
+                    Version.id == version_id,
+                    Version.revision == payload.revision,
+                    Version.status == VersionStatus.READY,
+                )
+                .values(
+                    status=VersionStatus.RELEASED,
+                    released_at=payload.released_at,
+                    updated_by=operator_id,
+                    revision=Version.revision + 1,
+                )
+            ),
+        )
+        if not result.rowcount:
+            latest = self.repo.get(version_id)
+            raise ConflictError(
+                "版本已被其他用户修改",
+                {"current_revision": latest.revision if latest else None},
+            )
         release = Release(
             version_id=version.id,
             released_at=payload.released_at,
-            result=payload.result,
+            result=ReleaseResult.SUCCESS,
             release_notes=payload.release_notes,
             created_by=operator_id,
             updated_by=operator_id,
@@ -85,30 +162,57 @@ class VersionService:
             )
         ).all()
         if requirement_ids:
-            done_requirements = self.db.scalars(
-                select(Requirement).where(Requirement.id.in_(requirement_ids), Requirement.status == "DONE")
-            ).all()
-            for req in done_requirements:
-                req.status = "ONLINE"
-                req.updated_by = operator_id
-                req.revision += 1
+            online_requirement_ids = list(
+                self.db.scalars(
+                    update(Requirement)
+                    .where(
+                        Requirement.id.in_(requirement_ids),
+                        Requirement.status == RequirementStatus.DONE,
+                    )
+                    .values(
+                        status=RequirementStatus.ONLINE,
+                        updated_by=operator_id,
+                        revision=Requirement.revision + 1,
+                    )
+                    .returning(Requirement.id)
+                ).all()
+            )
+            if online_requirement_ids:
                 feedback_ids = self.db.scalars(
-                    select(RequirementFeedback.feedback_id).where(RequirementFeedback.requirement_id == req.id)
+                    select(RequirementFeedback.feedback_id).where(
+                        RequirementFeedback.requirement_id.in_(online_requirement_ids)
+                    )
                 ).all()
                 if feedback_ids:
-                    fbs = self.db.scalars(select(Feedback).where(Feedback.id.in_(feedback_ids))).all()
-                    for fb in fbs:
-                        fb.status = "ONLINE"
-                        fb.updated_by = operator_id
-                        fb.revision += 1
-                        self.db.add(Notification(
-                            user_id=fb.submitter_id,
-                            title=f"反馈 {fb.feedback_no} 已上线",
-                            content=f"已随版本 {version.version_no} 发布。",
-                            entity_type="FEEDBACK",
-                            entity_id=fb.id,
-                        ))
-        self.audit.log("VERSION", version.id, "PUBLISH", operator_id, after={"result": payload.result})
+                    self.db.execute(
+                        update(Feedback)
+                        .where(Feedback.id.in_(feedback_ids))
+                        .values(
+                            status=FeedbackStatus.ONLINE,
+                            updated_by=operator_id,
+                            revision=Feedback.revision + 1,
+                        )
+                    )
+                    feedbacks = self.db.scalars(
+                        select(Feedback).where(Feedback.id.in_(feedback_ids))
+                    ).all()
+                    for feedback in feedbacks:
+                        self.db.add(
+                            Notification(
+                                user_id=feedback.submitter_id,
+                                title=f"反馈 {feedback.feedback_no} 已上线",
+                                content=f"已随版本 {version.version_no} 发布。",
+                                entity_type="FEEDBACK",
+                                entity_id=feedback.id,
+                            )
+                        )
+        self.audit.log(
+            "VERSION",
+            version.id,
+            "PUBLISH",
+            operator_id,
+            after={"result": ReleaseResult.SUCCESS},
+        )
         self.db.commit()
         self.db.refresh(release)
         return release

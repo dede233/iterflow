@@ -1,6 +1,9 @@
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
 from redis import Redis
+from redis.exceptions import WatchError
+
 from app.core.config import get_settings
 
 
@@ -12,29 +15,81 @@ class EditingService:
     def key(entity_type: str, entity_id: int) -> str:
         return f"edit_lock:{entity_type}:{entity_id}"
 
-    def start(self, entity_type: str, entity_id: int, user_id: int, display_name: str, ttl_seconds: int = 600):
+    def _claim_or_refresh(
+        self,
+        entity_type: str,
+        entity_id: int,
+        user_id: int,
+        display_name: str,
+        ttl_seconds: int,
+    ) -> dict | None:
         key = self.key(entity_type, entity_id)
-        existing = self.redis.get(key)
         payload = {
             "user_id": user_id,
             "display_name": display_name,
-            "active_at": datetime.now(timezone.utc).isoformat(),
+            "active_at": datetime.now(UTC).isoformat(),
         }
-        self.redis.set(key, json.dumps(payload), ex=ttl_seconds)
-        return json.loads(existing) if existing else None
+        encoded = json.dumps(payload)
+        while True:
+            try:
+                with self.redis.pipeline() as pipe:
+                    pipe.watch(key)
+                    raw = pipe.get(key)
+                    if raw:
+                        existing = json.loads(raw)
+                        if existing.get("user_id") != user_id:
+                            return existing
+                    pipe.multi()
+                    pipe.set(key, encoded, ex=ttl_seconds)
+                    pipe.execute()
+                    return None
+            except WatchError:
+                continue
 
-    def heartbeat(self, entity_type: str, entity_id: int, user_id: int, display_name: str, ttl_seconds: int = 600):
-        self.redis.set(self.key(entity_type, entity_id), json.dumps({
-            "user_id": user_id,
-            "display_name": display_name,
-            "active_at": datetime.now(timezone.utc).isoformat(),
-        }), ex=ttl_seconds)
+    def start(
+        self,
+        entity_type: str,
+        entity_id: int,
+        user_id: int,
+        display_name: str,
+        ttl_seconds: int = 600,
+    ) -> dict | None:
+        return self._claim_or_refresh(
+            entity_type,
+            entity_id,
+            user_id,
+            display_name,
+            ttl_seconds,
+        )
+
+    def heartbeat(
+        self,
+        entity_type: str,
+        entity_id: int,
+        user_id: int,
+        display_name: str,
+        ttl_seconds: int = 600,
+    ) -> dict | None:
+        return self._claim_or_refresh(
+            entity_type,
+            entity_id,
+            user_id,
+            display_name,
+            ttl_seconds,
+        )
 
     def end(self, entity_type: str, entity_id: int, user_id: int):
         key = self.key(entity_type, entity_id)
-        raw = self.redis.get(key)
-        if not raw:
-            return
-        data = json.loads(raw)
-        if data.get("user_id") == user_id:
-            self.redis.delete(key)
+        while True:
+            try:
+                with self.redis.pipeline() as pipe:
+                    pipe.watch(key)
+                    raw = pipe.get(key)
+                    if not raw or json.loads(raw).get("user_id") != user_id:
+                        return
+                    pipe.multi()
+                    pipe.delete(key)
+                    pipe.execute()
+                    return
+            except WatchError:
+                continue

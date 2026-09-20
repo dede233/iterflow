@@ -126,6 +126,11 @@ Redis 的“正在编辑”标记只用于提示，不是强制排他锁。建�
 - 非法迁移返回 409。
 - Version 发布必须通过专用 Service 事务。
 - RELEASED / ONLINE 等终态规则严格按 `spec/status-machines.md` 与 V1.5 文档执行。
+- Version 的 `RELEASED` 只能通过 `POST /versions/{id}/publish` 进入；普通状态接口不得设置。
+- Version 允许 `READY -> TESTING`，但必须填写原因并写审计日志。
+- Requirement 的 `ONLINE` 只能由成功发布事务自动产生；普通状态接口不得设置。
+- Requirement 允许在所属 Version 尚未发布时 `DONE -> DEVELOPING`，但必须填写原因并写审计日志。
+- V1.5 MVP 仅支持成功发布，固定写入 `Release.result = SUCCESS`。
 
 ## 6. 事务边界：不得拆散
 

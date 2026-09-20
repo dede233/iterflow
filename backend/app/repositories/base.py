@@ -1,12 +1,14 @@
-from typing import Generic, TypeVar, Type
-from sqlalchemy import select, func, update
+from typing import Any, TypeVar, cast
+
+from sqlalchemy import func, select, update
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 
 T = TypeVar("T")
 
 
-class BaseRepository(Generic[T]):
-    def __init__(self, db: Session, model: Type[T]):
+class BaseRepository[T]:
+    def __init__(self, db: Session, model: type[T]):
         self.db = db
         self.model = model
 
@@ -21,9 +23,15 @@ class BaseRepository(Generic[T]):
         return items, total
 
     def update_with_revision(self, entity_id: int, revision: int, values: dict) -> bool:
-        result = self.db.execute(
-            update(self.model)
-            .where(self.model.id == entity_id, self.model.revision == revision)
-            .values(**values, revision=self.model.revision + 1)
+        model = cast(Any, self.model)
+        id_column = model.id
+        revision_column = model.revision
+        result = cast(
+            CursorResult[Any],
+            self.db.execute(
+                update(self.model)
+                .where(id_column == entity_id, revision_column == revision)
+                .values(**values, revision=revision_column + 1)
+            ),
         )
         return bool(result.rowcount)

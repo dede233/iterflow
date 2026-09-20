@@ -1,17 +1,18 @@
-from typing import Generic, TypeVar
+from typing import TypeVar
+
 from pydantic import BaseModel, Field
 
 T = TypeVar("T")
 
 
-class ApiResponse(BaseModel, Generic[T]):
+class ApiResponse[T](BaseModel):
     code: int = 0
     message: str = "ok"
     data: T | None = None
     request_id: str | None = None
 
 
-class PageResult(BaseModel, Generic[T]):
+class PageResult[T](BaseModel):
     items: list[T]
     page: int
     page_size: int

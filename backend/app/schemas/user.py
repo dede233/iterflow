@@ -1,5 +1,7 @@
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.models.enums import UserStatus
+
 
 class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -7,7 +9,14 @@ class UserOut(BaseModel):
     username: str
     display_name: str
     email: str | None
-    status: str
+    status: UserStatus
+    revision: int
+
+
+class UserPage(BaseModel):
+    items: list[UserOut]
+    page: int
+    page_size: int
 
 
 class UserCreate(BaseModel):
@@ -16,3 +25,8 @@ class UserCreate(BaseModel):
     password: str = Field(min_length=8, max_length=128)
     email: str | None = None
     role_ids: list[int] = []
+
+
+class UserStatusChange(BaseModel):
+    status: UserStatus
+    revision: int = Field(ge=1)

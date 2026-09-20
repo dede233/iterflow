@@ -50,13 +50,15 @@ MinIO 服务：iterflow-minio
 
 ## 启动顺序
 
-1. `cp .env.example .env` 并修改密码/密钥。
+1. `cp .env.example .env`，为所有密码、密钥和初始管理员变量填写非空安全值。
 2. `docker compose -f deploy/docker-compose.yml up -d db redis minio`
 3. 在 backend 安装依赖并执行 `alembic upgrade head`
 4. 启动 FastAPI：`uvicorn app.main:app --reload --port 8000`
 5. 启动前端：`npm install && npm run dev`
 
 > V1.5 是工程基线，不包含工时、Story Point 或单需求预计时长功能。
+
+健康端点：`/health` 只用于 liveness；`/ready` 实际检查 PostgreSQL、Redis 与 MinIO。
 
 ## 初始化管理员与权限
 

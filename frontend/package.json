@@ -1,11 +1,11 @@
 {
-  "name": "rvms-web",
+  "name": "iterflow-web",
   "private": true,
   "version": "1.5.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vue-tsc -b && vite build"
+    "build": "vue-tsc --noEmit && vite build"
   },
   "dependencies": {
     "@vueuse/core": "^13.0.0",

@@ -1,3 +1,5 @@
-<script setup lang="ts">import MobileBottomNav from '@/components/MobileBottomNav.vue'</script>
+<script setup lang="ts">
+import MobileBottomNav from '@/components/MobileBottomNav.vue'
+</script>
 <template><div class="shell"><aside class="side desktop-only"><div class="brand">需求与版本</div><router-link to="/">首页</router-link><router-link to="/feedbacks">反馈中心</router-link><router-link to="/requirements">需求管理</router-link><router-link to="/versions">版本管理</router-link><router-link to="/releases">发布记录</router-link><router-link to="/notifications">通知中心</router-link><div class="group">系统设置</div><router-link to="/system/users">用户管理</router-link><router-link to="/system/roles">角色权限</router-link></aside><main class="content"><router-view/></main><MobileBottomNav/></div></template>
 <style scoped>.shell{min-height:100vh}.side{position:fixed;width:220px;inset:0 auto 0 0;background:#16243a;color:#dbeafe;padding:18px;display:flex;flex-direction:column;gap:8px}.brand{font-size:18px;font-weight:800;color:#fff;margin-bottom:14px}.side a{padding:10px;border-radius:7px}.side .router-link-active{background:#1677ff;color:#fff}.group{font-size:12px;color:#94a3b8;margin-top:12px}.content{margin-left:220px;min-height:100vh}@media(max-width:767px){.content{margin-left:0}}</style>

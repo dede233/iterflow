@@ -1,6 +1,8 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from app.models.entities import User, Permission, RolePermission, UserRole
+
+from app.models.entities import Permission, Role, RolePermission, User, UserRole
+from app.models.enums import DataScope
 from app.repositories.base import BaseRepository
 
 
@@ -19,3 +21,16 @@ class UserRepository(BaseRepository[User]):
             .where(UserRole.user_id == user_id)
         ).all()
         return set(rows)
+
+    def data_scope(self, user_id: int) -> DataScope:
+        scopes = self.db.scalars(
+            select(Role.data_scope)
+            .join(UserRole, UserRole.role_id == Role.id)
+            .where(UserRole.user_id == user_id, Role.enabled.is_(True))
+        ).all()
+        parsed = {DataScope(scope) for scope in scopes}
+        if DataScope.ALL in parsed:
+            return DataScope.ALL
+        if DataScope.TEAM in parsed:
+            return DataScope.TEAM
+        return DataScope.SELF

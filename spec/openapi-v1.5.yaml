@@ -1,0 +1,1276 @@
+openapi: 3.1.0
+info:
+  title: Requirements Version Management System API
+  version: 1.5.0
+  description: 独立部署版 V1.5 完整开发基线接口契约。所有关键写操作通过 revision 乐观锁避免多人编辑静默覆盖。
+servers:
+- url: /api/v1
+tags:
+- name: Auth
+- name: Feedback
+- name: Requirement
+- name: Version
+- name: Release
+- name: Notification
+- name: Collaboration
+- name: System
+- name: File
+paths:
+  /auth/login:
+    post:
+      tags:
+      - Auth
+      summary: 登录
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPair'
+        '401':
+          description: 用户名或密码错误
+  /auth/refresh:
+    post:
+      tags:
+      - Auth
+      summary: 刷新 Token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPair'
+  /feedbacks:
+    get:
+      tags:
+      - Feedback
+      summary: 反馈列表
+      security: &id001
+      - bearerAuth: []
+      parameters: &id002
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+    post:
+      tags:
+      - Feedback
+      summary: 提交反馈
+      security: *id001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeedbackCreate'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Feedback'
+  /feedbacks/{feedback_id}:
+    get:
+      tags:
+      - Feedback
+      summary: 反馈详情
+      security: *id001
+      parameters:
+      - name: feedback_id
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Feedback'
+    patch:
+      tags:
+      - Feedback
+      summary: 编辑反馈
+      description: 必须携带 revision；过期 revision 返回 409。
+      security: *id001
+      parameters:
+      - name: feedback_id
+        in: path
+        required: true
+        schema:
+          type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeedbackUpdate'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Feedback'
+        '409':
+          description: 并发冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conflict'
+  /feedbacks/{feedback_id}/convert:
+    post:
+      tags:
+      - Feedback
+      summary: 反馈转正式需求
+      description: Requirement + 关系表 + Feedback 回填 + 审计日志同一事务。
+      security: *id001
+      parameters:
+      - name: feedback_id
+        in: path
+        required: true
+        schema:
+          type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeedbackConvertRequest'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Requirement'
+        '409':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conflict'
+  /requirements:
+    get:
+      tags:
+      - Requirement
+      summary: 需求列表
+      security: *id001
+      parameters: *id002
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+    post:
+      tags:
+      - Requirement
+      summary: 直接新建正式需求
+      security: *id001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequirementCreate'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Requirement'
+  /requirements/{requirement_id}:
+    get:
+      tags:
+      - Requirement
+      summary: 需求详情
+      security: *id001
+      parameters:
+      - name: requirement_id
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Requirement'
+    patch:
+      tags:
+      - Requirement
+      summary: 编辑需求
+      security: *id001
+      parameters:
+      - name: requirement_id
+        in: path
+        required: true
+        schema:
+          type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequirementUpdate'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Requirement'
+        '409':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conflict'
+  /requirements/{requirement_id}/status:
+    patch:
+      tags:
+      - Requirement
+      summary: 变更需求状态
+      security: *id001
+      parameters:
+      - name: requirement_id
+        in: path
+        required: true
+        schema:
+          type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequirementStatusChange'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Requirement'
+        '409':
+          description: revision 或状态机冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conflict'
+  /requirements/{requirement_id}/move-version:
+    post:
+      tags:
+      - Requirement
+      summary: 调整所属版本
+      security: *id001
+      parameters:
+      - name: requirement_id
+        in: path
+        required: true
+        schema:
+          type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequirementMoveVersion'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Requirement'
+        '409':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conflict'
+  /versions:
+    get:
+      tags:
+      - Version
+      summary: 版本列表
+      security: *id001
+      parameters: *id002
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+    post:
+      tags:
+      - Version
+      summary: 创建版本
+      security: *id001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VersionCreate'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Version'
+  /versions/{version_id}:
+    get:
+      tags:
+      - Version
+      summary: 版本详情
+      security: *id001
+      parameters:
+      - name: version_id
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Version'
+    patch:
+      tags:
+      - Version
+      summary: 编辑版本
+      security: *id001
+      parameters:
+      - name: version_id
+        in: path
+        required: true
+        schema:
+          type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VersionUpdate'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Version'
+        '409':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conflict'
+  /versions/{version_id}/status:
+    patch:
+      tags:
+      - Version
+      summary: 变更版本状态
+      security: *id001
+      parameters:
+      - name: version_id
+        in: path
+        required: true
+        schema:
+          type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VersionStatusChange'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Version'
+  /versions/{version_id}/publish:
+    post:
+      tags:
+      - Version
+      summary: 发布版本
+      description: 只允许 READY。Release + Version + DONE Requirement -> ONLINE + Feedback -> ONLINE 同一业务事务。
+      security: *id001
+      parameters:
+      - name: version_id
+        in: path
+        required: true
+        schema:
+          type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublishVersionRequest'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+        '409':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conflict'
+  /releases:
+    get:
+      tags:
+      - Release
+      summary: 发布记录
+      security: *id001
+      parameters: *id002
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+  /notifications:
+    get:
+      tags:
+      - Notification
+      summary: 通知中心
+      security: *id001
+      parameters:
+      - name: unread_only
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+  /notifications/{notification_id}/read:
+    post:
+      tags:
+      - Notification
+      summary: 标记通知已读
+      security: *id001
+      parameters:
+      - name: notification_id
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+  /editing/start:
+    post:
+      tags:
+      - Collaboration
+      summary: 进入编辑并获取他人编辑提示
+      security: *id001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EditingRequest'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+  /editing/heartbeat:
+    post:
+      tags:
+      - Collaboration
+      summary: 编辑心跳续期
+      security: *id001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EditingRequest'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+  /editing/end:
+    post:
+      tags:
+      - Collaboration
+      summary: 结束编辑提示
+      security: *id001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EditingRequest'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+  /users:
+    get:
+      tags:
+      - System
+      summary: 用户列表
+      security: *id001
+      parameters: *id002
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+    post:
+      tags:
+      - System
+      summary: 创建用户
+      security: *id001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreate'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+  /users/{user_id}/status:
+    patch:
+      tags:
+      - System
+      summary: 启停用户
+      security: *id001
+      parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: integer
+      - name: status
+        in: query
+        required: true
+        schema:
+          type: string
+          enum:
+          - ACTIVE
+          - DISABLED
+          - LOCKED
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+  /roles:
+    get:
+      tags:
+      - System
+      summary: 角色列表
+      security: *id001
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+    post:
+      tags:
+      - System
+      summary: 创建角色
+      security: *id001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoleCreate'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+  /roles/permissions:
+    get:
+      tags:
+      - System
+      summary: 权限码列表
+      security: *id001
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+  /roles/{role_id}/permissions:
+    put:
+      tags:
+      - System
+      summary: 更新角色权限
+      description: revision 乐观锁。
+      security: *id001
+      parameters:
+      - name: role_id
+        in: path
+        required: true
+        schema:
+          type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RolePermissionUpdate'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+        '409':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conflict'
+  /systems:
+    get:
+      tags:
+      - System
+      summary: 业务系统与模块字典
+      security: *id001
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+  /files:
+    post:
+      tags:
+      - File
+      summary: 上传附件
+      description: MIME 白名单，单文件默认 50MB。
+      security: *id001
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+              - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+        '422':
+          description: 文件类型或大小不允许
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    LoginRequest:
+      type: object
+      required:
+      - username
+      - password
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+          format: password
+    TokenPair:
+      type: object
+      required:
+      - access_token
+      - refresh_token
+      - token_type
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        token_type:
+          type: string
+          example: bearer
+    RefreshRequest:
+      type: object
+      required:
+      - refresh_token
+      properties:
+        refresh_token:
+          type: string
+    FeedbackCreate:
+      type: object
+      required:
+      - title
+      - feedback_type
+      - description
+      properties:
+        title:
+          type: string
+          maxLength: 200
+        feedback_type:
+          type: string
+          enum:
+          - NEW_FEATURE
+          - FEATURE_OPTIMIZATION
+          - SYSTEM_ISSUE
+          - DATA_ISSUE
+          - UI_UX
+          - OTHER
+        urgency:
+          type: string
+          enum:
+          - NORMAL
+          - URGENT
+          - CRITICAL
+          default: NORMAL
+        system_id:
+          type:
+          - integer
+          - 'null'
+        module_id:
+          type:
+          - integer
+          - 'null'
+        description:
+          type: string
+        expected_result:
+          type:
+          - string
+          - 'null'
+        actual_result:
+          type:
+          - string
+          - 'null'
+        reproduce_steps:
+          type:
+          - string
+          - 'null'
+    FeedbackUpdate:
+      allOf:
+      - $ref: '#/components/schemas/FeedbackCreate'
+      - type: object
+        required:
+        - revision
+        properties:
+          revision:
+            type: integer
+            minimum: 1
+    FeedbackConvertRequest:
+      type: object
+      required:
+      - title
+      - requirement_type
+      - description
+      - revision
+      properties:
+        title:
+          type: string
+        requirement_type:
+          type: string
+        priority:
+          type: string
+          enum:
+          - P0
+          - P1
+          - P2
+          - P3
+          - P4
+          default: P2
+        owner_id:
+          type:
+          - integer
+          - 'null'
+        description:
+          type: string
+        acceptance_criteria:
+          type:
+          - string
+          - 'null'
+        version_id:
+          type:
+          - integer
+          - 'null'
+        revision:
+          type: integer
+          minimum: 1
+    Feedback:
+      type: object
+      properties:
+        id:
+          type: integer
+        feedback_no:
+          type: string
+        title:
+          type: string
+        feedback_type:
+          type: string
+        urgency:
+          type: string
+        status:
+          type: string
+        system_id:
+          type:
+          - integer
+          - 'null'
+        module_id:
+          type:
+          - integer
+          - 'null'
+        submitter_id:
+          type: integer
+        description:
+          type: string
+        main_requirement_id:
+          type:
+          - integer
+          - 'null'
+        revision:
+          type: integer
+    RequirementCreate:
+      type: object
+      required:
+      - title
+      - requirement_type
+      - description
+      properties:
+        title:
+          type: string
+        requirement_type:
+          type: string
+        priority:
+          type: string
+          enum:
+          - P0
+          - P1
+          - P2
+          - P3
+          - P4
+          default: P2
+        system_id:
+          type:
+          - integer
+          - 'null'
+        module_id:
+          type:
+          - integer
+          - 'null'
+        owner_id:
+          type:
+          - integer
+          - 'null'
+        description:
+          type: string
+        acceptance_criteria:
+          type:
+          - string
+          - 'null'
+        version_id:
+          type:
+          - integer
+          - 'null'
+    RequirementUpdate:
+      type: object
+      required:
+      - revision
+      properties:
+        title:
+          type: string
+        requirement_type:
+          type: string
+        priority:
+          type: string
+        system_id:
+          type:
+          - integer
+          - 'null'
+        module_id:
+          type:
+          - integer
+          - 'null'
+        owner_id:
+          type:
+          - integer
+          - 'null'
+        description:
+          type: string
+        acceptance_criteria:
+          type:
+          - string
+          - 'null'
+        revision:
+          type: integer
+          minimum: 1
+    RequirementStatusChange:
+      type: object
+      required:
+      - status
+      - revision
+      properties:
+        status:
+          type: string
+          enum:
+          - DRAFT
+          - CONFIRMED
+          - PLANNED
+          - DEVELOPING
+          - TESTING
+          - DONE
+          - ONLINE
+          - PAUSED
+          - CANCELED
+        revision:
+          type: integer
+          minimum: 1
+    RequirementMoveVersion:
+      type: object
+      required:
+      - target_version_id
+      - reason
+      - revision
+      properties:
+        target_version_id:
+          type: integer
+        reason:
+          type: string
+          maxLength: 500
+        revision:
+          type: integer
+          minimum: 1
+    Requirement:
+      type: object
+      properties:
+        id:
+          type: integer
+        requirement_no:
+          type: string
+        title:
+          type: string
+        requirement_type:
+          type: string
+        source:
+          type: string
+        priority:
+          type: string
+        status:
+          type: string
+        owner_id:
+          type:
+          - integer
+          - 'null'
+        current_version_id:
+          type:
+          - integer
+          - 'null'
+        description:
+          type: string
+        acceptance_criteria:
+          type:
+          - string
+          - 'null'
+        revision:
+          type: integer
+    VersionCreate:
+      type: object
+      required:
+      - version_no
+      - name
+      properties:
+        version_no:
+          type: string
+        name:
+          type: string
+        owner_id:
+          type:
+          - integer
+          - 'null'
+        planned_release_date:
+          type:
+          - string
+          - 'null'
+          format: date
+        description:
+          type:
+          - string
+          - 'null'
+    VersionUpdate:
+      type: object
+      required:
+      - revision
+      properties:
+        name:
+          type: string
+        owner_id:
+          type:
+          - integer
+          - 'null'
+        planned_release_date:
+          type:
+          - string
+          - 'null'
+          format: date
+        description:
+          type:
+          - string
+          - 'null'
+        revision:
+          type: integer
+          minimum: 1
+    VersionStatusChange:
+      type: object
+      required:
+      - status
+      - revision
+      properties:
+        status:
+          type: string
+          enum:
+          - PLANNING
+          - DEVELOPING
+          - TESTING
+          - READY
+          - RELEASED
+          - CANCELED
+        revision:
+          type: integer
+    PublishVersionRequest:
+      type: object
+      required:
+      - released_at
+      - result
+      - release_notes
+      - revision
+      properties:
+        released_at:
+          type: string
+          format: date-time
+        result:
+          type: string
+          enum:
+          - SUCCESS
+          - PARTIAL
+          - ROLLED_BACK
+        release_notes:
+          type: string
+        revision:
+          type: integer
+          minimum: 1
+    Version:
+      type: object
+      properties:
+        id:
+          type: integer
+        version_no:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+        owner_id:
+          type:
+          - integer
+          - 'null'
+        planned_release_date:
+          type:
+          - string
+          - 'null'
+          format: date
+        released_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        description:
+          type:
+          - string
+          - 'null'
+        revision:
+          type: integer
+    UserCreate:
+      type: object
+      required:
+      - username
+      - display_name
+      - password
+      properties:
+        username:
+          type: string
+        display_name:
+          type: string
+        password:
+          type: string
+        email:
+          type:
+          - string
+          - 'null'
+        role_ids:
+          type: array
+          items:
+            type: integer
+    RoleCreate:
+      type: object
+      required:
+      - code
+      - name
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        data_scope:
+          type: string
+          enum:
+          - SELF
+          - TEAM
+          - ALL
+        permission_ids:
+          type: array
+          items:
+            type: integer
+    RolePermissionUpdate:
+      type: object
+      required:
+      - permission_ids
+      - revision
+      properties:
+        permission_ids:
+          type: array
+          items:
+            type: integer
+        revision:
+          type: integer
+          minimum: 1
+    EditingRequest:
+      type: object
+      required:
+      - entity_type
+      - entity_id
+      properties:
+        entity_type:
+          type: string
+          enum:
+          - FEEDBACK
+          - REQUIREMENT
+          - VERSION
+        entity_id:
+          type: integer
+    Conflict:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 40910
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            current_revision:
+              type: integer
+            current_updated_at:
+              type: string
+            current_updated_by:
+              type: integer
+        request_id:
+          type: string

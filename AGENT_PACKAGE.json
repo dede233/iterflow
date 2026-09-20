@@ -1,0 +1,30 @@
+{
+  "package": "需求与版本管理系统 V1.5 开发Agent开工包",
+  "baseline": "V1.5",
+  "entry": "START_HERE.md",
+  "required_reading": [
+    "AGENTS.md",
+    "TASKS.md",
+    "DEVELOPMENT.md",
+    "docs/需求与版本管理系统_独立部署版_V1.5_完整开发基线.pdf",
+    "spec/openapi-v1.5.yaml",
+    "spec/status-machines.md"
+  ],
+  "core_flow": "Feedback -> Requirement -> Version -> Release",
+  "forbidden_scope": [
+    "工时",
+    "Story Point",
+    "单需求预计开发时长"
+  ],
+  "project_name": "迭程 IterFlow",
+  "project_full_name": "迭程 IterFlow · 需求与版本协作管理系统",
+  "repository_name": "iterflow",
+  "service_names": {
+    "backend": "iterflow-api",
+    "frontend": "iterflow-web",
+    "database": "iterflow",
+    "postgres": "iterflow-db",
+    "redis": "iterflow-redis",
+    "minio": "iterflow-minio"
+  }
+}

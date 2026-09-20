@@ -1,0 +1,41 @@
+from enum import StrEnum
+
+
+class FeedbackStatus(StrEnum):
+    NEW = "NEW"
+    ACCEPTED = "ACCEPTED"
+    REQUIREMENT_LINKED = "REQUIREMENT_LINKED"
+    PLANNED = "PLANNED"
+    DEVELOPING = "DEVELOPING"
+    TESTING = "TESTING"
+    ONLINE = "ONLINE"
+    DUPLICATE = "DUPLICATE"
+    CANNOT_REPRODUCE = "CANNOT_REPRODUCE"
+    CLOSED = "CLOSED"
+
+
+class RequirementStatus(StrEnum):
+    DRAFT = "DRAFT"
+    CONFIRMED = "CONFIRMED"
+    PLANNED = "PLANNED"
+    DEVELOPING = "DEVELOPING"
+    TESTING = "TESTING"
+    DONE = "DONE"
+    ONLINE = "ONLINE"
+    PAUSED = "PAUSED"
+    CANCELED = "CANCELED"
+
+
+class VersionStatus(StrEnum):
+    PLANNING = "PLANNING"
+    DEVELOPING = "DEVELOPING"
+    TESTING = "TESTING"
+    READY = "READY"
+    RELEASED = "RELEASED"
+    CANCELED = "CANCELED"
+
+
+class ReleaseResult(StrEnum):
+    SUCCESS = "SUCCESS"
+    PARTIAL = "PARTIAL"
+    ROLLED_BACK = "ROLLED_BACK"

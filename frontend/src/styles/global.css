@@ -1,0 +1,13 @@
+:root { font-family: Inter, "PingFang SC", "Microsoft YaHei", sans-serif; color: #1f2937; background: #f5f7fa; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+a { color: inherit; text-decoration: none; }
+.page { padding: 20px; }
+.page-title { font-size: 22px; font-weight: 700; margin-bottom: 16px; }
+.mobile-only { display: none; }
+@media (max-width: 767px) {
+  .desktop-only { display: none !important; }
+  .mobile-only { display: block; }
+  .page { padding: 12px 12px 76px; }
+  .page-title { font-size: 18px; }
+}

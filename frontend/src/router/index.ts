@@ -1,31 +1,74 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import AppLayout from '@/layouts/AppLayout.vue'
+import { useAuthStore } from '@/stores/auth'
+import { pinia } from '@/stores/pinia'
+
+declare module 'vue-router' {
+  interface RouteMeta {
+    permission?: string
+    public?: boolean
+    allowPasswordChangeRequired?: boolean
+    requiresAllScope?: boolean
+  }
+}
 
 export const router = createRouter({
   history: createWebHistory(),
   routes: [
-    { path: '/login', component: () => import('@/views/auth/LoginView.vue') },
+    { path: '/login', name: 'login', component: () => import('@/views/auth/LoginView.vue'), meta: { public: true } },
+    {
+      path: '/change-password',
+      name: 'change-password',
+      component: () => import('@/views/auth/ChangePasswordView.vue'),
+      meta: { allowPasswordChangeRequired: true },
+    },
+    { path: '/forbidden', name: 'forbidden', component: () => import('@/views/auth/ForbiddenView.vue') },
     {
       path: '/',
       component: AppLayout,
       children: [
-        { path: '', component: () => import('@/views/dashboard/DashboardView.vue') },
-        { path: 'feedbacks', component: () => import('@/views/feedback/FeedbackListView.vue') },
-        { path: 'feedbacks/new', component: () => import('@/views/feedback/FeedbackCreateView.vue') },
-        { path: 'feedbacks/:id', component: () => import('@/views/feedback/FeedbackDetailView.vue') },
-        { path: 'requirements', component: () => import('@/views/requirement/RequirementListView.vue') },
-        { path: 'requirements/:id', component: () => import('@/views/requirement/RequirementDetailView.vue') },
-        { path: 'versions', component: () => import('@/views/version/VersionListView.vue') },
-        { path: 'versions/:id', component: () => import('@/views/version/VersionDetailView.vue') },
-        { path: 'releases', component: () => import('@/views/release/ReleaseListView.vue') },
-        { path: 'notifications', component: () => import('@/views/notification/NotificationCenterView.vue') },
-        { path: 'system/users', component: () => import('@/views/system/UserListView.vue') },
-        { path: 'system/roles', component: () => import('@/views/system/RoleListView.vue') },
+        { path: '', name: 'dashboard', component: () => import('@/views/dashboard/DashboardView.vue'), meta: { permission: 'dashboard.view' } },
+        { path: 'feedbacks', name: 'feedback-list', component: () => import('@/views/feedback/FeedbackListView.vue'), meta: { permission: 'rd.feedback.view' } },
+        { path: 'feedbacks/new', name: 'feedback-create', component: () => import('@/views/feedback/FeedbackCreateView.vue'), meta: { permission: 'rd.feedback.create' } },
+        { path: 'feedbacks/:id', name: 'feedback-detail', component: () => import('@/views/feedback/FeedbackDetailView.vue'), meta: { permission: 'rd.feedback.view' } },
+        { path: 'requirements', name: 'requirement-list', component: () => import('@/views/requirement/RequirementListView.vue'), meta: { permission: 'rd.requirement.view' } },
+        { path: 'requirements/:id', name: 'requirement-detail', component: () => import('@/views/requirement/RequirementDetailView.vue'), meta: { permission: 'rd.requirement.view' } },
+        { path: 'versions', name: 'version-list', component: () => import('@/views/version/VersionListView.vue'), meta: { permission: 'rd.version.view' } },
+        { path: 'versions/:id', name: 'version-detail', component: () => import('@/views/version/VersionDetailView.vue'), meta: { permission: 'rd.version.view' } },
+        { path: 'releases', name: 'release-list', component: () => import('@/views/release/ReleaseListView.vue'), meta: { permission: 'rd.release.view' } },
+        { path: 'notifications', name: 'notifications', component: () => import('@/views/notification/NotificationCenterView.vue') },
+        { path: 'system/users', name: 'user-list', component: () => import('@/views/system/UserListView.vue'), meta: { permission: 'sys.user.view' } },
+        { path: 'system/roles', name: 'role-list', component: () => import('@/views/system/RoleListView.vue'), meta: { permission: 'sys.role.view', requiresAllScope: true } },
       ],
     },
+    { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
 })
 
-router.beforeEach((to) => {
-  if (to.path !== '/login' && !localStorage.getItem('access_token')) return '/login'
+router.beforeEach(async (to) => {
+  const auth = useAuthStore(pinia)
+  if (to.meta.public) {
+    if (auth.isAuthenticated && !auth.initialized && !(await auth.restoreSession())) return true
+    if (auth.isAuthenticated && auth.initialized) {
+      return auth.mustChangePassword ? { name: 'change-password' } : { name: 'dashboard' }
+    }
+    return true
+  }
+
+  if (!auth.isAuthenticated) {
+    return { name: 'login', query: { redirect: to.fullPath } }
+  }
+  if (!auth.initialized && !(await auth.restoreSession())) {
+    return { name: 'login', query: { redirect: to.fullPath } }
+  }
+  if (auth.mustChangePassword && !to.meta.allowPasswordChangeRequired) {
+    return { name: 'change-password' }
+  }
+  if (to.meta.permission && !auth.hasPermission(to.meta.permission)) {
+    return { name: 'forbidden' }
+  }
+  if (to.meta.requiresAllScope && auth.user?.data_scope !== 'ALL') {
+    return { name: 'forbidden' }
+  }
+  return true
 })

@@ -1,6 +1,20 @@
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useAuthStore } from '@/stores/auth'
+
+const auth = useAuthStore()
+const items = computed(() => [
+  { to: '/', label: '首页', permission: 'dashboard.view' },
+  { to: '/feedbacks', label: '反馈', permission: 'rd.feedback.view' },
+  { to: '/requirements', label: '需求', permission: 'rd.requirement.view' },
+  { to: '/versions', label: '版本', permission: 'rd.version.view' },
+  { to: '/notifications', label: '消息' },
+].filter((item) => !item.permission || auth.hasPermission(item.permission)))
+</script>
+
 <template>
-  <nav class="bottom mobile-only">
-    <router-link to="/">首页</router-link><router-link to="/feedbacks">反馈</router-link><router-link to="/requirements">需求</router-link><router-link to="/versions">版本</router-link><router-link to="/notifications">消息</router-link>
+  <nav class="bottom mobile-only" aria-label="主导航">
+    <router-link v-for="item in items" :key="item.to" :to="item.to">{{ item.label }}</router-link>
   </nav>
 </template>
 <style scoped>

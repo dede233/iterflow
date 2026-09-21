@@ -131,9 +131,18 @@ def test_current_user_confirms_operator_after_database_validation():
         scheme="Bearer",
         credentials=create_access_token(31),
     )
+    request = Request(
+        {
+            "type": "http",
+            "method": "GET",
+            "path": "/api/v1/auth/me",
+            "headers": [],
+            "client": ("192.0.2.12", 43102),
+        }
+    )
 
     with audit_context(AuditContext(request_id="req_confirmed")):
-        authenticated = current_user(credentials=credentials, db=db)
+        authenticated = current_user(request=request, credentials=credentials, db=db)
         context = get_audit_context()
 
     assert authenticated.id == 31

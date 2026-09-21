@@ -52,8 +52,9 @@ def role_api(tmp_path: Path) -> Iterator[tuple[TestClient, Session, dict[str, st
             username="role-reviewer",
             display_name="Role Reviewer",
             password_hash="unused",
+            must_change_password=False,
         )
-        authorizer = Role(code="ROLE_AUTHORIZER", name="角色测试授权", data_scope=DataScope.SELF)
+        authorizer = Role(code="ROLE_AUTHORIZER", name="角色测试授权", data_scope=DataScope.ALL)
         view_permission = Permission(code="sys.role.view", name="角色查看")
         edit_permission = Permission(code="sys.role.edit", name="角色编辑")
         session.add_all([user, authorizer, view_permission, edit_permission])
@@ -121,10 +122,18 @@ def test_static_openapi_role_contract_exposes_revision_and_role_responses():
     role_schema = document["components"]["schemas"]["Role"]
 
     assert "revision" in role_schema["required"]
+    assert "permission_ids" in role_schema["required"]
     assert role_schema["properties"]["revision"] == {"type": "integer", "minimum": 1}
+    assert role_schema["properties"]["permission_ids"] == {
+        "type": "array",
+        "items": {"type": "integer"},
+    }
     assert document["paths"]["/roles"]["get"]["responses"]["200"]["content"]["application/json"][
         "schema"
     ]["items"] == {"$ref": "#/components/schemas/Role"}
     assert document["paths"]["/roles"]["post"]["responses"]["200"]["content"]["application/json"][
         "schema"
     ] == {"$ref": "#/components/schemas/Role"}
+    assert document["paths"]["/roles/permissions"]["get"]["responses"]["200"]["content"][
+        "application/json"
+    ]["schema"]["items"] == {"$ref": "#/components/schemas/Permission"}

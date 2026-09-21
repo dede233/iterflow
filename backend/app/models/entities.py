@@ -107,6 +107,31 @@ class UserRole(Base):
     role_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("sys_role.id"), primary_key=True)
 
 
+class RefreshSession(Base):
+    """A server-side refresh-token session.
+
+    Raw refresh tokens are deliberately never persisted.  The signed refresh
+    JWT contains the session id (``sid``) and the one-time token identifier
+    (``jti``); both must match this record before a token can be refreshed.
+    """
+
+    __tablename__ = "sys_refresh_session"
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("sys_user.id", ondelete="CASCADE"), index=True
+    )
+    token_jti: Mapped[str] = mapped_column(String(32), unique=True, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, index=True
+    )
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_reason: Mapped[str | None] = mapped_column(String(64))
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, nullable=False
+    )
+
+
 class RolePermission(Base):
     __tablename__ = "sys_role_permission"
     role_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("sys_role.id"), primary_key=True)

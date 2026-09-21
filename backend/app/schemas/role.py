@@ -15,6 +15,15 @@ class RoleOut(BaseModel):
     data_scope: DataScope
     enabled: bool
     revision: int
+    permission_ids: list[int] = Field(default_factory=list)
+
+
+class PermissionOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    code: str
+    name: str
+    category: str
 
 
 class RoleCreate(BaseModel):
@@ -22,6 +31,12 @@ class RoleCreate(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     data_scope: ConfigurableDataScope = DataScope.SELF
     permission_ids: list[int] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def permission_ids_must_be_unique(self) -> "RoleCreate":
+        if len(self.permission_ids) != len(set(self.permission_ids)):
+            raise ValueError("permission_ids must not contain duplicates")
+        return self
 
 
 class RoleUpdate(BaseModel):
@@ -44,3 +59,9 @@ class RoleUpdate(BaseModel):
 class RolePermissionUpdate(BaseModel):
     permission_ids: list[int]
     revision: int = Field(ge=1)
+
+    @model_validator(mode="after")
+    def permission_ids_must_be_unique(self) -> "RolePermissionUpdate":
+        if len(self.permission_ids) != len(set(self.permission_ids)):
+            raise ValueError("permission_ids must not contain duplicates")
+        return self

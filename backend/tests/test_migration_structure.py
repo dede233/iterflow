@@ -2,6 +2,9 @@ import ast
 from pathlib import Path
 
 MIGRATION_PATH = Path(__file__).parents[1] / "alembic" / "versions" / "0001_initial.py"
+REFRESH_SESSION_MIGRATION_PATH = (
+    Path(__file__).parents[1] / "alembic" / "versions" / "0002_refresh_sessions.py"
+)
 EXPECTED_TABLES = {
     "rd_comment",
     "rd_feedback",
@@ -144,3 +147,16 @@ def test_initial_migration_has_business_partial_unique_indexes() -> None:
     assert 'postgresql_where=sa.text("is_primary = true")' in source
     assert '"uq_requirement_active_version"' in source
     assert 'postgresql_where=sa.text("active = true")' in source
+
+
+def test_refresh_session_migration_is_explicit_and_reversible() -> None:
+    source = REFRESH_SESSION_MIGRATION_PATH.read_text(encoding="utf-8")
+
+    assert 'down_revision: str | None = "0001_initial"' in source
+    assert 'op.create_table(\n        "sys_refresh_session"' in source
+    assert 'sa.Column("token_jti", sa.String(length=32), nullable=False)' in source
+    assert 'sa.UniqueConstraint("token_jti")' in source
+    assert 'op.create_index(\n        "ix_sys_refresh_session_user_id"' in source
+    assert 'op.create_index(\n        "ix_sys_refresh_session_expires_at"' in source
+    assert 'op.drop_table("sys_refresh_session")' in source
+    assert "Base.metadata" not in source

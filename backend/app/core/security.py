@@ -42,12 +42,12 @@ def create_access_token(user_id: int) -> str:
     )
 
 
-def create_refresh_token(user_id: int, session_id: str) -> str:
+def create_refresh_token(user_id: int, session_id: str, token_jti: str) -> str:
     return create_token(
         str(user_id),
         "refresh",
         timedelta(days=settings.jwt_refresh_ttl_days),
-        {"sid": session_id},
+        {"sid": session_id, "jti": token_jti},
     )
 
 

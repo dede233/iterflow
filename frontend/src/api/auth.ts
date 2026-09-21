@@ -12,16 +12,13 @@ export const logoutApi = (refreshToken: string) =>
 export const currentUserApi = () => api.get<CurrentUser>('/auth/me').then((r) => r.data)
 
 export const changePasswordApi = (currentPassword: string, newPassword: string) =>
+  // The forced first-login change relies on current_user, so the access token
+  // must be attached (no skipAuth). No skipAuthRefresh either: if the access
+  // token has expired by the time the user submits, the 401 goes through the
+  // single-flight refresh + replay like any other authenticated request.
   api
-    .post<TokenPair>(
-      '/auth/change-password',
-      {
-        current_password: currentPassword,
-        new_password: newPassword,
-      },
-      // The access token must be sent (this is the forced first-login change),
-      // but a 401 here means a wrong current password, not an expired session,
-      // so never trigger a silent refresh + replay.
-      { skipAuthRefresh: true },
-    )
+    .post<TokenPair>('/auth/change-password', {
+      current_password: currentPassword,
+      new_password: newPassword,
+    })
     .then((r) => r.data)

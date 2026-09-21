@@ -4,6 +4,7 @@ from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
+from app.core.audit_context import set_audit_operator
 from app.core.database import get_db
 from app.core.exceptions import AppError, PermissionDenied
 from app.core.security import decode_token
@@ -24,6 +25,9 @@ def current_user(
     user = db.get(User, int(payload["sub"]))
     if not user or user.status != UserStatus.ACTIVE:
         raise AppError(40103, "用户不可用", 401)
+    # Middleware initializes the transport metadata. Rebind the identity only
+    # after the token subject has resolved to an active database user.
+    set_audit_operator(user.id)
     return user
 
 

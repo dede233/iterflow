@@ -26,6 +26,7 @@ def test_storage_driver_is_case_insensitive_and_relative_path_uses_project_root(
     settings = _settings(storage_driver="S3", local_storage_path="./data/uploads")
 
     assert settings.storage_driver == "s3"
-    assert settings.local_storage_root == (
-        Path(__file__).resolve().parents[2] / "data" / "uploads"
-    ).resolve()
+    assert (
+        settings.local_storage_root
+        == (Path(__file__).resolve().parents[2] / "data" / "uploads").resolve()
+    )

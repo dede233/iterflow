@@ -13,6 +13,8 @@ EXPECTED_TABLES = {
     "sys_attachment_relation",
     "sys_business_module",
     "sys_business_system",
+    "sys_dictionary",
+    "sys_dictionary_item",
     "sys_file",
     "sys_notification",
     "sys_operation_log",
@@ -47,8 +49,11 @@ EXPECTED_INDEXES = {
     "ix_sys_attachment_relation_entity_id",
     "ix_sys_attachment_relation_entity_type",
     "ix_sys_business_module_system_id",
+    "ix_sys_dictionary_code",
+    "ix_sys_dictionary_item_dictionary_id",
     "ix_sys_file_sha256",
     "ix_sys_notification_read_at",
+    "ix_sys_notification_type",
     "ix_sys_notification_user_id",
     "ix_sys_operation_log_action",
     "ix_sys_operation_log_created_at",
@@ -75,6 +80,8 @@ EXPECTED_DROP_ORDER = [
     "rd_requirement",
     "rd_version",
     "sys_business_module",
+    "sys_dictionary_item",
+    "sys_dictionary",
     "sys_role_permission",
     "sys_user_role",
     "sys_business_system",
@@ -119,7 +126,15 @@ def test_initial_migration_uses_explicit_operations() -> None:
     assert _operation_first_arguments("drop_table") == EXPECTED_DROP_ORDER
     assert set(_operation_first_arguments("create_index")) == EXPECTED_INDEXES
     assert _operation_first_arguments("create_foreign_key") == ["fk_requirement_current_version"]
-    assert _operation_count("ForeignKeyConstraint") == 24
+    assert _operation_count("ForeignKeyConstraint") == 25
+
+
+def test_initial_migration_uses_postgresql_jsonb_for_audit_payloads() -> None:
+    source = MIGRATION_PATH.read_text(encoding="utf-8")
+
+    assert 'sa.Column("before_data", postgresql.JSONB' in source
+    assert 'sa.Column("after_data", postgresql.JSONB' in source
+    assert 'sa.Column("user_agent", sa.String(length=512)' in source
 
 
 def test_initial_migration_has_business_partial_unique_indexes() -> None:

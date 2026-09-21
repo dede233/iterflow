@@ -7,9 +7,9 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import require_permission
 from app.core.database import get_db
-from app.core.exceptions import ConflictError
+from app.core.exceptions import ConflictError, NotFoundError
 from app.models.entities import Permission, Role, RolePermission, User
-from app.schemas.role import RoleCreate, RolePermissionUpdate
+from app.schemas.role import RoleCreate, RoleOut, RolePermissionUpdate, RoleUpdate
 from app.services.audit_service import AuditService
 
 router = APIRouter(prefix="/roles", tags=["roles"])
@@ -29,7 +29,7 @@ def list_permissions(
     return db.scalars(select(Permission).order_by(Permission.code)).all()
 
 
-@router.post("")
+@router.post("", response_model=RoleOut)
 def create_role(
     payload: RoleCreate,
     db: Session = Depends(get_db),
@@ -50,8 +50,50 @@ def create_role(
         "ROLE",
         role.id,
         "CREATE",
-        current.id,
         after={"code": role.code, "permission_ids": payload.permission_ids},
+    )
+    db.commit()
+    db.refresh(role)
+    return role
+
+
+@router.patch("/{role_id}", response_model=RoleOut)
+def update_role(
+    role_id: int,
+    payload: RoleUpdate,
+    db: Session = Depends(get_db),
+    current: User = Depends(require_permission("sys.role.edit")),
+):
+    role = db.get(Role, role_id)
+    if role is None:
+        raise NotFoundError("角色不存在")
+
+    before = {
+        "code": role.code,
+        "name": role.name,
+        "data_scope": role.data_scope,
+        "enabled": role.enabled,
+    }
+    values = payload.model_dump(exclude={"revision"}, exclude_unset=True)
+    values["updated_by"] = current.id
+    result = cast(
+        CursorResult[Any],
+        db.execute(
+            update(Role)
+            .where(Role.id == role_id, Role.revision == payload.revision)
+            .values(**values, revision=Role.revision + 1)
+        ),
+    )
+    if not result.rowcount:
+        db.refresh(role)
+        raise ConflictError("角色已被其他用户修改", {"current_revision": role.revision})
+
+    AuditService(db).log(
+        "ROLE",
+        role_id,
+        "UPDATE",
+        before=before,
+        after=values,
     )
     db.commit()
     db.refresh(role)
@@ -86,7 +128,6 @@ def update_permissions(
         "ROLE",
         role_id,
         "PERMISSIONS_UPDATE",
-        current.id,
         after={"permission_ids": payload.permission_ids},
     )
     db.commit()

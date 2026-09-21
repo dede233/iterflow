@@ -8,6 +8,7 @@ from unittest.mock import Mock
 import pytest
 from botocore.exceptions import ClientError
 
+from app.core import readiness
 from app.services.storage import (
     InvalidStorageKeyError,
     LocalFileStorage,
@@ -135,6 +136,37 @@ def test_s3_storage_missing_object_and_bucket_creation() -> None:
         Bucket="iterflow",
         CreateBucketConfiguration={"LocationConstraint": "eu-west-1"},
     )
+
+
+def test_s3_readiness_check_is_read_only() -> None:
+    client = Mock()
+    storage = S3Storage(bucket="iterflow", client=client)
+
+    storage.check_ready()
+
+    client.head_bucket.assert_called_once_with(Bucket="iterflow")
+    client.create_bucket.assert_not_called()
+
+
+def test_ready_endpoint_storage_check_does_not_initialise_s3(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    configured_storage = Mock()
+    monkeypatch.setattr(
+        readiness,
+        "get_settings",
+        lambda: Mock(storage_driver="s3"),
+    )
+    monkeypatch.setattr(
+        readiness,
+        "create_configured_storage",
+        lambda _settings: configured_storage,
+    )
+
+    readiness.check_storage()
+
+    configured_storage.check_ready.assert_called_once_with()
+    configured_storage.ensure_bucket.assert_not_called()
 
 
 def test_s3_storage_does_not_swallow_authorization_errors() -> None:

@@ -77,9 +77,7 @@ class FileService:
         item = self.get_scoped(file_id, actor, data_scope)
         return item, self._storage(item.storage_driver).exists(item.storage_key)
 
-    def open(
-        self, file_id: int, actor: User, data_scope: DataScope
-    ) -> tuple[FileObject, BinaryIO]:
+    def open(self, file_id: int, actor: User, data_scope: DataScope) -> tuple[FileObject, BinaryIO]:
         item = self.get_scoped(file_id, actor, data_scope)
         storage = self._storage(item.storage_driver)
         if not storage.exists(item.storage_key):
@@ -105,10 +103,24 @@ class FileService:
         if self.repository.has_attachments(item.id):
             raise ConflictError("文件已被业务对象引用。不能删除")
         storage = self._storage(item.storage_driver)
-        storage.delete(item.storage_key)
+        storage_key = item.storage_key
+
+        # Commit the metadata deletion before removing the object. If the database
+        # transaction fails, rollback keeps both the row and the physical file. A later
+        # storage failure can leave only an unreferenced object (safe to garbage-collect),
+        # never a live database row whose content has silently disappeared.
         try:
             self.db.delete(item)
             self.db.commit()
         except Exception:
             self.db.rollback()
+            raise
+
+        try:
+            storage.delete(storage_key)
+        except Exception:
+            logger.exception(
+                "file metadata deleted but physical object cleanup failed; object is orphaned",
+                extra={"key": storage_key},
+            )
             raise

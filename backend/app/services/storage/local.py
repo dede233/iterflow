@@ -92,6 +92,10 @@ class LocalFileStorage(StorageService):
             raise FileNotFoundError(path)
         return StorageObjectMetadata(size=stat.st_size)
 
+    def check_ready(self) -> None:
+        if not self.root_path.is_dir():
+            raise FileNotFoundError(self.root_path)
+
     def ensure_bucket(self) -> None:
         self.root_path.mkdir(parents=True, exist_ok=True)
         if not self.root_path.is_dir():

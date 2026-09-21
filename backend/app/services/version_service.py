@@ -17,6 +17,7 @@ from app.models.entities import (
 from app.models.enums import (
     FeedbackStatus,
     ManualVersionStatus,
+    NotificationType,
     ReleaseResult,
     RequirementStatus,
     VersionStatus,
@@ -60,9 +61,7 @@ class VersionService:
         item = Version(created_by=operator_id, updated_by=operator_id, **payload.model_dump())
         self.db.add(item)
         self.db.flush()
-        self.audit.log(
-            "VERSION", item.id, "CREATE", operator_id, after={"version_no": item.version_no}
-        )
+        self.audit.log("VERSION", item.id, "CREATE", after={"version_no": item.version_no})
         self.db.commit()
         self.db.refresh(item)
         return item
@@ -76,7 +75,7 @@ class VersionService:
             if not latest:
                 raise NotFoundError("版本不存在")
             raise ConflictError("版本已被其他用户修改", {"current_revision": latest.revision})
-        self.audit.log("VERSION", version_id, "UPDATE", operator_id, after=values)
+        self.audit.log("VERSION", version_id, "UPDATE", after=values)
         self.db.commit()
         updated = self.repo.get(version_id)
         assert updated is not None
@@ -107,7 +106,6 @@ class VersionService:
             "VERSION",
             version_id,
             "STATUS_CHANGE",
-            operator_id,
             before={"status": current.status},
             after={"status": payload.status, "reason": payload.reason},
         )
@@ -200,6 +198,7 @@ class VersionService:
                         self.db.add(
                             Notification(
                                 user_id=feedback.submitter_id,
+                                type=NotificationType.FEEDBACK,
                                 title=f"反馈 {feedback.feedback_no} 已上线",
                                 content=f"已随版本 {version.version_no} 发布。",
                                 entity_type="FEEDBACK",
@@ -210,7 +209,6 @@ class VersionService:
             "VERSION",
             version.id,
             "PUBLISH",
-            operator_id,
             after={"result": ReleaseResult.SUCCESS},
         )
         self.db.commit()

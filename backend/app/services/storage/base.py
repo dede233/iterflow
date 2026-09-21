@@ -53,7 +53,13 @@ class StorageService(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def check_ready(self) -> None:
+        """Check that the configured storage namespace is accessible without creating it."""
+
+        raise NotImplementedError
+
+    @abstractmethod
     def ensure_bucket(self) -> None:
-        """Ensure the configured storage namespace can be used."""
+        """Explicitly initialise the configured storage namespace when needed."""
 
         raise NotImplementedError

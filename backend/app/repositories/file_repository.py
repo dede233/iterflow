@@ -10,11 +10,12 @@ class FileRepository(BaseRepository[FileObject]):
     def __init__(self, db: Session):
         super().__init__(db, FileObject)
 
-    def get_scoped(
-        self, file_id: int, user_id: int, data_scope: DataScope
-    ) -> FileObject | None:
+    def get_scoped(self, file_id: int, user_id: int, data_scope: DataScope) -> FileObject | None:
         statement = select(FileObject).where(FileObject.id == file_id)
         if data_scope is not DataScope.ALL:
+            # TODO(Phase 2): derive file access from its Feedback/Requirement/Version
+            # attachment and that entity's data-scope policy. Creator ownership is a
+            # deliberately temporary foundation rule, not the final authorization model.
             statement = statement.where(FileObject.created_by == user_id)
         return self.db.scalar(statement)
 

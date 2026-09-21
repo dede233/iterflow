@@ -32,9 +32,7 @@ class FeedbackService:
         )
         self.db.add(item)
         self.db.flush()
-        self.audit.log(
-            "FEEDBACK", item.id, "CREATE", operator_id, after={"feedback_no": item.feedback_no}
-        )
+        self.audit.log("FEEDBACK", item.id, "CREATE", after={"feedback_no": item.feedback_no})
         self.db.commit()
         self.db.refresh(item)
         return item
@@ -48,7 +46,7 @@ class FeedbackService:
             if not latest:
                 raise NotFoundError("反馈不存在")
             raise ConflictError("该反馈已被其他用户修改", {"current_revision": latest.revision})
-        self.audit.log("FEEDBACK", feedback_id, "UPDATE", operator_id, after=values)
+        self.audit.log("FEEDBACK", feedback_id, "UPDATE", after=values)
         self.db.commit()
         updated = self.repo.get(feedback_id)
         assert updated is not None
@@ -128,14 +126,12 @@ class FeedbackService:
             "FEEDBACK",
             feedback.id,
             "CONVERT_REQUIREMENT",
-            operator_id,
             after={"requirement_id": req.id},
         )
         self.audit.log(
             "REQUIREMENT",
             req.id,
             "CREATE_FROM_FEEDBACK",
-            operator_id,
             after={"feedback_id": feedback.id},
         )
         self.db.commit()

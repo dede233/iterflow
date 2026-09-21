@@ -100,7 +100,6 @@ class RequirementService:
             "REQUIREMENT",
             item.id,
             "CREATE",
-            operator_id,
             after={"requirement_no": item.requirement_no},
         )
         self.db.commit()
@@ -130,7 +129,6 @@ class RequirementService:
             "REQUIREMENT",
             requirement_id,
             "UPDATE",
-            operator_id,
             before={"revision": payload.revision},
             after=values,
         )
@@ -175,7 +173,6 @@ class RequirementService:
             "REQUIREMENT",
             requirement_id,
             "STATUS_CHANGE",
-            operator_id,
             before={"status": current.status},
             after={"status": payload.status, "reason": payload.reason},
         )
@@ -242,7 +239,6 @@ class RequirementService:
             "REQUIREMENT",
             requirement_id,
             "MOVE_VERSION",
-            operator_id,
             before={"version_id": old_version_id},
             after={"version_id": payload.target_version_id, "reason": payload.reason},
         )

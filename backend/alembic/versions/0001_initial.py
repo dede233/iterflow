@@ -8,6 +8,7 @@ Create Date: 2026-09-20
 from collections.abc import Sequence
 
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
@@ -73,6 +74,7 @@ def upgrade() -> None:
                 create_constraint=True,
             ),
             nullable=False,
+            server_default="SELF",
         ),
         sa.Column("enabled", sa.Boolean(), nullable=False),
         *_audit_columns(),
@@ -100,6 +102,43 @@ def upgrade() -> None:
         *_audit_columns(),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("code"),
+    )
+
+    op.create_table(
+        "sys_dictionary",
+        sa.Column("id", sa.BigInteger(), nullable=False),
+        sa.Column("code", sa.String(length=64), nullable=False),
+        sa.Column("name", sa.String(length=100), nullable=False),
+        sa.Column("description", sa.String(length=500), nullable=True),
+        sa.Column("enabled", sa.Boolean(), nullable=False),
+        *_audit_columns(),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index("ix_sys_dictionary_code", "sys_dictionary", ["code"], unique=True)
+
+    op.create_table(
+        "sys_dictionary_item",
+        sa.Column("id", sa.BigInteger(), nullable=False),
+        sa.Column("dictionary_id", sa.BigInteger(), nullable=False),
+        sa.Column("code", sa.String(length=64), nullable=False),
+        sa.Column("label", sa.String(length=100), nullable=False),
+        sa.Column("value", sa.String(length=255), nullable=False),
+        sa.Column("sort_order", sa.Integer(), nullable=False),
+        sa.Column("enabled", sa.Boolean(), nullable=False),
+        *_audit_columns(),
+        sa.ForeignKeyConstraint(
+            ["dictionary_id"], ["sys_dictionary.id"], ondelete="CASCADE"
+        ),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint(
+            "dictionary_id", "code", name="uq_dictionary_item_dictionary_code"
+        ),
+    )
+    op.create_index(
+        "ix_sys_dictionary_item_dictionary_id",
+        "sys_dictionary_item",
+        ["dictionary_id"],
+        unique=False,
     )
 
     op.create_table(
@@ -446,6 +485,21 @@ def upgrade() -> None:
         "sys_notification",
         sa.Column("id", sa.BigInteger(), nullable=False),
         sa.Column("user_id", sa.BigInteger(), nullable=False),
+        sa.Column(
+            "type",
+            sa.Enum(
+                "SYSTEM",
+                "FEEDBACK",
+                "REQUIREMENT",
+                "VERSION",
+                "RELEASE",
+                name="notification_type",
+                native_enum=False,
+                create_constraint=True,
+            ),
+            nullable=False,
+            server_default="SYSTEM",
+        ),
         sa.Column("title", sa.String(length=200), nullable=False),
         sa.Column("content", sa.Text(), nullable=False),
         sa.Column("entity_type", sa.String(length=32), nullable=True),
@@ -456,6 +510,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index("ix_sys_notification_read_at", "sys_notification", ["read_at"], unique=False)
+    op.create_index("ix_sys_notification_type", "sys_notification", ["type"], unique=False)
     op.create_index("ix_sys_notification_user_id", "sys_notification", ["user_id"], unique=False)
 
     op.create_table(
@@ -527,8 +582,9 @@ def upgrade() -> None:
         sa.Column("operator_id", sa.BigInteger(), nullable=True),
         sa.Column("request_id", sa.String(length=64), nullable=True),
         sa.Column("ip_address", sa.String(length=64), nullable=True),
-        sa.Column("before_data", sa.JSON(), nullable=True),
-        sa.Column("after_data", sa.JSON(), nullable=True),
+        sa.Column("user_agent", sa.String(length=512), nullable=True),
+        sa.Column("before_data", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+        sa.Column("after_data", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.ForeignKeyConstraint(["operator_id"], ["sys_user.id"]),
         sa.PrimaryKeyConstraint("id"),
@@ -580,6 +636,8 @@ def downgrade() -> None:
     op.drop_table("rd_requirement")
     op.drop_table("rd_version")
     op.drop_table("sys_business_module")
+    op.drop_table("sys_dictionary_item")
+    op.drop_table("sys_dictionary")
     op.drop_table("sys_role_permission")
     op.drop_table("sys_user_role")
     op.drop_table("sys_business_system")

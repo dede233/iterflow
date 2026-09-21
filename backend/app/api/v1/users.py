@@ -55,7 +55,6 @@ def create_user(
         "USER",
         item.id,
         "CREATE",
-        current.id,
         after={"username": item.username, "role_ids": payload.role_ids},
     )
     db.commit()
@@ -93,7 +92,6 @@ def set_status(
         "USER",
         user_id,
         "STATUS_CHANGE",
-        current.id,
         before={"status": previous_status},
         after={"status": payload.status},
     )

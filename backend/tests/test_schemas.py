@@ -1,10 +1,17 @@
 import pytest
 from pydantic import ValidationError
 
-from app.models.entities import Feedback, Release, Requirement, User, Version
-from app.models.enums import FeedbackType, FeedbackUrgency, Priority, UserStatus
+from app.models.entities import Feedback, Notification, Release, Requirement, Role, User, Version
+from app.models.enums import (
+    DataScope,
+    FeedbackType,
+    FeedbackUrgency,
+    NotificationType,
+    Priority,
+    UserStatus,
+)
 from app.schemas.feedback import FeedbackCreate, FeedbackUpdate
-from app.schemas.role import RoleCreate
+from app.schemas.role import RoleCreate, RoleUpdate
 from app.schemas.user import UserOut
 
 
@@ -35,8 +42,18 @@ def test_feedback_patch_requires_only_revision():
 
 def test_priority_and_data_scope_are_strongly_validated():
     assert Priority.P2.value == "P2"
+    assert RoleCreate(code="DEV", name="开发").data_scope is DataScope.SELF
     with pytest.raises(ValidationError):
         RoleCreate(code="DEV", name="开发", data_scope="ORGANIZATION")
+    with pytest.raises(ValidationError):
+        RoleCreate(code="DEV", name="开发", data_scope=DataScope.TEAM)
+    with pytest.raises(ValidationError):
+        RoleUpdate(data_scope=DataScope.TEAM, revision=1)
+
+
+def test_role_database_default_is_self_and_team_remains_reserved_enum():
+    assert Role.__table__.c.data_scope.default.arg is DataScope.SELF
+    assert DataScope.TEAM.value == "TEAM"
 
 
 def test_user_response_never_contains_password_hash():
@@ -66,6 +83,8 @@ def test_business_enum_columns_validate_strings_before_database_write():
         Requirement.__table__.c.status,
         Version.__table__.c.status,
         Release.__table__.c.result,
+        Notification.__table__.c.type,
     )
 
     assert all(column.type.validate_strings for column in enum_columns)
+    assert NotificationType.RELEASE.value == "RELEASE"

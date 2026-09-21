@@ -509,7 +509,7 @@ paths:
               schema:
                 type: array
                 items:
-                  type: object
+                  $ref: '#/components/schemas/Notification'
   /notifications/{notification_id}/read:
     post:
       tags:
@@ -729,6 +729,40 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Conflict'
+  /roles/{role_id}:
+    patch:
+      tags:
+      - System
+      summary: 修改角色基础信息
+      description: TEAM 数据范围在 V1.5 中保留，提交 TEAM 返回 422；revision 用于乐观锁。
+      security: *id001
+      parameters:
+      - name: role_id
+        in: path
+        required: true
+        schema:
+          type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoleUpdate'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+        '409':
+          description: revision 冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conflict'
+        '422':
+          description: 参数错误或尝试配置保留的 TEAM 数据范围
   /systems:
     get:
       tags:
@@ -1391,14 +1425,51 @@ components:
           type: string
         data_scope:
           type: string
+          default: SELF
+          description: TEAM 是保留枚举值，V1.5 不允许通过 API 配置。
           enum:
           - SELF
-          - TEAM
           - ALL
         permission_ids:
           type: array
           items:
             type: integer
+    RoleUpdate:
+      type: object
+      required:
+      - revision
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        data_scope:
+          type: string
+          description: TEAM 是保留枚举值，V1.5 不允许通过 API 配置。
+          enum:
+          - SELF
+          - ALL
+        enabled:
+          type: boolean
+        revision:
+          type: integer
+          minimum: 1
+    Role:
+      type: object
+      required: [id, code, name, data_scope, enabled]
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+        name:
+          type: string
+        data_scope:
+          type: string
+          description: TEAM 为保留值，V1.5 不允许配置新值但可能用于识别历史数据。
+          enum: [SELF, TEAM, ALL]
+        enabled:
+          type: boolean
     RolePermissionUpdate:
       type: object
       required:
@@ -1412,6 +1483,42 @@ components:
         revision:
           type: integer
           minimum: 1
+    Dictionary:
+      type: object
+      required: [id, code, name, enabled, revision]
+      properties:
+        id: {type: integer}
+        code: {type: string}
+        name: {type: string}
+        description: {type: string, nullable: true}
+        enabled: {type: boolean}
+        revision: {type: integer, minimum: 1}
+    DictionaryItem:
+      type: object
+      required: [id, dictionary_id, code, label, value, sort_order, enabled, revision]
+      properties:
+        id: {type: integer}
+        dictionary_id: {type: integer}
+        code: {type: string}
+        label: {type: string}
+        value: {type: string}
+        sort_order: {type: integer}
+        enabled: {type: boolean}
+        revision: {type: integer, minimum: 1}
+    Notification:
+      type: object
+      required: [id, type, title, content, created_at]
+      properties:
+        id: {type: integer}
+        type:
+          type: string
+          enum: [SYSTEM, FEEDBACK, REQUIREMENT, VERSION, RELEASE]
+        title: {type: string}
+        content: {type: string}
+        entity_type: {type: string, nullable: true}
+        entity_id: {type: integer, nullable: true}
+        read_at: {type: string, format: date-time, nullable: true}
+        created_at: {type: string, format: date-time}
     EditingRequest:
       type: object
       required:

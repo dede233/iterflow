@@ -25,8 +25,10 @@ def check_redis() -> None:
 def check_storage() -> None:
     settings = get_settings()
     storage = create_configured_storage(settings)
-    storage.ensure_bucket()
     if settings.storage_driver == "local":
+        # Local development has no separate provisioning step. Creating the configured
+        # directory and performing a disposable round trip is an intentional probe.
+        storage.ensure_bucket()
         probe_key = f".readiness/{uuid4().hex}"
         storage.upload(probe_key, b"ok", content_type="text/plain")
         try:
@@ -37,6 +39,10 @@ def check_storage() -> None:
                     raise OSError("local storage readiness probe could not be read")
         finally:
             storage.delete(probe_key)
+    else:
+        # S3 readiness must be read-only. Bucket creation belongs to an explicit
+        # deployment/initialisation command, never to a health endpoint.
+        storage.check_ready()
 
 
 def readiness_status() -> tuple[bool, dict[str, str]]:

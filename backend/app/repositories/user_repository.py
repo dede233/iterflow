@@ -30,8 +30,8 @@ class UserRepository(BaseRepository[User]):
             .where(UserRole.user_id == user_id, Role.enabled.is_(True))
         ).all()
         parsed = {DataScope(scope) for scope in scopes}
+        if DataScope.TEAM in parsed:
+            raise RuntimeError("TEAM data scope is reserved and unsupported in V1.5")
         if DataScope.ALL in parsed:
             return DataScope.ALL
-        if DataScope.TEAM in parsed:
-            return DataScope.TEAM
         return DataScope.SELF

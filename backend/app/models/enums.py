@@ -9,6 +9,7 @@ class UserStatus(StrEnum):
 
 class DataScope(StrEnum):
     SELF = "SELF"
+    # Reserved for a future organization/team model. V1.5 APIs reject this value.
     TEAM = "TEAM"
     ALL = "ALL"
 
@@ -101,6 +102,14 @@ class ReleaseResult(StrEnum):
 class StorageDriver(StrEnum):
     LOCAL = "LOCAL"
     S3 = "S3"
+
+
+class NotificationType(StrEnum):
+    SYSTEM = "SYSTEM"
+    FEEDBACK = "FEEDBACK"
+    REQUIREMENT = "REQUIREMENT"
+    VERSION = "VERSION"
+    RELEASE = "RELEASE"
 
 
 class EditingEntityType(StrEnum):

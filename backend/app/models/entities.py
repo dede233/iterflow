@@ -16,6 +16,7 @@ from sqlalchemy import (
     UniqueConstraint,
 )
 from sqlalchemy import Enum as SAEnum
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -24,6 +25,7 @@ from app.models.enums import (
     FeedbackStatus,
     FeedbackType,
     FeedbackUrgency,
+    NotificationType,
     Priority,
     ReleaseResult,
     RequirementSource,
@@ -86,7 +88,7 @@ class Role(Base, AuditMixin):
             create_constraint=True,
             validate_strings=True,
         ),
-        default=DataScope.ALL,
+        default=DataScope.SELF,
     )
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
 
@@ -133,6 +135,31 @@ class BusinessModule(Base, AuditMixin):
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     __table_args__ = (UniqueConstraint("system_id", "code", name="uq_module_system_code"),)
+
+
+class Dictionary(Base, AuditMixin):
+    __tablename__ = "sys_dictionary"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    code: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    name: Mapped[str] = mapped_column(String(100))
+    description: Mapped[str | None] = mapped_column(String(500))
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+
+class DictionaryItem(Base, AuditMixin):
+    __tablename__ = "sys_dictionary_item"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    dictionary_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("sys_dictionary.id", ondelete="CASCADE"), index=True
+    )
+    code: Mapped[str] = mapped_column(String(64))
+    label: Mapped[str] = mapped_column(String(100))
+    value: Mapped[str] = mapped_column(String(255))
+    sort_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    __table_args__ = (
+        UniqueConstraint("dictionary_id", "code", name="uq_dictionary_item_dictionary_code"),
+    )
 
 
 class Requirement(Base, AuditMixin):
@@ -308,6 +335,18 @@ class Notification(Base, AuditMixin):
     __tablename__ = "sys_notification"
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("sys_user.id"), index=True)
+    type: Mapped[NotificationType] = mapped_column(
+        SAEnum(
+            NotificationType,
+            name="notification_type",
+            native_enum=False,
+            create_constraint=True,
+            validate_strings=True,
+        ),
+        default=NotificationType.SYSTEM,
+        nullable=False,
+        index=True,
+    )
     title: Mapped[str] = mapped_column(String(200))
     content: Mapped[str] = mapped_column(Text)
     entity_type: Mapped[str | None] = mapped_column(String(32))
@@ -363,8 +402,9 @@ class OperationLog(Base):
     )
     request_id: Mapped[str | None] = mapped_column(String(64), index=True)
     ip_address: Mapped[str | None] = mapped_column(String(64))
-    before_data: Mapped[dict | None] = mapped_column(JSON)
-    after_data: Mapped[dict | None] = mapped_column(JSON)
+    user_agent: Mapped[str | None] = mapped_column(String(512))
+    before_data: Mapped[dict | None] = mapped_column(JSON().with_variant(JSONB, "postgresql"))
+    after_data: Mapped[dict | None] = mapped_column(JSON().with_variant(JSONB, "postgresql"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, index=True
     )

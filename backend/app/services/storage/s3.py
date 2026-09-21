@@ -110,6 +110,11 @@ class S3Storage(StorageService):
             last_modified=last_modified if isinstance(last_modified, datetime) else None,
         )
 
+    def check_ready(self) -> None:
+        """Verify bucket access without creating or otherwise mutating it."""
+
+        self._client.head_bucket(Bucket=self.bucket)
+
     def ensure_bucket(self) -> None:
         try:
             self._client.head_bucket(Bucket=self.bucket)

@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api.v1.router import api_router
+from app.core.audit_context import AuditContext, reset_audit_context, set_audit_context
 from app.core.config import get_settings
 from app.core.exceptions import AppError
 from app.core.readiness import readiness_status
@@ -23,11 +24,28 @@ app.include_router(api_router, prefix=settings.api_prefix)
 
 @app.middleware("http")
 async def request_id_middleware(request: Request, call_next):
-    request_id = request.headers.get("X-Request-ID", f"req_{uuid4().hex[:16]}")
+    supplied_request_id = request.headers.get("X-Request-ID", "").strip()
+    request_id = (
+        supplied_request_id
+        if supplied_request_id and len(supplied_request_id) <= 64
+        else f"req_{uuid4().hex[:16]}"
+    )
     request.state.request_id = request_id
-    response = await call_next(request)
-    response.headers["X-Request-ID"] = request_id
-    return response
+    user_agent = request.headers.get("User-Agent")
+    client_ip = request.client.host if request.client else None
+    token = set_audit_context(
+        AuditContext(
+            request_id=request_id,
+            ip_address=client_ip[:64] if client_ip else None,
+            user_agent=user_agent[:512] if user_agent else None,
+        )
+    )
+    try:
+        response = await call_next(request)
+        response.headers["X-Request-ID"] = request_id
+        return response
+    finally:
+        reset_audit_context(token)
 
 
 @app.exception_handler(AppError)

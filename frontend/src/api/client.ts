@@ -13,6 +13,12 @@ declare module 'axios' {
   }
 }
 
+// Backend business code for an invalid/expired Access Token (HTTP 401). Only
+// this code should trigger a silent refresh. Other 401s — wrong current
+// password (40112), disabled user (40103), missing credentials (40100) — are
+// terminal and must be surfaced without touching the refresh endpoint.
+export const ACCESS_TOKEN_EXPIRED_CODE = 40101
+
 export const api = axios.create({ baseURL: '/api/v1', timeout: 15000 })
 
 const refreshClient = axios.create({ baseURL: '/api/v1', timeout: 15000 })
@@ -51,6 +57,7 @@ api.interceptors.response.use(
     const originalRequest = error.config
     if (
       error.response?.status === 401 &&
+      error.response?.data?.code === ACCESS_TOKEN_EXPIRED_CODE &&
       originalRequest &&
       !originalRequest._retry &&
       !originalRequest.skipAuthRefresh

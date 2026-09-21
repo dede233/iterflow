@@ -6,6 +6,9 @@ import type { TokenPair } from '@/types/auth'
 declare module 'axios' {
   export interface AxiosRequestConfig {
     _retry?: boolean
+    // Do not attach the stored access token (login/refresh/logout carry their own credential).
+    skipAuth?: boolean
+    // Do not attempt a silent refresh + replay when the response is 401.
     skipAuthRefresh?: boolean
   }
 }
@@ -38,7 +41,7 @@ async function refreshAccessToken(): Promise<string> {
 
 api.interceptors.request.use((config) => {
   const token = getStoredTokens()?.accessToken
-  if (token && !config.skipAuthRefresh) config.headers.Authorization = `Bearer ${token}`
+  if (token && !config.skipAuth) config.headers.Authorization = `Bearer ${token}`
   return config
 })
 

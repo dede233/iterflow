@@ -65,7 +65,9 @@ BASE_ROLES = {
     ),
     "CUSTOMER_SERVICE_OPERATIONS": BaseRoleDefinition(
         name="客服/运营",
-        data_scope=DataScope.SELF,
+        # Customer-service / operations triage the shared feedback pool, so they
+        # must see and act on feedback submitted by other users (V1.5 baseline).
+        data_scope=DataScope.ALL,
         permissions=frozenset(
             {
                 "dashboard.view",
@@ -80,7 +82,9 @@ BASE_ROLES = {
     ),
     "PRODUCT_MANAGER": BaseRoleDefinition(
         name="产品/项目负责人",
-        data_scope=DataScope.SELF,
+        # Product / project owners process the shared feedback pool and convert
+        # feedback to requirements, so they need visibility over all feedback.
+        data_scope=DataScope.ALL,
         permissions=frozenset(
             {
                 "dashboard.view",

@@ -126,7 +126,7 @@ paths:
       summary: 反馈列表
       security: &id001
       - bearerAuth: []
-      parameters: &id002
+      parameters:
       - name: page
         in: query
         required: false
@@ -142,13 +142,65 @@ paths:
           minimum: 1
           maximum: 100
           default: 20
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - NEW
+          - ACCEPTED
+          - REQUIREMENT_LINKED
+          - PLANNED
+          - DEVELOPING
+          - TESTING
+          - ONLINE
+          - DUPLICATE
+          - CANNOT_REPRODUCE
+          - CLOSED
+      - name: feedback_type
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - NEW_FEATURE
+          - FEATURE_OPTIMIZATION
+          - SYSTEM_ISSUE
+          - DATA_ISSUE
+          - UI_UX
+          - OTHER
+      - name: urgency
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - NORMAL
+          - URGENT
+          - CRITICAL
+      - name: system_id
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: module_id
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: keyword
+        in: query
+        required: false
+        schema:
+          type: string
       responses:
         '200':
           description: 成功
           content:
             application/json:
               schema:
-                type: object
+                $ref: '#/components/schemas/FeedbackPage'
     post:
       tags:
       - Feedback
@@ -217,6 +269,39 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Conflict'
+  /feedbacks/{feedback_id}/status:
+    patch:
+      tags:
+      - Feedback
+      summary: 反馈状态变更
+      description: 集中式状态机；必须携带 revision；非法迁移返回 409；ManualFeedbackStatus 之外的值返回 422。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: feedback_id
+        in: path
+        required: true
+        schema:
+          type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeedbackStatusChange'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Feedback'
+        '409':
+          description: 非法状态迁移或并发冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conflict'
   /feedbacks/{feedback_id}/convert:
     post:
       tags:
@@ -255,7 +340,22 @@ paths:
       - Requirement
       summary: 需求列表
       security: *id001
-      parameters: *id002
+      parameters: &id002
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
       responses:
         '200':
           description: 成功
@@ -510,7 +610,8 @@ paths:
       tags:
       - Version
       summary: 发布版本
-      description: 只允许 READY，且 V1.5 仅支持成功发布。Release(SUCCESS) + Version + DONE Requirement -> ONLINE + Feedback -> ONLINE 同一业务事务。
+      description: 只允许 READY，且 V1.5 仅支持成功发布。Release(SUCCESS) + Version + DONE Requirement -> ONLINE +
+        Feedback -> ONLINE 同一业务事务。
       security: *id001
       parameters:
       - name: version_id
@@ -1070,7 +1171,10 @@ components:
           - 'null'
         status:
           type: string
-          enum: [ACTIVE, DISABLED, LOCKED]
+          enum:
+          - ACTIVE
+          - DISABLED
+          - LOCKED
         revision:
           type: integer
           minimum: 1
@@ -1078,7 +1182,10 @@ components:
           type: boolean
         data_scope:
           type: string
-          enum: [SELF, TEAM, ALL]
+          enum:
+          - SELF
+          - TEAM
+          - ALL
         role_ids:
           type: array
           items:
@@ -1280,6 +1387,32 @@ components:
           - 'null'
         revision:
           type: integer
+        expected_result:
+          type:
+          - string
+          - 'null'
+        actual_result:
+          type:
+          - string
+          - 'null'
+        reproduce_steps:
+          type:
+          - string
+          - 'null'
+        duplicate_of_id:
+          type:
+          - integer
+          - 'null'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        updated_by:
+          type:
+          - integer
+          - 'null'
     RequirementCreate:
       type: object
       required:
@@ -1752,7 +1885,14 @@ components:
           minimum: 1
     Role:
       type: object
-      required: [id, code, name, data_scope, enabled, revision, permission_ids]
+      required:
+      - id
+      - code
+      - name
+      - data_scope
+      - enabled
+      - revision
+      - permission_ids
       properties:
         id:
           type: integer
@@ -1763,7 +1903,10 @@ components:
         data_scope:
           type: string
           description: TEAM 为保留值，V1.5 不允许配置新值但可能用于识别历史数据。
-          enum: [SELF, TEAM, ALL]
+          enum:
+          - SELF
+          - TEAM
+          - ALL
         enabled:
           type: boolean
         revision:
@@ -1775,7 +1918,11 @@ components:
             type: integer
     Permission:
       type: object
-      required: [id, code, name, category]
+      required:
+      - id
+      - code
+      - name
+      - category
       properties:
         id:
           type: integer
@@ -1800,40 +1947,92 @@ components:
           minimum: 1
     Dictionary:
       type: object
-      required: [id, code, name, enabled, revision]
+      required:
+      - id
+      - code
+      - name
+      - enabled
+      - revision
       properties:
-        id: {type: integer}
-        code: {type: string}
-        name: {type: string}
-        description: {type: string, nullable: true}
-        enabled: {type: boolean}
-        revision: {type: integer, minimum: 1}
+        id:
+          type: integer
+        code:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        enabled:
+          type: boolean
+        revision:
+          type: integer
+          minimum: 1
     DictionaryItem:
       type: object
-      required: [id, dictionary_id, code, label, value, sort_order, enabled, revision]
+      required:
+      - id
+      - dictionary_id
+      - code
+      - label
+      - value
+      - sort_order
+      - enabled
+      - revision
       properties:
-        id: {type: integer}
-        dictionary_id: {type: integer}
-        code: {type: string}
-        label: {type: string}
-        value: {type: string}
-        sort_order: {type: integer}
-        enabled: {type: boolean}
-        revision: {type: integer, minimum: 1}
+        id:
+          type: integer
+        dictionary_id:
+          type: integer
+        code:
+          type: string
+        label:
+          type: string
+        value:
+          type: string
+        sort_order:
+          type: integer
+        enabled:
+          type: boolean
+        revision:
+          type: integer
+          minimum: 1
     Notification:
       type: object
-      required: [id, type, title, content, created_at]
+      required:
+      - id
+      - type
+      - title
+      - content
+      - created_at
       properties:
-        id: {type: integer}
+        id:
+          type: integer
         type:
           type: string
-          enum: [SYSTEM, FEEDBACK, REQUIREMENT, VERSION, RELEASE]
-        title: {type: string}
-        content: {type: string}
-        entity_type: {type: string, nullable: true}
-        entity_id: {type: integer, nullable: true}
-        read_at: {type: string, format: date-time, nullable: true}
-        created_at: {type: string, format: date-time}
+          enum:
+          - SYSTEM
+          - FEEDBACK
+          - REQUIREMENT
+          - VERSION
+          - RELEASE
+        title:
+          type: string
+        content:
+          type: string
+        entity_type:
+          type: string
+          nullable: true
+        entity_id:
+          type: integer
+          nullable: true
+        read_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
     EditingRequest:
       type: object
       required:
@@ -1867,3 +2066,47 @@ components:
               type: integer
         request_id:
           type: string
+    FeedbackStatusChange:
+      type: object
+      required:
+      - status
+      - revision
+      properties:
+        status:
+          type: string
+          enum:
+          - NEW
+          - ACCEPTED
+          - DUPLICATE
+          - CANNOT_REPRODUCE
+          - CLOSED
+          description: 仅允许人工可设置状态（ManualFeedbackStatus）
+        revision:
+          type: integer
+          minimum: 1
+        reason:
+          type:
+          - string
+          - 'null'
+        duplicate_of_id:
+          type:
+          - integer
+          - 'null'
+    FeedbackPage:
+      type: object
+      required:
+      - items
+      - page
+      - page_size
+      - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Feedback'
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total:
+          type: integer

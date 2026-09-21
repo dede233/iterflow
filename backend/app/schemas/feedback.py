@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -6,8 +7,10 @@ from app.models.enums import (
     FeedbackStatus,
     FeedbackType,
     FeedbackUrgency,
+    ManualFeedbackStatus,
     Priority,
 )
+from app.schemas.common import PageResult
 
 
 class FeedbackCreate(BaseModel):
@@ -42,6 +45,15 @@ class FeedbackUpdate(BaseModel):
         return self
 
 
+class FeedbackStatusChange(BaseModel):
+    # Only human-settable statuses are accepted; downstream statuses are rejected
+    # by the enum itself (422) so they can never be set through this API.
+    status: ManualFeedbackStatus
+    revision: int = Field(ge=1)
+    reason: str | None = None
+    duplicate_of_id: int | None = None
+
+
 class FeedbackOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
@@ -54,8 +66,19 @@ class FeedbackOut(BaseModel):
     module_id: int | None
     submitter_id: int
     description: str
+    expected_result: str | None
+    actual_result: str | None
+    reproduce_steps: str | None
     main_requirement_id: int | None
+    duplicate_of_id: int | None
+    created_at: datetime
+    updated_at: datetime
+    updated_by: int | None
     revision: int
+
+
+class FeedbackPage(PageResult[FeedbackOut]):
+    pass
 
 
 class FeedbackConvertRequest(BaseModel):

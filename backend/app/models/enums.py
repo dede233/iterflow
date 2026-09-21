@@ -42,6 +42,21 @@ class FeedbackStatus(StrEnum):
     CLOSED = "CLOSED"
 
 
+class ManualFeedbackStatus(StrEnum):
+    """Feedback statuses a human may set through the status API.
+
+    Downstream statuses (REQUIREMENT_LINKED / PLANNED / DEVELOPING / TESTING /
+    ONLINE) are produced only by convert / version / publish transactions and are
+    intentionally excluded here so they can never be set by hand.
+    """
+
+    NEW = "NEW"
+    ACCEPTED = "ACCEPTED"
+    DUPLICATE = "DUPLICATE"
+    CANNOT_REPRODUCE = "CANNOT_REPRODUCE"
+    CLOSED = "CLOSED"
+
+
 class RequirementStatus(StrEnum):
     DRAFT = "DRAFT"
     CONFIRMED = "CONFIRMED"

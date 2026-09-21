@@ -18,6 +18,16 @@ V15_FIXED_ROLE_CODES = {
     "SUPER_ADMIN",
 }
 
+# Frozen V1.5 default data-scope per base role.
+EXPECTED_ROLE_SCOPES = {
+    "MEMBER": DataScope.SELF,
+    "CUSTOMER_SERVICE_OPERATIONS": DataScope.ALL,
+    "PRODUCT_MANAGER": DataScope.ALL,
+    "DEVELOPMENT_LEAD": DataScope.SELF,
+    "TESTER": DataScope.SELF,
+    "SUPER_ADMIN": DataScope.ALL,
+}
+
 
 @pytest.fixture
 def seed_session(tmp_path: Path) -> Iterator[Session]:
@@ -77,13 +87,14 @@ def test_seed_creates_v15_roles_permissions_and_is_idempotent(
 
     roles = {role.code: role for role in seed_session.scalars(select(Role)).all()}
     assert V15_FIXED_ROLE_CODES.issubset(roles)
-    assert roles["SUPER_ADMIN"].data_scope is DataScope.ALL
-    assert all(
-        role.data_scope is DataScope.SELF for code, role in roles.items() if code != "SUPER_ADMIN"
-    )
+    # Frozen V1.5 data-scope matrix. Customer-service and product owners process
+    # the shared feedback pool and therefore hold ALL scope; the rest stay SELF.
+    for code, expected_scope in EXPECTED_ROLE_SCOPES.items():
+        assert roles[code].data_scope is expected_scope, code
+        assert seed.BASE_ROLES[code].data_scope is expected_scope, code
     customer_service = seed.BASE_ROLES["CUSTOMER_SERVICE_OPERATIONS"]
     assert customer_service.name == "客服/运营"
-    assert customer_service.data_scope is DataScope.SELF
+    assert customer_service.data_scope is DataScope.ALL
     assert customer_service.permissions == {
         "dashboard.view",
         "rd.feedback.view",

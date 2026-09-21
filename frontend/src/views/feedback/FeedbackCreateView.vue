@@ -1,2 +1,141 @@
-<script setup lang="ts">import{reactive}from'vue';import{useRouter}from'vue-router';import{createFeedback}from'@/api/feedbacks';const router=useRouter();const form=reactive({title:'',feedback_type:'NEW_FEATURE',urgency:'NORMAL',description:'',system_id:null,module_id:null});async function submit(){await createFeedback(form);router.push('/feedbacks')}</script>
-<template><div class="page"><div class="page-title">提交反馈</div><el-card><el-form label-position="top"><el-form-item label="反馈类型"><el-select v-model="form.feedback_type"><el-option label="新功能" value="NEW_FEATURE"/><el-option label="功能优化" value="FEATURE_OPTIMIZATION"/><el-option label="系统问题" value="SYSTEM_ISSUE"/></el-select></el-form-item><el-form-item label="标题"><el-input v-model="form.title" maxlength="200" show-word-limit/></el-form-item><el-form-item label="详细描述"><el-input v-model="form.description" type="textarea" :rows="8"/></el-form-item><el-form-item label="紧急程度"><el-radio-group v-model="form.urgency"><el-radio value="NORMAL">普通</el-radio><el-radio value="URGENT">较急</el-radio><el-radio value="CRITICAL">紧急</el-radio></el-radio-group></el-form-item><el-button type="primary" @click="submit">提交</el-button></el-form></el-card></div></template>
+<script setup lang="ts">
+import { computed, onMounted, reactive, ref } from 'vue'
+import { ElMessage } from 'element-plus'
+import { useRouter } from 'vue-router'
+import { createFeedback } from '@/api/feedbacks'
+import { listSystems } from '@/api/systems'
+import { usePermission } from '@/composables/usePermission'
+import { FEEDBACK_TYPES, FEEDBACK_URGENCIES } from '@/constants/feedback'
+import type { BusinessModuleItem, BusinessSystemItem } from '@/types/domain'
+
+const router = useRouter()
+const { can } = usePermission()
+const saving = ref(false)
+const systems = ref<BusinessSystemItem[]>([])
+const modules = ref<BusinessModuleItem[]>([])
+const canReadSystems = computed(() => can('sys.system.view'))
+
+const form = reactive({
+  title: '',
+  feedback_type: 'SYSTEM_ISSUE',
+  urgency: 'NORMAL',
+  system_id: null as number | null,
+  module_id: null as number | null,
+  description: '',
+  expected_result: '',
+  actual_result: '',
+  reproduce_steps: '',
+})
+
+const moduleOptions = computed(() =>
+  form.system_id ? modules.value.filter((m) => m.system_id === form.system_id) : [],
+)
+
+function onSystemChange(): void {
+  form.module_id = null
+}
+
+async function submit(): Promise<void> {
+  if (form.title.trim().length < 2) {
+    ElMessage.warning('标题至少需要 2 个字符')
+    return
+  }
+  if (form.description.trim().length < 2) {
+    ElMessage.warning('详细描述至少需要 2 个字符')
+    return
+  }
+  saving.value = true
+  try {
+    const created = await createFeedback({
+      title: form.title.trim(),
+      feedback_type: form.feedback_type,
+      urgency: form.urgency,
+      system_id: form.system_id ?? null,
+      module_id: form.module_id ?? null,
+      description: form.description.trim(),
+      expected_result: form.expected_result.trim() || null,
+      actual_result: form.actual_result.trim() || null,
+      reproduce_steps: form.reproduce_steps.trim() || null,
+    })
+    ElMessage.success('反馈已提交')
+    await router.replace(`/feedbacks/${created.id}`)
+  } finally {
+    saving.value = false
+  }
+}
+
+onMounted(async () => {
+  if (canReadSystems.value) {
+    try {
+      const data = await listSystems()
+      systems.value = data.systems
+      modules.value = data.modules
+    } catch {
+      // Optional; feedback can be submitted without system/module.
+    }
+  }
+})
+</script>
+
+<template>
+  <section class="page">
+    <h1 class="page-title">提交反馈</h1>
+    <el-card shadow="never">
+      <el-form label-position="top" @submit.prevent="submit">
+        <el-form-item label="反馈类型" required>
+          <el-select v-model="form.feedback_type" style="width: 100%">
+            <el-option v-for="t in FEEDBACK_TYPES" :key="t.value" :label="t.label" :value="t.value" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="标题" required>
+          <el-input v-model="form.title" maxlength="200" show-word-limit />
+        </el-form-item>
+        <el-form-item label="紧急程度">
+          <el-radio-group v-model="form.urgency">
+            <el-radio v-for="u in FEEDBACK_URGENCIES" :key="u.value" :value="u.value">
+              {{ u.label }}
+            </el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <template v-if="canReadSystems">
+          <el-form-item label="所属系统">
+            <el-select
+              v-model="form.system_id"
+              clearable
+              placeholder="可选"
+              style="width: 100%"
+              @change="onSystemChange"
+            >
+              <el-option v-for="s in systems" :key="s.id" :label="s.name" :value="s.id" />
+            </el-select>
+          </el-form-item>
+          <el-form-item v-if="form.system_id" label="所属模块">
+            <el-select v-model="form.module_id" clearable placeholder="可选" style="width: 100%">
+              <el-option v-for="m in moduleOptions" :key="m.id" :label="m.name" :value="m.id" />
+            </el-select>
+          </el-form-item>
+        </template>
+        <el-form-item label="详细描述" required>
+          <el-input v-model="form.description" type="textarea" :rows="6" />
+        </el-form-item>
+        <el-form-item label="期望结果">
+          <el-input v-model="form.expected_result" type="textarea" :rows="2" />
+        </el-form-item>
+        <el-form-item label="实际结果">
+          <el-input v-model="form.actual_result" type="textarea" :rows="2" />
+        </el-form-item>
+        <el-form-item label="复现步骤">
+          <el-input v-model="form.reproduce_steps" type="textarea" :rows="3" />
+        </el-form-item>
+        <div class="actions">
+          <el-button @click="router.back()">取消</el-button>
+          <el-button type="primary" native-type="submit" :loading="saving">提交</el-button>
+        </div>
+      </el-form>
+    </el-card>
+  </section>
+</template>
+
+<style scoped>
+.actions { display: flex; justify-content: flex-end; gap: 8px; }
+</style>

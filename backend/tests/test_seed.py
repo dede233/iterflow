@@ -9,6 +9,15 @@ from app.cli import seed
 from app.models.entities import Permission, Role, RolePermission, User, UserRole
 from app.models.enums import DataScope
 
+V15_FIXED_ROLE_CODES = {
+    "MEMBER",
+    "CUSTOMER_SERVICE_OPERATIONS",
+    "PRODUCT_MANAGER",
+    "DEVELOPMENT_LEAD",
+    "TESTER",
+    "SUPER_ADMIN",
+}
+
 
 @pytest.fixture
 def seed_session(tmp_path: Path) -> Iterator[Session]:
@@ -67,11 +76,24 @@ def test_seed_creates_v15_roles_permissions_and_is_idempotent(
     } == first_counts
 
     roles = {role.code: role for role in seed_session.scalars(select(Role)).all()}
+    assert V15_FIXED_ROLE_CODES.issubset(roles)
     assert roles["SUPER_ADMIN"].data_scope is DataScope.ALL
     assert all(
         role.data_scope is DataScope.SELF for code, role in roles.items() if code != "SUPER_ADMIN"
     )
-    assert set(roles) == set(seed.BASE_ROLES)
+    customer_service = seed.BASE_ROLES["CUSTOMER_SERVICE_OPERATIONS"]
+    assert customer_service.name == "客服/运营"
+    assert customer_service.data_scope is DataScope.SELF
+    assert customer_service.permissions == {
+        "dashboard.view",
+        "rd.feedback.view",
+        "rd.feedback.create",
+        "rd.feedback.edit",
+        "rd.requirement.view",
+        "rd.version.view",
+        "rd.release.view",
+    }
+    assert "rd.feedback.convert" not in customer_service.permissions
 
     admin = seed_session.scalar(select(User).where(User.username == "admin"))
     assert admin is not None

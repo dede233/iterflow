@@ -61,6 +61,21 @@ BASE_ROLES = {
             }
         ),
     ),
+    "CUSTOMER_SERVICE_OPERATIONS": BaseRoleDefinition(
+        name="客服/运营",
+        data_scope=DataScope.SELF,
+        permissions=frozenset(
+            {
+                "dashboard.view",
+                "rd.feedback.view",
+                "rd.feedback.create",
+                "rd.feedback.edit",
+                "rd.requirement.view",
+                "rd.version.view",
+                "rd.release.view",
+            }
+        ),
+    ),
     "PRODUCT_MANAGER": BaseRoleDefinition(
         name="产品/项目负责人",
         data_scope=DataScope.SELF,

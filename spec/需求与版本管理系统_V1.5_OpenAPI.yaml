@@ -663,7 +663,7 @@ paths:
               schema:
                 type: array
                 items:
-                  type: object
+                  $ref: '#/components/schemas/Role'
     post:
       tags:
       - System
@@ -681,7 +681,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
+                $ref: '#/components/schemas/Role'
   /roles/permissions:
     get:
       tags:
@@ -729,6 +729,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Conflict'
+        '404':
+          description: 角色不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /roles/{role_id}:
     patch:
       tags:
@@ -1456,7 +1462,7 @@ components:
           minimum: 1
     Role:
       type: object
-      required: [id, code, name, data_scope, enabled]
+      required: [id, code, name, data_scope, enabled, revision]
       properties:
         id:
           type: integer
@@ -1470,6 +1476,9 @@ components:
           enum: [SELF, TEAM, ALL]
         enabled:
           type: boolean
+        revision:
+          type: integer
+          minimum: 1
     RolePermissionUpdate:
       type: object
       required:

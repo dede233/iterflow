@@ -11,7 +11,7 @@ from app.models.enums import (
     UserStatus,
 )
 from app.schemas.feedback import FeedbackCreate, FeedbackUpdate
-from app.schemas.role import RoleCreate, RoleUpdate
+from app.schemas.role import RoleCreate, RoleOut, RoleUpdate
 from app.schemas.user import UserOut
 
 
@@ -54,6 +54,21 @@ def test_priority_and_data_scope_are_strongly_validated():
 def test_role_database_default_is_self_and_team_remains_reserved_enum():
     assert Role.__table__.c.data_scope.default.arg is DataScope.SELF
     assert DataScope.TEAM.value == "TEAM"
+
+
+def test_role_response_exposes_revision_required_by_write_apis():
+    response = RoleOut.model_validate(
+        Role(
+            id=7,
+            code="MEMBER",
+            name="普通成员",
+            data_scope=DataScope.SELF,
+            enabled=True,
+            revision=3,
+        )
+    )
+
+    assert response.revision == 3
 
 
 def test_user_response_never_contains_password_hash():

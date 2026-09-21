@@ -1,4 +1,7 @@
+from dataclasses import dataclass
+
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.database import SessionLocal
@@ -36,7 +39,155 @@ PERMISSIONS = {
 }
 
 
-def main():
+@dataclass(frozen=True, slots=True)
+class BaseRoleDefinition:
+    name: str
+    data_scope: DataScope
+    permissions: frozenset[str]
+
+
+BASE_ROLES = {
+    "MEMBER": BaseRoleDefinition(
+        name="普通成员",
+        data_scope=DataScope.SELF,
+        permissions=frozenset(
+            {
+                "dashboard.view",
+                "rd.feedback.view",
+                "rd.feedback.create",
+                "rd.requirement.view",
+                "rd.version.view",
+                "rd.release.view",
+            }
+        ),
+    ),
+    "PRODUCT_MANAGER": BaseRoleDefinition(
+        name="产品/项目负责人",
+        data_scope=DataScope.SELF,
+        permissions=frozenset(
+            {
+                "dashboard.view",
+                "rd.feedback.view",
+                "rd.feedback.create",
+                "rd.feedback.edit",
+                "rd.feedback.convert",
+                "rd.requirement.view",
+                "rd.requirement.create",
+                "rd.requirement.edit",
+                "rd.requirement.version.move",
+                "rd.version.view",
+                "rd.version.create",
+                "rd.version.edit",
+                "rd.release.view",
+            }
+        ),
+    ),
+    "DEVELOPMENT_LEAD": BaseRoleDefinition(
+        name="研发负责人",
+        data_scope=DataScope.SELF,
+        permissions=frozenset(
+            {
+                "dashboard.view",
+                "rd.feedback.view",
+                "rd.requirement.view",
+                "rd.requirement.edit",
+                "rd.requirement.status",
+                "rd.requirement.version.move",
+                "rd.version.view",
+                "rd.version.edit",
+                "rd.version.status",
+                "rd.release.view",
+            }
+        ),
+    ),
+    "TESTER": BaseRoleDefinition(
+        name="测试",
+        data_scope=DataScope.SELF,
+        permissions=frozenset(
+            {
+                "dashboard.view",
+                "rd.feedback.view",
+                "rd.requirement.view",
+                "rd.requirement.status",
+                "rd.version.view",
+                "rd.version.status",
+                "rd.release.view",
+            }
+        ),
+    ),
+    "SUPER_ADMIN": BaseRoleDefinition(
+        name="超级管理员",
+        data_scope=DataScope.ALL,
+        permissions=frozenset(PERMISSIONS),
+    ),
+}
+
+
+def seed_database(db: Session, *, username: str, password: str) -> None:
+    """Create or repair the V1.5 foundation roles, permissions, and administrator."""
+    permissions = {
+        item.code: item
+        for item in db.scalars(select(Permission).where(Permission.code.in_(PERMISSIONS))).all()
+    }
+    for code, name in PERMISSIONS.items():
+        permission = permissions.get(code)
+        if permission is None:
+            permission = Permission(code=code, name=name)
+            db.add(permission)
+            permissions[code] = permission
+        else:
+            permission.name = name
+    db.flush()
+
+    roles = {
+        item.code: item for item in db.scalars(select(Role).where(Role.code.in_(BASE_ROLES))).all()
+    }
+    for code, definition in BASE_ROLES.items():
+        role = roles.get(code)
+        if role is None:
+            role = Role(
+                code=code,
+                name=definition.name,
+                data_scope=definition.data_scope,
+            )
+            db.add(role)
+            roles[code] = role
+        else:
+            role.name = definition.name
+            role.data_scope = definition.data_scope
+            role.enabled = True
+    db.flush()
+
+    existing_role_permissions = {
+        (item.role_id, item.permission_id) for item in db.scalars(select(RolePermission)).all()
+    }
+    for code, definition in BASE_ROLES.items():
+        role = roles[code]
+        for permission_code in definition.permissions:
+            permission = permissions[permission_code]
+            pair = (role.id, permission.id)
+            if pair not in existing_role_permissions:
+                db.add(RolePermission(role_id=role.id, permission_id=permission.id))
+                existing_role_permissions.add(pair)
+
+    admin_role = roles["SUPER_ADMIN"]
+    user = db.scalar(select(User).where(User.username == username))
+    if user is None:
+        user = User(
+            username=username,
+            display_name="系统管理员",
+            password_hash=hash_password(password),
+            must_change_password=True,
+        )
+        db.add(user)
+        db.flush()
+
+    if db.get(UserRole, (user.id, admin_role.id)) is None:
+        db.add(UserRole(user_id=user.id, role_id=admin_role.id))
+    db.commit()
+
+
+def main() -> None:
     settings = get_settings()
     username = settings.init_admin_username
     password = settings.init_admin_password
@@ -44,40 +195,14 @@ def main():
         raise RuntimeError(
             "INIT_ADMIN_USERNAME and INIT_ADMIN_PASSWORD must be explicitly configured"
         )
+    plain_password = password.get_secret_value()
     db = SessionLocal()
     try:
-        for code, name in PERMISSIONS.items():
-            if not db.scalar(select(Permission).where(Permission.code == code)):
-                db.add(Permission(code=code, name=name))
-        db.flush()
-        admin_role = db.scalar(select(Role).where(Role.code == "SUPER_ADMIN"))
-        if not admin_role:
-            admin_role = Role(code="SUPER_ADMIN", name="超级管理员", data_scope=DataScope.ALL)
-            db.add(admin_role)
-            db.flush()
-        all_p = db.scalars(select(Permission)).all()
-        existing = {
-            x.permission_id
-            for x in db.scalars(
-                select(RolePermission).where(RolePermission.role_id == admin_role.id)
-            ).all()
-        }
-        for p in all_p:
-            if p.id not in existing:
-                db.add(RolePermission(role_id=admin_role.id, permission_id=p.id))
-        user = db.scalar(select(User).where(User.username == username))
-        if not user:
-            user = User(
-                username=username,
-                display_name="系统管理员",
-                password_hash=hash_password(password.get_secret_value()),
-                must_change_password=True,
-            )
-            db.add(user)
-            db.flush()
-            db.add(UserRole(user_id=user.id, role_id=admin_role.id))
-        db.commit()
+        seed_database(db, username=username, password=plain_password)
         print(f"seed complete, admin={username}")
+    except Exception:
+        db.rollback()
+        raise
     finally:
         db.close()
 

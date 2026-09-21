@@ -15,7 +15,7 @@ from app.services.audit_service import AuditService
 router = APIRouter(prefix="/roles", tags=["roles"])
 
 
-@router.get("")
+@router.get("", response_model=list[RoleOut])
 def list_roles(
     db: Session = Depends(get_db), current: User = Depends(require_permission("sys.role.view"))
 ):
@@ -109,7 +109,7 @@ def update_permissions(
 ):
     role = db.get(Role, role_id)
     if not role:
-        return None
+        raise NotFoundError("角色不存在")
     result = cast(
         CursorResult[Any],
         db.execute(

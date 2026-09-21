@@ -14,6 +14,7 @@ class RoleOut(BaseModel):
     name: str
     data_scope: DataScope
     enabled: bool
+    revision: int
 
 
 class RoleCreate(BaseModel):

@@ -24,7 +24,7 @@
 数据库：iterflow
 PostgreSQL 服务：iterflow-db
 Redis 服务：iterflow-redis
-MinIO 服务：iterflow-minio
+对象存储：本地默认 LocalFileStorage，生产可配置 S3Storage
 ```
 
 对外页面与文档优先显示“迭程 IterFlow”；代码、仓库、容器和服务名统一使用小写英文 `iterflow` 前缀。

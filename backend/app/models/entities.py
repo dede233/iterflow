@@ -28,6 +28,7 @@ from app.models.enums import (
     ReleaseResult,
     RequirementSource,
     RequirementStatus,
+    StorageDriver,
     UserStatus,
     VersionStatus,
 )
@@ -318,10 +319,20 @@ class FileObject(Base, AuditMixin):
     __tablename__ = "sys_file"
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     storage_key: Mapped[str] = mapped_column(String(500), unique=True)
-    file_name: Mapped[str] = mapped_column(String(255))
-    content_type: Mapped[str] = mapped_column(String(128))
-    size_bytes: Mapped[int] = mapped_column(BigInteger)
+    original_name: Mapped[str] = mapped_column(String(255))
+    mime_type: Mapped[str] = mapped_column(String(128))
+    size: Mapped[int] = mapped_column(BigInteger)
     sha256: Mapped[str] = mapped_column(String(64), index=True)
+    storage_driver: Mapped[StorageDriver] = mapped_column(
+        SAEnum(
+            StorageDriver,
+            name="storage_driver",
+            native_enum=False,
+            create_constraint=True,
+            validate_strings=True,
+        ),
+        nullable=False,
+    )
 
 
 class AttachmentRelation(Base):

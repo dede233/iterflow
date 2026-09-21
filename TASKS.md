@@ -23,10 +23,10 @@
 
 ### Phase 0 验收
 - [ ] `/health` 返回成功
-- [ ] `/ready` 实际检查 PostgreSQL / Redis / MinIO 并返回成功
+- [ ] `/ready` 实际检查 PostgreSQL / Redis / 当前 Storage Driver 并返回成功
 - [ ] PostgreSQL 可连接
 - [ ] Redis 可连接
-- [ ] MinIO 可连接
+- [ ] LocalFileStorage 可读写；配置 S3 时 S3Storage 可连接
 - [ ] 前端构建通过
 
 ---
@@ -191,7 +191,7 @@
 - [ ] 未读计数
 - [ ] 标记已读
 - [ ] 业务跳转
-- [ ] MinIO 上传
+- [ ] StorageService 上传（本地 LocalFileStorage 默认，S3Storage 可选）
 - [ ] 文件 MIME/扩展名校验
 - [ ] 签名下载
 - [ ] SHA-256

@@ -30,6 +30,9 @@ PERMISSIONS = {
     "sys.role.edit": "角色权限编辑",
     "sys.system.view": "系统模块查看",
     "sys.audit.view": "审计日志查看",
+    "sys.file.upload": "文件上传",
+    "sys.file.download": "文件下载",
+    "sys.file.delete": "文件删除",
 }
 
 

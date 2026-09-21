@@ -98,6 +98,11 @@ class ReleaseResult(StrEnum):
     SUCCESS = "SUCCESS"
 
 
+class StorageDriver(StrEnum):
+    LOCAL = "LOCAL"
+    S3 = "S3"
+
+
 class EditingEntityType(StrEnum):
     FEEDBACK = "FEEDBACK"
     REQUIREMENT = "REQUIREMENT"

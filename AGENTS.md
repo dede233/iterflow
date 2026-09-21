@@ -20,7 +20,7 @@
 数据库：iterflow
 PostgreSQL 服务：iterflow-db
 Redis 服务：iterflow-redis
-MinIO 服务：iterflow-minio
+对象存储：本地默认使用 LocalFileStorage，生产可配置 S3Storage
 ```
 
 对外页面与文档优先显示“迭程 IterFlow”；代码、仓库、容器和服务名统一使用小写英文 `iterflow` 前缀。
@@ -74,7 +74,7 @@ MinIO 服务：iterflow-minio
 - Alembic
 - PostgreSQL
 - Redis
-- MinIO / S3 compatible storage
+- S3 Compatible Object Storage（本地默认 LocalFileStorage，可选 S3Storage）
 - Pydantic v2
 - JWT Access Token + Refresh Token
 - RBAC
@@ -94,6 +94,12 @@ MinIO 服务：iterflow-minio
 - API 与 Web 独立容器
 
 不要改成 Django、Flask、Node.js、Java、React 等另一套主技术栈。
+
+对象存储必须通过统一的 `StorageService` 抽象访问。业务模块不得直接依赖 boto3、SeaweedFS、RustFS 或其他厂商实现；当前 Driver 为 `LocalFileStorage` 与基于标准 S3 API 的 `S3Storage`。
+
+`StorageService` 至少提供上传、删除、存在性检查、下载 URL 生成和打开文件能力。LocalFileStorage 必须拒绝绝对路径、`..` 路径穿越和任意目录读取，真实磁盘文件名使用系统生成的 `storage_key`。S3Storage 只使用 boto3 标准 S3 API，保持厂商无关。
+
+文件元数据保存在数据库，业务关联只使用 `file_id`，不得把物理路径作为业务主数据。下载前始终由后端执行身份、权限和数据范围校验；signed URL 必须短时有效。
 
 ## 4. 多人编辑与并发：必须实现
 

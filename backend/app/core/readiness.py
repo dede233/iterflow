@@ -1,12 +1,12 @@
 from collections.abc import Callable
+from uuid import uuid4
 
-import boto3
-from botocore.config import Config
 from redis import Redis
 from sqlalchemy import text
 
 from app.core.config import get_settings
 from app.core.database import engine
+from app.services.storage import create_configured_storage
 
 
 def check_database() -> None:
@@ -22,23 +22,28 @@ def check_redis() -> None:
         client.close()
 
 
-def check_minio() -> None:
+def check_storage() -> None:
     settings = get_settings()
-    client = boto3.client(
-        "s3",
-        endpoint_url=settings.minio_endpoint,
-        aws_access_key_id=settings.minio_access_key,
-        aws_secret_access_key=settings.minio_secret_key.get_secret_value(),
-        config=Config(connect_timeout=2, read_timeout=2, retries={"max_attempts": 0}),
-    )
-    client.head_bucket(Bucket=settings.minio_bucket)
+    storage = create_configured_storage(settings)
+    storage.ensure_bucket()
+    if settings.storage_driver == "local":
+        probe_key = f".readiness/{uuid4().hex}"
+        storage.upload(probe_key, b"ok", content_type="text/plain")
+        try:
+            if not storage.exists(probe_key):
+                raise OSError("local storage readiness probe was not persisted")
+            with storage.open(probe_key) as stream:
+                if stream.read() != b"ok":
+                    raise OSError("local storage readiness probe could not be read")
+        finally:
+            storage.delete(probe_key)
 
 
 def readiness_status() -> tuple[bool, dict[str, str]]:
     checks: dict[str, Callable[[], None]] = {
         "postgresql": check_database,
         "redis": check_redis,
-        "minio": check_minio,
+        "storage": check_storage,
     }
     components: dict[str, str] = {}
     for name, check in checks.items():

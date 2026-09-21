@@ -24,7 +24,7 @@
 数据库：iterflow
 PostgreSQL 服务：iterflow-db
 Redis 服务：iterflow-redis
-MinIO 服务：iterflow-minio
+对象存储：本地默认使用 LocalFileStorage，生产可配置 S3Storage
 ```
 
 对外页面与文档优先显示“迭程 IterFlow”；代码、仓库、容器和服务名统一使用小写英文 `iterflow` 前缀。
@@ -34,7 +34,7 @@ MinIO 服务：iterflow-minio
 ## 本版目标
 
 - Python 3.12 + FastAPI + SQLAlchemy 2 + Alembic
-- PostgreSQL + Redis + MinIO/S3
+- PostgreSQL + Redis + S3 Compatible Object Storage
 - JWT Access/Refresh Token + RBAC
 - Feedback / Requirement / Version / Release / Notification / System 配置
 - `revision` 乐观锁 + Redis 编辑提示，避免多人编辑静默覆盖
@@ -51,14 +51,16 @@ MinIO 服务：iterflow-minio
 ## 启动顺序
 
 1. `cp .env.example .env`，为所有密码、密钥和初始管理员变量填写非空安全值。
-2. `docker compose -f deploy/docker-compose.yml up -d db redis minio`
+2. 本机 ServBay 启动 PostgreSQL 与 Redis，或运行 `docker compose -f deploy/docker-compose.yml up -d db redis`
 3. 在 backend 安装依赖并执行 `alembic upgrade head`
 4. 启动 FastAPI：`uvicorn app.main:app --reload --port 8000`
 5. 启动前端：`npm install && npm run dev`
 
 > V1.5 是工程基线，不包含工时、Story Point 或单需求预计时长功能。
 
-健康端点：`/health` 只用于 liveness；`/ready` 实际检查 PostgreSQL、Redis 与 MinIO。
+本地开发默认设置 `STORAGE_DRIVER=local`，文件保存在 `LOCAL_STORAGE_PATH=./data/uploads`。需要接入 SeaweedFS、RustFS、AWS S3 或其他 S3 Compatible Object Storage 时改用 `STORAGE_DRIVER=s3`。
+
+健康端点：`/health` 只用于 liveness；`/ready` 实际检查 PostgreSQL、Redis 与当前配置的 Storage Driver。
 
 ## 初始化管理员与权限
 

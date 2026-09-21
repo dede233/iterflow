@@ -25,6 +25,6 @@
     "database": "iterflow",
     "postgres": "iterflow-db",
     "redis": "iterflow-redis",
-    "minio": "iterflow-minio"
+    "object_storage": "LocalFileStorage (default) / S3Storage (optional)"
   }
 }

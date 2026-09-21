@@ -18,7 +18,8 @@ class UserRepository(BaseRepository[User]):
             select(Permission.code)
             .join(RolePermission, RolePermission.permission_id == Permission.id)
             .join(UserRole, UserRole.role_id == RolePermission.role_id)
-            .where(UserRole.user_id == user_id)
+            .join(Role, Role.id == UserRole.role_id)
+            .where(UserRole.user_id == user_id, Role.enabled.is_(True))
         ).all()
         return set(rows)
 

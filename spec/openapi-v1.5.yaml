@@ -747,7 +747,7 @@ paths:
       tags:
       - File
       summary: 上传附件
-      description: MIME 白名单，单文件默认 50MB。
+      description: MIME 白名单，单文件默认 50MB。文件由 StorageService 写入当前配置的 Driver，原始文件名不会作为物理路径。
       security: *id001
       requestBody:
         required: true
@@ -767,15 +767,94 @@ paths:
           content:
             application/json:
               schema:
-                type: object
+                $ref: '#/components/schemas/FileMetadata'
+        '401':
+          description: 未登录
+        '403':
+          description: 无上传权限
         '422':
           description: 文件类型或大小不允许
+  /files/{file_id}/download:
+    get:
+      tags:
+      - File
+      summary: 下载附件
+      description: 后端完成登录、权限和业务数据范围校验后，返回文件流或短时有效的 S3 signed URL。
+      security: *id001
+      parameters:
+      - $ref: '#/components/parameters/FileId'
+      responses:
+        '200':
+          description: 文件内容
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '307':
+          description: 重定向到短时有效的 S3 signed URL
+        '401':
+          description: 未登录
+        '403':
+          description: 无下载权限
+        '404':
+          description: 文件元数据或物理对象不存在
+  /files/{file_id}/exists:
+    get:
+      tags:
+      - File
+      summary: 检查附件是否存在
+      description: 检查元数据记录和当前记录所指向的 Storage Driver 中的对象。
+      security: *id001
+      parameters:
+      - $ref: '#/components/parameters/FileId'
+      responses:
+        '200':
+          description: 检查成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileExistsResponse'
+        '401':
+          description: 未登录
+        '403':
+          description: 无查看权限
+        '404':
+          description: 文件元数据不存在
+  /files/{file_id}:
+    delete:
+      tags:
+      - File
+      summary: 删除附件
+      description: 后端完成权限和业务数据范围校验后删除物理对象及对应文件元数据。
+      security: *id001
+      parameters:
+      - $ref: '#/components/parameters/FileId'
+      responses:
+        '204':
+          description: 删除成功
+        '401':
+          description: 未登录
+        '403':
+          description: 无删除权限
+        '404':
+          description: 文件不存在
+        '409':
+          description: 文件已被业务对象引用，不能删除
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
+  parameters:
+    FileId:
+      name: file_id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
   schemas:
     LoginRequest:
       type: object
@@ -1412,6 +1491,58 @@ components:
         revision:
           type: integer
           minimum: 1
+    FileMetadata:
+      type: object
+      required:
+      - id
+      - original_name
+      - storage_key
+      - size
+      - mime_type
+      - sha256
+      - storage_driver
+      - created_at
+      - created_by
+      properties:
+        id:
+          type: integer
+          minimum: 1
+        original_name:
+          type: string
+          maxLength: 255
+        storage_key:
+          type: string
+          description: 系统生成的逻辑对象键，不是可由客户端指定的物理文件路径。
+        size:
+          type: integer
+          minimum: 0
+        mime_type:
+          type: string
+        sha256:
+          type: string
+          pattern: '^[0-9a-f]{64}$'
+        storage_driver:
+          type: string
+          enum:
+          - LOCAL
+          - S3
+        created_at:
+          type: string
+          format: date-time
+        created_by:
+          type: integer
+          minimum: 1
+    FileExistsResponse:
+      type: object
+      required:
+      - file_id
+      - exists
+      properties:
+        file_id:
+          type: integer
+          minimum: 1
+        exists:
+          type: boolean
     EditingRequest:
       type: object
       required:

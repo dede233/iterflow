@@ -14,11 +14,11 @@ def test_health_is_liveness_only():
 def test_ready_returns_dependency_status(monkeypatch):
     monkeypatch.setattr(
         "app.main.readiness_status",
-        lambda: (True, {"postgresql": "ok", "redis": "ok", "minio": "ok"}),
+        lambda: (True, {"postgresql": "ok", "redis": "ok", "storage": "ok"}),
     )
     response = client.get("/ready")
     assert response.status_code == 200
-    assert response.json()["components"]["minio"] == "ok"
+    assert response.json()["components"]["storage"] == "ok"
 
 
 def test_ready_returns_503_when_a_dependency_is_unavailable(monkeypatch):
@@ -26,7 +26,7 @@ def test_ready_returns_503_when_a_dependency_is_unavailable(monkeypatch):
         "app.main.readiness_status",
         lambda: (
             False,
-            {"postgresql": "ok", "redis": "unavailable", "minio": "ok"},
+            {"postgresql": "ok", "redis": "unavailable", "storage": "ok"},
         ),
     )
     response = client.get("/ready")

@@ -20,7 +20,7 @@
 数据库：iterflow
 PostgreSQL 服务：iterflow-db
 Redis 服务：iterflow-redis
-MinIO 服务：iterflow-minio
+对象存储：本地默认使用 LocalFileStorage，生产可配置 S3Storage
 ```
 
 对外页面与文档优先显示“迭程 IterFlow”；代码、仓库、容器和服务名统一使用小写英文 `iterflow` 前缀。
@@ -64,12 +64,13 @@ MinIO 服务：iterflow-minio
 ## 3. 本地环境
 
 建议：
-- Docker Engine / Docker Desktop
-- Docker Compose v2
+- ServBay（可直接提供 Python、PostgreSQL、Redis 与 Nginx/Caddy），或 Docker Engine / Docker Desktop
+- Docker Compose v2（使用容器开发时）
 - Python 3.12+
 - Node.js 20+ 或 22+
 - npm 10+
-- PostgreSQL/Redis/MinIO 默认通过 Docker 启动
+- PostgreSQL/Redis 可使用 ServBay 或 Docker
+- 本地对象存储默认使用 LocalFileStorage，不要求启动 S3 服务
 
 ## 4. 环境变量
 
@@ -87,20 +88,33 @@ cp .env.example .env
 - JWT_SECRET
 - JWT_ACCESS_TTL_MINUTES
 - JWT_REFRESH_TTL_DAYS
-- MINIO_ENDPOINT
-- MINIO_ACCESS_KEY
-- MINIO_SECRET_KEY
-- MINIO_BUCKET
+- STORAGE_DRIVER
+- LOCAL_STORAGE_PATH
+- S3_ENDPOINT
+- S3_ACCESS_KEY
+- S3_SECRET_KEY
+- S3_BUCKET
+- S3_REGION
 - INIT_ADMIN_USERNAME
 - INIT_ADMIN_PASSWORD
 
-Docker Compose 另需 `POSTGRES_PASSWORD` 用于初始化 PostgreSQL；该变量不会传入 API。`.env.example` 中所有凭据均留空，启动前必须显式填写。Docker 内的 `DATABASE_URL` 需使用服务名 `db`，`MINIO_ENDPOINT` 需使用 `http://minio:9000`。
+本地开发使用 `STORAGE_DRIVER=local` 与 `LOCAL_STORAGE_PATH=./data/uploads`。相对路径以项目根目录解析；物理路径不作为业务主数据，数据库只保存 `storage_key` 等文件元数据。
+
+切换到标准 S3 API 时设置 `STORAGE_DRIVER=s3` 以及 `S3_*` 变量。`S3Storage` 使用 boto3 标准 S3 API，不绑定特定厂商，可连接 SeaweedFS、RustFS、AWS S3 或其他 S3 Compatible Object Storage。
+
+业务代码只依赖 `StorageService`，不得直接调用 boto3 或厂商 SDK。文件表保存 `original_name`、`storage_key`、`size`、`mime_type`、`sha256`、`storage_driver`、`created_at`、`created_by`，业务关系使用 `file_id`。
+
+LocalFileStorage 的 `storage_key` 必须由系统生成；实现需拒绝绝对路径、`..` 和解析后逃逸存储根目录的路径。附件下载先经过 IterFlow 后端鉴权；S3 模式可以在鉴权后签发短时有效的 signed URL。
+
+Docker Compose 另需 `POSTGRES_PASSWORD` 用于初始化 PostgreSQL；该变量不会传入 API。`.env.example` 中所有凭据均留空，启动前必须显式填写。Docker 内的 `DATABASE_URL` 需使用服务名 `db`。
 
 ## 5. 基础设施启动
 
 ```bash
-docker compose -f deploy/docker-compose.yml up -d db redis minio
+docker compose -f deploy/docker-compose.yml up -d db redis
 ```
+
+若 PostgreSQL 与 Redis 已由 ServBay 启动，可以跳过此步并在 `.env` 中填写本机连接地址。当前基础 Compose 只包含 `db`、`redis`、`api`、`web`；S3 自托管服务不是强制依赖。
 
 检查容器：
 
@@ -174,7 +188,7 @@ http://localhost:8000/docs
 
 ```text
 GET http://localhost:8000/health  # 仅进程存活
-GET http://localhost:8000/ready   # PostgreSQL / Redis / MinIO 就绪
+GET http://localhost:8000/ready   # PostgreSQL / Redis / 当前 Storage Driver 就绪
 ```
 
 ## 7. Frontend
@@ -240,7 +254,7 @@ docker compose -f deploy/docker-compose.yml up -d --build
 - API 健康
 - DB migration 成功
 - Redis 可用
-- MinIO 可用
+- LocalFileStorage 可读写；配置 S3 时 S3Storage 可连接
 - 登录可用
 - 主链路可用
 

@@ -11,6 +11,7 @@ tags:
 - name: Requirement
 - name: Version
 - name: Release
+- name: Audit
 - name: Notification
 - name: Collaboration
 - name: System
@@ -919,6 +920,92 @@ paths:
                 $ref: '#/components/schemas/ReleaseOut'
         '404':
           description: 发布记录不存在或无权访问
+  /audits:
+    get:
+      tags:
+      - Audit
+      summary: 审计中心查询
+      description: 仅返回当前用户具有业务对象查看权限且处于其数据范围内的审计记录。time_from 与 time_to 共同组成时间范围。
+      security: *id001
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      - name: entity_type
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: entity_id
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: action
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: operator_id
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: time_from
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date-time
+      - name: time_to
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date-time
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditPage'
+        '403':
+          description: 缺少 sys.audit.view 或对象查看权限
+  /audits/{audit_id}:
+    get:
+      tags:
+      - Audit
+      summary: 审计记录详情
+      description: 详情与列表使用相同的业务对象权限和数据范围校验。
+      security: *id001
+      parameters:
+      - name: audit_id
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditOut'
+        '404':
+          description: 审计记录不存在或无权访问
   /notifications:
     get:
       tags:
@@ -2866,6 +2953,76 @@ components:
         page:
           type: integer
         page_size:
+          type: integer
+        total:
+          type: integer
+    AuditOperatorOut:
+      type: object
+      required:
+      - id
+      - username
+      - display_name
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        display_name:
+          type: string
+    AuditOut:
+      type: object
+      required:
+      - id
+      - entity_type
+      - entity_id
+      - action
+      - operator
+      - before
+      - after
+      - created_at
+      properties:
+        id:
+          type: integer
+        entity_type:
+          type: string
+        entity_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+        action:
+          type: string
+        operator:
+          anyOf:
+          - $ref: '#/components/schemas/AuditOperatorOut'
+          - type: 'null'
+        before:
+          anyOf:
+          - type: object
+            additionalProperties: true
+          - type: 'null'
+        after:
+          anyOf:
+          - type: object
+            additionalProperties: true
+          - type: 'null'
+        created_at:
+          type: string
+          format: date-time
+    AuditPage:
+      type: object
+      required:
+      - items
+      - page
+      - size
+      - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditOut'
+        page:
+          type: integer
+        size:
           type: integer
         total:
           type: integer

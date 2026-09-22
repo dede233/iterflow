@@ -22,6 +22,7 @@ const menuItems = computed<NavigationItem[]>(() => [
   { to: '/notifications', label: '通知中心' },
 ])
 const systemItems = computed<NavigationItem[]>(() => [
+  { to: '/admin/audits', label: '审计中心', permission: 'sys.audit.view' },
   { to: '/system/users', label: '用户管理', permission: 'sys.user.view' },
   { to: '/system/roles', label: '角色权限', permission: 'sys.role.view', requiresAllScope: true },
 ])

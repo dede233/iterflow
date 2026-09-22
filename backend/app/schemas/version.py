@@ -40,16 +40,23 @@ class AddRequirementRequest(BaseModel):
     requirement_id: int
     # The requirement's own revision (optimistic lock on current_version_id).
     revision: int = Field(ge=1)
+    # The Version aggregate revision. Relationship edits change the version's
+    # content, so clients must also protect against a stale requirement list.
+    version_revision: int = Field(ge=1)
 
 
 class RemoveRequirementRequest(BaseModel):
     revision: int = Field(ge=1)
+    version_revision: int = Field(ge=1)
     reason: str | None = Field(default=None, max_length=500)
 
 
 class MoveRequirementRequest(BaseModel):
     requirement_id: int
     revision: int = Field(ge=1)
+    # Revision of the target Version. The source Version is locked and bumped
+    # by the service as part of the same transaction.
+    version_revision: int = Field(ge=1)
     reason: str = Field(min_length=2, max_length=500)
 
 

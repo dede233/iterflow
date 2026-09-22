@@ -22,6 +22,15 @@ class RequirementCreate(BaseModel):
     description: str
     acceptance_criteria: str | None = None
     version_id: int | None = None
+    version_revision: int | None = Field(default=None, ge=1)
+
+    @model_validator(mode="after")
+    def require_version_revision_for_version_relation(self) -> Self:
+        if self.version_id is None and self.version_revision is not None:
+            raise ValueError("version_revision requires version_id")
+        if self.version_id is not None and self.version_revision is None:
+            raise ValueError("version_id requires version_revision")
+        return self
 
 
 class RequirementUpdate(BaseModel):

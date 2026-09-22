@@ -151,9 +151,6 @@ paths:
           - NEW
           - ACCEPTED
           - REQUIREMENT_LINKED
-          - PLANNED
-          - DEVELOPING
-          - TESTING
           - ONLINE
           - DUPLICATE
           - CANNOT_REPRODUCE
@@ -1637,9 +1634,6 @@ components:
           - NEW
           - ACCEPTED
           - REQUIREMENT_LINKED
-          - PLANNED
-          - DEVELOPING
-          - TESTING
           - ONLINE
           - DUPLICATE
           - CANNOT_REPRODUCE
@@ -1730,6 +1724,13 @@ components:
           type:
           - integer
           - 'null'
+          description: 关联版本时必须同时提供 version_revision；关系写入遵循 Version 的冻结和并发规则。
+        version_revision:
+          type:
+          - integer
+          - 'null'
+          minimum: 1
+          description: version_id 非空时必填，表示客户端读取到的 Version revision。
     RequirementUpdate:
       type: object
       required:
@@ -2638,18 +2639,26 @@ components:
       required:
       - requirement_id
       - revision
+      - version_revision
       properties:
         requirement_id:
           type: integer
         revision:
           type: integer
           minimum: 1
+        version_revision:
+          type: integer
+          minimum: 1
     RemoveRequirementRequest:
       type: object
       required:
       - revision
+      - version_revision
       properties:
         revision:
+          type: integer
+          minimum: 1
+        version_revision:
           type: integer
           minimum: 1
         reason:
@@ -2661,11 +2670,15 @@ components:
       required:
       - requirement_id
       - revision
+      - version_revision
       - reason
       properties:
         requirement_id:
           type: integer
         revision:
+          type: integer
+          minimum: 1
+        version_revision:
           type: integer
           minimum: 1
         reason:

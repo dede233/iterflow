@@ -34,11 +34,17 @@ export const changeVersionStatus = (
 export const listVersionRequirements = (id: number) =>
   api.get<VersionRequirementsResult>(`/versions/${id}/requirements`).then((r) => r.data)
 
-export const addVersionRequirement = (id: number, requirementId: number, revision: number) =>
+export const addVersionRequirement = (
+  id: number,
+  requirementId: number,
+  revision: number,
+  versionRevision: number,
+) =>
   api
     .post<VersionItem>(`/versions/${id}/requirements`, {
       requirement_id: requirementId,
       revision,
+      version_revision: versionRevision,
     })
     .then((r) => r.data)
 
@@ -46,12 +52,14 @@ export const moveVersionRequirement = (
   targetVersionId: number,
   requirementId: number,
   revision: number,
+  versionRevision: number,
   reason: string,
 ) =>
   api
     .post<VersionItem>(`/versions/${targetVersionId}/requirements/move`, {
       requirement_id: requirementId,
       revision,
+      version_revision: versionRevision,
       reason,
     })
     .then((r) => r.data)
@@ -60,11 +68,12 @@ export const removeVersionRequirement = (
   id: number,
   requirementId: number,
   revision: number,
+  versionRevision: number,
   reason?: string | null,
 ) =>
   api
     .delete<VersionItem>(`/versions/${id}/requirements/${requirementId}`, {
-      data: { revision, reason: reason ?? null },
+      data: { revision, version_revision: versionRevision, reason: reason ?? null },
     })
     .then((r) => r.data)
 

@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.core.exceptions import AppError, ConflictError, NotFoundError
 from app.core.ids import next_business_no
-from app.models.entities import Requirement, Version, VersionRequirement
+from app.models.entities import Requirement, Version
 from app.models.enums import (
     ManualRequirementStatus,
     RequirementSource,
@@ -66,14 +66,6 @@ class RequirementService:
         operator_id: int,
         source: RequirementSource = RequirementSource.DIRECT,
     ) -> Requirement:
-        if payload.version_id is not None:
-            target_version = self.db.scalar(
-                select(Version).where(Version.id == payload.version_id).with_for_update()
-            )
-            if target_version is None:
-                raise NotFoundError("目标版本不存在")
-            if target_version.status in {VersionStatus.RELEASED, VersionStatus.CANCELED}:
-                raise ConflictError("不能将需求加入已发布或已取消版本")
         item = Requirement(
             requirement_no=next_business_no(
                 self.db, Requirement, Requirement.requirement_no, "REQ"
@@ -81,18 +73,23 @@ class RequirementService:
             source=source,
             created_by=operator_id,
             updated_by=operator_id,
-            **payload.model_dump(exclude={"version_id"}),
+            **payload.model_dump(exclude={"version_id", "version_revision"}),
         )
         self.db.add(item)
         self.db.flush()
-        if payload.version_id:
-            self.db.add(
-                VersionRequirement(
-                    version_id=payload.version_id, requirement_id=item.id, added_by=operator_id
-                )
+        if payload.version_id is not None:
+            # Keep the VersionRequirement relation authoritative and route every
+            # relation mutation through VersionService. The creation transaction
+            # remains atomic: VersionService only flushes here; this method owns
+            # the commit together with the Requirement CREATE audit.
+            from app.services.version_service import VersionService
+
+            VersionService(self.db).attach_new_requirement(
+                payload.version_id,
+                item,
+                version_revision=payload.version_revision,
+                operator_id=operator_id,
             )
-            item.current_version_id = payload.version_id
-            item.status = RequirementStatus.PLANNED
         self.audit.log(
             "REQUIREMENT",
             item.id,

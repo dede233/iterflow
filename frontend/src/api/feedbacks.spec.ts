@@ -27,7 +27,7 @@ const {
   listFeedbackComments,
   uploadFeedbackAttachment,
 } = await import('@/api/feedbacks')
-const { availableStatusActions } = await import('@/constants/feedback')
+const { availableStatusActions, FEEDBACK_STATUSES } = await import('@/constants/feedback')
 
 beforeEach(() => {
   lastRequest = null
@@ -56,9 +56,16 @@ describe('availableStatusActions (frozen human state machine)', () => {
   })
 
   it('exposes no manual action for downstream statuses', () => {
-    for (const status of ['REQUIREMENT_LINKED', 'PLANNED', 'DEVELOPING', 'TESTING', 'ONLINE']) {
+    for (const status of ['REQUIREMENT_LINKED', 'ONLINE']) {
       expect(availableStatusActions(status, true)).toEqual([])
     }
+  })
+
+  it('does not mirror the Requirement or Version R&D lifecycle', () => {
+    const statuses = FEEDBACK_STATUSES.map((item) => item.value)
+    expect(statuses).not.toContain('PLANNED')
+    expect(statuses).not.toContain('DEVELOPING')
+    expect(statuses).not.toContain('TESTING')
   })
 
   it('exposes nothing without edit permission', () => {

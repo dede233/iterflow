@@ -4,6 +4,7 @@ import pytest
 from pydantic import ValidationError
 
 from app.models.enums import (
+    FeedbackStatus,
     ManualRequirementStatus,
     ManualVersionStatus,
     RequirementStatus,
@@ -39,6 +40,15 @@ def test_released_cannot_be_requested_through_manual_version_status_schema():
 
 def test_ready_can_return_to_testing():
     assert ManualVersionStatus.TESTING in VERSION_TRANSITIONS[VersionStatus.READY]
+
+
+def test_feedback_is_not_a_requirement_or_version_lifecycle_mirror():
+    feedback_statuses = set(FeedbackStatus)
+    assert FeedbackStatus.REQUIREMENT_LINKED in feedback_statuses
+    assert FeedbackStatus.ONLINE in feedback_statuses
+    assert {"PLANNED", "DEVELOPING", "TESTING"}.isdisjoint(
+        {status.value for status in feedback_statuses}
+    )
 
 
 def test_publish_request_rejects_legacy_result_parameter():

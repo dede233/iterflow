@@ -85,31 +85,40 @@ describe('version API DTO mapping', () => {
     })
   })
 
-  it('addVersionRequirement POSTs {requirement_id, revision}', async () => {
+  it('addVersionRequirement POSTs requirement and Version revisions', async () => {
     nextResponse = { status: 200, data: { id: 1 } }
-    await addVersionRequirement(1, 7, 2)
+    await addVersionRequirement(1, 7, 2, 3)
     expect(lastRequest?.method).toBe('post')
     expect(lastRequest?.url).toBe('/versions/1/requirements')
-    expect(JSON.parse(String(lastRequest?.data))).toEqual({ requirement_id: 7, revision: 2 })
+    expect(JSON.parse(String(lastRequest?.data))).toEqual({
+      requirement_id: 7,
+      revision: 2,
+      version_revision: 3,
+    })
   })
 
   it('moveVersionRequirement POSTs to target /requirements/move', async () => {
     nextResponse = { status: 200, data: { id: 2 } }
-    await moveVersionRequirement(2, 7, 3, '迁移原因')
+    await moveVersionRequirement(2, 7, 3, 4, '迁移原因')
     expect(lastRequest?.url).toBe('/versions/2/requirements/move')
     expect(JSON.parse(String(lastRequest?.data))).toEqual({
       requirement_id: 7,
       revision: 3,
+      version_revision: 4,
       reason: '迁移原因',
     })
   })
 
   it('removeVersionRequirement DELETEs with a revision/reason body', async () => {
     nextResponse = { status: 200, data: { id: 1 } }
-    await removeVersionRequirement(1, 7, 4, '移出')
+    await removeVersionRequirement(1, 7, 4, 5, '移出')
     expect(lastRequest?.method).toBe('delete')
     expect(lastRequest?.url).toBe('/versions/1/requirements/7')
-    expect(JSON.parse(String(lastRequest?.data))).toEqual({ revision: 4, reason: '移出' })
+    expect(JSON.parse(String(lastRequest?.data))).toEqual({
+      revision: 4,
+      version_revision: 5,
+      reason: '移出',
+    })
   })
 
   it('listVersionRequirements GETs the requirements path', async () => {
@@ -121,7 +130,7 @@ describe('version API DTO mapping', () => {
 
   it('surfaces a 409 freeze/conflict as a rejection', async () => {
     nextResponse = { status: 409, data: { code: 40930 } }
-    await expect(addVersionRequirement(1, 7, 2)).rejects.toMatchObject({ response: { status: 409 } })
+    await expect(addVersionRequirement(1, 7, 2, 3)).rejects.toMatchObject({ response: { status: 409 } })
   })
 
   it('publishVersion POSTs release_notes + revision + released_at to /publish', async () => {

@@ -33,9 +33,6 @@ class FeedbackStatus(StrEnum):
     NEW = "NEW"
     ACCEPTED = "ACCEPTED"
     REQUIREMENT_LINKED = "REQUIREMENT_LINKED"
-    PLANNED = "PLANNED"
-    DEVELOPING = "DEVELOPING"
-    TESTING = "TESTING"
     ONLINE = "ONLINE"
     DUPLICATE = "DUPLICATE"
     CANNOT_REPRODUCE = "CANNOT_REPRODUCE"
@@ -45,9 +42,9 @@ class FeedbackStatus(StrEnum):
 class ManualFeedbackStatus(StrEnum):
     """Feedback statuses a human may set through the status API.
 
-    Downstream statuses (REQUIREMENT_LINKED / PLANNED / DEVELOPING / TESTING /
-    ONLINE) are produced only by convert / version / publish transactions and are
-    intentionally excluded here so they can never be set by hand.
+    REQUIREMENT_LINKED and ONLINE are produced only by convert and publish
+    transactions. They are intentionally excluded here so they can never be set
+    by hand.
     """
 
     NEW = "NEW"

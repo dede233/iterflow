@@ -145,6 +145,46 @@ export interface ConvertFeedbackPayload {
   acceptance_criteria?: string | null
   requirement_id?: number | null
 }
-export interface VersionItem { id:number; version_no:string; name:string; status:string; owner_id?:number|null; planned_release_date?:string|null; released_at?:string|null; revision:number }
+export interface VersionItem {
+  id: number
+  version_no: string
+  name: string
+  status: string
+  owner_id?: number | null
+  planned_release_date?: string | null
+  released_at?: string | null
+  description?: string | null
+  created_at?: string
+  updated_at?: string
+  updated_by?: number | null
+  revision: number
+}
+
+export interface VersionCreatePayload {
+  version_no: string
+  name: string
+  planned_release_date?: string | null
+  description?: string | null
+}
+
+export interface VersionUpdatePayload {
+  name?: string
+  planned_release_date?: string | null
+  description?: string | null
+  revision: number
+}
+
+export interface VersionStats {
+  total: number
+  by_status: Record<string, number>
+  completed: number
+  completion_rate: number
+}
+
+export interface VersionRequirementsResult {
+  version_id: number
+  stats: VersionStats
+  items: Requirement[]
+}
 export type NotificationType = 'SYSTEM' | 'FEEDBACK' | 'REQUIREMENT' | 'VERSION' | 'RELEASE'
 export interface NotificationItem { id:number; type:NotificationType; title:string; content:string; entity_type?:string|null; entity_id?:number|null; read_at?:string|null; created_at:string }

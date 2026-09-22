@@ -4,6 +4,8 @@ from typing import Self
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.models.enums import ManualVersionStatus, VersionStatus
+from app.schemas.common import PageResult
+from app.schemas.requirement import RequirementOut
 
 
 class VersionCreate(BaseModel):
@@ -36,7 +38,19 @@ class VersionStatusChange(BaseModel):
 
 class AddRequirementRequest(BaseModel):
     requirement_id: int
+    # The requirement's own revision (optimistic lock on current_version_id).
     revision: int = Field(ge=1)
+
+
+class RemoveRequirementRequest(BaseModel):
+    revision: int = Field(ge=1)
+    reason: str | None = Field(default=None, max_length=500)
+
+
+class MoveRequirementRequest(BaseModel):
+    requirement_id: int
+    revision: int = Field(ge=1)
+    reason: str = Field(min_length=2, max_length=500)
 
 
 class PublishVersionRequest(BaseModel):
@@ -57,4 +71,24 @@ class VersionOut(BaseModel):
     planned_release_date: date | None
     released_at: datetime | None
     description: str | None
+    created_at: datetime
+    updated_at: datetime
+    updated_by: int | None
     revision: int
+
+
+class VersionPage(PageResult[VersionOut]):
+    pass
+
+
+class VersionStats(BaseModel):
+    total: int
+    by_status: dict[str, int]
+    completed: int
+    completion_rate: float
+
+
+class VersionRequirementsOut(BaseModel):
+    version_id: int
+    stats: VersionStats
+    items: list[RequirementOut]

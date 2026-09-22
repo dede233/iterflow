@@ -56,12 +56,6 @@ class RequirementAssigneeChange(BaseModel):
     revision: int = Field(ge=1)
 
 
-class RequirementMoveVersion(BaseModel):
-    target_version_id: int
-    reason: str = Field(min_length=2, max_length=500)
-    revision: int = Field(ge=1)
-
-
 class RequirementOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int

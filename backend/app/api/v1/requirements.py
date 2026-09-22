@@ -11,7 +11,6 @@ from app.repositories.version_repository import VersionRepository
 from app.schemas.requirement import (
     LinkedFeedbackOut,
     RequirementCreate,
-    RequirementMoveVersion,
     RequirementOut,
     RequirementPage,
     RequirementStatusChange,
@@ -109,15 +108,3 @@ def change_status(
 ):
     _scoped_requirement_or_404(db, user, requirement_id)
     return RequirementService(db).change_status(requirement_id, payload, user.id)
-
-
-@router.post("/{requirement_id}/move-version", response_model=RequirementOut)
-def move_version(
-    requirement_id: int,
-    payload: RequirementMoveVersion,
-    db: Session = Depends(get_db),
-    user: User = Depends(require_permission("rd.requirement.version.move")),
-):
-    _scoped_requirement_or_404(db, user, requirement_id)
-    _ensure_scoped_version(db, user, payload.target_version_id)
-    return RequirementService(db).move_version(requirement_id, payload, user.id)

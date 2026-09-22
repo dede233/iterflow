@@ -348,6 +348,19 @@ class VersionRequirement(Base):
     removed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     removed_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("sys_user.id"))
     removed_reason: Mapped[str | None] = mapped_column(String(500))
+    # A requirement may belong to at most one ACTIVE version at a time (V1.5).
+    # Enforced at the database level (matches migration 0001's
+    # uq_requirement_active_version); declared here too so metadata-created test
+    # databases enforce it and `alembic check` stays consistent.
+    __table_args__ = (
+        Index(
+            "uq_requirement_active_version",
+            "requirement_id",
+            unique=True,
+            sqlite_where=text("active = 1"),
+            postgresql_where=text("active = true"),
+        ),
+    )
 
 
 class Release(Base, AuditMixin):

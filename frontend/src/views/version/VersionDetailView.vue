@@ -8,6 +8,7 @@ import {
   getVersion,
   listVersionRequirements,
   moveVersionRequirement,
+  publishVersion,
   removeVersionRequirement,
   updateVersion,
 } from '@/api/versions'
@@ -36,6 +37,10 @@ const loading = ref(false)
 
 const canEdit = computed(() => can('rd.version.edit'))
 const canChangeStatus = computed(() => can('rd.version.status'))
+// Publish entry: only for a READY version and only with the publish permission.
+const canPublish = computed(
+  () => can('rd.version.publish') && !!item.value && item.value.status === 'READY',
+)
 const frozen = computed(() => (item.value ? versionRequirementSetFrozen(item.value.status) : true))
 const canManageReqs = computed(() => canEdit.value && !frozen.value)
 const statusActions = computed<VersionStatusAction[]>(() =>
@@ -73,6 +78,35 @@ async function submitStatus(): Promise<void> {
     // surfaced globally
   } finally {
     statusSubmitting.value = false
+    await load()
+  }
+}
+
+// --- publish dialog ---
+const publishDialog = ref(false)
+const publishSubmitting = ref(false)
+const releaseNotes = ref('')
+
+function openPublish(): void {
+  releaseNotes.value = ''
+  publishDialog.value = true
+}
+
+async function submitPublish(): Promise<void> {
+  if (!item.value) return
+  if (!releaseNotes.value.trim()) {
+    ElMessage.warning('请填写发布说明')
+    return
+  }
+  publishSubmitting.value = true
+  try {
+    await publishVersion(item.value.id, releaseNotes.value.trim(), item.value.revision)
+    ElMessage.success('版本已发布')
+    publishDialog.value = false
+  } catch {
+    // 409 (未就绪/未完成需求/并发) surfaced globally; reload to refresh state.
+  } finally {
+    publishSubmitting.value = false
     await load()
   }
 }
@@ -214,8 +248,9 @@ onMounted(load)
         />
       </div>
 
-      <div v-if="canEdit || statusActions.length" class="toolbar">
+      <div v-if="canEdit || canPublish || statusActions.length" class="toolbar">
         <el-button v-if="canEdit" @click="openEdit">编辑</el-button>
+        <el-button v-if="canPublish" type="success" @click="openPublish">发布</el-button>
         <el-button
           v-for="action in statusActions"
           :key="action.target"
@@ -275,6 +310,20 @@ onMounted(load)
         <p v-if="frozen" class="frozen-tip">版本处于 {{ versionStatusLabel[item.status] }}，需求清单已冻结。</p>
       </el-card>
     </template>
+
+    <!-- publish dialog -->
+    <el-dialog v-model="publishDialog" title="发布版本" width="min(480px, 92vw)" destroy-on-close>
+      <p class="publish-tip">发布后版本将进入「已发布」，其已完成需求与关联反馈会自动置为「已上线」。此操作不可撤销。</p>
+      <el-form label-position="top">
+        <el-form-item label="发布说明" required>
+          <el-input v-model="releaseNotes" type="textarea" :rows="3" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="publishDialog = false">取消</el-button>
+        <el-button type="success" :loading="publishSubmitting" @click="submitPublish">确认发布</el-button>
+      </template>
+    </el-dialog>
 
     <!-- status dialog -->
     <el-dialog v-model="statusDialog" :title="currentAction?.label ?? '状态变更'" width="min(480px, 92vw)" destroy-on-close>
@@ -351,4 +400,5 @@ onMounted(load)
 .progress .el-progress { flex: 1; }
 .progress-text { color: #64748b; font-size: 13px; white-space: nowrap; }
 .frozen-tip { margin: 10px 0 0; color: #b45309; font-size: 13px; }
+.publish-tip { margin: 0 0 12px; color: #64748b; font-size: 13px; line-height: 1.5; }
 </style>

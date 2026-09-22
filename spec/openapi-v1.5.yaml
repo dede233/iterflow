@@ -840,17 +840,19 @@ paths:
               $ref: '#/components/schemas/PublishVersionRequest'
       responses:
         '200':
-          description: 成功
+          description: 发布成功
           content:
             application/json:
               schema:
-                type: object
+                $ref: '#/components/schemas/PublishResult'
         '409':
-          description: 成功
+          description: 版本未就绪/存在未完成需求/并发冲突
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Conflict'
+        '404':
+          description: 版本不存在或无权访问
   /releases:
     get:
       tags:
@@ -864,7 +866,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
+                $ref: '#/components/schemas/ReleasePage'
   /notifications:
     get:
       tags:
@@ -2745,3 +2747,77 @@ components:
         reason:
           type: string
           minLength: 2
+    ReleaseOut:
+      type: object
+      required:
+      - id
+      - version_id
+      - released_at
+      - result
+      - release_notes
+      - revision
+      properties:
+        id:
+          type: integer
+        version_id:
+          type: integer
+        released_at:
+          type: string
+          format: date-time
+        result:
+          type: string
+          enum:
+          - SUCCESS
+        release_notes:
+          type: string
+        rollback_notes:
+          type:
+          - string
+          - 'null'
+        created_at:
+          type: string
+          format: date-time
+        created_by:
+          type:
+          - integer
+          - 'null'
+        revision:
+          type: integer
+    ReleasePage:
+      type: object
+      required:
+      - items
+      - page
+      - page_size
+      - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReleaseOut'
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total:
+          type: integer
+    PublishResult:
+      type: object
+      required:
+      - release
+      - version_id
+      - released_requirement_ids
+      - online_feedback_ids
+      properties:
+        release:
+          $ref: '#/components/schemas/ReleaseOut'
+        version_id:
+          type: integer
+        released_requirement_ids:
+          type: array
+          items:
+            type: integer
+        online_feedback_ids:
+          type: array
+          items:
+            type: integer

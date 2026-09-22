@@ -353,12 +353,44 @@ class VersionService:
         self.db.refresh(target)
         return target
 
-    def publish(self, version_id: int, payload: PublishVersionRequest, operator_id: int) -> Release:
-        version = self.repo.get(version_id)
+    def publish(
+        self, version_id: int, payload: PublishVersionRequest, operator_id: int
+    ) -> dict[str, Any]:
+        """The single, atomic version-publish transaction (V1.5).
+
+        READY version + all active requirements DONE -> create a SUCCESS Release
+        record, flip Version READY->RELEASED, DONE requirements->ONLINE and their
+        REQUIREMENT_LINKED feedbacks->ONLINE, notify submitters, audit. Any
+        failure rolls the whole thing back; a version can never end up RELEASED
+        without its Release row.
+        """
+        # Row-lock the version so concurrent publishes serialise (the atomic
+        # conditional UPDATE below is the definitive guard; SQLite ignores the lock).
+        version = self.db.scalar(select(Version).where(Version.id == version_id).with_for_update())
         if not version:
             raise NotFoundError("版本不存在")
-        if version.status != VersionStatus.READY:
+        if VersionStatus(version.status) != VersionStatus.READY:
             raise AppError(40922, "只有待发布版本可以执行发布", 409)
+
+        # Pre-check: every active requirement must be DONE, else block with detail.
+        active_requirements = self.repo.active_requirements(version_id)
+        blocking = [
+            r for r in active_requirements if RequirementStatus(r.status) != RequirementStatus.DONE
+        ]
+        if blocking:
+            raise AppError(
+                40923,
+                "存在未完成的需求，无法发布",  # noqa: RUF001
+                409,
+                {
+                    "blocking_requirements": [
+                        {"id": r.id, "requirement_no": r.requirement_no, "status": str(r.status)}
+                        for r in blocking
+                    ]
+                },
+            )
+
+        # Atomic READY -> RELEASED (only one publish can win this).
         result = cast(
             CursorResult[Any],
             self.db.execute(
@@ -377,11 +409,13 @@ class VersionService:
             ),
         )
         if not result.rowcount:
+            self.db.rollback()
             latest = self.repo.get(version_id)
             raise ConflictError(
                 "版本已被其他用户修改",
                 {"current_revision": latest.revision if latest else None},
             )
+
         release = Release(
             version_id=version.id,
             released_at=payload.released_at,
@@ -391,13 +425,11 @@ class VersionService:
             updated_by=operator_id,
         )
         self.db.add(release)
+        self.db.flush()
 
-        requirement_ids = self.db.scalars(
-            select(VersionRequirement.requirement_id).where(
-                VersionRequirement.version_id == version.id,
-                VersionRequirement.active.is_(True),
-            )
-        ).all()
+        requirement_ids = [r.id for r in active_requirements]
+        online_requirement_ids: list[int] = []
+        online_feedback_ids: list[int] = []
         if requirement_ids:
             online_requirement_ids = list(
                 self.db.scalars(
@@ -414,6 +446,14 @@ class VersionService:
                     .returning(Requirement.id)
                 ).all()
             )
+            for rid in online_requirement_ids:
+                self.audit.log(
+                    "REQUIREMENT",
+                    rid,
+                    "STATUS_CHANGE",
+                    before={"status": RequirementStatus.DONE},
+                    after={"status": RequirementStatus.ONLINE},
+                )
             if online_requirement_ids:
                 feedback_ids = self.db.scalars(
                     select(RequirementFeedback.feedback_id).where(
@@ -421,19 +461,32 @@ class VersionService:
                     )
                 ).all()
                 if feedback_ids:
-                    self.db.execute(
-                        update(Feedback)
-                        .where(Feedback.id.in_(feedback_ids))
-                        .values(
-                            status=FeedbackStatus.ONLINE,
-                            updated_by=operator_id,
-                            revision=Feedback.revision + 1,
-                        )
+                    # Only feedbacks still awaiting release (REQUIREMENT_LINKED) go ONLINE.
+                    online_feedback_ids = list(
+                        self.db.scalars(
+                            update(Feedback)
+                            .where(
+                                Feedback.id.in_(feedback_ids),
+                                Feedback.status == FeedbackStatus.REQUIREMENT_LINKED,
+                            )
+                            .values(
+                                status=FeedbackStatus.ONLINE,
+                                updated_by=operator_id,
+                                revision=Feedback.revision + 1,
+                            )
+                            .returning(Feedback.id)
+                        ).all()
                     )
-                    feedbacks = self.db.scalars(
-                        select(Feedback).where(Feedback.id.in_(feedback_ids))
-                    ).all()
-                    for feedback in feedbacks:
+                    for feedback in self.db.scalars(
+                        select(Feedback).where(Feedback.id.in_(online_feedback_ids))
+                    ).all():
+                        self.audit.log(
+                            "FEEDBACK",
+                            feedback.id,
+                            "STATUS_CHANGE",
+                            before={"status": FeedbackStatus.REQUIREMENT_LINKED},
+                            after={"status": FeedbackStatus.ONLINE},
+                        )
                         self.db.add(
                             Notification(
                                 user_id=feedback.submitter_id,
@@ -447,9 +500,21 @@ class VersionService:
         self.audit.log(
             "VERSION",
             version.id,
-            "PUBLISH",
-            after={"result": ReleaseResult.SUCCESS},
+            "VERSION_PUBLISH",
+            before={"status": VersionStatus.READY},
+            after={"status": VersionStatus.RELEASED, "release_id": release.id},
+        )
+        self.audit.log(
+            "RELEASE",
+            release.id,
+            "RELEASE_CREATE",
+            after={"version_id": version.id, "result": ReleaseResult.SUCCESS},
         )
         self.db.commit()
         self.db.refresh(release)
-        return release
+        return {
+            "release": release,
+            "version_id": version.id,
+            "released_requirement_ids": online_requirement_ids,
+            "online_feedback_ids": online_feedback_ids,
+        }

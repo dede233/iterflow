@@ -66,3 +66,21 @@ export const removeVersionRequirement = (
       data: { revision, reason: reason ?? null },
     })
     .then((r) => r.data)
+
+export interface PublishResult {
+  release: { id: number; version_id: number; result: string; released_at: string }
+  version_id: number
+  released_requirement_ids: number[]
+  online_feedback_ids: number[]
+}
+
+// Publish is the single release entry point (VersionService.publish). It flips
+// the READY version to RELEASED and syncs requirement/feedback online status.
+export const publishVersion = (id: number, releaseNotes: string, revision: number) =>
+  api
+    .post<PublishResult>(`/versions/${id}/publish`, {
+      released_at: new Date().toISOString(),
+      release_notes: releaseNotes,
+      revision,
+    })
+    .then((r) => r.data)

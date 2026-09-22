@@ -1,8 +1,17 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, type UploadRequestOptions } from 'element-plus'
 import { useRoute } from 'vue-router'
-import { changeFeedbackStatus, getFeedback, updateFeedback } from '@/api/feedbacks'
+import {
+  changeFeedbackStatus,
+  createFeedbackComment,
+  downloadFeedbackAttachment,
+  getFeedback,
+  listFeedbackAttachments,
+  listFeedbackComments,
+  updateFeedback,
+  uploadFeedbackAttachment,
+} from '@/api/feedbacks'
 import { listSystems } from '@/api/systems'
 import { usePermission } from '@/composables/usePermission'
 import StatusTag from '@/components/StatusTag.vue'
@@ -16,7 +25,13 @@ import {
   feedbackUrgencyLabel,
   type StatusAction,
 } from '@/constants/feedback'
-import type { BusinessModuleItem, BusinessSystemItem, Feedback } from '@/types/domain'
+import type {
+  AttachmentItem,
+  BusinessModuleItem,
+  BusinessSystemItem,
+  CommentItem,
+  Feedback,
+} from '@/types/domain'
 
 const route = useRoute()
 const { can } = usePermission()
@@ -24,10 +39,13 @@ const feedbackId = Number(route.params.id)
 
 const item = ref<Feedback | null>(null)
 const loading = ref(false)
+const attachments = ref<AttachmentItem[]>([])
+const comments = ref<CommentItem[]>([])
 const systems = ref<BusinessSystemItem[]>([])
 const modules = ref<BusinessModuleItem[]>([])
 const canReadSystems = computed(() => can('sys.system.view'))
 const canEdit = computed(() => can('rd.feedback.edit'))
+const canAttach = computed(() => can('rd.feedback.create'))
 
 const statusActions = computed<StatusAction[]>(() =>
   item.value ? availableStatusActions(item.value.status, canEdit.value) : [],
@@ -82,11 +100,16 @@ const editForm = reactive({
   title: '',
   feedback_type: '',
   urgency: '',
+  system_id: null as number | null,
+  module_id: null as number | null,
   description: '',
   expected_result: '',
   actual_result: '',
   reproduce_steps: '',
 })
+const editModuleOptions = computed(() =>
+  editForm.system_id ? modules.value.filter((m) => m.system_id === editForm.system_id) : [],
+)
 
 function openEdit(): void {
   if (!item.value) return
@@ -94,12 +117,18 @@ function openEdit(): void {
     title: item.value.title,
     feedback_type: item.value.feedback_type,
     urgency: item.value.urgency,
+    system_id: item.value.system_id ?? null,
+    module_id: item.value.module_id ?? null,
     description: item.value.description,
     expected_result: item.value.expected_result ?? '',
     actual_result: item.value.actual_result ?? '',
     reproduce_steps: item.value.reproduce_steps ?? '',
   })
   editDialog.value = true
+}
+
+function onEditSystemChange(): void {
+  editForm.module_id = null
 }
 
 async function submitEdit(): Promise<void> {
@@ -110,6 +139,8 @@ async function submitEdit(): Promise<void> {
       title: editForm.title.trim(),
       feedback_type: editForm.feedback_type,
       urgency: editForm.urgency,
+      system_id: editForm.system_id ?? null,
+      module_id: editForm.module_id ?? null,
       description: editForm.description.trim(),
       expected_result: editForm.expected_result.trim() || null,
       actual_result: editForm.actual_result.trim() || null,
@@ -123,6 +154,39 @@ async function submitEdit(): Promise<void> {
   } finally {
     editSubmitting.value = false
     await load()
+  }
+}
+
+// --- attachments ---
+async function uploadAttachment(options: UploadRequestOptions): Promise<void> {
+  await uploadFeedbackAttachment(feedbackId, options.file as File)
+  ElMessage.success('附件已上传')
+  attachments.value = await listFeedbackAttachments(feedbackId)
+}
+
+async function download(att: AttachmentItem): Promise<void> {
+  const blob = await downloadFeedbackAttachment(feedbackId, att.file_id)
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = att.original_name
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+// --- comments ---
+const commentText = ref('')
+const commentSubmitting = ref(false)
+
+async function submitComment(): Promise<void> {
+  if (!commentText.value.trim()) return
+  commentSubmitting.value = true
+  try {
+    await createFeedbackComment(feedbackId, commentText.value.trim())
+    commentText.value = ''
+    comments.value = await listFeedbackComments(feedbackId)
+  } finally {
+    commentSubmitting.value = false
   }
 }
 
@@ -140,6 +204,8 @@ async function load(): Promise<void> {
   loading.value = true
   try {
     item.value = await getFeedback(feedbackId)
+    attachments.value = await listFeedbackAttachments(feedbackId)
+    comments.value = await listFeedbackComments(feedbackId)
   } finally {
     loading.value = false
   }
@@ -218,6 +284,50 @@ onMounted(async () => {
           <el-descriptions-item label="更新时间">{{ item.updated_at }}</el-descriptions-item>
         </el-descriptions>
       </el-card>
+
+      <!-- attachments -->
+      <el-card shadow="never" class="section">
+        <div class="section-head">
+          <span class="section-title">附件</span>
+          <el-upload
+            v-if="canAttach"
+            :show-file-list="false"
+            :http-request="uploadAttachment"
+          >
+            <el-button size="small">上传附件</el-button>
+          </el-upload>
+        </div>
+        <ul v-if="attachments.length" class="attachments">
+          <li v-for="a in attachments" :key="a.file_id">
+            <el-link type="primary" @click="download(a)">{{ a.original_name }}</el-link>
+            <span class="att-size">{{ Math.max(1, Math.round(a.size / 1024)) }} KB</span>
+          </li>
+        </ul>
+        <el-empty v-else :image-size="60" description="暂无附件" />
+      </el-card>
+
+      <!-- comments -->
+      <el-card shadow="never" class="section">
+        <div class="section-title">评论</div>
+        <ul v-if="comments.length" class="comments">
+          <li v-for="c in comments" :key="c.id">
+            <div class="comment-meta">#{{ c.created_by }} · {{ c.created_at }}</div>
+            <div class="multiline">{{ c.content }}</div>
+          </li>
+        </ul>
+        <el-empty v-else :image-size="60" description="暂无评论" />
+        <div class="comment-form">
+          <el-input v-model="commentText" type="textarea" :rows="2" placeholder="写下评论…" />
+          <el-button
+            type="primary"
+            :loading="commentSubmitting"
+            :disabled="!commentText.trim()"
+            @click="submitComment"
+          >
+            发表
+          </el-button>
+        </div>
+      </el-card>
     </template>
 
     <!-- status change dialog -->
@@ -231,10 +341,7 @@ onMounted(async () => {
         <el-form-item v-if="currentAction?.needsDuplicate" label="重复目标反馈 ID" required>
           <el-input-number v-model="statusForm.duplicate_of_id" :min="1" style="width: 100%" />
         </el-form-item>
-        <el-form-item
-          :label="'原因'"
-          :required="currentAction?.needsReason"
-        >
+        <el-form-item label="原因" :required="currentAction?.needsReason">
           <el-input v-model="statusForm.reason" type="textarea" :rows="3" />
         </el-form-item>
       </el-form>
@@ -262,6 +369,24 @@ onMounted(async () => {
             </el-radio>
           </el-radio-group>
         </el-form-item>
+        <template v-if="canReadSystems">
+          <el-form-item label="所属系统">
+            <el-select
+              v-model="editForm.system_id"
+              clearable
+              placeholder="可选"
+              style="width: 100%"
+              @change="onEditSystemChange"
+            >
+              <el-option v-for="s in systems" :key="s.id" :label="s.name" :value="s.id" />
+            </el-select>
+          </el-form-item>
+          <el-form-item v-if="editForm.system_id" label="所属模块">
+            <el-select v-model="editForm.module_id" clearable placeholder="可选" style="width: 100%">
+              <el-option v-for="m in editModuleOptions" :key="m.id" :label="m.name" :value="m.id" />
+            </el-select>
+          </el-form-item>
+        </template>
         <el-form-item label="详细描述">
           <el-input v-model="editForm.description" type="textarea" :rows="5" />
         </el-form-item>
@@ -288,4 +413,14 @@ onMounted(async () => {
 .no { font-size: 12px; color: #94a3b8; }
 .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
 .multiline { white-space: pre-wrap; }
+.section { margin-top: 16px; }
+.section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.section-title { font-weight: 600; }
+.attachments, .comments { list-style: none; margin: 0; padding: 0; }
+.attachments li { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+.att-size { color: #94a3b8; font-size: 12px; }
+.comments li { padding: 8px 0; border-bottom: 1px solid #f1f5f9; }
+.comment-meta { color: #94a3b8; font-size: 12px; margin-bottom: 2px; }
+.comment-form { display: flex; gap: 8px; align-items: flex-start; margin-top: 12px; }
+.comment-form .el-button { flex-shrink: 0; }
 </style>

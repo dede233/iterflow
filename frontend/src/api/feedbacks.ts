@@ -1,5 +1,7 @@
 import { api } from './client'
 import type {
+  AttachmentItem,
+  CommentItem,
   Feedback,
   FeedbackCreatePayload,
   FeedbackListParams,
@@ -25,3 +27,27 @@ export const changeFeedbackStatus = (id: number, payload: FeedbackStatusChangePa
 
 export const convertFeedback = (id: number, payload: unknown) =>
   api.post(`/feedbacks/${id}/convert`, payload).then((r) => r.data)
+
+// --- attachments (business relation stores file_id only) ---
+export const listFeedbackAttachments = (id: number) =>
+  api.get<AttachmentItem[]>(`/feedbacks/${id}/attachments`).then((r) => r.data)
+
+export const uploadFeedbackAttachment = (id: number, file: File) => {
+  const form = new FormData()
+  form.append('file', file)
+  return api.post<AttachmentItem>(`/feedbacks/${id}/attachments`, form).then((r) => r.data)
+}
+
+// Download goes through the authenticated axios client (Authorization header),
+// not a bare href, so feedback-scope authorization is enforced.
+export const downloadFeedbackAttachment = (id: number, fileId: number) =>
+  api
+    .get(`/feedbacks/${id}/attachments/${fileId}/download`, { responseType: 'blob' })
+    .then((r) => r.data as Blob)
+
+// --- comments ---
+export const listFeedbackComments = (id: number) =>
+  api.get<CommentItem[]>(`/feedbacks/${id}/comments`).then((r) => r.data)
+
+export const createFeedbackComment = (id: number, content: string) =>
+  api.post<CommentItem>(`/feedbacks/${id}/comments`, { content }).then((r) => r.data)

@@ -11,9 +11,12 @@ from app.core.database import get_db
 from app.core.security import create_access_token
 from app.main import app
 from app.models.entities import (
+    AttachmentRelation,
     BusinessModule,
     BusinessSystem,
+    Comment,
     Feedback,
+    FileObject,
     OperationLog,
     Permission,
     Role,
@@ -55,11 +58,25 @@ def feedback_api(tmp_path: Path) -> Iterator[FeedbackFixture]:
         BusinessSystem.__table__,
         BusinessModule.__table__,
         Feedback.__table__,
+        FileObject.__table__,
+        AttachmentRelation.__table__,
+        Comment.__table__,
     ):
         table.create(engine)
 
     listeners = []
-    for model in (User, Role, Permission, OperationLog, BusinessSystem, BusinessModule, Feedback):
+    for model in (
+        User,
+        Role,
+        Permission,
+        OperationLog,
+        BusinessSystem,
+        BusinessModule,
+        Feedback,
+        FileObject,
+        AttachmentRelation,
+        Comment,
+    ):
         counter = iter(range(1, 100000))
 
         def assign_id(_mapper, _connection, target, *, _counter=counter):
@@ -593,6 +610,224 @@ def test_audit_records_create_update_and_status_change(feedback_api):
 
 
 # --------------------------------------------------------------------------- #
+# UPDATE audit before/after real fields                                        #
+# --------------------------------------------------------------------------- #
+def test_update_audit_captures_real_before_and_after(feedback_api):
+    client, session, headers, _ids = feedback_api
+    fb = _create(client, headers["cs"], title="原标题", urgency="NORMAL")
+    client.patch(
+        f"/api/v1/feedbacks/{fb['id']}",
+        headers=headers["cs"],
+        json={"title": "新标题", "urgency": "URGENT", "revision": 1},
+    )
+    log = session.scalar(
+        select(OperationLog).where(
+            OperationLog.entity_type == "FEEDBACK",
+            OperationLog.entity_id == fb["id"],
+            OperationLog.action == "UPDATE",
+        )
+    )
+    assert log is not None
+    assert log.before_data == {"title": "原标题", "urgency": "NORMAL"}
+    assert log.after_data == {"title": "新标题", "urgency": "URGENT"}
+    assert "revision" not in log.before_data
+
+
+# --------------------------------------------------------------------------- #
+# list system/module filter validation                                        #
+# --------------------------------------------------------------------------- #
+def test_list_filter_system_module_validation(feedback_api):
+    client, session, headers, ids = feedback_api
+
+    # unknown system -> 422
+    assert (
+        client.get("/api/v1/feedbacks?system_id=999999", headers=headers["cs"]).status_code == 422
+    )
+    # unknown module -> 422
+    assert (
+        client.get("/api/v1/feedbacks?module_id=999999", headers=headers["cs"]).status_code == 422
+    )
+    # mismatch (module belongs to a different system) -> 422
+    assert (
+        client.get(
+            f"/api/v1/feedbacks?system_id={ids['sys_a']}&module_id={ids['mod_b1']}",
+            headers=headers["cs"],
+        ).status_code
+        == 422
+    )
+    # disabled system is still allowed for historical filtering (not 422).
+    # Seed one historical feedback directly under the disabled system.
+    session.add(
+        Feedback(
+            feedback_no="FB-HIST-0001",
+            title="历史反馈",
+            feedback_type="OTHER",
+            urgency="NORMAL",
+            status="NEW",
+            submitter_id=ids["cs"],
+            description="历史",
+            system_id=ids["sys_off"],
+            created_by=ids["cs"],
+            updated_by=ids["cs"],
+        )
+    )
+    session.commit()
+    hist = client.get(f"/api/v1/feedbacks?system_id={ids['sys_off']}", headers=headers["cs"])
+    assert hist.status_code == 200
+    assert hist.json()["total"] == 1
+
+
+# --------------------------------------------------------------------------- #
+# attachments                                                                  #
+# --------------------------------------------------------------------------- #
+def _upload(client, headers, feedback_id, name="a.txt", content=b"hello", mime="text/plain"):
+    return client.post(
+        f"/api/v1/feedbacks/{feedback_id}/attachments",
+        headers=headers,
+        files={"file": (name, content, mime)},
+    )
+
+
+def test_attachment_upload_list_download(feedback_api):
+    client, _session, headers, _ids = feedback_api
+    fb = _create(client, headers["cs"], title="附件反馈")
+
+    up = _upload(client, headers["cs"], fb["id"], content=b"attachment-body")
+    assert up.status_code == 200, up.text
+    body = up.json()
+    file_id = body["file_id"]
+    # Business response must never leak storage_key / physical path.
+    assert "storage_key" not in up.text and "path" not in body
+
+    listed = client.get(f"/api/v1/feedbacks/{fb['id']}/attachments", headers=headers["cs"])
+    assert listed.status_code == 200
+    assert [a["file_id"] for a in listed.json()] == [file_id]
+
+    dl = client.get(
+        f"/api/v1/feedbacks/{fb['id']}/attachments/{file_id}/download", headers=headers["cs"]
+    )
+    assert dl.status_code == 200
+    assert dl.content == b"attachment-body"
+
+
+def test_self_cannot_access_others_attachment(feedback_api):
+    client, _session, headers, _ids = feedback_api
+    alice_fb = _create(client, headers["alice"], title="alice附件")
+    up = _upload(client, headers["alice"], alice_fb["id"])
+    assert up.status_code == 200
+    file_id = up.json()["file_id"]
+
+    # bob (SELF) cannot list or download attachments of alice's feedback.
+    assert (
+        client.get(
+            f"/api/v1/feedbacks/{alice_fb['id']}/attachments", headers=headers["bob"]
+        ).status_code
+        == 404
+    )
+    assert (
+        client.get(
+            f"/api/v1/feedbacks/{alice_fb['id']}/attachments/{file_id}/download",
+            headers=headers["bob"],
+        ).status_code
+        == 404
+    )
+
+
+def test_all_scope_can_access_others_attachment(feedback_api):
+    client, _session, headers, _ids = feedback_api
+    alice_fb = _create(client, headers["alice"], title="alice附件2")
+    file_id = _upload(client, headers["alice"], alice_fb["id"], content=b"body2").json()["file_id"]
+
+    # CS (ALL) can list and download.
+    assert (
+        client.get(
+            f"/api/v1/feedbacks/{alice_fb['id']}/attachments", headers=headers["cs"]
+        ).status_code
+        == 200
+    )
+    dl = client.get(
+        f"/api/v1/feedbacks/{alice_fb['id']}/attachments/{file_id}/download", headers=headers["cs"]
+    )
+    assert dl.status_code == 200 and dl.content == b"body2"
+
+
+def test_attachment_download_requires_matching_feedback(feedback_api):
+    client, _session, headers, _ids = feedback_api
+    fb1 = _create(client, headers["cs"], title="fb1")
+    fb2 = _create(client, headers["cs"], title="fb2")
+    file_id = _upload(client, headers["cs"], fb1["id"]).json()["file_id"]
+    # A file attached to fb1 cannot be downloaded via fb2's path.
+    assert (
+        client.get(
+            f"/api/v1/feedbacks/{fb2['id']}/attachments/{file_id}/download", headers=headers["cs"]
+        ).status_code
+        == 404
+    )
+
+
+# --------------------------------------------------------------------------- #
+# comments                                                                     #
+# --------------------------------------------------------------------------- #
+def test_comment_list_and_create(feedback_api):
+    client, session, headers, _ids = feedback_api
+    fb = _create(client, headers["cs"], title="评论反馈")
+
+    created = client.post(
+        f"/api/v1/feedbacks/{fb['id']}/comments",
+        headers=headers["cs"],
+        json={"content": "第一条评论"},
+    )
+    assert created.status_code == 200, created.text
+    assert created.json()["content"] == "第一条评论"
+    assert created.json()["entity_type"] == "FEEDBACK"
+
+    listed = client.get(f"/api/v1/feedbacks/{fb['id']}/comments", headers=headers["cs"])
+    assert listed.status_code == 200
+    assert [c["content"] for c in listed.json()] == ["第一条评论"]
+
+    # COMMENT_CREATE is audited.
+    assert (
+        session.scalar(
+            select(OperationLog).where(
+                OperationLog.entity_type == "FEEDBACK",
+                OperationLog.entity_id == fb["id"],
+                OperationLog.action == "COMMENT_CREATE",
+            )
+        )
+        is not None
+    )
+
+
+def test_self_cannot_comment_on_others_feedback(feedback_api):
+    client, _session, headers, _ids = feedback_api
+    alice_fb = _create(client, headers["alice"], title="alice评论")
+    # bob (SELF) can neither read nor post comments on alice's feedback.
+    assert (
+        client.get(
+            f"/api/v1/feedbacks/{alice_fb['id']}/comments", headers=headers["bob"]
+        ).status_code
+        == 404
+    )
+    assert (
+        client.post(
+            f"/api/v1/feedbacks/{alice_fb['id']}/comments",
+            headers=headers["bob"],
+            json={"content": "越权评论"},
+        ).status_code
+        == 404
+    )
+    # alice can comment on her own.
+    assert (
+        client.post(
+            f"/api/v1/feedbacks/{alice_fb['id']}/comments",
+            headers=headers["alice"],
+            json={"content": "我的评论"},
+        ).status_code
+        == 200
+    )
+
+
+# --------------------------------------------------------------------------- #
 # OpenAPI contract sync                                                        #
 # --------------------------------------------------------------------------- #
 @pytest.mark.parametrize("spec_name", ["openapi-v1.5.yaml", "需求与版本管理系统_V1.5_OpenAPI.yaml"])
@@ -621,6 +856,17 @@ def test_openapi_specs_declare_feedback_status_contract(spec_name):
         "module_id",
         "keyword",
     } <= list_params
+
+    # Attachment + comment endpoints and their schemas are declared.
+    assert "get" in spec["paths"]["/feedbacks/{feedback_id}/attachments"]
+    assert "post" in spec["paths"]["/feedbacks/{feedback_id}/attachments"]
+    assert "get" in spec["paths"]["/feedbacks/{feedback_id}/attachments/{file_id}/download"]
+    assert "get" in spec["paths"]["/feedbacks/{feedback_id}/comments"]
+    assert "post" in spec["paths"]["/feedbacks/{feedback_id}/comments"]
+    for schema_name in ("AttachmentOut", "CommentCreate", "CommentOut"):
+        assert schema_name in schemas
+    # Business attachment metadata must never expose storage_key.
+    assert "storage_key" not in schemas["AttachmentOut"]["properties"]
 
 
 def _ids_of(session: Session, username: str) -> int:

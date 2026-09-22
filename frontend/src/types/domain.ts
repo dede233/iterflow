@@ -72,6 +72,24 @@ export interface BusinessModuleItem {
   name: string
   enabled: boolean
 }
+
+export interface AttachmentItem {
+  file_id: number
+  original_name: string
+  size: number
+  mime_type: string
+  created_at: string
+  created_by?: number | null
+}
+
+export interface CommentItem {
+  id: number
+  entity_type: string
+  entity_id: number
+  content: string
+  created_at: string
+  created_by?: number | null
+}
 export interface Requirement { id:number; requirement_no:string; title:string; requirement_type:string; source:string; priority:string; status:string; owner_id?:number|null; current_version_id?:number|null; description:string; acceptance_criteria?:string|null; revision:number }
 export interface VersionItem { id:number; version_no:string; name:string; status:string; owner_id?:number|null; planned_release_date?:string|null; released_at?:string|null; revision:number }
 export type NotificationType = 'SYSTEM' | 'FEEDBACK' | 'REQUIREMENT' | 'VERSION' | 'RELEASE'

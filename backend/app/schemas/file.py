@@ -22,3 +22,16 @@ class FileOut(BaseModel):
 class FileExistsOut(BaseModel):
     file_id: int
     exists: bool
+
+
+class AttachmentOut(BaseModel):
+    """Business-facing attachment metadata. Never exposes storage_key/path."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    file_id: int
+    original_name: str
+    size: int
+    mime_type: str
+    created_at: datetime
+    created_by: int | None

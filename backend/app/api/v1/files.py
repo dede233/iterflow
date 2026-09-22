@@ -6,23 +6,12 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import require_permission
 from app.core.database import get_db
-from app.core.exceptions import AppError
 from app.models.entities import User
 from app.repositories.user_repository import UserRepository
 from app.schemas.file import FileExistsOut, FileOut
-from app.services.file_service import FileService
+from app.services.file_service import MAX_UPLOAD_SIZE, FileService, validate_upload
 
 router = APIRouter(prefix="/files", tags=["files"])
-ALLOWED_TYPES = {
-    "image/png",
-    "image/jpeg",
-    "image/webp",
-    "application/pdf",
-    "text/plain",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-}
-MAX_SIZE = 50 * 1024 * 1024
 
 
 def _safe_content_disposition(original_name: str) -> str:
@@ -36,18 +25,14 @@ async def upload_file(
     db: Session = Depends(get_db),
     current: User = Depends(require_permission("sys.file.upload")),
 ) -> FileOut:
-    content = await file.read(MAX_SIZE + 1)
-    if len(content) > MAX_SIZE:
-        raise AppError(42220, "单文件不能超过50MB", 422)
-    if file.content_type not in ALLOWED_TYPES:
-        raise AppError(42221, "不支持的文件类型", 422)
+    content = await file.read(MAX_UPLOAD_SIZE + 1)
     original_name = file.filename or "file"
-    if len(original_name) > 255:
-        raise AppError(42222, "文件名不能超过255个字符", 422)
+    validate_upload(size=len(content), mime_type=file.content_type, original_name=original_name)
+    # validate_upload has already rejected a None/unsupported content type.
     item = FileService(db).upload(
         content=content,
         original_name=original_name,
-        mime_type=file.content_type,
+        mime_type=file.content_type or "application/octet-stream",
         actor=current,
     )
     return FileOut.model_validate(item)

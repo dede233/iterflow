@@ -4,9 +4,11 @@ from sqlalchemy.orm import Session
 from app.core.exceptions import AppError, ConflictError, NotFoundError
 from app.core.ids import next_business_no
 from app.models.entities import (
+    AttachmentRelation,
     BusinessModule,
     BusinessSystem,
     Feedback,
+    FileObject,
     Requirement,
     RequirementFeedback,
     Version,
@@ -88,6 +90,65 @@ class FeedbackService:
             if module.system_id != system_id:
                 raise AppError(42233, "模块不属于所选系统", 422, {"module_id": module_id})
 
+    def validate_filter_system_module(self, system_id: int | None, module_id: int | None) -> None:
+        """Validate list filter ids: they must exist, but disabled is allowed so
+        historical feedback can still be filtered. Unknown ids are 422 (not a
+        silent empty result); a module must belong to the given system.
+        """
+        system = self.db.get(BusinessSystem, system_id) if system_id is not None else None
+        if system_id is not None and system is None:
+            raise AppError(42234, "筛选的系统不存在", 422, {"system_id": system_id})
+        if module_id is not None:
+            module = self.db.get(BusinessModule, module_id)
+            if module is None:
+                raise AppError(42235, "筛选的模块不存在", 422, {"module_id": module_id})
+            if system_id is not None and module.system_id != system_id:
+                raise AppError(42235, "模块不属于所选系统", 422, {"module_id": module_id})
+
+    # ------------------------------------------------------------------ #
+    # Attachments (business relation only stores file_id; never a path).  #
+    # Access is authorized by the *feedback* data scope + relation, done  #
+    # by the router before calling these methods.                         #
+    # ------------------------------------------------------------------ #
+    def list_attachment_files(self, feedback_id: int) -> list[FileObject]:
+        return list(
+            self.db.scalars(
+                select(FileObject)
+                .join(AttachmentRelation, AttachmentRelation.file_id == FileObject.id)
+                .where(
+                    AttachmentRelation.entity_type == "FEEDBACK",
+                    AttachmentRelation.entity_id == feedback_id,
+                )
+                .order_by(AttachmentRelation.id.asc())
+            ).all()
+        )
+
+    def attachment_file(self, feedback_id: int, file_id: int) -> FileObject | None:
+        return self.db.scalar(
+            select(FileObject)
+            .join(AttachmentRelation, AttachmentRelation.file_id == FileObject.id)
+            .where(
+                AttachmentRelation.entity_type == "FEEDBACK",
+                AttachmentRelation.entity_id == feedback_id,
+                FileObject.id == file_id,
+            )
+        )
+
+    def attach_file(self, feedback_id: int, file_id: int, operator_id: int) -> None:
+        existing = self.db.scalar(
+            select(AttachmentRelation.id).where(
+                AttachmentRelation.entity_type == "FEEDBACK",
+                AttachmentRelation.entity_id == feedback_id,
+                AttachmentRelation.file_id == file_id,
+            )
+        )
+        if existing is None:
+            self.db.add(
+                AttachmentRelation(file_id=file_id, entity_type="FEEDBACK", entity_id=feedback_id)
+            )
+        self.audit.log("FEEDBACK", feedback_id, "ATTACHMENT_ADD", after={"file_id": file_id})
+        self.db.commit()
+
     def create(self, payload: FeedbackCreate, operator_id: int) -> Feedback:
         self._validate_system_module(payload.system_id, payload.module_id)
         item = Feedback(
@@ -115,6 +176,11 @@ class FeedbackService:
         effective_module = values.get("module_id", current.module_id)
         if "system_id" in values or "module_id" in values:
             self._validate_system_module(effective_system, effective_module)
+        # Snapshot the real old values of the fields being changed *before* the
+        # atomic UPDATE (synchronize_session mutates this in-session object).
+        changed_fields = [key for key in values if key != "updated_by"]
+        before_values = {key: getattr(current, key) for key in changed_fields}
+        after_values = {key: values[key] for key in changed_fields}
         values["updated_by"] = operator_id
         if not self.repo.update_with_revision(feedback_id, payload.revision, values):
             latest = self.repo.get(feedback_id)
@@ -132,8 +198,8 @@ class FeedbackService:
             "FEEDBACK",
             feedback_id,
             "UPDATE",
-            before={"revision": payload.revision},
-            after=values,
+            before=before_values,
+            after=after_values,
         )
         self.db.commit()
         updated = self.repo.get(feedback_id)

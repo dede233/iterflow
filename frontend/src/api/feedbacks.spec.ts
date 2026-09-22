@@ -19,7 +19,14 @@ axios.defaults.adapter = async (config: InternalAxiosRequestConfig) => {
   return Promise.reject({ isAxiosError: true, config, response })
 }
 
-const { createFeedback, changeFeedbackStatus, listFeedbacks } = await import('@/api/feedbacks')
+const {
+  createFeedback,
+  changeFeedbackStatus,
+  listFeedbacks,
+  createFeedbackComment,
+  listFeedbackComments,
+  uploadFeedbackAttachment,
+} = await import('@/api/feedbacks')
 const { availableStatusActions } = await import('@/constants/feedback')
 
 beforeEach(() => {
@@ -101,5 +108,29 @@ describe('feedback API DTO mapping', () => {
     await expect(
       changeFeedbackStatus(3, { status: 'ACCEPTED', revision: 1 }),
     ).rejects.toMatchObject({ response: { status: 409 } })
+  })
+
+  it('uploadFeedbackAttachment POSTs multipart to the attachments path', async () => {
+    nextResponse = { status: 200, data: { file_id: 9, original_name: 'a.txt' } }
+    const file = new File([new Blob(['x'])], 'a.txt', { type: 'text/plain' })
+    const result = await uploadFeedbackAttachment(5, file)
+    expect(result).toMatchObject({ file_id: 9 })
+    expect(lastRequest?.method).toBe('post')
+    expect(lastRequest?.url).toBe('/feedbacks/5/attachments')
+  })
+
+  it('listFeedbackComments GETs the comments path', async () => {
+    nextResponse = { status: 200, data: [] }
+    await listFeedbackComments(5)
+    expect(lastRequest?.method).toBe('get')
+    expect(lastRequest?.url).toBe('/feedbacks/5/comments')
+  })
+
+  it('createFeedbackComment POSTs {content} to the comments path', async () => {
+    nextResponse = { status: 200, data: { id: 1, content: 'hi' } }
+    await createFeedbackComment(5, 'hi')
+    expect(lastRequest?.method).toBe('post')
+    expect(lastRequest?.url).toBe('/feedbacks/5/comments')
+    expect(JSON.parse(String(lastRequest?.data))).toEqual({ content: 'hi' })
   })
 })

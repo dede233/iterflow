@@ -2,7 +2,8 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
-import { createFeedback } from '@/api/feedbacks'
+import type { UploadFile, UploadUserFile } from 'element-plus'
+import { createFeedback, uploadFeedbackAttachment } from '@/api/feedbacks'
 import { listSystems } from '@/api/systems'
 import { usePermission } from '@/composables/usePermission'
 import { FEEDBACK_TYPES, FEEDBACK_URGENCIES } from '@/constants/feedback'
@@ -14,6 +15,7 @@ const saving = ref(false)
 const systems = ref<BusinessSystemItem[]>([])
 const modules = ref<BusinessModuleItem[]>([])
 const canReadSystems = computed(() => can('sys.system.view'))
+const fileList = ref<UploadUserFile[]>([])
 
 const form = reactive({
   title: '',
@@ -57,6 +59,11 @@ async function submit(): Promise<void> {
       actual_result: form.actual_result.trim() || null,
       reproduce_steps: form.reproduce_steps.trim() || null,
     })
+    // Upload any staged attachments against the new feedback id.
+    for (const item of fileList.value) {
+      const raw = (item as UploadFile).raw
+      if (raw) await uploadFeedbackAttachment(created.id, raw as File)
+    }
     ElMessage.success('反馈已提交')
     await router.replace(`/feedbacks/${created.id}`)
   } finally {
@@ -127,6 +134,19 @@ onMounted(async () => {
         <el-form-item label="复现步骤">
           <el-input v-model="form.reproduce_steps" type="textarea" :rows="3" />
         </el-form-item>
+        <el-form-item label="附件">
+          <el-upload
+            v-model:file-list="fileList"
+            :auto-upload="false"
+            :limit="9"
+            multiple
+          >
+            <el-button>选择文件</el-button>
+            <template #tip>
+              <div class="upload-tip">提交后自动上传；支持图片 / PDF / 文本 / Office 文档，单文件 ≤ 50MB。</div>
+            </template>
+          </el-upload>
+        </el-form-item>
         <div class="actions">
           <el-button @click="router.back()">取消</el-button>
           <el-button type="primary" native-type="submit" :loading="saving">提交</el-button>
@@ -138,4 +158,5 @@ onMounted(async () => {
 
 <style scoped>
 .actions { display: flex; justify-content: flex-end; gap: 8px; }
+.upload-tip { color: #94a3b8; font-size: 12px; line-height: 1.5; }
 </style>

@@ -302,6 +302,117 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Conflict'
+  /feedbacks/{feedback_id}/attachments:
+    get:
+      tags:
+      - Feedback
+      summary: 反馈附件列表
+      security: &id002
+      - bearerAuth: []
+      parameters:
+      - &id003
+        name: feedback_id
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AttachmentOut'
+    post:
+      tags:
+      - Feedback
+      summary: 上传反馈附件
+      description: 在反馈数据范围内上传并以 file_id 建立 FEEDBACK 附件关系；仅存 file_id，不存物理路径。
+      security: *id002
+      parameters:
+      - *id003
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+              - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttachmentOut'
+  /feedbacks/{feedback_id}/attachments/{file_id}/download:
+    get:
+      tags:
+      - Feedback
+      summary: 下载反馈附件
+      description: 按反馈数据范围 + 附件关系鉴权，非文件属主鉴权。
+      security: *id002
+      parameters:
+      - *id003
+      - name: file_id
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: 文件流
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: 附件不存在或无权访问
+  /feedbacks/{feedback_id}/comments:
+    get:
+      tags:
+      - Feedback
+      summary: 反馈评论列表
+      security: *id002
+      parameters:
+      - *id003
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CommentOut'
+    post:
+      tags:
+      - Feedback
+      summary: 发表反馈评论
+      security: *id002
+      parameters:
+      - *id003
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommentCreate'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentOut'
   /feedbacks/{feedback_id}/convert:
     post:
       tags:
@@ -340,7 +451,7 @@ paths:
       - Requirement
       summary: 需求列表
       security: *id001
-      parameters: &id002
+      parameters: &id004
       - name: page
         in: query
         required: false
@@ -498,7 +609,7 @@ paths:
       - Version
       summary: 版本列表
       security: *id001
-      parameters: *id002
+      parameters: *id004
       responses:
         '200':
           description: 成功
@@ -644,7 +755,7 @@ paths:
       - Release
       summary: 发布记录
       security: *id001
-      parameters: *id002
+      parameters: *id004
       responses:
         '200':
           description: 成功
@@ -756,7 +867,7 @@ paths:
       - System
       summary: 用户列表
       security: *id001
-      parameters: *id002
+      parameters: *id004
       responses:
         '200':
           description: 成功
@@ -2110,3 +2221,60 @@ components:
           type: integer
         total:
           type: integer
+    AttachmentOut:
+      type: object
+      required:
+      - file_id
+      - original_name
+      - size
+      - mime_type
+      - created_at
+      properties:
+        file_id:
+          type: integer
+        original_name:
+          type: string
+        size:
+          type: integer
+        mime_type:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        created_by:
+          type:
+          - integer
+          - 'null'
+    CommentCreate:
+      type: object
+      required:
+      - content
+      properties:
+        content:
+          type: string
+          minLength: 1
+          maxLength: 5000
+    CommentOut:
+      type: object
+      required:
+      - id
+      - entity_type
+      - entity_id
+      - content
+      - created_at
+      properties:
+        id:
+          type: integer
+        entity_type:
+          type: string
+        entity_id:
+          type: integer
+        content:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        created_by:
+          type:
+          - integer
+          - 'null'

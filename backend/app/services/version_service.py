@@ -196,6 +196,118 @@ class VersionService:
             },
         )
 
+    def _version_conflict(self, version_id: int) -> ConflictError:
+        latest = self.db.scalar(
+            select(Version)
+            .where(Version.id == version_id)
+            .execution_options(populate_existing=True)
+        )
+        return ConflictError(
+            "版本已被其他用户修改",
+            {
+                "current_revision": latest.revision if latest else None,
+                "current_updated_at": latest.updated_at.isoformat() if latest else None,
+                "current_updated_by": latest.updated_by if latest else None,
+            },
+        )
+
+    def _lock_versions(self, version_ids: set[int]) -> dict[int, Version]:
+        """Lock Version aggregates in id order to avoid relation-edit races."""
+        versions = list(
+            self.db.scalars(
+                select(Version)
+                .where(Version.id.in_(sorted(version_ids)))
+                .order_by(Version.id)
+                .with_for_update()
+                .execution_options(populate_existing=True)
+            ).all()
+        )
+        return {version.id: version for version in versions}
+
+    def _lock_version(self, version_id: int, *, message: str = "版本不存在") -> Version:
+        version = self._lock_versions({version_id}).get(version_id)
+        if version is None:
+            raise NotFoundError(message)
+        return version
+
+    def _ensure_version_revision(self, version: Version, expected_revision: int) -> None:
+        if version.revision != expected_revision:
+            raise self._version_conflict(version.id)
+
+    def _bump_version_revision(
+        self, version: Version, expected_revision: int, operator_id: int
+    ) -> None:
+        """Advance a locked Version after its requirement set changes."""
+        self._ensure_version_revision(version, expected_revision)
+        if not self.repo.update_with_revision(
+            version.id, expected_revision, {"updated_by": operator_id}
+        ):
+            raise self._version_conflict(version.id)
+        self.db.refresh(version)
+
+    def _audit_requirement_relation(
+        self,
+        action: str,
+        *,
+        version_id: int,
+        requirement_id: int,
+        before_version_id: int | None,
+        before_current_version_id: int | None,
+        after_version_id: int | None,
+        reason: str | None = None,
+    ) -> None:
+        after: dict[str, Any] = {
+            "requirement_id": requirement_id,
+            "version_id": after_version_id,
+            "current_version_id": after_version_id,
+        }
+        if reason is not None:
+            after["reason"] = reason
+        self.audit.log(
+            "VERSION",
+            version_id,
+            action,
+            before={
+                "requirement_id": requirement_id,
+                "version_id": before_version_id,
+                "current_version_id": before_current_version_id,
+            },
+            after=after,
+        )
+
+    def attach_new_requirement(
+        self,
+        version_id: int,
+        requirement: Requirement,
+        *,
+        version_revision: int | None,
+        operator_id: int,
+    ) -> None:
+        """Attach a just-created Requirement without committing the outer transaction."""
+        if version_revision is None:  # schema validation normally catches this.
+            raise AppError(42241, "关联版本时必须提供 version_revision", 422)
+        version = self._lock_version(version_id, message="目标版本不存在")
+        self._ensure_mutable(version)
+        self._ensure_version_revision(version, version_revision)
+
+        previous_current_version_id = requirement.current_version_id
+        requirement.current_version_id = version_id
+        requirement.status = self._planned_status(requirement.status)
+        self.db.add(
+            VersionRequirement(
+                version_id=version_id, requirement_id=requirement.id, added_by=operator_id
+            )
+        )
+        self._audit_requirement_relation(
+            "VERSION_REQUIREMENT_ADD",
+            version_id=version_id,
+            requirement_id=requirement.id,
+            before_version_id=None,
+            before_current_version_id=previous_current_version_id,
+            after_version_id=version_id,
+        )
+        self._bump_version_revision(version, version_revision, operator_id)
+
     def add_requirement(
         self,
         version_id: int,
@@ -204,10 +316,9 @@ class VersionService:
         viewer_scope: DataScope,
         viewer_id: int,
     ) -> Version:
-        version = self.repo.get(version_id)
-        if not version:
-            raise NotFoundError("版本不存在")
+        version = self._lock_version(version_id)
         self._ensure_mutable(version)
+        self._ensure_version_revision(version, payload.version_revision)
         req_repo = RequirementRepository(self.db)
         requirement = req_repo.get_scoped(payload.requirement_id, viewer_id, viewer_scope)
         if requirement is None:
@@ -222,6 +333,7 @@ class VersionService:
                 409,
                 {"version_id": existing.version_id},
             )
+        previous_current_version_id = requirement.current_version_id
         if not req_repo.update_with_revision(
             requirement.id,
             payload.revision,
@@ -237,12 +349,15 @@ class VersionService:
                 version_id=version_id, requirement_id=requirement.id, added_by=operator_id
             )
         )
-        self.audit.log(
-            "VERSION",
-            version_id,
+        self._audit_requirement_relation(
             "VERSION_REQUIREMENT_ADD",
-            after={"requirement_id": requirement.id},
+            version_id=version_id,
+            requirement_id=requirement.id,
+            before_version_id=None,
+            before_current_version_id=previous_current_version_id,
+            after_version_id=version_id,
         )
+        self._bump_version_revision(version, payload.version_revision, operator_id)
         self.db.commit()
         self.db.refresh(version)
         return version
@@ -254,14 +369,17 @@ class VersionService:
         payload: RemoveRequirementRequest,
         operator_id: int,
     ) -> Version:
-        version = self.repo.get(version_id)
-        if not version:
-            raise NotFoundError("版本不存在")
+        version = self._lock_version(version_id)
         self._ensure_mutable(version)
+        self._ensure_version_revision(version, payload.version_revision)
         relation = self.repo.active_relation(version_id, requirement_id)
         if relation is None:
             raise NotFoundError("该需求不在此版本中")
         req_repo = RequirementRepository(self.db)
+        requirement = req_repo.get(requirement_id)
+        if requirement is None:
+            raise NotFoundError("需求不存在")
+        previous_current_version_id = requirement.current_version_id
         if not req_repo.update_with_revision(
             requirement_id,
             payload.revision,
@@ -279,13 +397,16 @@ class VersionService:
                 removed_reason=payload.reason,
             )
         )
-        self.audit.log(
-            "VERSION",
-            version_id,
+        self._audit_requirement_relation(
             "VERSION_REQUIREMENT_REMOVE",
-            before={"requirement_id": requirement_id},
-            after={"reason": payload.reason},
+            version_id=version_id,
+            requirement_id=requirement_id,
+            before_version_id=version_id,
+            before_current_version_id=previous_current_version_id,
+            after_version_id=None,
+            reason=payload.reason,
         )
+        self._bump_version_revision(version, payload.version_revision, operator_id)
         self.db.commit()
         self.db.refresh(version)
         return version
@@ -298,22 +419,40 @@ class VersionService:
         viewer_scope: DataScope,
         viewer_id: int,
     ) -> Version:
-        target = self.repo.get(target_version_id)
-        if not target:
-            raise NotFoundError("目标版本不存在")
-        self._ensure_mutable(target)
         req_repo = RequirementRepository(self.db)
         requirement = req_repo.get_scoped(payload.requirement_id, viewer_id, viewer_scope)
         if requirement is None:
             raise NotFoundError("需求不存在")
-        old = self.repo.active_relation_of_requirement(requirement.id)
+
+        # Lock the source and target Version aggregates in a deterministic order.
+        # If a concurrent move changed the source before we acquired the locks,
+        # include that new source and re-read until the relation is stable.
+        version_ids = {target_version_id}
+        initial_relation = self.repo.active_relation_of_requirement(requirement.id)
+        if initial_relation is not None:
+            version_ids.add(initial_relation.version_id)
+        while True:
+            locked_versions = self._lock_versions(version_ids)
+            target = locked_versions.get(target_version_id)
+            if target is None:
+                raise NotFoundError("目标版本不存在")
+            old = self.repo.active_relation_of_requirement(requirement.id)
+            if old is None or old.version_id in version_ids:
+                break
+            version_ids.add(old.version_id)
+
+        self._ensure_mutable(target)
+        self._ensure_version_revision(target, payload.version_revision)
         old_version_id = old.version_id if old else None
+        old_version = locked_versions.get(old_version_id) if old_version_id is not None else None
         if old is not None:
             if old.version_id == target_version_id:
                 raise AppError(40933, "需求已在目标版本中", 409)
-            old_version = self.repo.get(old.version_id)
-            if old_version is not None:
-                self._ensure_mutable(old_version)  # cannot move out of a frozen source
+            if old_version is None:
+                raise NotFoundError("原版本不存在")
+            self._ensure_mutable(old_version)  # cannot move out of a frozen source
+
+        previous_current_version_id = requirement.current_version_id
         if not req_repo.update_with_revision(
             requirement.id,
             payload.revision,
@@ -343,13 +482,18 @@ class VersionService:
                 version_id=target_version_id, requirement_id=requirement.id, added_by=operator_id
             )
         )
-        self.audit.log(
-            "VERSION",
-            target_version_id,
+        self._audit_requirement_relation(
             "VERSION_REQUIREMENT_MOVE",
-            before={"from_version_id": old_version_id, "requirement_id": requirement.id},
-            after={"to_version_id": target_version_id, "reason": payload.reason},
+            version_id=target_version_id,
+            requirement_id=requirement.id,
+            before_version_id=old_version_id,
+            before_current_version_id=previous_current_version_id,
+            after_version_id=target_version_id,
+            reason=payload.reason,
         )
+        self._bump_version_revision(target, payload.version_revision, operator_id)
+        if old_version is not None:
+            self._bump_version_revision(old_version, old_version.revision, operator_id)
         self.db.commit()
         self.db.refresh(target)
         return target

@@ -185,7 +185,7 @@ async function submitAdd(): Promise<void> {
   try {
     // Fetch the requirement's current revision for the optimistic lock.
     const req = await getRequirement(addRequirementId.value)
-    await addVersionRequirement(item.value.id, req.id, req.revision)
+    await addVersionRequirement(item.value.id, req.id, req.revision, item.value.revision)
     ElMessage.success('需求已加入版本')
     addDialog.value = false
     addRequirementId.value = null
@@ -220,10 +220,12 @@ async function submitMove(): Promise<void> {
   }
   moveSubmitting.value = true
   try {
+    const targetVersion = await getVersion(moveTarget.target_version_id)
     await moveVersionRequirement(
       moveTarget.target_version_id,
       moveTarget.requirement.id,
       moveTarget.requirement.revision,
+      targetVersion.revision,
       moveTarget.reason.trim(),
     )
     ElMessage.success('需求已迁移')
@@ -238,7 +240,7 @@ async function submitMove(): Promise<void> {
 
 async function removeReq(req: Requirement): Promise<void> {
   if (!item.value) return
-  await removeVersionRequirement(item.value.id, req.id, req.revision, null)
+  await removeVersionRequirement(item.value.id, req.id, req.revision, item.value.revision, null)
   ElMessage.success('需求已移出')
   await load()
 }

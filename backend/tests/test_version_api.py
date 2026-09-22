@@ -22,7 +22,7 @@ from app.models.entities import (
     Version,
     VersionRequirement,
 )
-from app.models.enums import DataScope, UserStatus
+from app.models.enums import DataScope, UserStatus, VersionStatus
 
 SPEC_DIR = Path(__file__).resolve().parents[2] / "spec"
 
@@ -210,9 +210,14 @@ def test_add_list_and_stats(ver_api):
     added = client.post(
         f"/api/v1/versions/{v['id']}/requirements",
         headers=headers["alice"],
-        json={"requirement_id": req["id"], "revision": req["revision"]},
+        json={
+            "requirement_id": req["id"],
+            "revision": req["revision"],
+            "version_revision": v["revision"],
+        },
     )
     assert added.status_code == 200, added.text
+    assert added.json()["revision"] == v["revision"] + 1
 
     # VersionRequirement active + current_version_id + status PLANNED synced.
     rel = session.scalar(
@@ -243,7 +248,11 @@ def test_add_requirement_already_in_a_version_conflicts(ver_api):
     first = client.post(
         f"/api/v1/versions/{v1['id']}/requirements",
         headers=headers["alice"],
-        json={"requirement_id": req["id"], "revision": req["revision"]},
+        json={
+            "requirement_id": req["id"],
+            "revision": req["revision"],
+            "version_revision": v1["revision"],
+        },
     )
     assert first.status_code == 200
     latest = client.get(f"/api/v1/requirements/{req['id']}", headers=headers["alice"]).json()
@@ -252,7 +261,11 @@ def test_add_requirement_already_in_a_version_conflicts(ver_api):
         client.post(
             f"/api/v1/versions/{v1['id']}/requirements",
             headers=headers["alice"],
-            json={"requirement_id": req["id"], "revision": latest["revision"]},
+            json={
+                "requirement_id": req["id"],
+                "revision": latest["revision"],
+                "version_revision": first.json()["revision"],
+            },
         ).status_code
         == 409
     )
@@ -260,7 +273,11 @@ def test_add_requirement_already_in_a_version_conflicts(ver_api):
         client.post(
             f"/api/v1/versions/{v2['id']}/requirements",
             headers=headers["alice"],
-            json={"requirement_id": req["id"], "revision": latest["revision"]},
+            json={
+                "requirement_id": req["id"],
+                "revision": latest["revision"],
+                "version_revision": v2["revision"],
+            },
         ).status_code
         == 409
     )
@@ -270,19 +287,29 @@ def test_remove_requirement(ver_api):
     client, session, headers, _ids = ver_api
     v = _version(client, headers["alice"])
     req = _requirement(client, headers["alice"])
-    client.post(
+    added = client.post(
         f"/api/v1/versions/{v['id']}/requirements",
         headers=headers["alice"],
-        json={"requirement_id": req["id"], "revision": req["revision"]},
+        json={
+            "requirement_id": req["id"],
+            "revision": req["revision"],
+            "version_revision": v["revision"],
+        },
     )
+    assert added.status_code == 200, added.text
     latest = client.get(f"/api/v1/requirements/{req['id']}", headers=headers["alice"]).json()
     removed = client.request(
         "DELETE",
         f"/api/v1/versions/{v['id']}/requirements/{req['id']}",
         headers=headers["alice"],
-        json={"revision": latest["revision"], "reason": "移出"},
+        json={
+            "revision": latest["revision"],
+            "version_revision": added.json()["revision"],
+            "reason": "移出",
+        },
     )
     assert removed.status_code == 200, removed.text
+    assert removed.json()["revision"] == added.json()["revision"] + 1
     detail = client.get(f"/api/v1/requirements/{req['id']}", headers=headers["alice"]).json()
     assert detail["current_version_id"] is None
     rel = session.scalar(
@@ -298,11 +325,16 @@ def test_move_requirement_closes_old_and_opens_new(ver_api):
     v1 = _version(client, headers["alice"], version_no="V1.0.0")
     v2 = _version(client, headers["alice"], version_no="V1.0.1")
     req = _requirement(client, headers["alice"])
-    client.post(
+    added = client.post(
         f"/api/v1/versions/{v1['id']}/requirements",
         headers=headers["alice"],
-        json={"requirement_id": req["id"], "revision": req["revision"]},
+        json={
+            "requirement_id": req["id"],
+            "revision": req["revision"],
+            "version_revision": v1["revision"],
+        },
     )
+    assert added.status_code == 200, added.text
     latest = client.get(f"/api/v1/requirements/{req['id']}", headers=headers["alice"]).json()
     moved = client.post(
         f"/api/v1/versions/{v2['id']}/requirements/move",
@@ -310,10 +342,13 @@ def test_move_requirement_closes_old_and_opens_new(ver_api):
         json={
             "requirement_id": req["id"],
             "revision": latest["revision"],
+            "version_revision": v2["revision"],
             "reason": "迁移到补丁版本",
         },
     )
     assert moved.status_code == 200, moved.text
+    assert moved.json()["revision"] == v2["revision"] + 1
+    assert session.get(Version, v1["id"]).revision == v1["revision"] + 2
     detail = client.get(f"/api/v1/requirements/{req['id']}", headers=headers["alice"]).json()
     assert detail["current_version_id"] == v2["id"]
     active = session.scalars(
@@ -337,15 +372,25 @@ def test_move_stale_revision_rolls_back(ver_api):
     v1 = _version(client, headers["alice"], version_no="V1.0.0")
     v2 = _version(client, headers["alice"], version_no="V1.0.1")
     req = _requirement(client, headers["alice"])
-    client.post(
+    added = client.post(
         f"/api/v1/versions/{v1['id']}/requirements",
         headers=headers["alice"],
-        json={"requirement_id": req["id"], "revision": req["revision"]},
+        json={
+            "requirement_id": req["id"],
+            "revision": req["revision"],
+            "version_revision": v1["revision"],
+        },
     )
+    assert added.status_code == 200, added.text
     resp = client.post(
         f"/api/v1/versions/{v2['id']}/requirements/move",
         headers=headers["alice"],
-        json={"requirement_id": req["id"], "revision": 999, "reason": "stale move"},
+        json={
+            "requirement_id": req["id"],
+            "revision": 999,
+            "version_revision": v2["revision"],
+            "reason": "stale move",
+        },
     )
     assert resp.status_code == 409
     # nothing changed: still active in v1, no relation to v2
@@ -364,18 +409,51 @@ def test_move_stale_revision_rolls_back(ver_api):
 # --------------------------------------------------------------------------- #
 # freeze (READY / RELEASED / CANCELED)                                        #
 # --------------------------------------------------------------------------- #
-def test_ready_version_is_frozen_for_requirement_changes(ver_api):
+def test_ready_version_is_frozen_for_add_remove_and_move(ver_api):
     client, _session, headers, _ids = ver_api
     v = _version(client, headers["alice"])
-    req = _requirement(client, headers["alice"])
-    ready = _to_ready(client, headers["alice"], v)
+    in_ready = _requirement(client, headers["alice"], title="冻结版本内的需求")
+    added = client.post(
+        f"/api/v1/versions/{v['id']}/requirements",
+        headers=headers["alice"],
+        json={
+            "requirement_id": in_ready["id"],
+            "revision": in_ready["revision"],
+            "version_revision": v["revision"],
+        },
+    )
+    assert added.status_code == 200, added.text
+    ready = _to_ready(client, headers["alice"], added.json())
     assert ready["status"] == "READY"
+
+    req = _requirement(client, headers["alice"], title="候选需求")
     # add -> 409
     assert (
         client.post(
             f"/api/v1/versions/{v['id']}/requirements",
             headers=headers["alice"],
-            json={"requirement_id": req["id"], "revision": req["revision"]},
+            json={
+                "requirement_id": req["id"],
+                "revision": req["revision"],
+                "version_revision": ready["revision"],
+            },
+        ).status_code
+        == 409
+    )
+    # remove -> 409
+    in_ready_latest = client.get(
+        f"/api/v1/requirements/{in_ready['id']}", headers=headers["alice"]
+    ).json()
+    assert (
+        client.request(
+            "DELETE",
+            f"/api/v1/versions/{v['id']}/requirements/{in_ready['id']}",
+            headers=headers["alice"],
+            json={
+                "revision": in_ready_latest["revision"],
+                "version_revision": ready["revision"],
+                "reason": "冻结测试",
+            },
         ).status_code
         == 409
     )
@@ -384,10 +462,168 @@ def test_ready_version_is_frozen_for_requirement_changes(ver_api):
         client.post(
             f"/api/v1/versions/{v['id']}/requirements/move",
             headers=headers["alice"],
-            json={"requirement_id": req["id"], "revision": req["revision"], "reason": "冻结测试"},
+            json={
+                "requirement_id": req["id"],
+                "revision": req["revision"],
+                "version_revision": ready["revision"],
+                "reason": "冻结测试",
+            },
         ).status_code
         == 409
     )
+
+
+def test_released_version_is_frozen_for_relationship_changes(ver_api):
+    client, session, headers, _ids = ver_api
+    v = _version(client, headers["alice"])
+    in_released = _requirement(client, headers["alice"], title="发布版本内的需求")
+    added = client.post(
+        f"/api/v1/versions/{v['id']}/requirements",
+        headers=headers["alice"],
+        json={
+            "requirement_id": in_released["id"],
+            "revision": in_released["revision"],
+            "version_revision": v["revision"],
+        },
+    )
+    assert added.status_code == 200, added.text
+    released = session.get(Version, v["id"])
+    assert released is not None
+    released.status = VersionStatus.RELEASED
+    session.commit()
+    frozen = client.get(f"/api/v1/versions/{v['id']}", headers=headers["alice"]).json()
+    candidate = _requirement(client, headers["alice"], title="发布后候选需求")
+
+    assert (
+        client.post(
+            f"/api/v1/versions/{v['id']}/requirements",
+            headers=headers["alice"],
+            json={
+                "requirement_id": candidate["id"],
+                "revision": candidate["revision"],
+                "version_revision": frozen["revision"],
+            },
+        ).status_code
+        == 409
+    )
+    in_released_latest = client.get(
+        f"/api/v1/requirements/{in_released['id']}", headers=headers["alice"]
+    ).json()
+    assert (
+        client.request(
+            "DELETE",
+            f"/api/v1/versions/{v['id']}/requirements/{in_released['id']}",
+            headers=headers["alice"],
+            json={
+                "revision": in_released_latest["revision"],
+                "version_revision": frozen["revision"],
+                "reason": "发布后冻结",
+            },
+        ).status_code
+        == 409
+    )
+    assert (
+        client.post(
+            f"/api/v1/versions/{v['id']}/requirements/move",
+            headers=headers["alice"],
+            json={
+                "requirement_id": candidate["id"],
+                "revision": candidate["revision"],
+                "version_revision": frozen["revision"],
+                "reason": "发布后冻结",
+            },
+        ).status_code
+        == 409
+    )
+
+
+def test_relationship_changes_use_version_revision_lock(ver_api):
+    client, session, headers, _ids = ver_api
+    v = _version(client, headers["alice"])
+    first_requirement = _requirement(client, headers["alice"], title="并发需求一")
+    second_requirement = _requirement(client, headers["alice"], title="并发需求二")
+
+    first = client.post(
+        f"/api/v1/versions/{v['id']}/requirements",
+        headers=headers["alice"],
+        json={
+            "requirement_id": first_requirement["id"],
+            "revision": first_requirement["revision"],
+            "version_revision": v["revision"],
+        },
+    )
+    assert first.status_code == 200, first.text
+    stale = client.post(
+        f"/api/v1/versions/{v['id']}/requirements",
+        headers=headers["alice"],
+        json={
+            "requirement_id": second_requirement["id"],
+            "revision": second_requirement["revision"],
+            "version_revision": v["revision"],
+        },
+    )
+    assert stale.status_code == 409
+    assert stale.json()["data"]["current_revision"] == first.json()["revision"]
+    assert session.get(Version, v["id"]).revision == first.json()["revision"]
+    active_ids = set(
+        session.scalars(
+            select(VersionRequirement.requirement_id).where(
+                VersionRequirement.version_id == v["id"], VersionRequirement.active.is_(True)
+            )
+        ).all()
+    )
+    assert active_ids == {first_requirement["id"]}
+
+
+def test_create_requirement_with_version_uses_version_service_rules(ver_api):
+    client, session, headers, _ids = ver_api
+    v = _version(client, headers["alice"])
+    created = _requirement(
+        client,
+        headers["alice"],
+        title="创建时关联版本",
+        version_id=v["id"],
+        version_revision=v["revision"],
+    )
+    assert created["current_version_id"] == v["id"]
+    assert created["status"] == "PLANNED"
+    assert session.get(Version, v["id"]).revision == v["revision"] + 1
+    relation = session.scalar(
+        select(VersionRequirement).where(
+            VersionRequirement.version_id == v["id"],
+            VersionRequirement.requirement_id == created["id"],
+            VersionRequirement.active.is_(True),
+        )
+    )
+    assert relation is not None
+    relation_audit = session.scalar(
+        select(OperationLog).where(
+            OperationLog.entity_type == "VERSION",
+            OperationLog.entity_id == v["id"],
+            OperationLog.action == "VERSION_REQUIREMENT_ADD",
+        )
+    )
+    assert relation_audit is not None
+    assert relation_audit.before_data["current_version_id"] is None
+    assert relation_audit.after_data["current_version_id"] == v["id"]
+
+    ready_version = _to_ready(
+        client,
+        headers["alice"],
+        _version(client, headers["alice"], version_no="V1.0.1"),
+    )
+    rejected = client.post(
+        "/api/v1/requirements",
+        headers=headers["alice"],
+        json={
+            "title": "冻结版本不能直接关联",
+            "requirement_type": "FEATURE",
+            "description": "描述内容",
+            "version_id": ready_version["id"],
+            "version_revision": ready_version["revision"],
+        },
+    )
+    assert rejected.status_code == 409
 
 
 # --------------------------------------------------------------------------- #
@@ -410,7 +646,11 @@ def test_self_scope_isolation(ver_api):
         client.post(
             f"/api/v1/versions/{alice_v['id']}/requirements",
             headers=headers["bob"],
-            json={"requirement_id": bob_req["id"], "revision": bob_req["revision"]},
+            json={
+                "requirement_id": bob_req["id"],
+                "revision": bob_req["revision"],
+                "version_revision": alice_v["revision"],
+            },
         ).status_code
         == 404
     )
@@ -443,33 +683,51 @@ def test_audit_actions(ver_api):
     client, session, headers, _ids = ver_api
     v1 = _version(client, headers["alice"], version_no="V1.0.0")
     v2 = _version(client, headers["alice"], version_no="V1.0.1")
-    client.patch(
+    updated = client.patch(
         f"/api/v1/versions/{v1['id']}", headers=headers["alice"], json={"name": "改", "revision": 1}
     )
-    client.patch(
+    assert updated.status_code == 200
+    developing = client.patch(
         f"/api/v1/versions/{v1['id']}/status",
         headers=headers["alice"],
-        json={"status": "DEVELOPING", "revision": 2},
+        json={"status": "DEVELOPING", "revision": updated.json()["revision"]},
     )
+    assert developing.status_code == 200
     req = _requirement(client, headers["alice"])
-    client.post(
+    added = client.post(
         f"/api/v1/versions/{v1['id']}/requirements",
         headers=headers["alice"],
-        json={"requirement_id": req["id"], "revision": req["revision"]},
+        json={
+            "requirement_id": req["id"],
+            "revision": req["revision"],
+            "version_revision": developing.json()["revision"],
+        },
     )
+    assert added.status_code == 200
     latest = client.get(f"/api/v1/requirements/{req['id']}", headers=headers["alice"]).json()
-    client.post(
+    moved = client.post(
         f"/api/v1/versions/{v2['id']}/requirements/move",
         headers=headers["alice"],
-        json={"requirement_id": req["id"], "revision": latest["revision"], "reason": "迁移"},
+        json={
+            "requirement_id": req["id"],
+            "revision": latest["revision"],
+            "version_revision": v2["revision"],
+            "reason": "迁移",
+        },
     )
+    assert moved.status_code == 200
     lt = client.get(f"/api/v1/requirements/{req['id']}", headers=headers["alice"]).json()
-    client.request(
+    removed = client.request(
         "DELETE",
         f"/api/v1/versions/{v2['id']}/requirements/{req['id']}",
         headers=headers["alice"],
-        json={"revision": lt["revision"], "reason": "移出"},
+        json={
+            "revision": lt["revision"],
+            "version_revision": moved.json()["revision"],
+            "reason": "移出",
+        },
     )
+    assert removed.status_code == 200
 
     actions = set(
         session.scalars(
@@ -491,6 +749,27 @@ def test_audit_actions(ver_api):
         )
     )
     assert upd.before_data.get("name") == "首个版本" and upd.after_data.get("name") == "改"
+    relation_logs = {
+        log.action: log
+        for log in session.scalars(
+            select(OperationLog).where(
+                OperationLog.entity_type == "VERSION",
+                OperationLog.action.in_(
+                    [
+                        "VERSION_REQUIREMENT_ADD",
+                        "VERSION_REQUIREMENT_MOVE",
+                        "VERSION_REQUIREMENT_REMOVE",
+                    ]
+                ),
+            )
+        )
+    }
+    assert relation_logs["VERSION_REQUIREMENT_ADD"].before_data["current_version_id"] is None
+    assert relation_logs["VERSION_REQUIREMENT_ADD"].after_data["current_version_id"] == v1["id"]
+    assert relation_logs["VERSION_REQUIREMENT_MOVE"].before_data["current_version_id"] == v1["id"]
+    assert relation_logs["VERSION_REQUIREMENT_MOVE"].after_data["current_version_id"] == v2["id"]
+    assert relation_logs["VERSION_REQUIREMENT_REMOVE"].before_data["current_version_id"] == v2["id"]
+    assert relation_logs["VERSION_REQUIREMENT_REMOVE"].after_data["current_version_id"] is None
 
 
 # --------------------------------------------------------------------------- #
@@ -510,5 +789,8 @@ def test_openapi_declares_version_contract(spec_name):
     schemas = spec["components"]["schemas"]
     for name in ("VersionOut", "VersionPage", "VersionRequirementsOut", "AddRequirementRequest"):
         assert name in schemas
+    for name in ("AddRequirementRequest", "MoveRequirementRequest", "RemoveRequirementRequest"):
+        assert "version_revision" in schemas[name]["required"]
+    assert "version_revision" in schemas["RequirementCreate"]["properties"]
     # The retired requirement-centric move endpoint must be gone.
     assert "/requirements/{requirement_id}/move-version" not in p

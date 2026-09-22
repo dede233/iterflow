@@ -20,14 +20,12 @@ export const FEEDBACK_URGENCIES = [
   { value: 'CRITICAL', label: '紧急' },
 ] as const
 
-// Full FeedbackStatus (includes downstream statuses used only for filtering/display).
+// Full FeedbackStatus. Feedback is an external-input record, so it deliberately
+// does not mirror the Requirement / Version R&D lifecycle.
 export const FEEDBACK_STATUSES = [
   { value: 'NEW', label: '待处理' },
   { value: 'ACCEPTED', label: '已受理' },
   { value: 'REQUIREMENT_LINKED', label: '已转需求' },
-  { value: 'PLANNED', label: '已排期' },
-  { value: 'DEVELOPING', label: '开发中' },
-  { value: 'TESTING', label: '测试中' },
   { value: 'ONLINE', label: '已上线' },
   { value: 'DUPLICATE', label: '重复' },
   { value: 'CANNOT_REPRODUCE', label: '无法复现' },
@@ -79,9 +77,6 @@ export function feedbackStatusTagType(status: string): string {
       NEW: 'warning',
       ACCEPTED: 'primary',
       REQUIREMENT_LINKED: 'primary',
-      PLANNED: 'primary',
-      DEVELOPING: 'primary',
-      TESTING: 'warning',
       ONLINE: 'success',
       DUPLICATE: 'info',
       CANNOT_REPRODUCE: 'info',

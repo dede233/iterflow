@@ -420,9 +420,7 @@ def test_illegal_transitions_return_409(feedback_api):
     )
 
 
-@pytest.mark.parametrize(
-    "downstream", ["REQUIREMENT_LINKED", "PLANNED", "DEVELOPING", "TESTING", "ONLINE"]
-)
+@pytest.mark.parametrize("downstream", ["REQUIREMENT_LINKED", "ONLINE"])
 def test_manual_downstream_statuses_are_rejected(feedback_api, downstream):
     client, _session, headers, _ids = feedback_api
     fb = _create(client, headers["cs"], title="no-manual-downstream")
@@ -431,6 +429,16 @@ def test_manual_downstream_statuses_are_rejected(feedback_api, downstream):
     assert resp.status_code == 422
     reread = client.get(f"/api/v1/feedbacks/{fb['id']}", headers=headers["cs"])
     assert reread.json()["status"] == "NEW"
+
+
+@pytest.mark.parametrize("removed_status", ["PLANNED", "DEVELOPING", "TESTING"])
+def test_feedback_does_not_define_rnd_lifecycle_statuses(feedback_api, removed_status):
+    client, _session, headers, _ids = feedback_api
+    assert removed_status not in FeedbackStatus._value2member_map_
+    fb = _create(client, headers["cs"], title=f"no-{removed_status.lower()}")
+    # The lifecycle states are neither valid FeedbackStatus values nor manually
+    # assignable transition targets.
+    assert _status(client, headers["cs"], fb["id"], 1, removed_status).status_code == 422
 
 
 def test_status_change_uses_optimistic_lock(feedback_api):

@@ -31,9 +31,8 @@ from app.schemas.feedback import (
 from app.services.audit_service import AuditService
 
 # Frozen Feedback state machine (V1.5). Keys are the current status; values are
-# the human-settable target statuses. Downstream statuses (REQUIREMENT_LINKED,
-# PLANNED, DEVELOPING, TESTING, ONLINE) map to an empty set: they are produced
-# only by convert / version / publish transactions and can never be set here.
+# the human-settable target statuses. Feedback is an external-input record, not
+# an R&D workflow: REQUIREMENT_LINKED and ONLINE are the only automated states.
 ALLOWED_TRANSITIONS: dict[FeedbackStatus, set[ManualFeedbackStatus]] = {
     FeedbackStatus.NEW: {
         ManualFeedbackStatus.ACCEPTED,
@@ -50,9 +49,6 @@ ALLOWED_TRANSITIONS: dict[FeedbackStatus, set[ManualFeedbackStatus]] = {
     FeedbackStatus.CANNOT_REPRODUCE: {ManualFeedbackStatus.NEW},
     FeedbackStatus.CLOSED: {ManualFeedbackStatus.NEW},
     FeedbackStatus.REQUIREMENT_LINKED: set(),
-    FeedbackStatus.PLANNED: set(),
-    FeedbackStatus.DEVELOPING: set(),
-    FeedbackStatus.TESTING: set(),
     FeedbackStatus.ONLINE: set(),
 }
 

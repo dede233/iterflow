@@ -116,6 +116,8 @@ export interface RequirementCreatePayload {
   priority: string
   description: string
   acceptance_criteria?: string | null
+  version_id?: number | null
+  version_revision?: number | null
 }
 
 export interface RequirementUpdatePayload {

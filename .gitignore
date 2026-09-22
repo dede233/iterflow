@@ -17,3 +17,6 @@ backend/.coverage
 backend/htmlcov/
 data/uploads/
 data/test-uploads/
+
+# Local Claude Code tooling (per-machine; never committed)
+.claude/

@@ -598,37 +598,6 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/LinkedFeedbackOut'
-  /requirements/{requirement_id}/move-version:
-    post:
-      tags:
-      - Requirement
-      summary: 调整所属版本
-      security: *id001
-      parameters:
-      - name: requirement_id
-        in: path
-        required: true
-        schema:
-          type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RequirementMoveVersion'
-      responses:
-        '200':
-          description: 成功
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/RequirementOut'
-        '409':
-          description: 并发冲突/非法状态迁移
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Conflict'
   /versions:
     get:
       tags:
@@ -642,7 +611,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
+                $ref: '#/components/schemas/VersionPage'
     post:
       tags:
       - Version
@@ -660,7 +629,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Version'
+                $ref: '#/components/schemas/VersionOut'
   /versions/{version_id}:
     get:
       tags:
@@ -679,7 +648,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Version'
+                $ref: '#/components/schemas/VersionOut'
     patch:
       tags:
       - Version
@@ -703,9 +672,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Version'
+                $ref: '#/components/schemas/VersionOut'
         '409':
-          description: 成功
+          description: 并发冲突/非法状态迁移/版本冻结
           content:
             application/json:
               schema:
@@ -735,9 +704,116 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Version'
+                $ref: '#/components/schemas/VersionOut'
         '409':
-          description: revision 或状态机冲突
+          description: 并发冲突/非法状态迁移/版本冻结
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conflict'
+  /versions/{version_id}/requirements:
+    get:
+      tags:
+      - Version
+      summary: 版本需求清单与进度
+      security: &id005
+      - bearerAuth: []
+      parameters:
+      - &id006
+        name: version_id
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionRequirementsOut'
+    post:
+      tags:
+      - Version
+      summary: 向版本添加需求
+      description: 通过 VersionService；READY/RELEASED/CANCELED 冻结返回 409。
+      security: *id005
+      parameters:
+      - *id006
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddRequirementRequest'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionOut'
+        '409':
+          description: 并发冲突/非法状态迁移/版本冻结
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conflict'
+  /versions/{version_id}/requirements/move:
+    post:
+      tags:
+      - Version
+      summary: 迁移需求到该版本
+      security: *id005
+      parameters:
+      - *id006
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MoveRequirementRequest'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionOut'
+        '409':
+          description: 并发冲突/非法状态迁移/版本冻结
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conflict'
+  /versions/{version_id}/requirements/{requirement_id}:
+    delete:
+      tags:
+      - Version
+      summary: 从版本移除需求
+      security: *id005
+      parameters:
+      - *id006
+      - name: requirement_id
+        in: path
+        required: true
+        schema:
+          type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RemoveRequirementRequest'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionOut'
+        '409':
+          description: 并发冲突/非法状态迁移/版本冻结
           content:
             application/json:
               schema:
@@ -1661,21 +1737,6 @@ components:
         revision:
           type: integer
           minimum: 1
-    RequirementMoveVersion:
-      type: object
-      required:
-      - target_version_id
-      - reason
-      - revision
-      properties:
-        target_version_id:
-          type: integer
-        reason:
-          type: string
-          maxLength: 500
-        revision:
-          type: integer
-          minimum: 1
     Requirement:
       type: object
       properties:
@@ -2416,3 +2477,140 @@ components:
           type: string
         is_primary:
           type: boolean
+    VersionOut:
+      type: object
+      properties:
+        id:
+          type: integer
+        version_no:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+          enum:
+          - PLANNING
+          - DEVELOPING
+          - TESTING
+          - READY
+          - RELEASED
+          - CANCELED
+        owner_id:
+          type:
+          - integer
+          - 'null'
+        planned_release_date:
+          type:
+          - string
+          - 'null'
+          format: date
+        released_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        description:
+          type:
+          - string
+          - 'null'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        updated_by:
+          type:
+          - integer
+          - 'null'
+        revision:
+          type: integer
+    VersionPage:
+      type: object
+      required:
+      - items
+      - page
+      - page_size
+      - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/VersionOut'
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total:
+          type: integer
+    VersionStats:
+      type: object
+      required:
+      - total
+      - by_status
+      - completed
+      - completion_rate
+      properties:
+        total:
+          type: integer
+        by_status:
+          type: object
+          additionalProperties:
+            type: integer
+        completed:
+          type: integer
+        completion_rate:
+          type: number
+    VersionRequirementsOut:
+      type: object
+      required:
+      - version_id
+      - stats
+      - items
+      properties:
+        version_id:
+          type: integer
+        stats:
+          $ref: '#/components/schemas/VersionStats'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/RequirementOut'
+    AddRequirementRequest:
+      type: object
+      required:
+      - requirement_id
+      - revision
+      properties:
+        requirement_id:
+          type: integer
+        revision:
+          type: integer
+          minimum: 1
+    RemoveRequirementRequest:
+      type: object
+      required:
+      - revision
+      properties:
+        revision:
+          type: integer
+          minimum: 1
+        reason:
+          type:
+          - string
+          - 'null'
+    MoveRequirementRequest:
+      type: object
+      required:
+      - requirement_id
+      - revision
+      - reason
+      properties:
+        requirement_id:
+          type: integer
+        revision:
+          type: integer
+          minimum: 1
+        reason:
+          type: string
+          minLength: 2

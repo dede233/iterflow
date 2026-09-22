@@ -1,6 +1,4 @@
-from datetime import UTC, datetime
-
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import AppError, ConflictError, NotFoundError
@@ -15,7 +13,6 @@ from app.models.enums import (
 from app.repositories.requirement_repository import RequirementRepository
 from app.schemas.requirement import (
     RequirementCreate,
-    RequirementMoveVersion,
     RequirementStatusChange,
     RequirementUpdate,
 )
@@ -188,67 +185,7 @@ class RequirementService:
         assert updated is not None
         return updated
 
-    def move_version(
-        self, requirement_id: int, payload: RequirementMoveVersion, operator_id: int
-    ) -> Requirement:
-        current = self.repo.get(requirement_id)
-        if not current:
-            raise NotFoundError("需求不存在")
-        target = self.db.scalar(
-            select(Version).where(Version.id == payload.target_version_id).with_for_update()
-        )
-        if target is None:
-            raise NotFoundError("目标版本不存在")
-        if target.status in {VersionStatus.RELEASED, VersionStatus.CANCELED}:
-            raise AppError(40913, "不能将需求移入已发布或已取消版本", 409)
-        now = datetime.now(UTC)
-        old_version_id = current.current_version_id
-        new_status = (
-            RequirementStatus.PLANNED
-            if current.status in {RequirementStatus.DRAFT, RequirementStatus.CONFIRMED}
-            else current.status
-        )
-        if not self.repo.update_with_revision(
-            requirement_id,
-            payload.revision,
-            {
-                "current_version_id": payload.target_version_id,
-                "status": new_status,
-                "updated_by": operator_id,
-            },
-        ):
-            latest = self.repo.get(requirement_id)
-            raise ConflictError(
-                "需求已被其他用户更新",
-                {"current_revision": latest.revision if latest else None},
-            )
-        self.db.execute(
-            update(VersionRequirement)
-            .where(
-                VersionRequirement.requirement_id == requirement_id,
-                VersionRequirement.active.is_(True),
-            )
-            .values(
-                active=False,
-                removed_at=now,
-                removed_by=operator_id,
-                removed_reason=payload.reason,
-            )
-        )
-        self.db.add(
-            VersionRequirement(
-                version_id=payload.target_version_id,
-                requirement_id=requirement_id,
-                added_by=operator_id,
-            )
-        )
-        self.audit.log(
-            "REQUIREMENT",
-            requirement_id,
-            "MOVE_VERSION",
-            before={"version_id": old_version_id},
-            after={"version_id": payload.target_version_id, "reason": payload.reason},
-        )
-        self.db.commit()
-        self.db.refresh(current)
-        return current
+    # NOTE: moving a requirement between versions now lives in VersionService
+    # (POST /versions/{id}/requirements/move). All version<->requirement changes
+    # go through VersionService so freeze rules + the active-relation invariant
+    # are enforced in one place.

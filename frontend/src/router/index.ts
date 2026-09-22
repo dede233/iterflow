@@ -35,6 +35,7 @@ export const router = createRouter({
         { path: 'requirements/new', name: 'requirement-create', component: () => import('@/views/requirement/RequirementCreateView.vue'), meta: { permission: 'rd.requirement.create' } },
         { path: 'requirements/:id', name: 'requirement-detail', component: () => import('@/views/requirement/RequirementDetailView.vue'), meta: { permission: 'rd.requirement.view' } },
         { path: 'versions', name: 'version-list', component: () => import('@/views/version/VersionListView.vue'), meta: { permission: 'rd.version.view' } },
+        { path: 'versions/new', name: 'version-create', component: () => import('@/views/version/VersionCreateView.vue'), meta: { permission: 'rd.version.create' } },
         { path: 'versions/:id', name: 'version-detail', component: () => import('@/views/version/VersionDetailView.vue'), meta: { permission: 'rd.version.view' } },
         { path: 'releases', name: 'release-list', component: () => import('@/views/release/ReleaseListView.vue'), meta: { permission: 'rd.release.view' } },
         { path: 'notifications', name: 'notifications', component: () => import('@/views/notification/NotificationCenterView.vue') },

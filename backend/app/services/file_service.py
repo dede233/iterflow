@@ -17,6 +17,30 @@ from app.services.storage import StorageService, create_configured_storage
 
 logger = logging.getLogger(__name__)
 
+# Minimal upload guardrails shared by the generic /files endpoint and the
+# Feedback attachment endpoints. Full MIME/extension hardening is Phase 7.
+ALLOWED_UPLOAD_TYPES = {
+    "image/png",
+    "image/jpeg",
+    "image/webp",
+    "application/pdf",
+    "text/plain",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+}
+MAX_UPLOAD_SIZE = 50 * 1024 * 1024
+
+
+def validate_upload(*, size: int, mime_type: str | None, original_name: str) -> None:
+    from app.core.exceptions import AppError
+
+    if size > MAX_UPLOAD_SIZE:
+        raise AppError(42220, "单文件不能超过50MB", 422)
+    if mime_type not in ALLOWED_UPLOAD_TYPES:
+        raise AppError(42221, "不支持的文件类型", 422)
+    if len(original_name) > 255:
+        raise AppError(42222, "文件名不能超过255个字符", 422)
+
 
 class FileService:
     def __init__(self, db: Session, settings: Settings | None = None):
@@ -79,6 +103,21 @@ class FileService:
 
     def open(self, file_id: int, actor: User, data_scope: DataScope) -> tuple[FileObject, BinaryIO]:
         item = self.get_scoped(file_id, actor, data_scope)
+        storage = self._storage(item.storage_driver)
+        if not storage.exists(item.storage_key):
+            raise NotFoundError("文件内容不存在")
+        return item, storage.open(item.storage_key)
+
+    def open_unchecked(self, file_id: int) -> tuple[FileObject, BinaryIO]:
+        """Open a file whose access has already been authorized by the caller.
+
+        Feedback attachment download authorizes via the *feedback* data scope and
+        the attachment relation, not by file ownership, so this deliberately does
+        not re-apply the creator-based file scope.
+        """
+        item = self.repository.get(file_id)
+        if item is None:
+            raise NotFoundError("文件不存在")
         storage = self._storage(item.storage_driver)
         if not storage.exists(item.storage_key):
             raise NotFoundError("文件内容不存在")

@@ -4,22 +4,26 @@ from sqlalchemy.orm import Session
 from app.api.deps import require_permission
 from app.core.database import get_db
 from app.core.exceptions import NotFoundError
-from app.models.entities import User
+from app.models.entities import Requirement, User
 from app.repositories.requirement_repository import RequirementRepository
 from app.repositories.user_repository import UserRepository
 from app.repositories.version_repository import VersionRepository
 from app.schemas.requirement import (
+    LinkedFeedbackOut,
     RequirementCreate,
     RequirementMoveVersion,
+    RequirementOut,
+    RequirementPage,
     RequirementStatusChange,
     RequirementUpdate,
 )
+from app.services.feedback_service import FeedbackService
 from app.services.requirement_service import RequirementService
 
 router = APIRouter(prefix="/requirements", tags=["requirements"])
 
 
-def _scoped_requirement_or_404(db: Session, user: User, requirement_id: int):
+def _scoped_requirement_or_404(db: Session, user: User, requirement_id: int) -> Requirement:
     scope = UserRepository(db).data_scope(user.id)
     item = RequirementRepository(db).get_scoped(requirement_id, user.id, scope)
     if item is None:
@@ -35,7 +39,7 @@ def _ensure_scoped_version(db: Session, user: User, version_id: int | None) -> N
         raise NotFoundError("版本不存在")
 
 
-@router.get("")
+@router.get("", response_model=RequirementPage)
 def list_requirements(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
@@ -47,7 +51,7 @@ def list_requirements(
     return {"items": items, "page": page, "page_size": page_size, "total": total}
 
 
-@router.post("")
+@router.post("", response_model=RequirementOut)
 def create_requirement(
     payload: RequirementCreate,
     db: Session = Depends(get_db),
@@ -57,7 +61,7 @@ def create_requirement(
     return RequirementService(db).create(payload, user.id)
 
 
-@router.get("/{requirement_id}")
+@router.get("/{requirement_id}", response_model=RequirementOut)
 def get_requirement(
     requirement_id: int,
     db: Session = Depends(get_db),
@@ -66,7 +70,26 @@ def get_requirement(
     return _scoped_requirement_or_404(db, user, requirement_id)
 
 
-@router.patch("/{requirement_id}")
+@router.get("/{requirement_id}/feedbacks", response_model=list[LinkedFeedbackOut])
+def list_requirement_feedbacks(
+    requirement_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("rd.requirement.view")),
+):
+    _scoped_requirement_or_404(db, user, requirement_id)
+    return [
+        LinkedFeedbackOut(
+            feedback_id=fb.id,
+            feedback_no=fb.feedback_no,
+            title=fb.title,
+            status=fb.status,
+            is_primary=is_primary,
+        )
+        for fb, is_primary in FeedbackService(db).linked_feedbacks(requirement_id)
+    ]
+
+
+@router.patch("/{requirement_id}", response_model=RequirementOut)
 def update_requirement(
     requirement_id: int,
     payload: RequirementUpdate,
@@ -77,7 +100,7 @@ def update_requirement(
     return RequirementService(db).update(requirement_id, payload, user.id)
 
 
-@router.patch("/{requirement_id}/status")
+@router.patch("/{requirement_id}/status", response_model=RequirementOut)
 def change_status(
     requirement_id: int,
     payload: RequirementStatusChange,
@@ -88,7 +111,7 @@ def change_status(
     return RequirementService(db).change_status(requirement_id, payload, user.id)
 
 
-@router.post("/{requirement_id}/move-version")
+@router.post("/{requirement_id}/move-version", response_model=RequirementOut)
 def move_version(
     requirement_id: int,
     payload: RequirementMoveVersion,

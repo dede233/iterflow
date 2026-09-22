@@ -115,6 +115,11 @@ class RequirementService:
         values = payload.model_dump(exclude_unset=True, exclude={"revision"}) | {
             "updated_by": operator_id
         }
+        # Snapshot the real old values of the changed business fields before the
+        # atomic UPDATE mutates this in-session object (synchronize_session).
+        changed_fields = [key for key in values if key != "updated_by"]
+        before_values = {key: getattr(current, key) for key in changed_fields}
+        after_values = {key: values[key] for key in changed_fields}
         if not self.repo.update_with_revision(requirement_id, payload.revision, values):
             latest = self.repo.get(requirement_id)
             raise ConflictError(
@@ -129,8 +134,8 @@ class RequirementService:
             "REQUIREMENT",
             requirement_id,
             "UPDATE",
-            before={"revision": payload.revision},
-            after=values,
+            before=before_values,
+            after=after_values,
         )
         self.db.commit()
         updated = self.repo.get(requirement_id)
@@ -144,6 +149,8 @@ class RequirementService:
         if not current:
             raise NotFoundError("需求不存在")
         current_status = RequirementStatus(current.status)
+        # Capture before the atomic UPDATE mutates the in-session object.
+        previous_status = current.status
         if payload.status not in ALLOWED_TRANSITIONS[current_status]:
             raise AppError(40911, f"不允许从 {current.status} 变更为 {payload.status}", 409)
         if (
@@ -173,7 +180,7 @@ class RequirementService:
             "REQUIREMENT",
             requirement_id,
             "STATUS_CHANGE",
-            before={"status": current.status},
+            before={"status": previous_status},
             after={"status": payload.status, "reason": payload.reason},
         )
         self.db.commit()

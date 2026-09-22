@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -8,6 +9,7 @@ from app.models.enums import (
     RequirementSource,
     RequirementStatus,
 )
+from app.schemas.common import PageResult
 
 
 class RequirementCreate(BaseModel):
@@ -75,4 +77,22 @@ class RequirementOut(BaseModel):
     current_version_id: int | None
     description: str
     acceptance_criteria: str | None
+    created_at: datetime
+    updated_at: datetime
+    updated_by: int | None
     revision: int
+
+
+class RequirementPage(PageResult[RequirementOut]):
+    pass
+
+
+class LinkedFeedbackOut(BaseModel):
+    """A feedback linked to a requirement (source traceability)."""
+
+    model_config = ConfigDict(from_attributes=True)
+    feedback_id: int
+    feedback_no: str
+    title: str
+    status: str
+    is_primary: bool

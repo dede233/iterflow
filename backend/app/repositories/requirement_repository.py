@@ -31,7 +31,12 @@ class RequirementRepository(BaseRepository[Requirement]):
         total = self.db.scalar(select(func.count()).select_from(Requirement).where(*criteria)) or 0
         items = list(
             self.db.scalars(
-                select(Requirement).where(*criteria).offset((page - 1) * page_size).limit(page_size)
+                select(Requirement)
+                .where(*criteria)
+                # Stable, deterministic ordering so pagination never reorders rows.
+                .order_by(Requirement.created_at.desc(), Requirement.id.desc())
+                .offset((page - 1) * page_size)
+                .limit(page_size)
             ).all()
         )
         return items, total

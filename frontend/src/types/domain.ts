@@ -212,5 +212,41 @@ export interface ReleaseItem {
   created_by?: number | null
   revision: number
 }
+
+export interface AuditOperator {
+  id: number
+  username: string
+  display_name: string
+}
+
+export interface AuditItem {
+  id: number
+  entity_type: string
+  entity_id?: number | null
+  action: string
+  operator?: AuditOperator | null
+  before?: Record<string, unknown> | null
+  after?: Record<string, unknown> | null
+  created_at: string
+}
+
+export interface AuditListParams {
+  page?: number
+  size?: number
+  entity_type?: string
+  entity_id?: number
+  action?: string
+  operator_id?: number
+  time_from?: string
+  time_to?: string
+}
+
+export interface AuditPage {
+  items: AuditItem[]
+  page: number
+  size: number
+  total: number
+}
+
 export type NotificationType = 'SYSTEM' | 'FEEDBACK' | 'REQUIREMENT' | 'VERSION' | 'RELEASE'
 export interface NotificationItem { id:number; type:NotificationType; title:string; content:string; entity_type?:string|null; entity_id?:number|null; read_at?:string|null; created_at:string }

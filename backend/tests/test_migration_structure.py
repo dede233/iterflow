@@ -5,6 +5,9 @@ MIGRATION_PATH = Path(__file__).parents[1] / "alembic" / "versions" / "0001_init
 REFRESH_SESSION_MIGRATION_PATH = (
     Path(__file__).parents[1] / "alembic" / "versions" / "0002_refresh_sessions.py"
 )
+ROLE_SYSTEM_FLAG_MIGRATION_PATH = (
+    Path(__file__).parents[1] / "alembic" / "versions" / "0003_role_system_flag.py"
+)
 EXPECTED_TABLES = {
     "rd_comment",
     "rd_feedback",
@@ -159,4 +162,17 @@ def test_refresh_session_migration_is_explicit_and_reversible() -> None:
     assert 'op.create_index(\n        "ix_sys_refresh_session_user_id"' in source
     assert 'op.create_index(\n        "ix_sys_refresh_session_expires_at"' in source
     assert 'op.drop_table("sys_refresh_session")' in source
+    assert "Base.metadata" not in source
+
+
+def test_role_system_flag_migration_is_explicit_and_reversible() -> None:
+    source = ROLE_SYSTEM_FLAG_MIGRATION_PATH.read_text(encoding="utf-8")
+
+    assert 'down_revision: str | None = "0002_refresh_sessions"' in source
+    assert 'op.add_column(\n        "sys_role"' in source
+    assert (
+        'sa.Column("is_system", sa.Boolean(), nullable=False, server_default=sa.false())' in source
+    )
+    assert "UPDATE sys_role SET is_system = true" in source
+    assert 'op.drop_column("sys_role", "is_system")' in source
     assert "Base.metadata" not in source

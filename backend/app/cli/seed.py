@@ -33,6 +33,7 @@ PERMISSIONS = {
     "sys.user.role.assign": "分配用户角色",
     "sys.role.view": "角色查看",
     "sys.role.edit": "角色权限编辑",
+    "sys.role.manage": "角色管理",
     "sys.system.view": "系统模块查看",
     "sys.audit.view": "审计日志查看",
     "sys.file.upload": "文件上传",
@@ -170,6 +171,7 @@ def seed_database(db: Session, *, username: str, password: str) -> None:
                 code=code,
                 name=definition.name,
                 data_scope=definition.data_scope,
+                is_system=True,
             )
             db.add(role)
             roles[code] = role
@@ -177,6 +179,7 @@ def seed_database(db: Session, *, username: str, password: str) -> None:
             role.name = definition.name
             role.data_scope = definition.data_scope
             role.enabled = True
+            role.is_system = True
     db.flush()
 
     existing_role_permissions = {

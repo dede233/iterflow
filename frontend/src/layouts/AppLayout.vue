@@ -24,7 +24,7 @@ const menuItems = computed<NavigationItem[]>(() => [
 const systemItems = computed<NavigationItem[]>(() => [
   { to: '/admin/audits', label: '审计中心', permission: 'sys.audit.view' },
   { to: '/system/users', label: '用户管理', permission: 'sys.user.view' },
-  { to: '/system/roles', label: '角色权限', permission: 'sys.role.view', requiresAllScope: true },
+  { to: '/admin/roles', label: '角色管理', permission: 'sys.role.manage', requiresAllScope: true },
 ])
 
 function can(permission?: string, requiresAllScope = false): boolean {

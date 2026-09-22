@@ -14,6 +14,7 @@ class RoleOut(BaseModel):
     name: str
     data_scope: DataScope
     enabled: bool
+    is_system: bool
     revision: int
     permission_ids: list[int] = Field(default_factory=list)
 
@@ -65,3 +66,8 @@ class RolePermissionUpdate(BaseModel):
         if len(self.permission_ids) != len(set(self.permission_ids)):
             raise ValueError("permission_ids must not contain duplicates")
         return self
+
+
+class RoleDeleteOut(BaseModel):
+    id: int
+    deleted: bool = True

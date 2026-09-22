@@ -18,6 +18,9 @@ export interface RoleUpdatePayload {
 
 export const listRoles = () => api.get<RoleItem[]>('/roles').then((response) => response.data)
 
+export const getRole = (roleId: number) =>
+  api.get<RoleItem>(`/roles/${roleId}`).then((response) => response.data)
+
 export const listPermissions = () =>
   api.get<PermissionItem[]>('/roles/permissions').then((response) => response.data)
 
@@ -34,3 +37,6 @@ export const updateRolePermissions = (roleId: number, permissionIds: number[], r
       revision,
     })
     .then((response) => response.data)
+
+export const deleteRole = (roleId: number) =>
+  api.delete<{ id: number; deleted: boolean }>(`/roles/${roleId}`).then((response) => response.data)

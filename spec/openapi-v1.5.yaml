@@ -1359,6 +1359,28 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
   /roles/{role_id}:
+    get:
+      tags:
+      - System
+      summary: 角色详情
+      security: *id001
+      parameters:
+      - name: role_id
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+        '403':
+          description: 无权限或数据范围不足
+        '404':
+          description: 角色不存在
     patch:
       tags:
       - System
@@ -1394,6 +1416,31 @@ paths:
           description: 参数错误或尝试配置保留的 TEAM 数据范围
         '404':
           description: 角色不存在
+    delete:
+      tags:
+      - System
+      summary: 删除自定义角色
+      description: 系统角色不可删除；仍被用户分配的角色返回 409。
+      security: *id001
+      parameters:
+      - name: role_id
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoleDeleteOut'
+        '403':
+          description: 无权限或数据范围不足
+        '404':
+          description: 角色不存在
+        '409':
+          description: 系统角色或仍被用户分配
   /systems:
     get:
       tags:
@@ -2318,6 +2365,7 @@ components:
       - name
       - data_scope
       - enabled
+      - is_system
       - revision
       - permission_ids
       properties:
@@ -2336,6 +2384,8 @@ components:
           - ALL
         enabled:
           type: boolean
+        is_system:
+          type: boolean
         revision:
           type: integer
           minimum: 1
@@ -2343,6 +2393,16 @@ components:
           type: array
           items:
             type: integer
+    RoleDeleteOut:
+      type: object
+      required:
+      - id
+      - deleted
+      properties:
+        id:
+          type: integer
+        deleted:
+          type: boolean
     Permission:
       type: object
       required:

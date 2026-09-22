@@ -64,6 +64,7 @@ def test_role_response_exposes_revision_required_by_write_apis():
             name="普通成员",
             data_scope=DataScope.SELF,
             enabled=True,
+            is_system=False,
             revision=3,
         )
     )

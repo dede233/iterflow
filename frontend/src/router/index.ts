@@ -32,6 +32,7 @@ export const router = createRouter({
         { path: 'feedbacks/new', name: 'feedback-create', component: () => import('@/views/feedback/FeedbackCreateView.vue'), meta: { permission: 'rd.feedback.create' } },
         { path: 'feedbacks/:id', name: 'feedback-detail', component: () => import('@/views/feedback/FeedbackDetailView.vue'), meta: { permission: 'rd.feedback.view' } },
         { path: 'requirements', name: 'requirement-list', component: () => import('@/views/requirement/RequirementListView.vue'), meta: { permission: 'rd.requirement.view' } },
+        { path: 'requirements/new', name: 'requirement-create', component: () => import('@/views/requirement/RequirementCreateView.vue'), meta: { permission: 'rd.requirement.create' } },
         { path: 'requirements/:id', name: 'requirement-detail', component: () => import('@/views/requirement/RequirementDetailView.vue'), meta: { permission: 'rd.requirement.view' } },
         { path: 'versions', name: 'version-list', component: () => import('@/views/version/VersionListView.vue'), meta: { permission: 'rd.version.view' } },
         { path: 'versions/:id', name: 'version-detail', component: () => import('@/views/version/VersionDetailView.vue'), meta: { permission: 'rd.version.view' } },

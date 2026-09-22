@@ -11,7 +11,6 @@ from app.models.entities import Feedback, User
 from app.models.enums import FeedbackStatus, FeedbackType, FeedbackUrgency
 from app.repositories.feedback_repository import FeedbackRepository
 from app.repositories.user_repository import UserRepository
-from app.repositories.version_repository import VersionRepository
 from app.schemas.comment import CommentCreate, CommentOut
 from app.schemas.feedback import (
     FeedbackConvertRequest,
@@ -36,14 +35,6 @@ def _scoped_feedback_or_404(db: Session, user: User, feedback_id: int) -> Feedba
     if item is None:
         raise NotFoundError("反馈不存在")
     return item
-
-
-def _ensure_scoped_version(db: Session, user: User, version_id: int | None) -> None:
-    if version_id is None:
-        return
-    scope = UserRepository(db).data_scope(user.id)
-    if VersionRepository(db).get_scoped(version_id, user.id, scope) is None:
-        raise NotFoundError("版本不存在")
 
 
 def _content_disposition(original_name: str) -> str:
@@ -239,5 +230,7 @@ def convert_feedback(
     user: User = Depends(require_permission("rd.feedback.convert")),
 ):
     _scoped_feedback_or_404(db, user, feedback_id)
-    _ensure_scoped_version(db, user, payload.version_id)
-    return FeedbackService(db).convert(feedback_id, payload, user.id)
+    scope = UserRepository(db).data_scope(user.id)
+    return FeedbackService(db).convert(
+        feedback_id, payload, user.id, viewer_scope=scope, viewer_id=user.id
+    )

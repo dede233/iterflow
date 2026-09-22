@@ -85,6 +85,13 @@ class RequirementSource(StrEnum):
     FEEDBACK = "FEEDBACK"
 
 
+class FeedbackConvertType(StrEnum):
+    """How a Feedback is turned into / attached to a Requirement (Phase 4)."""
+
+    CREATE_NEW = "CREATE_NEW"
+    LINK_EXISTING = "LINK_EXISTING"
+
+
 class Priority(StrEnum):
     P0 = "P0"
     P1 = "P1"

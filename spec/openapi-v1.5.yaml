@@ -438,13 +438,17 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Requirement'
+                $ref: '#/components/schemas/RequirementOut'
+        '404':
+          description: 反馈或目标需求不存在
         '409':
-          description: 成功
+          description: 并发冲突/非法状态迁移
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Conflict'
+        '422':
+          description: 参数校验失败
   /requirements:
     get:
       tags:
@@ -473,7 +477,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
+                $ref: '#/components/schemas/RequirementPage'
     post:
       tags:
       - Requirement
@@ -491,7 +495,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Requirement'
+                $ref: '#/components/schemas/RequirementOut'
   /requirements/{requirement_id}:
     get:
       tags:
@@ -510,7 +514,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Requirement'
+                $ref: '#/components/schemas/RequirementOut'
     patch:
       tags:
       - Requirement
@@ -534,9 +538,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Requirement'
+                $ref: '#/components/schemas/RequirementOut'
         '409':
-          description: 成功
+          description: 并发冲突/非法状态迁移
           content:
             application/json:
               schema:
@@ -565,13 +569,35 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Requirement'
+                $ref: '#/components/schemas/RequirementOut'
         '409':
-          description: revision 或状态机冲突
+          description: 并发冲突/非法状态迁移
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Conflict'
+  /requirements/{requirement_id}/feedbacks:
+    get:
+      tags:
+      - Requirement
+      summary: 需求来源反馈
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: requirement_id
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LinkedFeedbackOut'
   /requirements/{requirement_id}/move-version:
     post:
       tags:
@@ -596,9 +622,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Requirement'
+                $ref: '#/components/schemas/RequirementOut'
         '409':
-          description: 成功
+          description: 并发冲突/非法状态迁移
           content:
             application/json:
               schema:
@@ -1487,15 +1513,25 @@ components:
     FeedbackConvertRequest:
       type: object
       required:
-      - title
-      - requirement_type
-      - description
+      - type
       - revision
       properties:
-        title:
+        type:
           type: string
+          enum:
+          - CREATE_NEW
+          - LINK_EXISTING
+        revision:
+          type: integer
+          minimum: 1
+        requirement_title:
+          type:
+          - string
+          - 'null'
         requirement_type:
-          type: string
+          type:
+          - string
+          - 'null'
         priority:
           type: string
           enum:
@@ -1505,23 +1541,18 @@ components:
           - P3
           - P4
           default: P2
-        owner_id:
-          type:
-          - integer
-          - 'null'
         description:
-          type: string
+          type:
+          - string
+          - 'null'
         acceptance_criteria:
           type:
           - string
           - 'null'
-        version_id:
+        requirement_id:
           type:
           - integer
           - 'null'
-        revision:
-          type: integer
-          minimum: 1
     Feedback:
       type: object
       properties:
@@ -2409,3 +2440,110 @@ components:
           type:
           - integer
           - 'null'
+    RequirementOut:
+      type: object
+      properties:
+        id:
+          type: integer
+        requirement_no:
+          type: string
+        title:
+          type: string
+        requirement_type:
+          type: string
+        source:
+          type: string
+          enum:
+          - DIRECT
+          - FEEDBACK
+        priority:
+          type: string
+          enum:
+          - P0
+          - P1
+          - P2
+          - P3
+          - P4
+        status:
+          type: string
+          enum:
+          - DRAFT
+          - CONFIRMED
+          - PLANNED
+          - DEVELOPING
+          - TESTING
+          - DONE
+          - ONLINE
+          - PAUSED
+          - CANCELED
+        system_id:
+          type:
+          - integer
+          - 'null'
+        module_id:
+          type:
+          - integer
+          - 'null'
+        owner_id:
+          type:
+          - integer
+          - 'null'
+        current_version_id:
+          type:
+          - integer
+          - 'null'
+        description:
+          type: string
+        acceptance_criteria:
+          type:
+          - string
+          - 'null'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        updated_by:
+          type:
+          - integer
+          - 'null'
+        revision:
+          type: integer
+    RequirementPage:
+      type: object
+      required:
+      - items
+      - page
+      - page_size
+      - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/RequirementOut'
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total:
+          type: integer
+    LinkedFeedbackOut:
+      type: object
+      required:
+      - feedback_id
+      - feedback_no
+      - title
+      - status
+      - is_primary
+      properties:
+        feedback_id:
+          type: integer
+        feedback_no:
+          type: string
+        title:
+          type: string
+        status:
+          type: string
+        is_primary:
+          type: boolean

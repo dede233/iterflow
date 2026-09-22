@@ -2,12 +2,14 @@ import { api } from './client'
 import type {
   AttachmentItem,
   CommentItem,
+  ConvertFeedbackPayload,
   Feedback,
   FeedbackCreatePayload,
   FeedbackListParams,
   FeedbackStatusChangePayload,
   FeedbackUpdatePayload,
   PageResult,
+  Requirement,
 } from '@/types/domain'
 
 export const listFeedbacks = (params: FeedbackListParams = {}) =>
@@ -25,8 +27,8 @@ export const updateFeedback = (id: number, payload: FeedbackUpdatePayload) =>
 export const changeFeedbackStatus = (id: number, payload: FeedbackStatusChangePayload) =>
   api.patch<Feedback>(`/feedbacks/${id}/status`, payload).then((r) => r.data)
 
-export const convertFeedback = (id: number, payload: unknown) =>
-  api.post(`/feedbacks/${id}/convert`, payload).then((r) => r.data)
+export const convertFeedback = (id: number, payload: ConvertFeedbackPayload) =>
+  api.post<Requirement>(`/feedbacks/${id}/convert`, payload).then((r) => r.data)
 
 // --- attachments (business relation stores file_id only) ---
 export const listFeedbackAttachments = (id: number) =>

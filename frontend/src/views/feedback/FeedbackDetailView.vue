@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, type UploadRequestOptions } from 'element-plus'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import {
   changeFeedbackStatus,
+  convertFeedback,
   createFeedbackComment,
   downloadFeedbackAttachment,
   getFeedback,
@@ -15,6 +16,7 @@ import {
 import { listSystems } from '@/api/systems'
 import { usePermission } from '@/composables/usePermission'
 import StatusTag from '@/components/StatusTag.vue'
+import { REQUIREMENT_PRIORITIES, REQUIREMENT_TYPES } from '@/constants/requirement'
 import {
   FEEDBACK_TYPES,
   FEEDBACK_URGENCIES,
@@ -34,6 +36,7 @@ import type {
 } from '@/types/domain'
 
 const route = useRoute()
+const router = useRouter()
 const { can } = usePermission()
 const feedbackId = Number(route.params.id)
 
@@ -46,10 +49,75 @@ const modules = ref<BusinessModuleItem[]>([])
 const canReadSystems = computed(() => can('sys.system.view'))
 const canEdit = computed(() => can('rd.feedback.edit'))
 const canAttach = computed(() => can('rd.feedback.create'))
+// Convert is available only while the feedback has no primary requirement yet.
+const canConvert = computed(
+  () => can('rd.feedback.convert') && !!item.value && item.value.main_requirement_id == null,
+)
 
 const statusActions = computed<StatusAction[]>(() =>
   item.value ? availableStatusActions(item.value.status, canEdit.value) : [],
 )
+
+// --- convert to requirement dialog ---
+const convertDialog = ref(false)
+const convertSubmitting = ref(false)
+const convertForm = reactive({
+  type: 'CREATE_NEW' as 'CREATE_NEW' | 'LINK_EXISTING',
+  requirement_title: '',
+  requirement_type: 'FEATURE',
+  priority: 'P2',
+  description: '',
+  acceptance_criteria: '',
+  requirement_id: null as number | null,
+})
+
+function openConvert(): void {
+  if (!item.value) return
+  Object.assign(convertForm, {
+    type: 'CREATE_NEW',
+    requirement_title: item.value.title,
+    requirement_type: 'FEATURE',
+    priority: 'P2',
+    description: item.value.description,
+    acceptance_criteria: '',
+    requirement_id: null,
+  })
+  convertDialog.value = true
+}
+
+async function submitConvert(): Promise<void> {
+  if (!item.value) return
+  if (convertForm.type === 'CREATE_NEW') {
+    if (convertForm.requirement_title.trim().length < 2 || convertForm.description.trim().length < 2) {
+      ElMessage.warning('请填写需求标题与描述（至少 2 个字符）')
+      return
+    }
+  } else if (!convertForm.requirement_id) {
+    ElMessage.warning('请填写目标需求 ID')
+    return
+  }
+  convertSubmitting.value = true
+  try {
+    const req = await convertFeedback(item.value.id, {
+      type: convertForm.type,
+      revision: item.value.revision,
+      requirement_title: convertForm.requirement_title.trim() || undefined,
+      requirement_type: convertForm.requirement_type,
+      priority: convertForm.priority,
+      description: convertForm.description.trim() || undefined,
+      acceptance_criteria: convertForm.acceptance_criteria.trim() || null,
+      requirement_id: convertForm.type === 'LINK_EXISTING' ? convertForm.requirement_id : null,
+    })
+    ElMessage.success('已转为需求')
+    convertDialog.value = false
+    await router.push(`/requirements/${req.id}`)
+  } catch {
+    // 409 / 404 / 422 surfaced globally; reload to refresh state.
+    await load()
+  } finally {
+    convertSubmitting.value = false
+  }
+}
 
 // --- status change dialog ---
 const statusDialog = ref(false)
@@ -240,8 +308,9 @@ onMounted(async () => {
         />
       </div>
 
-      <div v-if="canEdit || statusActions.length" class="toolbar">
+      <div v-if="canEdit || canConvert || statusActions.length" class="toolbar">
         <el-button v-if="canEdit" @click="openEdit">编辑</el-button>
+        <el-button v-if="canConvert" type="success" @click="openConvert">转需求</el-button>
         <el-button
           v-for="action in statusActions"
           :key="action.target"
@@ -403,6 +472,46 @@ onMounted(async () => {
       <template #footer>
         <el-button @click="editDialog = false">取消</el-button>
         <el-button type="primary" :loading="editSubmitting" @click="submitEdit">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- convert to requirement dialog -->
+    <el-dialog v-model="convertDialog" title="转为需求" width="min(560px, 92vw)" destroy-on-close>
+      <el-form label-position="top">
+        <el-form-item label="转换方式">
+          <el-radio-group v-model="convertForm.type">
+            <el-radio value="CREATE_NEW">新建需求</el-radio>
+            <el-radio value="LINK_EXISTING">关联已有需求</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <template v-if="convertForm.type === 'CREATE_NEW'">
+          <el-form-item label="需求类型">
+            <el-select v-model="convertForm.requirement_type" style="width: 100%">
+              <el-option v-for="t in REQUIREMENT_TYPES" :key="t.value" :label="t.label" :value="t.value" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="需求标题" required>
+            <el-input v-model="convertForm.requirement_title" maxlength="200" show-word-limit />
+          </el-form-item>
+          <el-form-item label="优先级">
+            <el-select v-model="convertForm.priority" style="width: 160px">
+              <el-option v-for="p in REQUIREMENT_PRIORITIES" :key="p.value" :label="p.label" :value="p.value" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="需求描述" required>
+            <el-input v-model="convertForm.description" type="textarea" :rows="5" />
+          </el-form-item>
+          <el-form-item label="验收标准">
+            <el-input v-model="convertForm.acceptance_criteria" type="textarea" :rows="3" />
+          </el-form-item>
+        </template>
+        <el-form-item v-else label="目标需求 ID" required>
+          <el-input-number v-model="convertForm.requirement_id" :min="1" style="width: 100%" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="convertDialog = false">取消</el-button>
+        <el-button type="primary" :loading="convertSubmitting" @click="submitConvert">确定</el-button>
       </template>
     </el-dialog>
   </section>

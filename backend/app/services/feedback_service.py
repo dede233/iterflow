@@ -11,18 +11,17 @@ from app.models.entities import (
     FileObject,
     Requirement,
     RequirementFeedback,
-    Version,
-    VersionRequirement,
 )
 from app.models.enums import (
     DataScope,
+    FeedbackConvertType,
     FeedbackStatus,
     ManualFeedbackStatus,
     RequirementSource,
     RequirementStatus,
-    VersionStatus,
 )
 from app.repositories.feedback_repository import FeedbackRepository
+from app.repositories.requirement_repository import RequirementRepository
 from app.schemas.feedback import (
     FeedbackConvertRequest,
     FeedbackCreate,
@@ -284,87 +283,113 @@ class FeedbackService:
         return updated
 
     def convert(
-        self, feedback_id: int, payload: FeedbackConvertRequest, operator_id: int
+        self,
+        feedback_id: int,
+        payload: FeedbackConvertRequest,
+        operator_id: int,
+        viewer_scope: DataScope,
+        viewer_id: int,
     ) -> Requirement:
+        """Convert a feedback to a requirement in a single transaction.
+
+        CREATE_NEW builds a new requirement from the feedback; LINK_EXISTING
+        attaches to an existing (scoped-visible) requirement. Either way the
+        requirement link + the feedback status flip + the relation row + audit
+        all commit together, or nothing does. No version association here.
+        """
         feedback = self.repo.get(feedback_id)
         if not feedback:
             raise NotFoundError("反馈不存在")
-        if feedback.revision != payload.revision:
-            raise ConflictError("反馈已被其他用户修改")
-        if feedback.main_requirement_id:
+        if feedback.main_requirement_id is not None:
             raise ConflictError("该反馈已经关联正式需求")
-        if payload.version_id is not None:
-            target_version = self.db.scalar(
-                select(Version).where(Version.id == payload.version_id).with_for_update()
+        if feedback.revision != payload.revision:
+            raise ConflictError(
+                "反馈已被其他用户修改",
+                {
+                    "current_revision": feedback.revision,
+                    "current_updated_at": feedback.updated_at.isoformat(),
+                    "current_updated_by": feedback.updated_by,
+                },
             )
-            if target_version is None:
-                raise NotFoundError("目标版本不存在")
-            if target_version.status in {VersionStatus.RELEASED, VersionStatus.CANCELED}:
-                raise ConflictError("不能将需求加入已发布或已取消版本")
-        req = Requirement(
-            requirement_no=next_business_no(
-                self.db, Requirement, Requirement.requirement_no, "REQ"
-            ),
-            title=payload.title,
-            requirement_type=payload.requirement_type,
-            source=RequirementSource.FEEDBACK,
-            priority=payload.priority,
-            status=(
-                RequirementStatus.PLANNED if payload.version_id else RequirementStatus.CONFIRMED
-            ),
-            system_id=feedback.system_id,
-            module_id=feedback.module_id,
-            owner_id=payload.owner_id,
-            current_version_id=payload.version_id,
-            description=payload.description,
-            acceptance_criteria=payload.acceptance_criteria,
-            created_by=operator_id,
-            updated_by=operator_id,
-        )
-        self.db.add(req)
-        self.db.flush()
-        status = FeedbackStatus.PLANNED if payload.version_id else FeedbackStatus.REQUIREMENT_LINKED
+        previous_status = feedback.status
+
+        if payload.type is FeedbackConvertType.CREATE_NEW:
+            target = Requirement(
+                requirement_no=next_business_no(
+                    self.db, Requirement, Requirement.requirement_no, "REQ"
+                ),
+                title=payload.requirement_title,
+                requirement_type=payload.requirement_type,
+                source=RequirementSource.FEEDBACK,
+                priority=payload.priority,
+                status=RequirementStatus.CONFIRMED,
+                system_id=feedback.system_id,
+                module_id=feedback.module_id,
+                description=payload.description,
+                acceptance_criteria=payload.acceptance_criteria,
+                created_by=operator_id,
+                updated_by=operator_id,
+            )
+            self.db.add(target)
+            self.db.flush()
+        else:  # LINK_EXISTING
+            requirement_id = payload.requirement_id
+            if requirement_id is None:  # defensive; the request validator guarantees this
+                raise AppError(42240, "LINK_EXISTING 需要 requirement_id", 422)
+            linked = RequirementRepository(self.db).get_scoped(
+                requirement_id, viewer_id, viewer_scope
+            )
+            if linked is None:
+                raise NotFoundError("目标需求不存在")
+            target = linked
+
+        # Atomic feedback flip; a stale revision here rolls back the whole
+        # transaction (including any just-created requirement).
         if not self.repo.update_with_revision(
             feedback_id,
             payload.revision,
             {
-                "main_requirement_id": req.id,
-                "status": status,
+                "main_requirement_id": target.id,
+                "status": FeedbackStatus.REQUIREMENT_LINKED,
                 "updated_by": operator_id,
             },
         ):
+            self.db.rollback()
             latest = self.repo.get(feedback_id)
             raise ConflictError(
                 "反馈已被其他用户修改",
                 {"current_revision": latest.revision if latest else None},
             )
         self.db.add(
-            RequirementFeedback(
-                requirement_id=req.id,
-                feedback_id=feedback.id,
-                is_primary=True,
-            )
+            RequirementFeedback(requirement_id=target.id, feedback_id=feedback.id, is_primary=True)
         )
-        if payload.version_id:
-            self.db.add(
-                VersionRequirement(
-                    version_id=payload.version_id,
-                    requirement_id=req.id,
-                    added_by=operator_id,
-                )
-            )
         self.audit.log(
             "FEEDBACK",
             feedback.id,
             "CONVERT_REQUIREMENT",
-            after={"requirement_id": req.id},
+            before={"status": previous_status},
+            after={
+                "status": FeedbackStatus.REQUIREMENT_LINKED,
+                "requirement_id": target.id,
+                "convert_type": payload.type,
+            },
         )
-        self.audit.log(
-            "REQUIREMENT",
-            req.id,
-            "CREATE_FROM_FEEDBACK",
-            after={"feedback_id": feedback.id},
-        )
+        if payload.type is FeedbackConvertType.CREATE_NEW:
+            self.audit.log(
+                "REQUIREMENT",
+                target.id,
+                "CREATE_FROM_FEEDBACK",
+                after={"feedback_id": feedback.id, "requirement_no": target.requirement_no},
+            )
         self.db.commit()
-        self.db.refresh(req)
-        return req
+        self.db.refresh(target)
+        return target
+
+    def linked_feedbacks(self, requirement_id: int) -> list[tuple[Feedback, bool]]:
+        rows = self.db.execute(
+            select(Feedback, RequirementFeedback.is_primary)
+            .join(RequirementFeedback, RequirementFeedback.feedback_id == Feedback.id)
+            .where(RequirementFeedback.requirement_id == requirement_id)
+            .order_by(RequirementFeedback.is_primary.desc(), Feedback.id.asc())
+        ).all()
+        return [(fb, bool(is_primary)) for fb, is_primary in rows]

@@ -14,6 +14,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import JSONB
@@ -318,6 +319,18 @@ class RequirementFeedback(Base):
     )
     is_primary: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    # A feedback may have at most one PRIMARY requirement (V1.5). Enforced at the
+    # database level (matches migration 0001's uq_feedback_primary_relation);
+    # declared here too so metadata-created test databases enforce it as well.
+    __table_args__ = (
+        Index(
+            "uq_feedback_primary_relation",
+            "feedback_id",
+            unique=True,
+            sqlite_where=text("is_primary = 1"),
+            postgresql_where=text("is_primary = true"),
+        ),
+    )
 
 
 class VersionRequirement(Base):

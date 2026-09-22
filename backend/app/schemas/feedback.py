@@ -4,6 +4,7 @@ from typing import Self
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.models.enums import (
+    FeedbackConvertType,
     FeedbackStatus,
     FeedbackType,
     FeedbackUrgency,
@@ -82,11 +83,37 @@ class FeedbackPage(PageResult[FeedbackOut]):
 
 
 class FeedbackConvertRequest(BaseModel):
-    title: str = Field(min_length=2, max_length=200)
-    requirement_type: str = Field(min_length=1, max_length=32, pattern=r"^[A-Z][A-Z0-9_]*$")
-    priority: Priority = Priority.P2
-    owner_id: int | None = None
-    description: str
-    acceptance_criteria: str | None = None
-    version_id: int | None = None
+    """Convert a feedback into a requirement (Phase 4).
+
+    CREATE_NEW builds a brand-new requirement from the feedback; LINK_EXISTING
+    attaches the feedback to an existing requirement. No version association here
+    (that is a later phase).
+    """
+
+    type: FeedbackConvertType
     revision: int = Field(ge=1)
+    # CREATE_NEW fields
+    requirement_title: str | None = Field(default=None, min_length=2, max_length=200)
+    requirement_type: str | None = Field(
+        default=None, min_length=1, max_length=32, pattern=r"^[A-Z][A-Z0-9_]*$"
+    )
+    priority: Priority = Priority.P2
+    description: str | None = Field(default=None, min_length=2)
+    acceptance_criteria: str | None = None
+    # LINK_EXISTING field
+    requirement_id: int | None = None
+
+    @model_validator(mode="after")
+    def check_mode_fields(self) -> Self:
+        if self.type is FeedbackConvertType.CREATE_NEW:
+            missing = [
+                name
+                for name in ("requirement_title", "requirement_type", "description")
+                if not getattr(self, name)
+            ]
+            if missing:
+                raise ValueError(f"CREATE_NEW 需要字段: {', '.join(missing)}")
+        else:  # LINK_EXISTING
+            if self.requirement_id is None:
+                raise ValueError("LINK_EXISTING 需要 requirement_id")
+        return self

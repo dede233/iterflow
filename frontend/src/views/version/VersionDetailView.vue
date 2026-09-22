@@ -5,6 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 import {
   addVersionRequirement,
   changeVersionStatus,
+  checkVersionPublish,
   getVersion,
   listVersionRequirements,
   moveVersionRequirement,
@@ -12,6 +13,7 @@ import {
   removeVersionRequirement,
   updateVersion,
 } from '@/api/versions'
+import { listReleases } from '@/api/releases'
 import { getRequirement } from '@/api/requirements'
 import { usePermission } from '@/composables/usePermission'
 import StatusTag from '@/components/StatusTag.vue'
@@ -23,7 +25,13 @@ import {
   type VersionStatusAction,
 } from '@/constants/version'
 import { requirementStatusLabel, requirementStatusTagType } from '@/constants/requirement'
-import type { Requirement, VersionItem, VersionStats } from '@/types/domain'
+import type {
+  PublishCheckItem,
+  ReleaseItem,
+  Requirement,
+  VersionItem,
+  VersionStats,
+} from '@/types/domain'
 
 const route = useRoute()
 const router = useRouter()
@@ -33,6 +41,7 @@ const id = Number(route.params.id)
 const item = ref<VersionItem | null>(null)
 const requirements = ref<Requirement[]>([])
 const stats = ref<VersionStats | null>(null)
+const releases = ref<ReleaseItem[]>([])
 const loading = ref(false)
 
 const canEdit = computed(() => can('rd.version.edit'))
@@ -86,10 +95,26 @@ async function submitStatus(): Promise<void> {
 const publishDialog = ref(false)
 const publishSubmitting = ref(false)
 const releaseNotes = ref('')
+const checkCandidatePassed = ref(false)
+const checks = ref<PublishCheckItem[]>([])
 
-function openPublish(): void {
+async function openPublish(): Promise<void> {
+  if (!item.value) return
   releaseNotes.value = ''
+  checks.value = []
+  checkCandidatePassed.value = false
   publishDialog.value = true
+  // Run the same pre-publish check the server enforces; render it inline.
+  try {
+    const result = await checkVersionPublish(item.value.id)
+    checks.value = result.checks
+    checkCandidatePassed.value = result.passed
+  } catch (e: unknown) {
+    const data = (e as { response?: { data?: { data?: { checks?: PublishCheckItem[] } } } })
+      .response?.data?.data
+    checks.value = data?.checks ?? []
+    checkCandidatePassed.value = false
+  }
 }
 
 async function submitPublish(): Promise<void> {
@@ -225,6 +250,7 @@ async function load(): Promise<void> {
     const view = await listVersionRequirements(id)
     requirements.value = view.items
     stats.value = view.stats
+    releases.value = (await listReleases({ version_id: id })).items
   } finally {
     loading.value = false
   }
@@ -309,11 +335,40 @@ onMounted(load)
         <el-empty v-else :image-size="60" description="版本内暂无需求" />
         <p v-if="frozen" class="frozen-tip">版本处于 {{ versionStatusLabel[item.status] }}，需求清单已冻结。</p>
       </el-card>
+
+      <!-- release history -->
+      <el-card shadow="never" class="section">
+        <div class="section-title">发布历史</div>
+        <ul v-if="releases.length" class="releases">
+          <li v-for="r in releases" :key="r.id">
+            <span class="release-time">{{ r.released_at }}</span>
+            <el-tag size="small" type="success" effect="light">{{ r.result }}</el-tag>
+            <span class="release-notes">{{ r.release_notes }}</span>
+          </li>
+        </ul>
+        <el-empty v-else :image-size="60" description="尚无发布记录" />
+      </el-card>
     </template>
 
     <!-- publish dialog -->
-    <el-dialog v-model="publishDialog" title="发布版本" width="min(480px, 92vw)" destroy-on-close>
+    <el-dialog v-model="publishDialog" title="发布版本" width="min(520px, 92vw)" destroy-on-close>
       <p class="publish-tip">发布后版本将进入「已发布」，其已完成需求与关联反馈会自动置为「已上线」。此操作不可撤销。</p>
+      <div class="checks">
+        <div class="checks-title">发布前检查</div>
+        <ul>
+          <li v-for="c in checks" :key="c.type">
+            <el-tag :type="c.passed ? 'success' : 'danger'" size="small" effect="light">
+              {{ c.passed ? '通过' : '未通过' }}
+            </el-tag>
+            <span class="check-msg">{{ c.message }}</span>
+            <ul v-if="c.blocking_requirements && c.blocking_requirements.length" class="blocking">
+              <li v-for="b in c.blocking_requirements" :key="b.id">
+                {{ b.requirement_no }}（{{ b.status }}）
+              </li>
+            </ul>
+          </li>
+        </ul>
+      </div>
       <el-form label-position="top">
         <el-form-item label="发布说明" required>
           <el-input v-model="releaseNotes" type="textarea" :rows="3" />
@@ -321,7 +376,14 @@ onMounted(load)
       </el-form>
       <template #footer>
         <el-button @click="publishDialog = false">取消</el-button>
-        <el-button type="success" :loading="publishSubmitting" @click="submitPublish">确认发布</el-button>
+        <el-button
+          type="success"
+          :loading="publishSubmitting"
+          :disabled="!checkCandidatePassed"
+          @click="submitPublish"
+        >
+          确认发布
+        </el-button>
       </template>
     </el-dialog>
 
@@ -401,4 +463,14 @@ onMounted(load)
 .progress-text { color: #64748b; font-size: 13px; white-space: nowrap; }
 .frozen-tip { margin: 10px 0 0; color: #b45309; font-size: 13px; }
 .publish-tip { margin: 0 0 12px; color: #64748b; font-size: 13px; line-height: 1.5; }
+.checks { margin-bottom: 12px; }
+.checks-title { font-weight: 600; margin-bottom: 6px; }
+.checks ul { list-style: none; margin: 0; padding: 0; }
+.checks > ul > li { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 4px 0; }
+.check-msg { color: #475569; font-size: 13px; }
+.blocking { width: 100%; margin: 2px 0 0 24px; color: #b91c1c; font-size: 12px; }
+.releases { list-style: none; margin: 0; padding: 0; }
+.releases li { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid #f1f5f9; }
+.release-time { color: #94a3b8; font-size: 12px; white-space: nowrap; }
+.release-notes { color: #475569; }
 </style>

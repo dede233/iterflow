@@ -25,6 +25,7 @@ const {
   removeVersionRequirement,
   listVersionRequirements,
   publishVersion,
+  checkVersionPublish,
 } = await import('@/api/versions')
 const {
   availableVersionStatusActions,
@@ -136,5 +137,18 @@ describe('version API DTO mapping', () => {
   it('surfaces a publish 409 (not ready / unfinished requirement) as a rejection', async () => {
     nextResponse = { status: 409, data: { code: 40923 } }
     await expect(publishVersion(1, 'x', 1)).rejects.toMatchObject({ response: { status: 409 } })
+  })
+
+  it('checkVersionPublish POSTs to /publish/check', async () => {
+    nextResponse = { status: 200, data: { passed: true, checks: [] } }
+    const result = await checkVersionPublish(1)
+    expect(result.passed).toBe(true)
+    expect(lastRequest?.method).toBe('post')
+    expect(lastRequest?.url).toBe('/versions/1/publish/check')
+  })
+
+  it('checkVersionPublish rejects on 409 (caller reads checks inline)', async () => {
+    nextResponse = { status: 409, data: { code: 40923, data: { checks: [], blocking_requirements: [] } } }
+    await expect(checkVersionPublish(1)).rejects.toMatchObject({ response: { status: 409 } })
   })
 })

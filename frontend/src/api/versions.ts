@@ -1,6 +1,7 @@
 import { api } from './client'
 import type {
   PageResult,
+  PublishCheckResult,
   VersionCreatePayload,
   VersionItem,
   VersionRequirementsResult,
@@ -73,6 +74,14 @@ export interface PublishResult {
   released_requirement_ids: number[]
   online_feedback_ids: number[]
 }
+
+// Pre-publish check preview: 200 with {passed:true,...} when publishable, 409
+// (checks in error body) otherwise. skipConflictAlert keeps the global 409
+// dialog from firing so the caller can render the checklist inline.
+export const checkVersionPublish = (id: number) =>
+  api
+    .post<PublishCheckResult>(`/versions/${id}/publish/check`, undefined, { skipConflictAlert: true })
+    .then((r) => r.data)
 
 // Publish is the single release entry point (VersionService.publish). It flips
 // the READY version to RELEASED and syncs requirement/feedback online status.

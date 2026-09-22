@@ -10,6 +10,9 @@ declare module 'axios' {
     skipAuth?: boolean
     // Do not attempt a silent refresh + replay when the response is 401.
     skipAuthRefresh?: boolean
+    // Do not pop the global edit-conflict dialog on 409 (the caller renders the
+    // conflict/checks inline instead, e.g. the publish pre-check preview).
+    skipConflictAlert?: boolean
   }
 }
 
@@ -75,7 +78,7 @@ api.interceptors.response.use(
         }
       }
     }
-    if (error.response?.status === 409) {
+    if (error.response?.status === 409 && !originalRequest?.skipConflictAlert) {
       await ElMessageBox.alert(error.response.data?.message ?? '数据已被其他用户修改，请刷新后重试', '编辑冲突', { type: 'warning' })
     } else if (error.response?.status === 403) {
       ElMessage.error('你没有权限执行该操作')

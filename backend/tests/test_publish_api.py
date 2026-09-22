@@ -39,7 +39,13 @@ from app.services.version_service import VersionService
 
 SPEC_DIR = Path(__file__).resolve().parents[2] / "spec"
 
-PERMS = {"rd.version.view", "rd.version.publish", "rd.feedback.view", "rd.requirement.view"}
+PERMS = {
+    "rd.version.view",
+    "rd.version.publish",
+    "rd.release.view",
+    "rd.feedback.view",
+    "rd.requirement.view",
+}
 
 Fixture = tuple[TestClient, Session, dict[str, dict[str, str]], dict[str, int]]
 
@@ -142,12 +148,13 @@ def _seed_ready_version(
     boss_id: int,
     *,
     requirement_status: RequirementStatus = RequirementStatus.DONE,
+    version_status: VersionStatus = VersionStatus.READY,
 ) -> dict[str, int]:
-    """A READY version with one requirement (given status) and a linked feedback."""
+    """A version (default READY) with one requirement and a linked feedback."""
     version = Version(
         version_no="V1.0.0",
         name="首个版本",
-        status=VersionStatus.READY,
+        status=version_status,
         created_by=boss_id,
         updated_by=boss_id,
     )
@@ -314,10 +321,96 @@ def test_publish_audit_chain(pub_api):
         assert secret not in blob
 
 
+# --------------------------------------------------------------------------- #
+# Publish check                                                               #
+# --------------------------------------------------------------------------- #
+def test_publish_check_passes_when_ready_and_all_done(pub_api):
+    client, session, headers, ids = pub_api
+    seeded = _seed_ready_version(session, ids["boss"])
+    resp = client.post(
+        f"/api/v1/versions/{seeded['version']}/publish/check", headers=headers["boss"]
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["passed"] is True
+    types = {c["type"]: c["passed"] for c in body["checks"]}
+    assert types == {
+        "VERSION_STATUS_CHECK": True,
+        "REQUIREMENT_STATUS_CHECK": True,
+        "PERMISSION_CHECK": True,
+    }
+
+
+def test_publish_check_fails_when_not_ready(pub_api):
+    client, session, headers, ids = pub_api
+    seeded = _seed_ready_version(session, ids["boss"], version_status=VersionStatus.PLANNING)
+    resp = client.post(
+        f"/api/v1/versions/{seeded['version']}/publish/check", headers=headers["boss"]
+    )
+    assert resp.status_code == 409
+    checks = {c["type"]: c["passed"] for c in resp.json()["data"]["checks"]}
+    assert checks["VERSION_STATUS_CHECK"] is False
+
+
+def test_publish_check_fails_with_blocking_requirements(pub_api):
+    client, session, headers, ids = pub_api
+    seeded = _seed_ready_version(session, ids["boss"], requirement_status=RequirementStatus.TESTING)
+    resp = client.post(
+        f"/api/v1/versions/{seeded['version']}/publish/check", headers=headers["boss"]
+    )
+    assert resp.status_code == 409
+    blocking = resp.json()["data"]["blocking_requirements"]
+    assert blocking[0]["id"] == seeded["requirement"]
+    assert blocking[0]["status"] == "TESTING"
+
+
+def test_publish_check_requires_permission(pub_api):
+    client, session, headers, ids = pub_api
+    seeded = _seed_ready_version(session, ids["boss"])
+    resp = client.post(
+        f"/api/v1/versions/{seeded['version']}/publish/check", headers=headers["member"]
+    )
+    assert resp.status_code == 403
+
+
+# --------------------------------------------------------------------------- #
+# Release history                                                             #
+# --------------------------------------------------------------------------- #
+def test_release_history_list_detail_and_filter(pub_api):
+    client, session, headers, ids = pub_api
+    seeded = _seed_ready_version(session, ids["boss"])
+    client.post(
+        f"/api/v1/versions/{seeded['version']}/publish",
+        headers=headers["boss"],
+        json=_publish_body(),
+    )
+    listed = client.get("/api/v1/releases", headers=headers["boss"]).json()
+    assert listed["total"] == 1
+    release_id = listed["items"][0]["id"]
+    assert listed["items"][0]["result"] == "SUCCESS"
+
+    # version_id filter
+    filtered = client.get(
+        f"/api/v1/releases?version_id={seeded['version']}", headers=headers["boss"]
+    ).json()
+    assert filtered["total"] == 1
+    empty = client.get("/api/v1/releases?version_id=999999", headers=headers["boss"]).json()
+    assert empty["total"] == 0
+
+    # detail
+    detail = client.get(f"/api/v1/releases/{release_id}", headers=headers["boss"])
+    assert detail.status_code == 200
+    assert detail.json()["version_id"] == seeded["version"]
+    assert client.get("/api/v1/releases/999999", headers=headers["boss"]).status_code == 404
+
+
 @pytest.mark.parametrize("spec_name", ["openapi-v1.5.yaml", "需求与版本管理系统_V1.5_OpenAPI.yaml"])
 def test_openapi_declares_publish_contract(spec_name):
     spec = yaml.safe_load((SPEC_DIR / spec_name).read_text(encoding="utf-8"))
     publish = spec["paths"]["/versions/{version_id}/publish"]["post"]
+    assert "post" in spec["paths"]["/versions/{version_id}/publish/check"]
+    assert "get" in spec["paths"]["/releases/{release_id}"]
+    assert "PublishCheckResult" in spec["components"]["schemas"]
     assert publish["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].endswith(
         "PublishResult"
     )

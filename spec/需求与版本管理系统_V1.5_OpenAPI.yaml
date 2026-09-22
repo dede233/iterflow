@@ -471,6 +471,11 @@ paths:
           minimum: 1
           maximum: 100
           default: 20
+      - name: version_id
+        in: query
+        required: false
+        schema:
+          type: integer
       responses:
         '200':
           description: 成功
@@ -853,6 +858,35 @@ paths:
                 $ref: '#/components/schemas/Conflict'
         '404':
           description: 版本不存在或无权访问
+  /versions/{version_id}/publish/check:
+    post:
+      tags:
+      - Version
+      summary: 发布前检查
+      description: 运行与 publish 相同的前置检查；通过返回 200，未通过返回 409 并含 checks。
+      security: &id007
+      - bearerAuth: []
+      parameters:
+      - name: version_id
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: 检查通过
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublishCheckResult'
+        '409':
+          description: 检查未通过
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conflict'
+        '404':
+          description: 版本不存在或无权访问
   /releases:
     get:
       tags:
@@ -867,6 +901,27 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ReleasePage'
+  /releases/{release_id}:
+    get:
+      tags:
+      - Release
+      summary: 发布记录详情
+      security: *id007
+      parameters:
+      - name: release_id
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReleaseOut'
+        '404':
+          description: 发布记录不存在或无权访问
   /notifications:
     get:
       tags:
@@ -2690,3 +2745,45 @@ components:
           type: array
           items:
             type: integer
+    BlockingRequirement:
+      type: object
+      required:
+      - id
+      - requirement_no
+      - status
+      properties:
+        id:
+          type: integer
+        requirement_no:
+          type: string
+        status:
+          type: string
+    PublishCheckItem:
+      type: object
+      required:
+      - type
+      - passed
+      - message
+      properties:
+        type:
+          type: string
+        passed:
+          type: boolean
+        message:
+          type: string
+        blocking_requirements:
+          type: array
+          items:
+            $ref: '#/components/schemas/BlockingRequirement'
+    PublishCheckResult:
+      type: object
+      required:
+      - passed
+      - checks
+      properties:
+        passed:
+          type: boolean
+        checks:
+          type: array
+          items:
+            $ref: '#/components/schemas/PublishCheckItem'

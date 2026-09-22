@@ -186,5 +186,29 @@ export interface VersionRequirementsResult {
   stats: VersionStats
   items: Requirement[]
 }
+
+export interface PublishCheckItem {
+  type: string
+  passed: boolean
+  message: string
+  blocking_requirements?: { id: number; requirement_no: string; status: string }[]
+}
+
+export interface PublishCheckResult {
+  passed: boolean
+  checks: PublishCheckItem[]
+}
+
+export interface ReleaseItem {
+  id: number
+  version_id: number
+  released_at: string
+  result: string
+  release_notes: string
+  rollback_notes?: string | null
+  created_at: string
+  created_by?: number | null
+  revision: number
+}
 export type NotificationType = 'SYSTEM' | 'FEEDBACK' | 'REQUIREMENT' | 'VERSION' | 'RELEASE'
 export interface NotificationItem { id:number; type:NotificationType; title:string; content:string; entity_type?:string|null; entity_id?:number|null; read_at?:string|null; created_at:string }

@@ -3,11 +3,11 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import require_permission
 from app.core.database import get_db
-from app.core.exceptions import NotFoundError
+from app.core.exceptions import AppError, NotFoundError
 from app.models.entities import User, Version
 from app.repositories.user_repository import UserRepository
 from app.repositories.version_repository import VersionRepository
-from app.schemas.release import PublishResult
+from app.schemas.release import PublishCheckResult, PublishResult
 from app.schemas.version import (
     AddRequirementRequest,
     MoveRequirementRequest,
@@ -20,6 +20,7 @@ from app.schemas.version import (
     VersionStatusChange,
     VersionUpdate,
 )
+from app.services.publish_check_service import PublishCheckService
 from app.services.version_service import VersionService
 
 router = APIRouter(prefix="/versions", tags=["versions"])
@@ -137,6 +138,27 @@ def remove_version_requirement(
 ):
     _scoped_version_or_404(db, user, version_id)
     return VersionService(db).remove_requirement(version_id, requirement_id, payload, user.id)
+
+
+@router.post("/{version_id}/publish/check", response_model=PublishCheckResult)
+def check_version_publish(
+    version_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("rd.version.publish")),
+):
+    version = _scoped_version_or_404(db, user, version_id)
+    result = PublishCheckService(db).evaluate(version)
+    if not result["passed"]:
+        raise AppError(
+            40923,
+            "发布检查未通过",
+            409,
+            {
+                "checks": result["checks"],
+                "blocking_requirements": PublishCheckService.blocking_requirements(result),
+            },
+        )
+    return result
 
 
 @router.post("/{version_id}/publish", response_model=PublishResult)

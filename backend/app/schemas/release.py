@@ -33,3 +33,21 @@ class PublishResult(BaseModel):
     version_id: int
     released_requirement_ids: list[int]
     online_feedback_ids: list[int]
+
+
+class BlockingRequirement(BaseModel):
+    id: int
+    requirement_no: str
+    status: str
+
+
+class PublishCheckItem(BaseModel):
+    type: str
+    passed: bool
+    message: str
+    blocking_requirements: list[BlockingRequirement] = []
+
+
+class PublishCheckResult(BaseModel):
+    passed: bool
+    checks: list[PublishCheckItem]

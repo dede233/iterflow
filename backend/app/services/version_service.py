@@ -36,6 +36,7 @@ from app.schemas.version import (
     VersionUpdate,
 )
 from app.services.audit_service import AuditService
+from app.services.publish_check_service import PublishCheckService
 
 # Version states in which the requirement set is frozen (V1.5 §freeze).
 FROZEN_VERSION_STATES = {VersionStatus.READY, VersionStatus.RELEASED, VersionStatus.CANCELED}
@@ -369,26 +370,21 @@ class VersionService:
         version = self.db.scalar(select(Version).where(Version.id == version_id).with_for_update())
         if not version:
             raise NotFoundError("版本不存在")
-        if VersionStatus(version.status) != VersionStatus.READY:
-            raise AppError(40922, "只有待发布版本可以执行发布", 409)
 
-        # Pre-check: every active requirement must be DONE, else block with detail.
-        active_requirements = self.repo.active_requirements(version_id)
-        blocking = [
-            r for r in active_requirements if RequirementStatus(r.status) != RequirementStatus.DONE
-        ]
-        if blocking:
+        # Centralized pre-publish checks (same checks as POST /publish/check).
+        check = PublishCheckService(self.db).evaluate(version)
+        if not check["passed"]:
             raise AppError(
                 40923,
-                "存在未完成的需求，无法发布",  # noqa: RUF001
+                "发布检查未通过",
                 409,
                 {
-                    "blocking_requirements": [
-                        {"id": r.id, "requirement_no": r.requirement_no, "status": str(r.status)}
-                        for r in blocking
-                    ]
+                    "checks": check["checks"],
+                    "blocking_requirements": PublishCheckService.blocking_requirements(check),
                 },
             )
+
+        active_requirements = self.repo.active_requirements(version_id)
 
         # Atomic READY -> RELEASED (only one publish can win this).
         result = cast(

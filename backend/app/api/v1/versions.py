@@ -7,6 +7,7 @@ from app.core.exceptions import NotFoundError
 from app.models.entities import User, Version
 from app.repositories.user_repository import UserRepository
 from app.repositories.version_repository import VersionRepository
+from app.schemas.release import PublishResult
 from app.schemas.version import (
     AddRequirementRequest,
     MoveRequirementRequest,
@@ -138,7 +139,7 @@ def remove_version_requirement(
     return VersionService(db).remove_requirement(version_id, requirement_id, payload, user.id)
 
 
-@router.post("/{version_id}/publish")
+@router.post("/{version_id}/publish", response_model=PublishResult)
 def publish_version(
     version_id: int,
     payload: PublishVersionRequest,

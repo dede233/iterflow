@@ -24,6 +24,7 @@ const {
   moveVersionRequirement,
   removeVersionRequirement,
   listVersionRequirements,
+  publishVersion,
 } = await import('@/api/versions')
 const {
   availableVersionStatusActions,
@@ -120,5 +121,20 @@ describe('version API DTO mapping', () => {
   it('surfaces a 409 freeze/conflict as a rejection', async () => {
     nextResponse = { status: 409, data: { code: 40930 } }
     await expect(addVersionRequirement(1, 7, 2)).rejects.toMatchObject({ response: { status: 409 } })
+  })
+
+  it('publishVersion POSTs release_notes + revision + released_at to /publish', async () => {
+    nextResponse = { status: 200, data: { release: { id: 1 }, version_id: 1 } }
+    await publishVersion(1, '首次发布', 3)
+    expect(lastRequest?.method).toBe('post')
+    expect(lastRequest?.url).toBe('/versions/1/publish')
+    const sent = JSON.parse(String(lastRequest?.data))
+    expect(sent).toMatchObject({ release_notes: '首次发布', revision: 3 })
+    expect(typeof sent.released_at).toBe('string')
+  })
+
+  it('surfaces a publish 409 (not ready / unfinished requirement) as a rejection', async () => {
+    nextResponse = { status: 409, data: { code: 40923 } }
+    await expect(publishVersion(1, 'x', 1)).rejects.toMatchObject({ response: { status: 409 } })
   })
 })

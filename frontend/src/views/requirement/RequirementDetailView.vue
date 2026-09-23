@@ -213,7 +213,7 @@ onBeforeUnmount(() => {
             <el-tag v-if="f.is_primary" size="small" type="success" effect="light">主</el-tag>
           </li>
         </ul>
-        <el-empty v-else :image-size="60" description="无来源反馈（直接创建）" />
+        <el-empty v-else :image-size="60" description="暂无可见来源反馈" />
       </el-card>
     </template>
 

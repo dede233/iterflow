@@ -21,6 +21,14 @@ class FileRepository(BaseRepository[FileObject]):
             statement = statement.where(FileObject.created_by == user_id)
         return self.db.scalar(statement)
 
+    def get_scoped_including_attached(
+        self, file_id: int, user_id: int, data_scope: DataScope
+    ) -> FileObject | None:
+        statement = select(FileObject).where(FileObject.id == file_id)
+        if data_scope is not DataScope.ALL:
+            statement = statement.where(FileObject.created_by == user_id)
+        return self.db.scalar(statement)
+
     def get_attached_to_entity(
         self, file_id: int, entity_type: str, entity_id: int
     ) -> FileObject | None:

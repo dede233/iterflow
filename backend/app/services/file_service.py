@@ -202,12 +202,11 @@ class FileService:
         return storage.generate_download_url(item.storage_key, expires_seconds=expires_seconds)
 
     def delete(self, file_id: int, actor: User, data_scope: DataScope) -> None:
-        item = self.repository.get(file_id)
+        item = self.repository.get_scoped_including_attached(file_id, actor.id, data_scope)
         if item is None:
             raise NotFoundError("文件不存在")
         if self.repository.has_attachments(item.id):
             raise ConflictError("文件已被业务对象引用。不能删除")
-        item = self.get_scoped(file_id, actor, data_scope)
         storage = self._storage(item.storage_driver)
         storage_key = item.storage_key
 

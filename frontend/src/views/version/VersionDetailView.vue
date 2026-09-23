@@ -340,7 +340,7 @@ onMounted(load)
             </template>
           </el-table-column>
         </el-table>
-        <el-empty v-else :image-size="60" description="版本内暂无需求" />
+        <el-empty v-else :image-size="60" description="暂无可见需求" />
         <p v-if="frozen" class="frozen-tip">版本处于 {{ versionStatusLabel[item.status] }}，需求清单已冻结。</p>
       </el-card>
 

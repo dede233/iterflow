@@ -50,7 +50,7 @@ Redis 服务：iterflow-redis
 
 ## 生产 Compose 一键启动
 
-1. `cp .env.example .env`，填写数据库密码、JWT 密钥、允许的 Host 与首次管理员密码。
+1. `cp .env.example deploy/.env`，填写数据库密码、JWT 密钥、允许的 Host 与首次管理员密码。
 2. 在可信的 HTTPS 反向代理后运行 `docker compose -f deploy/docker-compose.yml up -d --build`。
 3. Compose 自动等待数据库、执行 migration 与 seed，再启动 API 和 Web。无需手工进入容器初始化。
 

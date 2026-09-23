@@ -2,7 +2,6 @@ from pathlib import Path
 
 import yaml
 
-
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -17,7 +16,9 @@ def test_upload_limit_and_timeout_are_aligned():
 def test_compose_initialization_gates_api_and_uses_named_uploads_volume():
     compose = yaml.safe_load((ROOT / "deploy/docker-compose.yml").read_text())
     services = compose["services"]
-    assert services["seed"]["depends_on"]["migrate"]["condition"] == "service_completed_successfully"
+    assert (
+        services["seed"]["depends_on"]["migrate"]["condition"] == "service_completed_successfully"
+    )
     assert services["api"]["depends_on"]["seed"]["condition"] == "service_completed_successfully"
     assert "uploads:/app/data/uploads" in services["api"]["volumes"]
     assert compose["volumes"]["uploads"] is None

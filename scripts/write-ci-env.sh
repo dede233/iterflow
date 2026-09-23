@@ -19,8 +19,8 @@ done
   printf 'TRUST_PROXY_HEADERS=true\nENABLE_API_DOCS=false\nSTORAGE_DRIVER=local\n'
   printf 'INIT_ADMIN_USERNAME=ci-admin\nINIT_ADMIN_PASSWORD=%s\n' "$admin_password"
   printf 'BUILD_SHA=%s\n' "$(git rev-parse HEAD)"
-} > .env
-chmod 600 .env
+} > deploy/.env
+chmod 600 deploy/.env
 if [[ -n "${GITHUB_ENV:-}" ]]; then
   {
     printf 'INIT_ADMIN_USERNAME=ci-admin\n'

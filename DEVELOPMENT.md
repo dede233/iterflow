@@ -74,11 +74,13 @@ Redis 服务：iterflow-redis
 
 ## 4. 环境变量
 
-从根目录复制：
+本地 Python/Vite 分进程开发在根目录复制：
 
 ```bash
 cp .env.example .env
 ```
+
+Docker Compose 一键部署则复制到 `deploy/.env`；不要误以为根目录 `.env` 会自动被 `deploy/docker-compose.yml` 读取。
 
 生产/共享环境禁止继续使用示例密码。
 
@@ -243,7 +245,7 @@ npm run test
 
 ## 9. Docker 全量启动
 
-配置根目录 `.env` 后一键启动：
+配置 `deploy/.env` 后一键启动（从根目录复制 `.env.example`）：
 
 ```bash
 docker compose -f deploy/docker-compose.yml up -d --build

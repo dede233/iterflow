@@ -16,7 +16,14 @@ axios.defaults.adapter = async (config: InternalAxiosRequestConfig) => {
   return Promise.reject({ isAxiosError: true, config, response })
 }
 
-const { createRole, deleteRole, getRole, updateRole } = await import('@/api/roles')
+const {
+  createRole,
+  deleteRole,
+  getRole,
+  listPermissions,
+  updateRole,
+  updateRolePermissions,
+} = await import('@/api/roles')
 
 beforeEach(() => {
   lastRequest = null
@@ -45,5 +52,35 @@ describe('role management API DTO mapping', () => {
     await expect(deleteRole(8)).resolves.toEqual({ id: 8, deleted: true })
     expect(lastRequest?.method).toBe('delete')
     expect(lastRequest?.url).toBe('/roles/8')
+  })
+
+  it('loads read-only catalog metadata and writes permissions with the current revision', async () => {
+    nextResponse = {
+      status: 200,
+      data: [
+        {
+          id: 3,
+          code: 'sys.role.manage',
+          name: '角色管理',
+          category: 'BUTTON',
+          group: 'Role / 角色权限',
+          sensitive: true,
+        },
+      ],
+    }
+    await expect(listPermissions()).resolves.toMatchObject([
+      { id: 3, group: 'Role / 角色权限', sensitive: true },
+    ])
+    expect(lastRequest?.method).toBe('get')
+    expect(lastRequest?.url).toBe('/roles/permissions')
+
+    nextResponse = { status: 200, data: {} }
+    await updateRolePermissions(7, [3, 1], 9)
+    expect(lastRequest?.method).toBe('put')
+    expect(lastRequest?.url).toBe('/roles/7/permissions')
+    expect(JSON.parse(String(lastRequest?.data))).toEqual({
+      permission_ids: [3, 1],
+      revision: 9,
+    })
   })
 })

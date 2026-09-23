@@ -2410,6 +2410,8 @@ components:
       - code
       - name
       - category
+      - group
+      - sensitive
       properties:
         id:
           type: integer
@@ -2419,6 +2421,12 @@ components:
           type: string
         category:
           type: string
+        group:
+          type: string
+          description: 由 permission.code 在应用层派生的稳定模块分组，不写入数据库。
+        sensitive:
+          type: boolean
+          description: 是否为需要在分配时显式确认的敏感权限。
     RolePermissionUpdate:
       type: object
       required:

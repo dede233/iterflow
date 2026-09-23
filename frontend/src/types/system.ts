@@ -27,4 +27,6 @@ export interface PermissionItem {
   code: string
   name: string
   category: string
+  group: string
+  sensitive: boolean
 }

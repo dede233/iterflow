@@ -25,6 +25,8 @@ class PermissionOut(BaseModel):
     code: str
     name: str
     category: str
+    group: str
+    sensitive: bool
 
 
 class RoleCreate(BaseModel):

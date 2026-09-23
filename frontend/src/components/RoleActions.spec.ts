@@ -30,15 +30,19 @@ async function renderActions(item: RoleItem): Promise<string> {
 }
 
 describe('role action visibility', () => {
-  it('hides edit and delete actions for system roles', async () => {
+  it('shows view permissions but hides mutating actions for system roles', async () => {
     const html = await renderActions(role(true))
+    expect(html).toContain('查看权限')
+    expect(html).not.toContain('配置权限')
     expect(html).not.toContain('编辑')
     expect(html).not.toContain('删除')
   })
 
-  it('shows edit and delete actions for custom roles', async () => {
+  it('shows edit, configure permissions, and delete actions for custom roles', async () => {
     const html = await renderActions(role(false))
     expect(html).toContain('编辑')
+    expect(html).toContain('配置权限')
+    expect(html).not.toContain('查看权限')
     expect(html).toContain('删除')
   })
 })

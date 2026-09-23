@@ -326,6 +326,7 @@ class RequirementFeedback(Base):
     # database level (matches migration 0001's uq_feedback_primary_relation);
     # declared here too so metadata-created test databases enforce it as well.
     __table_args__ = (
+        UniqueConstraint("requirement_id", "feedback_id", name="uq_requirement_feedback_pair"),
         Index(
             "uq_feedback_primary_relation",
             "feedback_id",
@@ -369,7 +370,7 @@ class VersionRequirement(Base):
 class Release(Base, AuditMixin):
     __tablename__ = "rd_release"
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    version_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("rd_version.id"), index=True)
+    version_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("rd_version.id"))
     released_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     result: Mapped[ReleaseResult] = mapped_column(
         SAEnum(
@@ -383,6 +384,7 @@ class Release(Base, AuditMixin):
     )
     release_notes: Mapped[str] = mapped_column(Text)
     rollback_notes: Mapped[str | None] = mapped_column(Text)
+    __table_args__ = (UniqueConstraint("version_id", name="uq_release_version_id"),)
 
 
 class Notification(Base, AuditMixin):
@@ -432,9 +434,14 @@ class AttachmentRelation(Base):
     __tablename__ = "sys_attachment_relation"
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     file_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("sys_file.id", ondelete="CASCADE"))
-    entity_type: Mapped[str] = mapped_column(String(32), index=True)
-    entity_id: Mapped[int] = mapped_column(BigInteger, index=True)
+    entity_type: Mapped[str] = mapped_column(String(32))
+    entity_id: Mapped[int] = mapped_column(BigInteger)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    __table_args__ = (
+        UniqueConstraint("entity_type", "entity_id", "file_id", name="uq_attachment_entity_file"),
+        Index("ix_attachment_entity_type_entity_id", "entity_type", "entity_id"),
+        Index("ix_attachment_file_id", "file_id"),
+    )
 
 
 class Comment(Base, AuditMixin):

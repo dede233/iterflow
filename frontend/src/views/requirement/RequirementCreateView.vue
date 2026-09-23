@@ -4,13 +4,14 @@ import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 import { createRequirement } from '@/api/requirements'
 import { REQUIREMENT_PRIORITIES, REQUIREMENT_TYPES } from '@/constants/requirement'
+import type { RequirementCreatePayload } from '@/types/domain'
 
 const router = useRouter()
 const saving = ref(false)
 const form = reactive({
   title: '',
   requirement_type: 'FEATURE',
-  priority: 'P2',
+  priority: 'P2' as RequirementCreatePayload['priority'],
   description: '',
   acceptance_criteria: '',
 })

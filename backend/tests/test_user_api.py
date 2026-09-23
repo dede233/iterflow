@@ -556,15 +556,17 @@ def test_openapi_exposes_user_role_assignment_and_safe_response_contract():
         document = yaml.safe_load((spec_dir / filename).read_text(encoding="utf-8"))
         schemas = document["components"]["schemas"]
 
-        assert schemas["User"]["required"] == [
+        user_schema = schemas["UserOut"]
+        assert user_schema["required"] == [
             "id",
             "username",
             "display_name",
+            "email",
             "status",
             "revision",
-            "role_ids",
         ]
-        assert "password_hash" not in schemas["User"]["properties"]
+        assert "password_hash" not in user_schema["properties"]
+        assert "role_ids" in user_schema["properties"]
         assert schemas["UserPage"]["required"] == ["items", "page", "page_size", "total"]
         assert document["paths"]["/users/{user_id}"]["patch"]["requestBody"]["content"][
             "application/json"

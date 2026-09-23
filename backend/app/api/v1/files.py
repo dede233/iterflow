@@ -5,6 +5,7 @@ from fastapi.responses import RedirectResponse, Response, StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_permission
+from app.api.openapi import api_error_responses
 from app.core.database import get_db
 from app.models.entities import User
 from app.repositories.user_repository import UserRepository
@@ -42,7 +43,10 @@ async def upload_file(
     return FileOut.model_validate(item)
 
 
-@router.get("/{file_id}/download")
+@router.get(
+    "/{file_id}/download",
+    responses={**api_error_responses(404), 307: {"description": "重定向到短时下载地址"}},
+)
 def download_file(
     file_id: int,
     background_tasks: BackgroundTasks,
@@ -65,7 +69,7 @@ def download_file(
     )
 
 
-@router.get("/{file_id}/exists", response_model=FileExistsOut)
+@router.get("/{file_id}/exists", response_model=FileExistsOut, responses=api_error_responses(404))
 def file_exists(
     file_id: int,
     db: Session = Depends(get_db),
@@ -76,7 +80,7 @@ def file_exists(
     return FileExistsOut(file_id=item.id, exists=exists)
 
 
-@router.delete("/{file_id}", status_code=204)
+@router.delete("/{file_id}", status_code=204, responses=api_error_responses(404, 409))
 def delete_file(
     file_id: int,
     db: Session = Depends(get_db),

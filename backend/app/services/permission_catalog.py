@@ -39,6 +39,7 @@ class PermissionCatalog:
     )
     DEPRECATED_REPLACEMENTS: ClassVar[dict[str, str]] = {
         "sys.role.edit": "sys.role.manage",
+        "rd.requirement.version.move": "rd.version.edit",
     }
 
     @classmethod

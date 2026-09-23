@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_all_data_scope, require_any_permission, require_permission
+from app.api.openapi import api_error_responses
 from app.core.database import get_db
 from app.models.entities import User
 from app.schemas.role import (
@@ -46,7 +47,7 @@ def list_permissions(
     return RoleManagementService(db).list_permissions()
 
 
-@router.get("/{role_id}", response_model=RoleOut)
+@router.get("/{role_id}", response_model=RoleOut, responses=api_error_responses(404))
 def get_role(
     role_id: int,
     db: Session = Depends(get_db),
@@ -61,7 +62,7 @@ def get_role(
     return RoleManagementService(db).get(role_id)
 
 
-@router.post("", response_model=RoleOut)
+@router.post("", response_model=RoleOut, responses=api_error_responses(409))
 def create_role(
     payload: RoleCreate,
     db: Session = Depends(get_db),
@@ -71,7 +72,16 @@ def create_role(
     return RoleManagementService(db).create(payload, current.id)
 
 
-@router.patch("/{role_id}", response_model=RoleOut)
+@router.patch(
+    "/{role_id}",
+    response_model=RoleOut,
+    responses=api_error_responses(
+        404,
+        409,
+        422,
+        descriptions={409: "系统角色只读 revision 冲突或业务状态无效"},
+    ),
+)
 def update_role(
     role_id: int,
     payload: RoleUpdate,
@@ -82,7 +92,15 @@ def update_role(
     return RoleManagementService(db).update(role_id, payload, current.id)
 
 
-@router.put("/{role_id}/permissions", response_model=RoleOut)
+@router.put(
+    "/{role_id}/permissions",
+    response_model=RoleOut,
+    responses=api_error_responses(
+        404,
+        409,
+        descriptions={409: "系统角色只读 revision 冲突或业务状态无效"},
+    ),
+)
 def update_permissions(
     role_id: int,
     payload: RolePermissionUpdate,
@@ -93,7 +111,15 @@ def update_permissions(
     return RoleManagementService(db).update_permissions(role_id, payload, current.id)
 
 
-@router.delete("/{role_id}", response_model=RoleDeleteOut)
+@router.delete(
+    "/{role_id}",
+    response_model=RoleDeleteOut,
+    responses=api_error_responses(
+        404,
+        409,
+        descriptions={409: "系统角色只读不可删除 仍分配给用户的自定义角色也不可删除"},
+    ),
+)
 def delete_role(
     role_id: int,
     db: Session = Depends(get_db),

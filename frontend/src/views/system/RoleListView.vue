@@ -99,7 +99,7 @@ async function savePermissions(permissionIds: number[]): Promise<void> {
   const role = permissionRole.value
   if (!role || role.is_system || !canManage.value) return
   const confirmed = await confirmAddedSensitivePermissions(
-    role.permission_ids,
+    role.permission_ids ?? [],
     permissionIds,
     permissions.value,
     (message) =>
@@ -116,8 +116,7 @@ async function savePermissions(permissionIds: number[]): Promise<void> {
     const request = buildPermissionUpdateRequest(role, permissionIds)
     const updated = await updateRolePermissions(
       request.roleId,
-      request.permissionIds,
-      request.revision,
+      { permission_ids: request.permissionIds, revision: request.revision },
     )
     permissionRole.value = updated
     permissionDrawerVisible.value = false
@@ -144,7 +143,7 @@ async function remove(role: RoleItem): Promise<void> {
 }
 
 function permissionNames(role: RoleItem): string {
-  const labels = role.permission_ids
+  const labels = (role.permission_ids ?? [])
     .map((permissionId) => permissions.value.find((permission) => permission.id === permissionId)?.name)
     .filter((name): name is string => Boolean(name))
   return labels.length ? labels.join('、') : '无权限'

@@ -1,10 +1,5 @@
 import { api } from './client'
-import type { BusinessModuleItem, BusinessSystemItem } from '@/types/domain'
-
-export interface SystemsResponse {
-  systems: BusinessSystemItem[]
-  modules: BusinessModuleItem[]
-}
+import type { SystemsResponse } from '@/types/domain'
 
 // Requires the sys.system.view permission; callers should guard on it so users
 // without it (e.g. plain members) don't trigger a 403 toast.

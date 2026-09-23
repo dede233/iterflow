@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_all_permissions, require_permission
+from app.api.openapi import api_error_responses
 from app.core.database import get_db
 from app.core.exceptions import AppError, NotFoundError
 from app.models.entities import User, Version
@@ -64,7 +65,7 @@ def get_version(
     return _scoped_version_or_404(db, user, version_id)
 
 
-@router.patch("/{version_id}", response_model=VersionOut)
+@router.patch("/{version_id}", response_model=VersionOut, responses=api_error_responses(404, 409))
 def update_version(
     version_id: int,
     payload: VersionUpdate,
@@ -75,7 +76,9 @@ def update_version(
     return VersionService(db).update(version_id, payload, user.id)
 
 
-@router.patch("/{version_id}/status", response_model=VersionOut)
+@router.patch(
+    "/{version_id}/status", response_model=VersionOut, responses=api_error_responses(404, 409)
+)
 def change_version_status(
     version_id: int,
     payload: VersionStatusChange,
@@ -101,7 +104,11 @@ def list_version_requirements(
     return {"version_id": version_id, "stats": stats, "items": requirements}
 
 
-@router.post("/{version_id}/requirements", response_model=VersionOut)
+@router.post(
+    "/{version_id}/requirements",
+    response_model=VersionOut,
+    responses=api_error_responses(404, 409),
+)
 def add_version_requirement(
     version_id: int,
     payload: AddRequirementRequest,
@@ -115,7 +122,11 @@ def add_version_requirement(
     )
 
 
-@router.post("/{version_id}/requirements/move", response_model=VersionOut)
+@router.post(
+    "/{version_id}/requirements/move",
+    response_model=VersionOut,
+    responses=api_error_responses(404, 409),
+)
 def move_version_requirement(
     version_id: int,
     payload: MoveRequirementRequest,
@@ -129,7 +140,11 @@ def move_version_requirement(
     )
 
 
-@router.delete("/{version_id}/requirements/{requirement_id}", response_model=VersionOut)
+@router.delete(
+    "/{version_id}/requirements/{requirement_id}",
+    response_model=VersionOut,
+    responses=api_error_responses(404, 409),
+)
 def remove_version_requirement(
     version_id: int,
     requirement_id: int,
@@ -149,7 +164,11 @@ def remove_version_requirement(
     )
 
 
-@router.post("/{version_id}/publish/check", response_model=PublishCheckResult)
+@router.post(
+    "/{version_id}/publish/check",
+    response_model=PublishCheckResult,
+    responses=api_error_responses(404, 409),
+)
 def check_version_publish(
     version_id: int,
     db: Session = Depends(get_db),
@@ -170,7 +189,11 @@ def check_version_publish(
     return result
 
 
-@router.post("/{version_id}/publish", response_model=PublishResult)
+@router.post(
+    "/{version_id}/publish",
+    response_model=PublishResult,
+    responses=api_error_responses(404, 409),
+)
 def publish_version(
     version_id: int,
     payload: PublishVersionRequest,

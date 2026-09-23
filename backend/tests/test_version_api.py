@@ -1,10 +1,11 @@
 from collections.abc import Iterator
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 import yaml
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, event, select
+from sqlalchemy import create_engine, event, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -23,6 +24,7 @@ from app.models.entities import (
     VersionRequirement,
 )
 from app.models.enums import DataScope, UserStatus, VersionStatus
+from app.services.requirement_service import RequirementService
 
 SPEC_DIR = Path(__file__).resolve().parents[2] / "spec"
 
@@ -143,6 +145,52 @@ def _requirement(client, headers, **overrides) -> dict:
     r = client.post("/api/v1/requirements", headers=headers, json=body)
     assert r.status_code == 200, r.text
     return r.json()
+
+
+def _custom_creator_headers(
+    session: Session, *, code: str, permissions: set[str], scope: DataScope
+) -> dict[str, str]:
+    role = Role(code=code, name=code, data_scope=scope, is_system=False)
+    actor = User(
+        username=code.lower(),
+        display_name=code,
+        password_hash="unused",
+        status=UserStatus.ACTIVE,
+        must_change_password=False,
+    )
+    session.add_all([role, actor])
+    session.flush()
+    granted = list(session.scalars(select(Permission).where(Permission.code.in_(permissions))))
+    assert {permission.code for permission in granted} == permissions
+    session.add(UserRole(user_id=actor.id, role_id=role.id))
+    session.add_all(
+        RolePermission(role_id=role.id, permission_id=permission.id) for permission in granted
+    )
+    session.commit()
+    return {"Authorization": f"Bearer {create_access_token(actor.id)}"}
+
+
+def _relation_write_snapshot(session: Session, version_id: int) -> tuple[int, int, int, int]:
+    session.expire_all()
+    version = session.get(Version, version_id)
+    assert version is not None
+    return (
+        int(session.scalar(select(func.count()).select_from(Requirement)) or 0),
+        int(session.scalar(select(func.count()).select_from(VersionRequirement)) or 0),
+        version.revision,
+        int(
+            session.scalar(
+                select(func.count())
+                .select_from(OperationLog)
+                .where(
+                    OperationLog.entity_type == "VERSION",
+                    OperationLog.entity_id == version_id,
+                    OperationLog.action == "VERSION_REQUIREMENT_ADD",
+                )
+            )
+            or 0
+        ),
+    )
 
 
 def _to_ready(client, headers, version: dict) -> dict:
@@ -638,6 +686,132 @@ def test_create_requirement_with_version_uses_version_service_rules(ver_api):
         },
     )
     assert rejected.status_code == 409
+
+
+def test_requirement_creator_without_version_permissions_can_create_independent_requirement(
+    ver_api,
+):
+    client, session, _headers, _ids = ver_api
+    creator = _custom_creator_headers(
+        session,
+        code="CREATOR_ONLY",
+        permissions={"rd.requirement.create"},
+        scope=DataScope.ALL,
+    )
+    created = _requirement(client, creator, title="独立创建需求")
+    assert created["status"] == "DRAFT"
+    assert created["current_version_id"] is None
+
+
+@pytest.mark.parametrize(
+    ("permissions", "role_code"),
+    [
+        ({"rd.requirement.create"}, "CREATOR_ONLY"),
+        ({"rd.requirement.create", "rd.version.edit"}, "CREATOR_WITH_VERSION_EDIT"),
+    ],
+)
+def test_requirement_create_with_version_requires_both_conditional_permissions(
+    ver_api, permissions: set[str], role_code: str
+):
+    client, session, headers, _ids = ver_api
+    version = _version(client, headers["boss"])
+    creator = _custom_creator_headers(
+        session, code=role_code, permissions=permissions, scope=DataScope.ALL
+    )
+    before = _relation_write_snapshot(session, version["id"])
+
+    with patch.object(
+        RequirementService,
+        "create",
+        side_effect=AssertionError("authorization must precede RequirementService.create"),
+    ):
+        response = client.post(
+            "/api/v1/requirements",
+            headers=creator,
+            json={
+                "title": "不得关联版本",
+                "requirement_type": "FEATURE",
+                "description": "未获关系写权限",
+                "version_id": version["id"],
+                "version_revision": version["revision"],
+            },
+        )
+
+    assert response.status_code == 403
+    assert _relation_write_snapshot(session, version["id"]) == before
+
+
+def test_requirement_create_with_version_succeeds_for_all_three_permissions(ver_api):
+    client, session, headers, _ids = ver_api
+    version = _version(client, headers["boss"])
+    creator = _custom_creator_headers(
+        session,
+        code="CREATOR_WITH_ALL_RELATION_PERMISSIONS",
+        permissions={"rd.requirement.create", "rd.version.edit", "rd.requirement.view"},
+        scope=DataScope.ALL,
+    )
+
+    response = client.post(
+        "/api/v1/requirements",
+        headers=creator,
+        json={
+            "title": "授权关联版本",
+            "requirement_type": "FEATURE",
+            "description": "三个权限均具备",
+            "version_id": version["id"],
+            "version_revision": version["revision"],
+        },
+    )
+    assert response.status_code == 200, response.text
+    requirement = response.json()
+    assert requirement["current_version_id"] == version["id"]
+    assert requirement["status"] == "PLANNED"
+    session.expire_all()
+    assert session.get(Version, version["id"]).revision == version["revision"] + 1
+    assert (
+        session.scalar(
+            select(func.count())
+            .select_from(VersionRequirement)
+            .where(
+                VersionRequirement.version_id == version["id"],
+                VersionRequirement.requirement_id == requirement["id"],
+                VersionRequirement.active.is_(True),
+            )
+        )
+        == 1
+    )
+
+
+def test_requirement_create_with_version_hides_out_of_scope_version(ver_api):
+    client, session, headers, _ids = ver_api
+    version = _version(client, headers["boss"])
+    creator = _custom_creator_headers(
+        session,
+        code="SELF_CREATOR_WITH_RELATION_PERMISSIONS",
+        permissions={"rd.requirement.create", "rd.version.edit", "rd.requirement.view"},
+        scope=DataScope.SELF,
+    )
+    before = _relation_write_snapshot(session, version["id"])
+
+    with patch.object(
+        RequirementService,
+        "create",
+        side_effect=AssertionError("scope check must precede RequirementService.create"),
+    ):
+        response = client.post(
+            "/api/v1/requirements",
+            headers=creator,
+            json={
+                "title": "越界版本不得关联",
+                "requirement_type": "FEATURE",
+                "description": "目标属于其他用户",
+                "version_id": version["id"],
+                "version_revision": version["revision"],
+            },
+        )
+
+    assert response.status_code == 404
+    assert _relation_write_snapshot(session, version["id"]) == before
 
 
 # --------------------------------------------------------------------------- #

@@ -35,12 +35,12 @@ describe('user administration API boundaries', () => {
   })
 
   it('uses dedicated role and status APIs with the current revision', async () => {
-    await updateUserRoles(7, [1, 3], 5)
+    await updateUserRoles(7, { role_ids: [1, 3], revision: 5 })
     expect(lastRequest?.method).toBe('put')
     expect(lastRequest?.url).toBe('/users/7/roles')
     expect(JSON.parse(String(lastRequest?.data))).toEqual({ role_ids: [1, 3], revision: 5 })
 
-    await updateUserStatus(7, 'DISABLED', 6)
+    await updateUserStatus(7, { status: 'DISABLED', revision: 6 })
     expect(lastRequest?.method).toBe('patch')
     expect(lastRequest?.url).toBe('/users/7/status')
     expect(JSON.parse(String(lastRequest?.data))).toEqual({ status: 'DISABLED', revision: 6 })

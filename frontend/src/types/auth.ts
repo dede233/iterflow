@@ -1,22 +1,6 @@
-export type DataScope = 'SELF' | 'ALL' | 'TEAM'
-export type UserStatus = 'ACTIVE' | 'DISABLED' | 'LOCKED'
+import type { components } from './openapi.generated'
 
-export interface CurrentUser {
-  id: number
-  username: string
-  display_name: string
-  email: string | null
-  status: UserStatus
-  revision: number
-  role_ids: number[]
-  permission_codes: string[]
-  data_scope: DataScope
-  must_change_password: boolean
-}
-
-export interface TokenPair {
-  access_token: string
-  refresh_token: string
-  token_type: 'bearer'
-  must_change_password: boolean
-}
+export type DataScope = components['schemas']['DataScope']
+export type UserStatus = components['schemas']['UserStatus']
+export type CurrentUser = components['schemas']['AuthMe']
+export type TokenPair = components['schemas']['TokenPair']

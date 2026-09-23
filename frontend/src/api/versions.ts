@@ -1,15 +1,17 @@
 import { api } from './client'
 import type {
-  PageResult,
   PublishCheckResult,
+  PublishResult,
   VersionCreatePayload,
   VersionItem,
+  VersionPage,
   VersionRequirementsResult,
+  VersionStatusChangePayload,
   VersionUpdatePayload,
 } from '@/types/domain'
 
 export const listVersions = (params: { page?: number; page_size?: number } = {}) =>
-  api.get<PageResult<VersionItem>>('/versions', { params }).then((r) => r.data)
+  api.get<VersionPage>('/versions', { params }).then((r) => r.data)
 
 export const getVersion = (id: number) =>
   api.get<VersionItem>(`/versions/${id}`).then((r) => r.data)
@@ -22,7 +24,7 @@ export const updateVersion = (id: number, payload: VersionUpdatePayload) =>
 
 export const changeVersionStatus = (
   id: number,
-  status: string,
+  status: VersionStatusChangePayload['status'],
   revision: number,
   reason?: string | null,
 ) =>
@@ -76,13 +78,6 @@ export const removeVersionRequirement = (
       data: { revision, version_revision: versionRevision, reason: reason ?? null },
     })
     .then((r) => r.data)
-
-export interface PublishResult {
-  release: { id: number; version_id: number; result: string; released_at: string }
-  version_id: number
-  released_requirement_ids: number[]
-  online_feedback_ids: number[]
-}
 
 // Pre-publish check preview: 200 with {passed:true,...} when publishable, 409
 // (checks in error body) otherwise. skipConflictAlert keeps the global 409

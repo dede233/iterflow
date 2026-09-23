@@ -3,7 +3,11 @@
 // only drive labels and which action buttons to render. Any rejected transition
 // still comes back as a 409 from the API.
 
-export type ManualFeedbackStatus = 'NEW' | 'ACCEPTED' | 'DUPLICATE' | 'CANNOT_REPRODUCE' | 'CLOSED'
+import type { components } from '@/types/openapi.generated'
+
+export type ManualFeedbackStatus = components['schemas']['ManualFeedbackStatus']
+export type FeedbackTypeValue = components['schemas']['FeedbackType']
+export type FeedbackUrgencyValue = components['schemas']['FeedbackUrgency']
 
 export const FEEDBACK_TYPES = [
   { value: 'NEW_FEATURE', label: '新功能' },

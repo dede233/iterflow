@@ -6,7 +6,7 @@ from app.core.security import hash_password
 from app.models.entities import Role, User, UserRole
 from app.models.enums import UserStatus
 from app.repositories.user_repository import UserRepository
-from app.schemas.user import UserCreate, UserOut, UserRoleUpdate, UserStatusChange
+from app.schemas.user import UserCreate, UserOut, UserRoleUpdate, UserStatusChange, UserUpdate
 from app.services.audit_service import AuditService
 from app.services.auth_service import AuthService
 
@@ -109,6 +109,24 @@ class UserAdministrationService:
             "CREATE",
             after={"username": user.username, "role_ids": role_ids},
         )
+        self.db.commit()
+        self.db.refresh(user)
+        return self._out(user)
+
+    def update_profile(self, user_id: int, payload: UserUpdate, operator_id: int) -> UserOut:
+        user = self._user_or_404(user_id)
+        before = {
+            "display_name": user.display_name,
+            "email": user.email,
+            "mobile": user.mobile,
+        }
+        values = payload.model_dump(exclude={"revision"}, exclude_unset=True)
+        values["updated_by"] = operator_id
+        if not self.users.update_with_revision(user_id, payload.revision, values):
+            raise self._user_conflict(user_id, "用户已被其他用户修改")
+
+        self.db.refresh(user)
+        self.audit.log("USER", user_id, "UPDATE", before=before, after=values)
         self.db.commit()
         self.db.refresh(user)
         return self._out(user)

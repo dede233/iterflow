@@ -18,6 +18,7 @@ import StatusTag from '@/components/StatusTag.vue'
 import {
   REQUIREMENT_PRIORITIES,
   REQUIREMENT_TYPES,
+  type RequirementPriority,
   availableRequirementStatusActions,
   requirementStatusLabel,
   requirementStatusTagType,
@@ -87,7 +88,7 @@ const editSubmitting = ref(false)
 const editForm = reactive({
   title: '',
   requirement_type: '',
-  priority: '',
+  priority: 'P2' as RequirementPriority,
   description: '',
   acceptance_criteria: '',
 })

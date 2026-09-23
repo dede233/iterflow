@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_permission
+from app.api.openapi import api_error_responses
 from app.core.database import get_db
 from app.models.entities import User
 from app.schemas.audit import AuditOut, AuditPage
@@ -39,7 +40,7 @@ def list_audits(
     return {"items": items, "page": page, "size": size, "total": total}
 
 
-@router.get("/{audit_id}", response_model=AuditOut)
+@router.get("/{audit_id}", response_model=AuditOut, responses=api_error_responses(404))
 def get_audit(
     audit_id: int,
     db: Session = Depends(get_db),

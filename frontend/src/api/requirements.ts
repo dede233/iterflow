@@ -1,14 +1,15 @@
 import { api } from './client'
 import type {
   LinkedFeedback,
-  PageResult,
   Requirement,
   RequirementCreatePayload,
+  RequirementPage,
+  RequirementStatusChangePayload,
   RequirementUpdatePayload,
 } from '@/types/domain'
 
 export const listRequirements = (params: { page?: number; page_size?: number } = {}) =>
-  api.get<PageResult<Requirement>>('/requirements', { params }).then((r) => r.data)
+  api.get<RequirementPage>('/requirements', { params }).then((r) => r.data)
 
 export const getRequirement = (id: number) =>
   api.get<Requirement>(`/requirements/${id}`).then((r) => r.data)
@@ -24,7 +25,7 @@ export const updateRequirement = (id: number, payload: RequirementUpdatePayload)
 
 export const changeRequirementStatus = (
   id: number,
-  status: string,
+  status: RequirementStatusChangePayload['status'],
   revision: number,
   reason?: string | null,
 ) =>

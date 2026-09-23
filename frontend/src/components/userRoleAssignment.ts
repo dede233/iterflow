@@ -44,7 +44,7 @@ export function isCurrentUserSuperAdmin(
 
 export function isUserSuperAdmin(user: UserItem, roles: RoleItem[]): boolean {
   const superAdminRole = findSuperAdminRole(roles)
-  return Boolean(superAdminRole && user.role_ids.includes(superAdminRole.id))
+  return Boolean(superAdminRole && (user.role_ids ?? []).includes(superAdminRole.id))
 }
 
 export function buildUserBasicUpdatePayload(

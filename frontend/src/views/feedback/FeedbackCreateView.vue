@@ -19,8 +19,8 @@ const fileList = ref<UploadUserFile[]>([])
 
 const form = reactive({
   title: '',
-  feedback_type: 'SYSTEM_ISSUE',
-  urgency: 'NORMAL',
+  feedback_type: 'SYSTEM_ISSUE' as (typeof FEEDBACK_TYPES)[number]['value'],
+  urgency: 'NORMAL' as (typeof FEEDBACK_URGENCIES)[number]['value'],
   system_id: null as number | null,
   module_id: null as number | null,
   description: '',

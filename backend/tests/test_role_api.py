@@ -505,17 +505,18 @@ def test_static_openapi_role_management_contract():
     spec_dir = Path(__file__).resolve().parents[2] / "spec"
     for filename in ("openapi-v1.5.yaml", "需求与版本管理系统_V1.5_OpenAPI.yaml"):
         document = yaml.safe_load((spec_dir / filename).read_text(encoding="utf-8"))
-        role_schema = document["components"]["schemas"]["Role"]
-        permission_schema = document["components"]["schemas"]["Permission"]
+        role_schema = document["components"]["schemas"]["RoleOut"]
+        permission_schema = document["components"]["schemas"]["PermissionOut"]
         assert "is_system" in role_schema["required"]
-        assert role_schema["properties"]["is_system"] == {"type": "boolean"}
+        assert role_schema["properties"]["is_system"]["type"] == "boolean"
         assert {"group", "sensitive", "deprecated", "replacement_code"} <= set(
             permission_schema["required"]
         )
         assert permission_schema["properties"]["group"]["type"] == "string"
         assert permission_schema["properties"]["sensitive"]["type"] == "boolean"
         assert permission_schema["properties"]["deprecated"]["type"] == "boolean"
-        assert permission_schema["properties"]["replacement_code"]["nullable"] is True
+        replacement_code_schema = permission_schema["properties"]["replacement_code"]
+        assert {"type": "null"} in replacement_code_schema["anyOf"]
         assert "sys.user.role.assign" in document["paths"]["/roles"]["get"]["description"]
         assert set(document["paths"]["/roles/permissions"]) == {"get"}
         assert "get" in document["paths"]["/roles/{role_id}"]

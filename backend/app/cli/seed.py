@@ -19,7 +19,7 @@ PERMISSIONS = {
     "rd.requirement.create": "新建需求",
     "rd.requirement.edit": "编辑需求",
     "rd.requirement.status": "需求状态",
-    "rd.requirement.version.move": "调整版本",
+    "rd.requirement.version.move": "调整版本（已废弃）",  # noqa: RUF001
     "rd.version.view": "版本查看",
     "rd.version.create": "新建版本",
     "rd.version.edit": "编辑版本",

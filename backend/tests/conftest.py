@@ -7,3 +7,16 @@ os.environ.setdefault("JWT_ACCESS_TTL_MINUTES", "30")
 os.environ.setdefault("JWT_REFRESH_TTL_DAYS", "14")
 os.environ.setdefault("STORAGE_DRIVER", "local")
 os.environ.setdefault("LOCAL_STORAGE_PATH", "./data/test-uploads")
+
+
+def resolve_openapi_ref(document: dict, value: dict) -> dict:
+    """Resolve one local OpenAPI reference in a schema value."""
+    reference = value.get("$ref")
+    if reference is None:
+        return value
+    if not reference.startswith("#/components/"):
+        raise AssertionError(f"Expected a local component reference, got {reference!r}")
+    resolved = document
+    for part in reference.removeprefix("#/").split("/"):
+        resolved = resolved[part.replace("~1", "/").replace("~0", "~")]
+    return resolved

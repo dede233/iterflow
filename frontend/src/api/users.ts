@@ -1,24 +1,17 @@
 import { api } from './client'
-import type { UserItem } from '@/types/system'
-import type { PageResult } from '@/types/domain'
+import type {
+  UserCreatePayload,
+  UserItem,
+  UserRoleUpdatePayload,
+  UserStatusChangePayload,
+  UserUpdatePayload,
+} from '@/types/system'
+import type { components } from '@/types/openapi.generated'
 
-export interface UserCreatePayload {
-  username: string
-  display_name: string
-  email: string | null
-  mobile: string | null
-  password: string
-  role_ids: number[]
-}
+export type { UserUpdatePayload } from '@/types/system'
+type UserPage = components['schemas']['UserPage']
 
-export interface UserUpdatePayload {
-  display_name?: string
-  email?: string | null
-  mobile?: string | null
-  revision: number
-}
-
-export const listUsers = () => api.get<PageResult<UserItem>>('/users').then((response) => response.data)
+export const listUsers = () => api.get<UserPage>('/users').then((response) => response.data)
 
 export const createUser = (payload: UserCreatePayload) =>
   api.post<UserItem>('/users', payload).then((response) => response.data)
@@ -26,10 +19,13 @@ export const createUser = (payload: UserCreatePayload) =>
 export const updateUser = (userId: number, payload: UserUpdatePayload) =>
   api.patch<UserItem>(`/users/${userId}`, payload).then((response) => response.data)
 
-export const updateUserStatus = (userId: number, status: UserItem['status'], revision: number) =>
-  api.patch<UserItem>(`/users/${userId}/status`, { status, revision }).then((response) => response.data)
+export const updateUserStatus = (
+  userId: number,
+  payload: UserStatusChangePayload,
+) =>
+  api.patch<UserItem>(`/users/${userId}/status`, payload).then((response) => response.data)
 
-export const updateUserRoles = (userId: number, roleIds: number[], revision: number) =>
+export const updateUserRoles = (userId: number, payload: UserRoleUpdatePayload) =>
   api
-    .put<UserItem>(`/users/${userId}/roles`, { role_ids: roleIds, revision })
+    .put<UserItem>(`/users/${userId}/roles`, payload)
     .then((response) => response.data)

@@ -1,20 +1,14 @@
 import { api } from './client'
-import type { PermissionItem, RoleItem } from '@/types/system'
+import type {
+  PermissionItem,
+  RoleCreatePayload,
+  RoleDeleteOut,
+  RoleItem,
+  RolePermissionUpdatePayload,
+  RoleUpdatePayload,
+} from '@/types/system'
 
-export interface RoleCreatePayload {
-  code: string
-  name: string
-  data_scope: 'SELF' | 'ALL'
-  permission_ids: number[]
-}
-
-export interface RoleUpdatePayload {
-  code?: string
-  name?: string
-  data_scope?: 'SELF' | 'ALL'
-  enabled?: boolean
-  revision: number
-}
+export type { RoleUpdatePayload } from '@/types/system'
 
 export const listRoles = () => api.get<RoleItem[]>('/roles').then((response) => response.data)
 
@@ -30,13 +24,10 @@ export const createRole = (payload: RoleCreatePayload) =>
 export const updateRole = (roleId: number, payload: RoleUpdatePayload) =>
   api.patch<RoleItem>(`/roles/${roleId}`, payload).then((response) => response.data)
 
-export const updateRolePermissions = (roleId: number, permissionIds: number[], revision: number) =>
+export const updateRolePermissions = (roleId: number, payload: RolePermissionUpdatePayload) =>
   api
-    .put<RoleItem>(`/roles/${roleId}/permissions`, {
-      permission_ids: permissionIds,
-      revision,
-    })
+    .put<RoleItem>(`/roles/${roleId}/permissions`, payload)
     .then((response) => response.data)
 
 export const deleteRole = (roleId: number) =>
-  api.delete<{ id: number; deleted: boolean }>(`/roles/${roleId}`).then((response) => response.data)
+  api.delete<RoleDeleteOut>(`/roles/${roleId}`).then((response) => response.data)

@@ -1,34 +1,13 @@
-import type { DataScope, UserStatus } from './auth'
+import type { components } from './openapi.generated'
 
-export interface UserItem {
-  id: number
-  username: string
-  display_name: string
-  email: string | null
-  mobile: string | null
-  status: UserStatus
-  revision: number
-  role_ids: number[]
-}
-
-export interface RoleItem {
-  id: number
-  code: string
-  name: string
-  data_scope: DataScope
-  enabled: boolean
-  is_system: boolean
-  revision: number
-  permission_ids: number[]
-}
-
-export interface PermissionItem {
-  id: number
-  code: string
-  name: string
-  category: string
-  group: string
-  sensitive: boolean
-  deprecated: boolean
-  replacement_code: string | null
-}
+export type UserItem = components['schemas']['UserOut']
+export type RoleItem = components['schemas']['RoleOut']
+export type PermissionItem = components['schemas']['PermissionOut']
+export type UserCreatePayload = components['schemas']['UserCreate']
+export type UserUpdatePayload = components['schemas']['UserUpdate']
+export type UserStatusChangePayload = components['schemas']['UserStatusChange']
+export type UserRoleUpdatePayload = components['schemas']['UserRoleUpdate']
+export type RoleCreatePayload = components['schemas']['RoleCreate']
+export type RoleUpdatePayload = components['schemas']['RoleUpdate']
+export type RolePermissionUpdatePayload = components['schemas']['RolePermissionUpdate']
+export type RoleDeleteOut = components['schemas']['RoleDeleteOut']

@@ -83,7 +83,7 @@ describe('role management API DTO mapping', () => {
     expect(lastRequest?.url).toBe('/roles/permissions')
 
     nextResponse = { status: 200, data: {} }
-    await updateRolePermissions(7, [3, 1], 9)
+    await updateRolePermissions(7, { permission_ids: [3, 1], revision: 9 })
     expect(lastRequest?.method).toBe('put')
     expect(lastRequest?.url).toBe('/roles/7/permissions')
     expect(JSON.parse(String(lastRequest?.data))).toEqual({

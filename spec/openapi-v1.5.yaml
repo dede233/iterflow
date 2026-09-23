@@ -1137,7 +1137,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/User'
         '403':
-          description: 无权限或数据范围不足
+          description: 无权限、数据范围不足，或普通管理员尝试创建带 SUPER_ADMIN 的用户
         '409':
           description: 用户名已存在
   /users/{user_id}/status:
@@ -1165,8 +1165,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/User'
+        '403':
+          description: 无权修改拥有 SUPER_ADMIN 角色的用户状态
         '409':
-          description: revision 冲突
+          description: revision 冲突或最后一个有效 SUPER_ADMIN 保护
           content:
             application/json:
               schema:
@@ -1259,11 +1261,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/User'
         '403':
-          description: 无权限或数据范围不足
+          description: 无权限、数据范围不足，或无权授予/撤销 SUPER_ADMIN
         '404':
           description: 用户不存在
         '409':
-          description: revision 冲突
+          description: revision 冲突或最后一个有效 SUPER_ADMIN 保护
           content:
             application/json:
               schema:

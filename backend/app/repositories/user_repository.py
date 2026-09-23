@@ -1,8 +1,8 @@
-from sqlalchemy import func, select
+from sqlalchemy import Select, func, select
 from sqlalchemy.orm import Session
 
 from app.models.entities import Permission, Role, RolePermission, User, UserRole
-from app.models.enums import DataScope
+from app.models.enums import DataScope, UserStatus
 from app.repositories.base import BaseRepository
 
 
@@ -12,6 +12,76 @@ class UserRepository(BaseRepository[User]):
 
     def by_username(self, username: str) -> User | None:
         return self.db.scalar(select(User).where(User.username == username))
+
+    def get_fresh(self, user_id: int) -> User | None:
+        return self.db.scalar(
+            select(User).where(User.id == user_id).execution_options(populate_existing=True)
+        )
+
+    @staticmethod
+    def super_admin_lock_statement() -> Select[tuple[Role]]:
+        """Return the single global lock used by SUPER_ADMIN-sensitive writes."""
+        return (
+            select(Role)
+            .where(Role.code == "SUPER_ADMIN", Role.is_system.is_(True))
+            .with_for_update()
+        )
+
+    def get_super_admin_role_for_update(self) -> Role | None:
+        return self.db.scalar(
+            self.super_admin_lock_statement().execution_options(populate_existing=True)
+        )
+
+    def roles_by_ids(self, role_ids: list[int]) -> list[Role]:
+        if not role_ids:
+            return []
+        return list(self.db.scalars(select(Role).where(Role.id.in_(role_ids))).all())
+
+    def has_role(self, user_id: int, role_id: int) -> bool:
+        return (
+            self.db.scalar(
+                select(UserRole.user_id).where(
+                    UserRole.user_id == user_id,
+                    UserRole.role_id == role_id,
+                )
+            )
+            is not None
+        )
+
+    def is_effective_super_admin(self, user_id: int, role_id: int) -> bool:
+        return (
+            self.db.scalar(
+                select(User.id)
+                .join(UserRole, UserRole.user_id == User.id)
+                .join(Role, Role.id == UserRole.role_id)
+                .where(
+                    User.id == user_id,
+                    User.status == UserStatus.ACTIVE,
+                    UserRole.role_id == role_id,
+                    Role.code == "SUPER_ADMIN",
+                    Role.is_system.is_(True),
+                    Role.enabled.is_(True),
+                )
+            )
+            is not None
+        )
+
+    def effective_super_admin_count(self, role_id: int) -> int:
+        return int(
+            self.db.scalar(
+                select(func.count(User.id))
+                .join(UserRole, UserRole.user_id == User.id)
+                .join(Role, Role.id == UserRole.role_id)
+                .where(
+                    User.status == UserStatus.ACTIVE,
+                    UserRole.role_id == role_id,
+                    Role.code == "SUPER_ADMIN",
+                    Role.is_system.is_(True),
+                    Role.enabled.is_(True),
+                )
+            )
+            or 0
+        )
 
     def permission_codes(self, user_id: int) -> set[str]:
         rows = self.db.scalars(

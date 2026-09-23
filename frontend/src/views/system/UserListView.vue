@@ -3,6 +3,15 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { createUser, listUsers, updateUser, updateUserRoles, updateUserStatus } from '@/api/users'
 import { listRoles } from '@/api/roles'
+import UserRoleAssignmentDrawer from '@/components/UserRoleAssignmentDrawer.vue'
+import {
+  buildUserBasicUpdatePayload,
+  buildUserRoleUpdateRequest,
+  canOperatorChangeUserStatus,
+  isCurrentUserSuperAdmin,
+  isSuperAdminRole,
+  statusConfirmationMessage,
+} from '@/components/userRoleAssignment'
 import { usePermission } from '@/composables/usePermission'
 import { useAuthStore } from '@/stores/auth'
 import type { RoleItem, UserItem } from '@/types/system'
@@ -15,6 +24,9 @@ const loading = ref(false)
 const dialogVisible = ref(false)
 const editingUser = ref<UserItem | null>(null)
 const saving = ref(false)
+const roleDrawerVisible = ref(false)
+const roleUser = ref<UserItem | null>(null)
+const roleSaving = ref(false)
 const form = reactive({
   username: '',
   display_name: '',
@@ -31,6 +43,7 @@ const canAssignUserRoles = computed(() => hasAllScope.value && can('sys.user.rol
 const canCreateUsers = computed(() => hasAllScope.value && can('sys.user.create') && canAssignUserRoles.value)
 const canEditUsers = computed(() => can('sys.user.edit'))
 const canChangeUserStatus = computed(() => hasAllScope.value && can('sys.user.status'))
+const operatorIsSuperAdmin = computed(() => isCurrentUserSuperAdmin(auth.user, roles.value))
 
 async function load(): Promise<void> {
   loading.value = true
@@ -63,9 +76,14 @@ function openEdit(user: UserItem): void {
     email: user.email ?? '',
     mobile: user.mobile ?? '',
     password: '',
-    role_ids: [...user.role_ids],
+    role_ids: [],
   })
   dialogVisible.value = true
+}
+
+function openRoles(user: UserItem): void {
+  roleUser.value = user
+  roleDrawerVisible.value = true
 }
 
 async function save(): Promise<void> {
@@ -84,17 +102,13 @@ async function save(): Promise<void> {
       })
       ElMessage.success('用户已创建')
     } else {
-      let updated = await updateUser(editingUser.value.id, {
-        display_name: form.display_name.trim(),
-        email,
-        mobile,
-        revision: editingUser.value.revision,
-      })
-      const originalRoleIds = [...editingUser.value.role_ids].sort().join(',')
-      const nextRoleIds = [...form.role_ids].sort().join(',')
-      if (canAssignUserRoles.value && originalRoleIds !== nextRoleIds) {
-        updated = await updateUserRoles(updated.id, form.role_ids, updated.revision)
-      }
+      await updateUser(
+        editingUser.value.id,
+        buildUserBasicUpdatePayload(
+          { display_name: form.display_name, email, mobile },
+          editingUser.value.revision,
+        ),
+      )
       ElMessage.success('用户已更新')
     }
     dialogVisible.value = false
@@ -104,10 +118,33 @@ async function save(): Promise<void> {
   }
 }
 
+async function saveRoles(roleIds: number[]): Promise<void> {
+  const user = roleUser.value
+  if (!user) return
+  roleSaving.value = true
+  try {
+    const request = buildUserRoleUpdateRequest(user, roleIds)
+    const updated = await updateUserRoles(request.userId, request.roleIds, request.revision)
+    roleUser.value = updated
+    roleDrawerVisible.value = false
+    ElMessage.success('用户角色已更新')
+    await load()
+  } finally {
+    roleSaving.value = false
+  }
+}
+
+function mayChangeStatus(user: UserItem): boolean {
+  return (
+    canChangeUserStatus.value &&
+    canOperatorChangeUserStatus(user, roles.value, operatorIsSuperAdmin.value)
+  )
+}
+
 async function toggleStatus(user: UserItem): Promise<void> {
   const status = user.status === 'ACTIVE' ? 'DISABLED' : 'ACTIVE'
   const action = status === 'ACTIVE' ? '启用' : '停用'
-  await ElMessageBox.confirm(`确定要${action}用户“${user.display_name}”吗？`, `${action}用户`, {
+  await ElMessageBox.confirm(statusConfirmationMessage(user, roles.value, status), `${action}用户`, {
     confirmButtonText: action,
     cancelButtonText: '取消',
     type: 'warning',
@@ -152,17 +189,18 @@ onMounted(load)
           <el-tag :type="scope.row.status === 'ACTIVE' ? 'success' : 'info'">{{ scope.row.status }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column v-if="canEditUsers || canChangeUserStatus" label="操作" width="180" fixed="right">
+      <el-table-column v-if="canEditUsers || canAssignUserRoles || canChangeUserStatus" label="操作" width="240" fixed="right">
         <template #default="scope">
           <el-button v-if="canEditUsers" link type="primary" @click="openEdit(scope.row)">编辑</el-button>
-          <el-button v-if="canChangeUserStatus" link :type="scope.row.status === 'ACTIVE' ? 'danger' : 'success'" @click="toggleStatus(scope.row)">
+          <el-button v-if="canAssignUserRoles" link type="primary" @click="openRoles(scope.row)">配置角色</el-button>
+          <el-button v-if="mayChangeStatus(scope.row)" link :type="scope.row.status === 'ACTIVE' ? 'danger' : 'success'" @click="toggleStatus(scope.row)">
             {{ scope.row.status === 'ACTIVE' ? '停用' : '启用' }}
           </el-button>
         </template>
       </el-table-column>
     </el-table>
 
-    <el-dialog v-model="dialogVisible" :title="editingUser ? '编辑用户' : '创建用户'" width="min(560px, 92vw)" destroy-on-close>
+    <el-dialog v-model="dialogVisible" :title="editingUser ? '编辑用户基本资料' : '创建用户'" width="min(560px, 92vw)" destroy-on-close>
       <el-form label-position="top" @submit.prevent="save">
         <el-form-item label="用户名" required>
           <el-input v-model="form.username" :disabled="Boolean(editingUser)" autocomplete="username" />
@@ -179,9 +217,19 @@ onMounted(load)
         <el-form-item v-if="!editingUser" label="初始密码" required>
           <el-input v-model="form.password" type="password" show-password autocomplete="new-password" />
         </el-form-item>
-        <el-form-item v-if="canAssignUserRoles" label="角色">
-          <el-checkbox-group v-model="form.role_ids">
-            <el-checkbox v-for="role in roles" :key="role.id" :value="role.id">{{ role.name }}</el-checkbox>
+        <el-form-item v-if="!editingUser && canAssignUserRoles" label="初始角色">
+          <el-checkbox-group v-model="form.role_ids" class="create-role-list">
+            <el-checkbox
+              v-for="role in roles"
+              :key="role.id"
+              :value="role.id"
+              :disabled="isSuperAdminRole(role) && !operatorIsSuperAdmin"
+            >
+              {{ role.name }}
+              <el-tag v-if="isSuperAdminRole(role)" type="danger" size="small">
+                超级管理员 / 高风险
+              </el-tag>
+            </el-checkbox>
           </el-checkbox-group>
         </el-form-item>
       </el-form>
@@ -190,11 +238,21 @@ onMounted(load)
         <el-button type="primary" :loading="saving" @click="save">保存</el-button>
       </template>
     </el-dialog>
+
+    <UserRoleAssignmentDrawer
+      v-model="roleDrawerVisible"
+      :user="roleUser"
+      :roles="roles"
+      :operator-is-super-admin="operatorIsSuperAdmin"
+      :saving="roleSaving"
+      @save="saveRoles"
+    />
   </section>
 </template>
 
 <style scoped>
 .head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .hint { margin: -8px 0 16px; color: #64748b; font-size: 13px; }
+.create-role-list { display: grid; grid-template-columns: 1fr; gap: 8px; }
 @media (max-width: 767px) { .head { align-items: center; } }
 </style>

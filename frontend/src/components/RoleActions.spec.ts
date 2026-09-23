@@ -23,15 +23,15 @@ function role(isSystem: boolean): RoleItem {
   }
 }
 
-async function renderActions(item: RoleItem): Promise<string> {
-  const app = createSSRApp(RoleActions, { role: item })
+async function renderActions(item: RoleItem, canManage: boolean): Promise<string> {
+  const app = createSSRApp(RoleActions, { role: item, canManage })
   app.component('el-button', ElButtonStub)
   return renderToString(app)
 }
 
 describe('role action visibility', () => {
   it('shows view permissions but hides mutating actions for system roles', async () => {
-    const html = await renderActions(role(true))
+    const html = await renderActions(role(true), true)
     expect(html).toContain('查看权限')
     expect(html).not.toContain('配置权限')
     expect(html).not.toContain('编辑')
@@ -39,10 +39,18 @@ describe('role action visibility', () => {
   })
 
   it('shows edit, configure permissions, and delete actions for custom roles', async () => {
-    const html = await renderActions(role(false))
+    const html = await renderActions(role(false), true)
     expect(html).toContain('编辑')
     expect(html).toContain('配置权限')
     expect(html).not.toContain('查看权限')
     expect(html).toContain('删除')
+  })
+
+  it('shows only view permissions for custom roles in read-only mode', async () => {
+    const html = await renderActions(role(false), false)
+    expect(html).toContain('查看权限')
+    expect(html).not.toContain('配置权限')
+    expect(html).not.toContain('编辑')
+    expect(html).not.toContain('删除')
   })
 })

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { createRole, deleteRole, listPermissions, listRoles, updateRole, updateRolePermissions } from '@/api/roles'
 import PermissionAssignmentDrawer from '@/components/PermissionAssignmentDrawer.vue'
@@ -13,6 +13,7 @@ import { usePermission } from '@/composables/usePermission'
 import type { PermissionItem, RoleItem } from '@/types/system'
 
 const { can } = usePermission()
+const canManage = computed(() => can('sys.role.manage'))
 const rows = ref<RoleItem[]>([])
 const permissions = ref<PermissionItem[]>([])
 const loading = ref(false)
@@ -96,7 +97,7 @@ async function save(): Promise<void> {
 
 async function savePermissions(permissionIds: number[]): Promise<void> {
   const role = permissionRole.value
-  if (!role || role.is_system) return
+  if (!role || role.is_system || !canManage.value) return
   const confirmed = await confirmAddedSensitivePermissions(
     role.permission_ids,
     permissionIds,
@@ -159,7 +160,7 @@ onMounted(load)
         <h1 class="page-title">角色与权限</h1>
         <p class="hint">TEAM 数据范围为保留值，当前版本不可配置。</p>
       </div>
-      <el-button v-if="can('sys.role.manage')" type="primary" @click="openCreate">创建角色</el-button>
+      <el-button v-if="canManage" type="primary" @click="openCreate">创建角色</el-button>
     </div>
     <el-alert title="角色与权限配置建议在 PC 端完成" type="info" show-icon :closable="false" />
     <el-table v-loading="loading" :data="rows" row-key="id" class="role-table">
@@ -175,10 +176,11 @@ onMounted(load)
       <el-table-column label="状态" width="90">
         <template #default="scope"><el-tag :type="scope.row.enabled ? 'success' : 'info'">{{ scope.row.enabled ? '启用' : '停用' }}</el-tag></template>
       </el-table-column>
-      <el-table-column v-if="can('sys.role.manage')" label="操作" width="240" fixed="right">
+      <el-table-column label="操作" width="240" fixed="right">
         <template #default="scope">
           <RoleActions
             :role="scope.row"
+            :can-manage="canManage"
             @edit="openEdit"
             @permissions="openPermissions"
             @delete="remove"
@@ -219,6 +221,7 @@ onMounted(load)
       :role="permissionRole"
       :permissions="permissions"
       :saving="permissionSaving"
+      :readonly="!canManage"
       @save="savePermissions"
     />
   </section>

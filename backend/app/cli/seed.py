@@ -32,7 +32,7 @@ PERMISSIONS = {
     "sys.user.status": "启停用户",
     "sys.user.role.assign": "分配用户角色",
     "sys.role.view": "角色查看",
-    "sys.role.edit": "角色权限编辑",
+    "sys.role.edit": "角色权限编辑（已废弃）",  # noqa: RUF001
     "sys.role.manage": "角色管理",
     "sys.system.view": "系统模块查看",
     "sys.audit.view": "审计日志查看",

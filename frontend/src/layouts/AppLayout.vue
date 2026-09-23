@@ -9,7 +9,7 @@ const router = useRouter()
 interface NavigationItem {
   to: string
   label: string
-  permission?: string
+  permission?: string | string[]
   requiresAllScope?: boolean
 }
 
@@ -24,10 +24,10 @@ const menuItems = computed<NavigationItem[]>(() => [
 const systemItems = computed<NavigationItem[]>(() => [
   { to: '/admin/audits', label: '审计中心', permission: 'sys.audit.view' },
   { to: '/system/users', label: '用户管理', permission: 'sys.user.view' },
-  { to: '/admin/roles', label: '角色管理', permission: 'sys.role.manage', requiresAllScope: true },
+  { to: '/admin/roles', label: '角色管理', permission: ['sys.role.view', 'sys.role.manage'], requiresAllScope: true },
 ])
 
-function can(permission?: string, requiresAllScope = false): boolean {
+function can(permission?: string | string[], requiresAllScope = false): boolean {
   return (!permission || auth.hasPermission(permission)) && (!requiresAllScope || auth.user?.data_scope === 'ALL')
 }
 

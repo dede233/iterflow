@@ -17,6 +17,8 @@ const permissions: PermissionItem[] = [
     category: 'BUTTON',
     group: 'Feedback / 反馈',
     sensitive: false,
+    deprecated: false,
+    replacement_code: null,
   },
   {
     id: 2,
@@ -25,6 +27,8 @@ const permissions: PermissionItem[] = [
     category: 'BUTTON',
     group: 'Feedback / 反馈',
     sensitive: false,
+    deprecated: false,
+    replacement_code: null,
   },
   {
     id: 3,
@@ -33,6 +37,8 @@ const permissions: PermissionItem[] = [
     category: 'BUTTON',
     group: 'Role / 角色权限',
     sensitive: true,
+    deprecated: false,
+    replacement_code: null,
   },
   {
     id: 4,
@@ -41,6 +47,8 @@ const permissions: PermissionItem[] = [
     category: 'BUTTON',
     group: 'User / 用户管理',
     sensitive: true,
+    deprecated: false,
+    replacement_code: null,
   },
 ]
 

@@ -7,6 +7,7 @@ import UserRoleAssignmentDrawer from '@/components/UserRoleAssignmentDrawer.vue'
 import {
   buildUserBasicUpdatePayload,
   buildUserRoleUpdateRequest,
+  canLoadRoleDefinitions,
   canOperatorChangeUserStatus,
   isCurrentUserSuperAdmin,
   isSuperAdminRole,
@@ -35,10 +36,10 @@ const form = reactive({
   password: '',
   role_ids: [] as number[],
 })
-const canReadRoleDefinitions = computed(
-  () => auth.user?.data_scope === 'ALL' && can('sys.role.view'),
-)
 const hasAllScope = computed(() => auth.user?.data_scope === 'ALL')
+const canReadRoleDefinitions = computed(
+  () => canLoadRoleDefinitions(auth.user, can),
+)
 const canAssignUserRoles = computed(() => hasAllScope.value && can('sys.user.role.assign'))
 const canCreateUsers = computed(() => hasAllScope.value && can('sys.user.create') && canAssignUserRoles.value)
 const canEditUsers = computed(() => can('sys.user.edit'))

@@ -1275,6 +1275,7 @@ paths:
       tags:
       - System
       summary: 角色列表
+      description: 需要 ALL 数据范围；拥有 sys.role.view、sys.role.manage 或 sys.user.role.assign 任一权限即可读取。sys.user.role.assign 仅据此获取用户角色分配所需的角色选择列表。
       security: *id001
       responses:
         '200':
@@ -1289,6 +1290,7 @@ paths:
       tags:
       - System
       summary: 创建角色
+      description: 仅拥有 sys.role.manage 且数据范围为 ALL 的用户可执行。
       security: *id001
       requestBody:
         required: true
@@ -1312,6 +1314,7 @@ paths:
       tags:
       - System
       summary: 权限码列表
+      description: 需要 ALL 数据范围，并拥有 sys.role.view 或 sys.role.manage；返回代码定义的只读 Permission Catalog。
       security: *id001
       responses:
         '200':
@@ -1327,7 +1330,7 @@ paths:
       tags:
       - System
       summary: 更新角色权限
-      description: 仅自定义角色可修改权限；系统角色为只读基线并返回 409；revision 用于乐观锁。
+      description: 仅拥有 sys.role.manage 且数据范围为 ALL 的用户可执行；仅自定义角色可修改权限；系统角色为只读基线并返回 409；revision 用于乐观锁。
       security: *id001
       parameters:
       - name: role_id
@@ -1365,6 +1368,7 @@ paths:
       tags:
       - System
       summary: 角色详情
+      description: 需要 ALL 数据范围，并拥有 sys.role.view 或 sys.role.manage。
       security: *id001
       parameters:
       - name: role_id
@@ -1387,7 +1391,7 @@ paths:
       tags:
       - System
       summary: 修改角色基础信息
-      description: 仅自定义角色可修改；系统角色为只读基线并返回 409。TEAM 数据范围在 V1.5 中保留，提交 TEAM 返回 422；revision 用于乐观锁。
+      description: 仅拥有 sys.role.manage 且数据范围为 ALL 的用户可执行；仅自定义角色可修改；系统角色为只读基线并返回 409。TEAM 数据范围在 V1.5 中保留，提交 TEAM 返回 422；revision 用于乐观锁。
       security: *id001
       parameters:
       - name: role_id
@@ -1422,7 +1426,7 @@ paths:
       tags:
       - System
       summary: 删除自定义角色
-      description: 系统角色为只读基线且不可删除；仍被用户分配的自定义角色返回 409。
+      description: 仅拥有 sys.role.manage 且数据范围为 ALL 的用户可执行；系统角色为只读基线且不可删除；仍被用户分配的自定义角色返回 409。
       security: *id001
       parameters:
       - name: role_id
@@ -2335,6 +2339,8 @@ components:
       - category
       - group
       - sensitive
+      - deprecated
+      - replacement_code
       properties:
         id:
           type: integer
@@ -2350,6 +2356,13 @@ components:
         sensitive:
           type: boolean
           description: 是否为需要在分配时显式确认的敏感权限。
+        deprecated:
+          type: boolean
+          description: 是否为仅保留兼容性的已废弃权限码。
+        replacement_code:
+          type: string
+          nullable: true
+          description: 已废弃权限的替代权限码；未废弃时为 null。
     RolePermissionUpdate:
       type: object
       required:

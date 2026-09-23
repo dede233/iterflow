@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.api.deps import require_all_data_scope, require_permission
+from app.api.deps import require_all_data_scope, require_any_permission, require_permission
 from app.core.database import get_db
 from app.models.entities import User
 from app.schemas.role import (
@@ -19,7 +19,14 @@ router = APIRouter(prefix="/roles", tags=["roles"])
 
 @router.get("", response_model=list[RoleOut])
 def list_roles(
-    db: Session = Depends(get_db), current: User = Depends(require_permission("sys.role.view"))
+    db: Session = Depends(get_db),
+    current: User = Depends(
+        require_any_permission(
+            "sys.role.view",
+            "sys.role.manage",
+            "sys.user.role.assign",
+        )
+    ),
 ):
     require_all_data_scope(current, db)
     return RoleManagementService(db).list()
@@ -27,7 +34,13 @@ def list_roles(
 
 @router.get("/permissions", response_model=list[PermissionOut])
 def list_permissions(
-    db: Session = Depends(get_db), current: User = Depends(require_permission("sys.role.view"))
+    db: Session = Depends(get_db),
+    current: User = Depends(
+        require_any_permission(
+            "sys.role.view",
+            "sys.role.manage",
+        )
+    ),
 ):
     require_all_data_scope(current, db)
     return RoleManagementService(db).list_permissions()
@@ -37,7 +50,12 @@ def list_permissions(
 def get_role(
     role_id: int,
     db: Session = Depends(get_db),
-    current: User = Depends(require_permission("sys.role.view")),
+    current: User = Depends(
+        require_any_permission(
+            "sys.role.view",
+            "sys.role.manage",
+        )
+    ),
 ):
     require_all_data_scope(current, db)
     return RoleManagementService(db).get(role_id)

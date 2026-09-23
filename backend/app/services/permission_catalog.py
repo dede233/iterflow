@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import ClassVar
 
 from app.models.entities import Permission
 from app.schemas.role import PermissionOut
@@ -36,6 +37,9 @@ class PermissionCatalog:
             "sys.file.delete",
         }
     )
+    DEPRECATED_REPLACEMENTS: ClassVar[dict[str, str]] = {
+        "sys.role.edit": "sys.role.manage",
+    }
 
     @classmethod
     def group_for(cls, code: str) -> PermissionGroupDefinition:
@@ -51,6 +55,7 @@ class PermissionCatalog:
     @classmethod
     def serialize(cls, permission: Permission) -> PermissionOut:
         group = cls.group_for(permission.code)
+        replacement_code = cls.DEPRECATED_REPLACEMENTS.get(permission.code)
         return PermissionOut(
             id=permission.id,
             code=permission.code,
@@ -58,6 +63,8 @@ class PermissionCatalog:
             category=permission.category,
             group=group.label,
             sensitive=permission.code in cls.SENSITIVE_CODES,
+            deprecated=replacement_code is not None,
+            replacement_code=replacement_code,
         )
 
     @classmethod

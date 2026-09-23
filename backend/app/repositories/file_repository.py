@@ -11,13 +11,28 @@ class FileRepository(BaseRepository[FileObject]):
         super().__init__(db, FileObject)
 
     def get_scoped(self, file_id: int, user_id: int, data_scope: DataScope) -> FileObject | None:
-        statement = select(FileObject).where(FileObject.id == file_id)
+        attached = (
+            select(AttachmentRelation.id)
+            .where(AttachmentRelation.file_id == FileObject.id)
+            .exists()
+        )
+        statement = select(FileObject).where(FileObject.id == file_id, ~attached)
         if data_scope is not DataScope.ALL:
-            # TODO(Phase 2): derive file access from its Feedback/Requirement/Version
-            # attachment and that entity's data-scope policy. Creator ownership is a
-            # deliberately temporary foundation rule, not the final authorization model.
             statement = statement.where(FileObject.created_by == user_id)
         return self.db.scalar(statement)
+
+    def get_attached_to_entity(
+        self, file_id: int, entity_type: str, entity_id: int
+    ) -> FileObject | None:
+        return self.db.scalar(
+            select(FileObject)
+            .join(AttachmentRelation, AttachmentRelation.file_id == FileObject.id)
+            .where(
+                FileObject.id == file_id,
+                AttachmentRelation.entity_type == entity_type,
+                AttachmentRelation.entity_id == entity_id,
+            )
+        )
 
     def has_attachments(self, file_id: int) -> bool:
         statement = select(AttachmentRelation.id).where(AttachmentRelation.file_id == file_id)

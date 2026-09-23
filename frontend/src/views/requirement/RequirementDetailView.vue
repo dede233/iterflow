@@ -10,6 +10,10 @@ import {
 } from '@/api/requirements'
 import { editingHeartbeat, endEditing, startEditing } from '@/api/editing'
 import { usePermission } from '@/composables/usePermission'
+import {
+  canStartRequirementEditing,
+  loadRequirementFeedbackSection,
+} from '@/security/detailAuthorization'
 import StatusTag from '@/components/StatusTag.vue'
 import {
   REQUIREMENT_PRIORITIES,
@@ -32,11 +36,13 @@ const feedbacks = ref<LinkedFeedback[]>([])
 const loading = ref(false)
 const canEdit = computed(() => can('rd.requirement.edit'))
 const canChangeStatus = computed(() => can('rd.requirement.status'))
+const canViewFeedbacks = computed(() => can('rd.feedback.view'))
 const statusActions = computed<ReqStatusAction[]>(() =>
   item.value ? availableRequirementStatusActions(item.value.status, canChangeStatus.value) : [],
 )
 
 let timer: ReturnType<typeof setInterval> | undefined
+let editingStarted = false
 
 // --- status dialog ---
 const statusDialog = ref(false)
@@ -124,7 +130,7 @@ async function load(): Promise<void> {
   loading.value = true
   try {
     item.value = await getRequirement(id)
-    feedbacks.value = await listRequirementFeedbacks(id)
+    feedbacks.value = await loadRequirementFeedbackSection(id, can, listRequirementFeedbacks)
   } finally {
     loading.value = false
   }
@@ -132,8 +138,10 @@ async function load(): Promise<void> {
 
 onMounted(async () => {
   await load()
+  if (!canStartRequirementEditing(can)) return
   try {
     await startEditing('REQUIREMENT', id)
+    editingStarted = true
     timer = setInterval(() => editingHeartbeat('REQUIREMENT', id), 120000)
   } catch {
     // Editing hint is best-effort only.
@@ -142,7 +150,7 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   if (timer) clearInterval(timer)
-  void endEditing('REQUIREMENT', id)
+  if (editingStarted) void endEditing('REQUIREMENT', id)
 })
 </script>
 
@@ -195,7 +203,7 @@ onBeforeUnmount(() => {
       </el-card>
 
       <!-- source feedbacks -->
-      <el-card shadow="never" class="section">
+      <el-card v-if="canViewFeedbacks" shadow="never" class="section">
         <div class="section-title">来源反馈</div>
         <ul v-if="feedbacks.length" class="links">
           <li v-for="f in feedbacks" :key="f.feedback_id">

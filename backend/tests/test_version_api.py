@@ -70,12 +70,19 @@ def ver_api(tmp_path: Path) -> Iterator[Fixture]:
     with Session(engine, expire_on_commit=False) as session:
         role_all = Role(code="ALLROLE", name="全域", data_scope=DataScope.ALL)
         role_self = Role(code="SELFROLE", name="本人", data_scope=DataScope.SELF)
+        version_editor_role = Role(
+            code="VERSION_EDITOR", name="仅版本权限", data_scope=DataScope.ALL
+        )
         perms = {code: Permission(code=code, name=code) for code in sorted(PERMS)}
-        session.add_all([role_all, role_self, *perms.values()])
+        session.add_all([role_all, role_self, version_editor_role, *perms.values()])
         session.flush()
         for role in (role_all, role_self):
             for perm in perms.values():
                 session.add(RolePermission(role_id=role.id, permission_id=perm.id))
+        for code in ("rd.version.view", "rd.version.edit"):
+            session.add(
+                RolePermission(role_id=version_editor_role.id, permission_id=perms[code].id)
+            )
 
         def user(name: str) -> User:
             return User(
@@ -89,18 +96,25 @@ def ver_api(tmp_path: Path) -> Iterator[Fixture]:
         boss = user("boss")  # ALL
         alice = user("alice")  # SELF
         bob = user("bob")  # SELF
-        session.add_all([boss, alice, bob])
+        version_editor = user("version-editor")  # ALL, without Requirement permission
+        session.add_all([boss, alice, bob, version_editor])
         session.flush()
         session.add_all(
             [
                 UserRole(user_id=boss.id, role_id=role_all.id),
                 UserRole(user_id=alice.id, role_id=role_self.id),
                 UserRole(user_id=bob.id, role_id=role_self.id),
+                UserRole(user_id=version_editor.id, role_id=version_editor_role.id),
             ]
         )
         session.commit()
 
-        ids = {"boss": boss.id, "alice": alice.id, "bob": bob.id}
+        ids = {
+            "boss": boss.id,
+            "alice": alice.id,
+            "bob": bob.id,
+            "version_editor": version_editor.id,
+        }
         headers = {
             name: {"Authorization": f"Bearer {create_access_token(uid)}"}
             for name, uid in ids.items()
@@ -660,6 +674,195 @@ def test_self_scope_isolation(ver_api):
     )
 
 
+def test_version_only_permission_can_read_version_but_not_requirement_expansion(ver_api):
+    client, _session, headers, _ids = ver_api
+    version = _version(client, headers["alice"], name="跨域权限版本")
+
+    assert (
+        client.get(
+            f"/api/v1/versions/{version['id']}", headers=headers["version_editor"]
+        ).status_code
+        == 200
+    )
+    assert (
+        client.get(
+            f"/api/v1/versions/{version['id']}/requirements",
+            headers=headers["version_editor"],
+        ).status_code
+        == 403
+    )
+
+
+def test_version_requirement_read_filters_child_scope_and_stats(ver_api):
+    client, _session, headers, _ids = ver_api
+    version = _version(client, headers["alice"], name="需求需独立过滤")
+    alice_req = _requirement(client, headers["alice"], title="可见需求")
+    bob_req = _requirement(client, headers["bob"], title="隐藏需求")
+
+    for requirement in (alice_req, bob_req):
+        latest_version = client.get(
+            f"/api/v1/versions/{version['id']}", headers=headers["boss"]
+        ).json()
+        added = client.post(
+            f"/api/v1/versions/{version['id']}/requirements",
+            headers=headers["boss"],
+            json={
+                "requirement_id": requirement["id"],
+                "revision": requirement["revision"],
+                "version_revision": latest_version["revision"],
+            },
+        )
+        assert added.status_code == 200, added.text
+
+    response = client.get(
+        f"/api/v1/versions/{version['id']}/requirements", headers=headers["alice"]
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert [item["id"] for item in body["items"]] == [alice_req["id"]]
+    assert body["stats"]["total"] == 1
+    assert "hidden" not in body
+    assert "is_partial" not in body
+
+
+def test_version_requirement_writes_require_requirement_view(ver_api):
+    client, _session, headers, _ids = ver_api
+    version = _version(client, headers["boss"], name="仅有版本写权限")
+    requirement = _requirement(client, headers["boss"])
+
+    add = client.post(
+        f"/api/v1/versions/{version['id']}/requirements",
+        headers=headers["version_editor"],
+        json={
+            "requirement_id": requirement["id"],
+            "revision": requirement["revision"],
+            "version_revision": version["revision"],
+        },
+    )
+    assert add.status_code == 403
+    assert (
+        client.request(
+            "DELETE",
+            f"/api/v1/versions/{version['id']}/requirements/{requirement['id']}",
+            headers=headers["version_editor"],
+            json={"revision": requirement["revision"], "version_revision": version["revision"]},
+        ).status_code
+        == 403
+    )
+    assert (
+        client.post(
+            f"/api/v1/versions/{version['id']}/requirements/move",
+            headers=headers["version_editor"],
+            json={
+                "requirement_id": requirement["id"],
+                "revision": requirement["revision"],
+                "version_revision": version["revision"],
+                "reason": "迁移测试",
+            },
+        ).status_code
+        == 403
+    )
+
+
+def test_version_relation_writes_hide_out_of_scope_requirement(ver_api):
+    client, session, headers, _ids = ver_api
+    source = _version(client, headers["alice"], version_no="V8.2.0", name="可见源版本")
+    target = _version(client, headers["alice"], version_no="V8.2.1", name="可见目标版本")
+    hidden_requirement = _requirement(client, headers["bob"], title="范围外需求")
+
+    add_hidden = client.post(
+        f"/api/v1/versions/{source['id']}/requirements",
+        headers=headers["alice"],
+        json={
+            "requirement_id": hidden_requirement["id"],
+            "revision": hidden_requirement["revision"],
+            "version_revision": source["revision"],
+        },
+    )
+    assert add_hidden.status_code == 404
+
+    attached = client.post(
+        f"/api/v1/versions/{source['id']}/requirements",
+        headers=headers["boss"],
+        json={
+            "requirement_id": hidden_requirement["id"],
+            "revision": hidden_requirement["revision"],
+            "version_revision": source["revision"],
+        },
+    )
+    assert attached.status_code == 200
+    relation_count = session.query(VersionRequirement).count()
+    source_revision = attached.json()["revision"]
+    target_revision = target["revision"]
+    requirement_revision = session.get(Requirement, hidden_requirement["id"]).revision
+
+    remove_hidden = client.request(
+        "DELETE",
+        f"/api/v1/versions/{source['id']}/requirements/{hidden_requirement['id']}",
+        headers=headers["alice"],
+        json={
+            "revision": requirement_revision,
+            "version_revision": source_revision,
+        },
+    )
+    assert remove_hidden.status_code == 404
+    move_hidden = client.post(
+        f"/api/v1/versions/{target['id']}/requirements/move",
+        headers=headers["alice"],
+        json={
+            "requirement_id": hidden_requirement["id"],
+            "revision": requirement_revision,
+            "version_revision": target_revision,
+            "reason": "范围外迁移",
+        },
+    )
+    assert move_hidden.status_code == 404
+    assert session.get(Version, source["id"]).revision == source_revision
+    assert session.get(Version, target["id"]).revision == target_revision
+    assert session.get(Requirement, hidden_requirement["id"]).current_version_id == source["id"]
+    assert session.query(VersionRequirement).count() == relation_count
+
+
+def test_move_hides_out_of_scope_source_version_without_mutation(ver_api):
+    client, session, headers, _ids = ver_api
+    target = _version(client, headers["alice"], version_no="V8.1.0", name="可见目标")
+    source = _version(client, headers["bob"], version_no="V8.1.1", name="隐藏来源")
+    requirement = _requirement(client, headers["alice"], title="本人可见需求")
+
+    attached = client.post(
+        f"/api/v1/versions/{source['id']}/requirements",
+        headers=headers["boss"],
+        json={
+            "requirement_id": requirement["id"],
+            "revision": requirement["revision"],
+            "version_revision": source["revision"],
+        },
+    )
+    assert attached.status_code == 200, attached.text
+    relation_count = session.query(VersionRequirement).count()
+    source_revision = session.get(Version, source["id"]).revision
+    target_revision = session.get(Version, target["id"]).revision
+    latest_requirement = client.get(
+        f"/api/v1/requirements/{requirement['id']}", headers=headers["alice"]
+    ).json()
+
+    moved = client.post(
+        f"/api/v1/versions/{target['id']}/requirements/move",
+        headers=headers["alice"],
+        json={
+            "requirement_id": requirement["id"],
+            "revision": latest_requirement["revision"],
+            "version_revision": target_revision,
+            "reason": "不可见来源不应被修改",
+        },
+    )
+    assert moved.status_code == 404
+    assert session.get(Version, source["id"]).revision == source_revision
+    assert session.get(Version, target["id"]).revision == target_revision
+    assert session.get(Requirement, requirement["id"]).current_version_id == source["id"]
+    assert session.query(VersionRequirement).count() == relation_count
+
+
 # --------------------------------------------------------------------------- #
 # DB uniqueness: one active version per requirement                            #
 # --------------------------------------------------------------------------- #
@@ -792,5 +995,7 @@ def test_openapi_declares_version_contract(spec_name):
     for name in ("AddRequirementRequest", "MoveRequirementRequest", "RemoveRequirementRequest"):
         assert "version_revision" in schemas[name]["required"]
     assert "version_revision" in schemas["RequirementCreate"]["properties"]
+    assert "rd.requirement.view" in p["/versions/{version_id}/requirements"]["get"]["description"]
+    assert "source Version" in p["/versions/{version_id}/requirements/move"]["post"]["description"]
     # The retired requirement-centric move endpoint must be gone.
     assert "/requirements/{requirement_id}/move-version" not in p

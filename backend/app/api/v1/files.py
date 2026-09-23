@@ -26,8 +26,12 @@ async def upload_file(
     current: User = Depends(require_permission("sys.file.upload")),
 ) -> FileOut:
     content = await file.read(MAX_UPLOAD_SIZE + 1)
-    original_name = file.filename or "file"
-    validate_upload(size=len(content), mime_type=file.content_type, original_name=original_name)
+    original_name = validate_upload(
+        size=len(content),
+        mime_type=file.content_type,
+        original_name=file.filename,
+        content=content,
+    )
     # validate_upload has already rejected a None/unsupported content type.
     item = FileService(db).upload(
         content=content,

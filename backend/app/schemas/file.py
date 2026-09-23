@@ -10,7 +10,6 @@ class FileOut(BaseModel):
 
     id: int
     original_name: str
-    storage_key: str
     size: int
     mime_type: str
     sha256: str

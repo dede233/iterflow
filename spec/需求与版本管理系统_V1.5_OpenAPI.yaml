@@ -436,7 +436,7 @@ paths:
       tags:
       - Feedback
       summary: 反馈转正式需求
-      description: Requirement + 关系表 + Feedback 回填 + 审计日志同一事务。
+      description: CREATE_NEW 仅需要 rd.feedback.convert。LINK_EXISTING 还需要 rd.requirement.view，且目标需求必须在当前 Requirement DataScope 内。操作与关系及审计写入同一事务。
       security: *id001
       parameters:
       - name: feedback_id
@@ -459,6 +459,8 @@ paths:
                 $ref: '#/components/schemas/RequirementOut'
         '404':
           description: 反馈或目标需求不存在
+        '403':
+          description: LINK_EXISTING 缺少 rd.requirement.view
         '409':
           description: 并发冲突/非法状态迁移
           content:
@@ -604,6 +606,7 @@ paths:
       tags:
       - Requirement
       summary: 需求来源反馈
+      description: 需要 rd.requirement.view 与 rd.feedback.view。先校验 Requirement DataScope，再按 Feedback DataScope 过滤关联反馈；仅返回当前用户可见的反馈。
       security:
       - bearerAuth: []
       parameters:
@@ -739,6 +742,7 @@ paths:
       tags:
       - Version
       summary: 版本需求清单与进度
+      description: 需要 rd.version.view 与 rd.requirement.view。Version 和 Requirement 分别校验 DataScope；仅返回可见需求，stats 只基于返回项计算，不暴露隐藏需求数量。
       security: &id005
       - bearerAuth: []
       parameters:
@@ -759,7 +763,7 @@ paths:
       tags:
       - Version
       summary: 向版本添加需求
-      description: 通过 VersionService；READY/RELEASED/CANCELED 冻结返回 409。
+      description: 需要 rd.version.edit 与 rd.requirement.view；目标 Version 与 Requirement 均须在各自 DataScope 内。通过 VersionService；READY/RELEASED/CANCELED 冻结返回 409。
       security: *id005
       parameters:
       - *id006
@@ -787,6 +791,7 @@ paths:
       tags:
       - Version
       summary: 迁移需求到该版本
+      description: 需要 rd.version.edit 与 rd.requirement.view；目标 Version、Requirement 及存在时的 source Version 均须在各自 DataScope 内。
       security: *id005
       parameters:
       - *id006
@@ -814,6 +819,7 @@ paths:
       tags:
       - Version
       summary: 从版本移除需求
+      description: 需要 rd.version.edit 与 rd.requirement.view；Version 与 Requirement 均须在各自 DataScope 内。
       security: *id005
       parameters:
       - *id006
@@ -1485,7 +1491,7 @@ paths:
       tags:
       - File
       summary: 上传附件
-      description: MIME 白名单，单文件默认 50MB。
+      description: 需要 sys.file.upload。MIME 与扩展名必须匹配，并校验 PNG/JPEG/WEBP/PDF/UTF-8 文本/OOXML 内容签名；文件名会去除路径与控制字符。单文件默认 50MB，响应不公开 storage_key。
       security: *id001
       requestBody:
         required: true
@@ -1505,9 +1511,76 @@ paths:
           content:
             application/json:
               schema:
-                type: object
+                $ref: '#/components/schemas/FileMetadata'
         '422':
           description: 文件类型或大小不允许
+  /files/{file_id}/download:
+    get:
+      tags:
+      - File
+      summary: 下载独立附件
+      description: 需要 sys.file.download。仅用于未绑定任何 AttachmentRelation 的 standalone FileObject。已绑定业务对象的文件必须通过对应业务附件接口授权访问，此通用接口返回 404。
+      security: *id001
+      parameters:
+      - name: file_id
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: 文件内容
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '307':
+          description: 重定向到短时有效的 S3 signed URL
+        '404':
+          description: 文件不存在或已绑定业务对象
+  /files/{file_id}/exists:
+    get:
+      tags:
+      - File
+      summary: 检查独立附件是否存在
+      description: 需要 sys.file.download。仅检查 standalone FileObject。已绑定业务对象的文件通过此通用接口返回 404。
+      security: *id001
+      parameters:
+      - name: file_id
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: 检查成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileExistsResponse'
+        '404':
+          description: 文件不存在或已绑定业务对象
+  /files/{file_id}:
+    delete:
+      tags:
+      - File
+      summary: 删除独立附件
+      description: 需要 sys.file.delete；仅允许删除未绑定 AttachmentRelation 的 standalone FileObject，已绑定文件返回 409。
+      security: *id001
+      parameters:
+      - name: file_id
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '204':
+          description: 删除成功
+        '404':
+          description: 文件不存在
+        '409':
+          description: 文件已被业务对象引用，不能删除
 components:
   securitySchemes:
     bearerAuth:
@@ -2721,6 +2794,53 @@ components:
           type: integer
         total:
           type: integer
+    FileMetadata:
+      type: object
+      required:
+      - id
+      - original_name
+      - size
+      - mime_type
+      - sha256
+      - storage_driver
+      - created_at
+      - created_by
+      properties:
+        id:
+          type: integer
+          minimum: 1
+        original_name:
+          type: string
+          maxLength: 255
+        size:
+          type: integer
+          minimum: 0
+        mime_type:
+          type: string
+        sha256:
+          type: string
+          pattern: ^[0-9a-f]{64}$
+        storage_driver:
+          type: string
+          enum:
+          - LOCAL
+          - S3
+        created_at:
+          type: string
+          format: date-time
+        created_by:
+          type: integer
+          nullable: true
+    FileExistsResponse:
+      type: object
+      required:
+      - file_id
+      - exists
+      properties:
+        file_id:
+          type: integer
+        exists:
+          type: boolean
     AttachmentOut:
       type: object
       required:

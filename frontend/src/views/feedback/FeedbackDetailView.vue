@@ -15,6 +15,10 @@ import {
 } from '@/api/feedbacks'
 import { listSystems } from '@/api/systems'
 import { usePermission } from '@/composables/usePermission'
+import {
+  canLinkExistingRequirement as canLinkExistingRequirementFor,
+  finishFeedbackConversion,
+} from '@/security/detailAuthorization'
 import StatusTag from '@/components/StatusTag.vue'
 import { REQUIREMENT_PRIORITIES, REQUIREMENT_TYPES } from '@/constants/requirement'
 import {
@@ -49,6 +53,7 @@ const modules = ref<BusinessModuleItem[]>([])
 const canReadSystems = computed(() => can('sys.system.view'))
 const canEdit = computed(() => can('rd.feedback.edit'))
 const canAttach = computed(() => can('rd.feedback.create'))
+const canLinkExisting = computed(() => canLinkExistingRequirementFor(can))
 // Convert is available only while the feedback has no primary requirement yet.
 const canConvert = computed(
   () => can('rd.feedback.convert') && !!item.value && item.value.main_requirement_id == null,
@@ -87,6 +92,10 @@ function openConvert(): void {
 
 async function submitConvert(): Promise<void> {
   if (!item.value) return
+  if (convertForm.type === 'LINK_EXISTING' && !canLinkExisting.value) {
+    convertForm.type = 'CREATE_NEW'
+    return
+  }
   if (convertForm.type === 'CREATE_NEW') {
     if (convertForm.requirement_title.trim().length < 2 || convertForm.description.trim().length < 2) {
       ElMessage.warning('请填写需求标题与描述（至少 2 个字符）')
@@ -110,7 +119,12 @@ async function submitConvert(): Promise<void> {
     })
     ElMessage.success('已转为需求')
     convertDialog.value = false
-    await router.push(`/requirements/${req.id}`)
+    await finishFeedbackConversion(
+      req.id,
+      can,
+      (path) => router.push(path),
+      load,
+    )
   } catch {
     // 409 / 404 / 422 surfaced globally; reload to refresh state.
     await load()
@@ -481,7 +495,7 @@ onMounted(async () => {
         <el-form-item label="转换方式">
           <el-radio-group v-model="convertForm.type">
             <el-radio value="CREATE_NEW">新建需求</el-radio>
-            <el-radio value="LINK_EXISTING">关联已有需求</el-radio>
+            <el-radio v-if="canLinkExisting" value="LINK_EXISTING">关联已有需求</el-radio>
           </el-radio-group>
         </el-form-item>
         <template v-if="convertForm.type === 'CREATE_NEW'">

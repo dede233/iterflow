@@ -1,5 +1,8 @@
+import hashlib
+import io
 from collections.abc import Iterator
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
 import yaml
@@ -28,14 +31,19 @@ from app.models.enums import (
     DataScope,
     FeedbackStatus,
     ManualFeedbackStatus,
+    StorageDriver,
     UserStatus,
 )
+from app.services.file_service import FileService
 
 FEEDBACK_PERMISSIONS = {
     "rd.feedback.view",
     "rd.feedback.create",
     "rd.feedback.edit",
     "rd.feedback.convert",
+    "sys.file.upload",
+    "sys.file.download",
+    "sys.file.delete",
 }
 
 SPEC_DIR = Path(__file__).resolve().parents[2] / "spec"
@@ -107,7 +115,15 @@ def feedback_api(tmp_path: Path) -> Iterator[FeedbackFixture]:
         grant(cs_role, {"rd.feedback.view", "rd.feedback.create", "rd.feedback.edit"})
         grant(
             pm_role,
-            {"rd.feedback.view", "rd.feedback.create", "rd.feedback.edit", "rd.feedback.convert"},
+            {
+                "rd.feedback.view",
+                "rd.feedback.create",
+                "rd.feedback.edit",
+                "rd.feedback.convert",
+                "sys.file.upload",
+                "sys.file.download",
+                "sys.file.delete",
+            },
         )
 
         def make_user(username: str) -> User:
@@ -305,6 +321,75 @@ def test_all_scope_can_see_and_accept_others_feedback(feedback_api):
     )
     assert closed.status_code == 200
     assert closed.json()["status"] == "CLOSED"
+
+
+def test_business_attachment_bypasses_generic_file_scope_only_after_feedback_auth(
+    feedback_api, monkeypatch
+):
+    client, session, headers, _ids = feedback_api
+    feedback = _create(client, headers["alice"], title="含附件反馈")
+    item = FileObject(
+        id=500,
+        storage_key="uploads/opaque-key",
+        original_name="evidence.txt",
+        mime_type="text/plain",
+        size=8,
+        sha256=hashlib.sha256(b"evidence").hexdigest(),
+        storage_driver=StorageDriver.LOCAL,
+        created_by=1,
+        updated_by=1,
+    )
+    session.add(item)
+    session.flush()
+    session.add(
+        AttachmentRelation(file_id=item.id, entity_type="FEEDBACK", entity_id=feedback["id"])
+    )
+    session.commit()
+
+    class MemoryStorage:
+        def exists(self, _key: str) -> bool:
+            return True
+
+        def open(self, _key: str):
+            return io.BytesIO(b"evidence")
+
+    monkeypatch.setattr(FileService, "_storage", lambda self, _driver: MemoryStorage())
+
+    assert client.get(f"/api/v1/files/{item.id}/download", headers=headers["pm"]).status_code == 404
+    assert client.get(f"/api/v1/files/{item.id}/exists", headers=headers["pm"]).status_code == 404
+    assert client.delete(f"/api/v1/files/{item.id}", headers=headers["pm"]).status_code == 409
+
+    business = client.get(
+        f"/api/v1/feedbacks/{feedback['id']}/attachments/{item.id}/download",
+        headers=headers["alice"],
+    )
+    assert business.status_code == 200
+    assert business.content == b"evidence"
+    assert "\r" not in business.headers["content-disposition"]
+    assert "\n" not in business.headers["content-disposition"]
+    hidden_feedback = client.get(
+        f"/api/v1/feedbacks/{feedback['id']}/attachments/{item.id}/download",
+        headers=headers["bob"],
+    )
+    assert hidden_feedback.status_code == 404
+    assert (
+        "storage_key"
+        not in client.get(f"/api/v1/feedbacks/{feedback['id']}", headers=headers["alice"]).json()
+    )
+
+
+def test_http_upload_rejects_spoofed_mime_before_storage(feedback_api, monkeypatch):
+    client, _session, headers, _ids = feedback_api
+    storage = Mock()
+    monkeypatch.setattr(FileService, "_storage", lambda self, _driver: storage)
+
+    response = client.post(
+        "/api/v1/files",
+        headers=headers["pm"],
+        files={"file": ("spoof.png", b"not a png", "image/png")},
+    )
+    assert response.status_code == 422
+    storage.upload.assert_not_called()
 
 
 # --------------------------------------------------------------------------- #
@@ -875,6 +960,11 @@ def test_openapi_specs_declare_feedback_status_contract(spec_name):
         assert schema_name in schemas
     # Business attachment metadata must never expose storage_key.
     assert "storage_key" not in schemas["AttachmentOut"]["properties"]
+    assert "storage_key" not in schemas["FileMetadata"]["properties"]
+    assert "get" in spec["paths"]["/files/{file_id}/download"]
+    assert "get" in spec["paths"]["/files/{file_id}/exists"]
+    assert "delete" in spec["paths"]["/files/{file_id}"]
+    assert "standalone" in spec["paths"]["/files/{file_id}/download"]["get"]["description"]
 
 
 def _ids_of(session: Session, username: str) -> int:

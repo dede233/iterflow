@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.models.entities import Requirement, Version, VersionRequirement
 from app.models.enums import DataScope
 from app.repositories.base import BaseRepository
+from app.repositories.requirement_repository import RequirementRepository
 
 
 class VersionRepository(BaseRepository[Version]):
@@ -57,6 +58,21 @@ class VersionRepository(BaseRepository[Version]):
                 .order_by(Requirement.id.asc())
             ).all()
         )
+
+    def active_requirements_scoped(
+        self, version_id: int, user_id: int, data_scope: DataScope
+    ) -> list[Requirement]:
+        statement = (
+            select(Requirement)
+            .join(VersionRequirement, VersionRequirement.requirement_id == Requirement.id)
+            .where(
+                VersionRequirement.version_id == version_id,
+                VersionRequirement.active.is_(True),
+            )
+        )
+        if data_scope is not DataScope.ALL:
+            statement = statement.where(RequirementRepository.self_criterion(user_id))
+        return list(self.db.scalars(statement.order_by(Requirement.id.asc())).all())
 
     def active_relation(self, version_id: int, requirement_id: int) -> VersionRequirement | None:
         return self.db.scalar(

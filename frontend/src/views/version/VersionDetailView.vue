@@ -16,6 +16,7 @@ import {
 import { listReleases } from '@/api/releases'
 import { getRequirement } from '@/api/requirements'
 import { usePermission } from '@/composables/usePermission'
+import { loadVersionDetailSections } from '@/security/detailAuthorization'
 import StatusTag from '@/components/StatusTag.vue'
 import {
   availableVersionStatusActions,
@@ -46,12 +47,14 @@ const loading = ref(false)
 
 const canEdit = computed(() => can('rd.version.edit'))
 const canChangeStatus = computed(() => can('rd.version.status'))
+const canViewRequirements = computed(() => can('rd.requirement.view'))
+const canViewReleases = computed(() => can('rd.release.view'))
 // Publish entry: only for a READY version and only with the publish permission.
 const canPublish = computed(
   () => can('rd.version.publish') && !!item.value && item.value.status === 'READY',
 )
 const frozen = computed(() => (item.value ? versionRequirementSetFrozen(item.value.status) : true))
-const canManageReqs = computed(() => canEdit.value && !frozen.value)
+const canManageReqs = computed(() => canEdit.value && canViewRequirements.value && !frozen.value)
 const statusActions = computed<VersionStatusAction[]>(() =>
   item.value ? availableVersionStatusActions(item.value.status, canChangeStatus.value) : [],
 )
@@ -249,10 +252,13 @@ async function load(): Promise<void> {
   loading.value = true
   try {
     item.value = await getVersion(id)
-    const view = await listVersionRequirements(id)
-    requirements.value = view.items
-    stats.value = view.stats
-    releases.value = (await listReleases({ version_id: id })).items
+    const sections = await loadVersionDetailSections(id, can, {
+      requirements: listVersionRequirements,
+      releases: async (versionId) => (await listReleases({ version_id: versionId })).items,
+    })
+    requirements.value = sections.requirements?.items ?? []
+    stats.value = sections.requirements?.stats ?? null
+    releases.value = sections.releases ?? []
   } finally {
     loading.value = false
   }
@@ -301,9 +307,9 @@ onMounted(load)
       </el-card>
 
       <!-- progress + requirements -->
-      <el-card shadow="never" class="section">
+      <el-card v-if="canViewRequirements" shadow="never" class="section">
         <div class="section-head">
-          <span class="section-title">需求清单（{{ stats?.total ?? 0 }}）</span>
+          <span class="section-title">可见需求清单（{{ stats?.total ?? 0 }}）</span>
           <el-button v-if="canManageReqs" size="small" type="primary" @click="addDialog = true">
             添加需求
           </el-button>
@@ -339,7 +345,7 @@ onMounted(load)
       </el-card>
 
       <!-- release history -->
-      <el-card shadow="never" class="section">
+      <el-card v-if="canViewReleases" shadow="never" class="section">
         <div class="section-title">发布历史</div>
         <ul v-if="releases.length" class="releases">
           <li v-for="r in releases" :key="r.id">

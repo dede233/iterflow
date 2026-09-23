@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from app.api.deps import require_permission
+from app.api.deps import require_all_permissions, require_permission
 from app.core.database import get_db
 from app.core.exceptions import AppError, NotFoundError
 from app.models.entities import User, Version
@@ -93,10 +93,11 @@ def change_version_status(
 def list_version_requirements(
     version_id: int,
     db: Session = Depends(get_db),
-    user: User = Depends(require_permission("rd.version.view")),
+    user: User = Depends(require_all_permissions("rd.version.view", "rd.requirement.view")),
 ):
     _scoped_version_or_404(db, user, version_id)
-    requirements, stats = VersionService(db).requirements_view(version_id)
+    scope = UserRepository(db).data_scope(user.id)
+    requirements, stats = VersionService(db).requirements_view(version_id, user.id, scope)
     return {"version_id": version_id, "stats": stats, "items": requirements}
 
 
@@ -105,7 +106,7 @@ def add_version_requirement(
     version_id: int,
     payload: AddRequirementRequest,
     db: Session = Depends(get_db),
-    user: User = Depends(require_permission("rd.version.edit")),
+    user: User = Depends(require_all_permissions("rd.version.edit", "rd.requirement.view")),
 ):
     _scoped_version_or_404(db, user, version_id)
     scope = UserRepository(db).data_scope(user.id)
@@ -119,7 +120,7 @@ def move_version_requirement(
     version_id: int,
     payload: MoveRequirementRequest,
     db: Session = Depends(get_db),
-    user: User = Depends(require_permission("rd.version.edit")),
+    user: User = Depends(require_all_permissions("rd.version.edit", "rd.requirement.view")),
 ):
     _scoped_version_or_404(db, user, version_id)
     scope = UserRepository(db).data_scope(user.id)
@@ -134,10 +135,18 @@ def remove_version_requirement(
     requirement_id: int,
     payload: RemoveRequirementRequest,
     db: Session = Depends(get_db),
-    user: User = Depends(require_permission("rd.version.edit")),
+    user: User = Depends(require_all_permissions("rd.version.edit", "rd.requirement.view")),
 ):
     _scoped_version_or_404(db, user, version_id)
-    return VersionService(db).remove_requirement(version_id, requirement_id, payload, user.id)
+    scope = UserRepository(db).data_scope(user.id)
+    return VersionService(db).remove_requirement(
+        version_id,
+        requirement_id,
+        payload,
+        user.id,
+        viewer_scope=scope,
+        viewer_id=user.id,
+    )
 
 
 @router.post("/{version_id}/publish/check", response_model=PublishCheckResult)

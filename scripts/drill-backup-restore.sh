@@ -40,7 +40,7 @@ file_id="$(jq -r '.file_id' <<< "$attachment")"
 stage="attachment database lookup"
 storage_key="$("${COMPOSE[@]}" exec -T db psql -U iterflow -d iterflow -tAc \
   "SELECT storage_key FROM sys_file WHERE id=$file_id")"
-[[ "$storage_key" == objects/* ]]
+[[ "$storage_key" == uploads/* ]]
 
 stage="backup creation"
 bash deploy/scripts/backup.sh "$TEMP_DIR/backup"

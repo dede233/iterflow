@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from app.api.v1 import (
     audits,
     auth,
+    dashboard,
     editing,
     feedbacks,
     files,
@@ -18,6 +19,7 @@ from app.api.v1 import (
 api_router = APIRouter()
 for module in (
     auth,
+    dashboard,
     audits,
     feedbacks,
     requirements,

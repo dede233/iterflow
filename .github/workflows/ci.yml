@@ -1,0 +1,199 @@
+name: CI
+
+on:
+  push:
+    branches: [phase/8.3-production-release-readiness]
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17.7-alpine3.22
+        env:
+          POSTGRES_DB: iterflow_test
+          POSTGRES_USER: iterflow
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U iterflow -d iterflow_test"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+      redis:
+        image: redis:8.2.2-alpine3.22
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 3s --health-retries 12
+    env:
+      DATABASE_URL: postgresql+psycopg://iterflow@localhost:5432/iterflow_test
+      ITERFLOW_TEST_POSTGRES_URL: postgresql+psycopg://iterflow@localhost:5432/iterflow_test
+      REDIS_URL: redis://localhost:6379/15
+      JWT_SECRET: ci-only-test-secret-not-for-production-and-long-enough
+      STORAGE_DRIVER: local
+      LOCAL_STORAGE_PATH: ./data/ci-uploads
+      APP_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install backend and audit tools
+        working-directory: backend
+        run: python -m pip install -e '.[dev]'
+      - name: Full backend tests with warnings as errors
+        working-directory: backend
+        run: python -m pytest -W error::DeprecationWarning -q
+      - name: PostgreSQL-only tests (zero skipped)
+        working-directory: backend
+        run: |
+          set -o pipefail
+          python -m pytest -q -rs tests/test_*postgres.py | tee /tmp/iterflow-postgres-tests.log
+          if grep -Eq '[1-9][0-9]* skipped' /tmp/iterflow-postgres-tests.log; then exit 1; fi
+      - name: Lint, types and compilation
+        working-directory: backend
+        run: |
+          python -m ruff check app tests
+          python -m ruff format --check app tests
+          python -m mypy app
+          python -m compileall -q app
+      - name: Migration and OpenAPI gates
+        working-directory: backend
+        run: |
+          python -m alembic upgrade head
+          python -m alembic check
+          python -m pytest -q tests/test_openapi_contract_parity.py
+      - name: Production Python dependency audit
+        working-directory: backend
+        run: python -m pip_audit -r requirements.lock
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install
+        working-directory: frontend
+        run: npm ci
+      - name: Full and production dependency audits
+        working-directory: frontend
+        run: |
+          npm audit --json > /tmp/iterflow-npm-audit.json
+          npm audit --audit-level=moderate
+          npm audit --omit=dev --audit-level=moderate
+      - name: Tests and contract/build gates
+        working-directory: frontend
+        run: |
+          npm test
+          npm run check:api-types
+          npm run build
+          npm run check:bundle
+
+  docker_smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate disposable secrets
+        run: bash scripts/write-ci-env.sh
+      - name: Docker and Compose versions
+        run: |
+          docker version
+          docker compose version
+      - name: Compose config and build
+        run: |
+          docker compose -f deploy/docker-compose.yml config --quiet
+          docker compose -f deploy/docker-compose.yml build
+      - name: Fresh-volume migration, seed, health, Web, login and auth/me
+        env:
+          CONFIRM_EPHEMERAL_COMPOSE: YES
+        run: bash scripts/smoke-compose.sh
+      - name: Clean disposable volumes
+        if: always()
+        run: docker compose -f deploy/docker-compose.yml down -v --remove-orphans
+
+  s3:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql+psycopg://unused@localhost/unused
+      REDIS_URL: redis://localhost:6379/15
+      JWT_SECRET: ci-only-test-secret-not-for-production-and-long-enough
+      ITERFLOW_TEST_S3_ENDPOINT: http://127.0.0.1:9000
+      ITERFLOW_TEST_S3_ACCESS_KEY: ci-minio-admin
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install backend test dependencies
+        working-directory: backend
+        run: python -m pip install -e '.[dev]'
+      - name: Start disposable MinIO
+        run: |
+          password="$(openssl rand -hex 24)"
+          echo "::add-mask::$password"
+          echo "ITERFLOW_TEST_S3_SECRET_KEY=$password" >> "$GITHUB_ENV"
+          docker run -d --name iterflow-minio -p 127.0.0.1:9000:9000 \
+            -e MINIO_ROOT_USER="$ITERFLOW_TEST_S3_ACCESS_KEY" \
+            -e MINIO_ROOT_PASSWORD="$password" \
+            quay.io/minio/minio:RELEASE.2025-07-23T15-54-02Z server /data
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:9000/minio/health/live; then exit 0; fi
+            sleep 2
+          done
+          docker logs iterflow-minio
+          exit 1
+      - name: Real S3-compatible round trip
+        working-directory: backend
+        run: python -m pytest -q -rs tests/test_s3_integration.py
+      - name: Stop MinIO
+        if: always()
+        run: docker rm -f iterflow-minio || true
+
+  browser_smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Generate disposable secrets
+        run: bash scripts/write-ci-env.sh
+      - name: Fresh Compose startup
+        env:
+          CONFIRM_EPHEMERAL_COMPOSE: YES
+          KEEP_COMPOSE: YES
+        run: bash scripts/smoke-compose.sh
+      - name: Install Playwright Chromium
+        working-directory: frontend
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Real browser release smoke
+        working-directory: frontend
+        run: npm run smoke:browser
+      - name: Clean disposable volumes
+        if: always()
+        run: docker compose -f deploy/docker-compose.yml down -v --remove-orphans
+
+  backup_restore:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate disposable secrets
+        run: bash scripts/write-ci-env.sh
+      - name: Fresh Compose startup
+        env:
+          CONFIRM_EPHEMERAL_COMPOSE: YES
+          KEEP_COMPOSE: YES
+        run: bash scripts/smoke-compose.sh
+      - name: Destructive Local Storage backup and restore drill
+        run: bash scripts/drill-backup-restore.sh
+      - name: Clean disposable volumes
+        if: always()
+        run: docker compose -f deploy/docker-compose.yml down -v --remove-orphans

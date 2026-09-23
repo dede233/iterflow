@@ -47,14 +47,21 @@ def current_user(
     return user
 
 
-def require_permission(code: str) -> Callable:
+def require_any_permission(*codes: str) -> Callable:
+    if not codes:
+        raise ValueError("at least one permission code is required")
+
     def checker(user: User = Depends(current_user), db: Session = Depends(get_db)) -> User:
         permissions = UserRepository(db).permission_codes(user.id)
-        if "*" not in permissions and code not in permissions:
+        if "*" not in permissions and permissions.isdisjoint(codes):
             raise PermissionDenied()
         return user
 
     return checker
+
+
+def require_permission(code: str) -> Callable:
+    return require_any_permission(code)
 
 
 def require_all_data_scope(user: User, db: Session) -> User:

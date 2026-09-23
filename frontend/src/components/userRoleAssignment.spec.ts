@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildUserBasicUpdatePayload,
   buildUserRoleUpdateRequest,
+  canLoadRoleDefinitions,
   canOperatorChangeUserStatus,
   findSuperAdminRole,
   isCurrentUserSuperAdmin,
@@ -89,6 +90,20 @@ describe('user role assignment security UX', () => {
       roleIds: [1, 2],
       revision: 6,
     })
+  })
+
+  it('loads role definitions for ALL-scope role assigners without role-view permission', () => {
+    const assigner = currentUser([2])
+    const hasPermission = (permission: string | string[]) => {
+      const required = Array.isArray(permission) ? permission : [permission]
+      return required.some((code) => assigner.permission_codes.includes(code))
+    }
+
+    expect(canLoadRoleDefinitions(assigner, hasPermission)).toBe(true)
+    expect(
+      canLoadRoleDefinitions({ ...assigner, data_scope: 'SELF' }, hasPermission),
+    ).toBe(false)
+    expect(canLoadRoleDefinitions(assigner, () => false)).toBe(false)
   })
 
   it('protects SUPER_ADMIN status controls without estimating the last admin', () => {

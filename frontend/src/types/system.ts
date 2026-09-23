@@ -29,4 +29,6 @@ export interface PermissionItem {
   category: string
   group: string
   sensitive: boolean
+  deprecated: boolean
+  replacement_code: string | null
 }

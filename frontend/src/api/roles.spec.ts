@@ -65,11 +65,19 @@ describe('role management API DTO mapping', () => {
           category: 'BUTTON',
           group: 'Role / 角色权限',
           sensitive: true,
+          deprecated: false,
+          replacement_code: null,
         },
       ],
     }
     await expect(listPermissions()).resolves.toMatchObject([
-      { id: 3, group: 'Role / 角色权限', sensitive: true },
+      {
+        id: 3,
+        group: 'Role / 角色权限',
+        sensitive: true,
+        deprecated: false,
+        replacement_code: null,
+      },
     ])
     expect(lastRequest?.method).toBe('get')
     expect(lastRequest?.url).toBe('/roles/permissions')

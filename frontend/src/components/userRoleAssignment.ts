@@ -8,6 +8,22 @@ export interface UserBasicForm {
   mobile: string | null
 }
 
+export const ROLE_DEFINITION_READ_PERMISSIONS = [
+  'sys.role.view',
+  'sys.role.manage',
+  'sys.user.role.assign',
+]
+
+export function canLoadRoleDefinitions(
+  currentUser: CurrentUser | null,
+  hasPermission: (permission: string | string[]) => boolean,
+): boolean {
+  return (
+    currentUser?.data_scope === 'ALL' &&
+    hasPermission(ROLE_DEFINITION_READ_PERMISSIONS)
+  )
+}
+
 export function isSuperAdminRole(role: RoleItem): boolean {
   return role.is_system && role.code === 'SUPER_ADMIN'
 }

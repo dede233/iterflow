@@ -12,6 +12,7 @@ const props = defineProps<{
   role: RoleItem | null
   permissions: PermissionItem[]
   saving?: boolean
+  readonly?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -22,11 +23,16 @@ const emit = defineEmits<{
 const selectedPermissionIds = ref<number[]>([])
 const expandedGroups = ref<string[]>([])
 const groups = computed(() => groupPermissions(props.permissions))
-const readonly = computed(() => Boolean(props.role?.is_system))
+const isReadonly = computed(() => Boolean(props.role?.is_system || props.readonly))
 const drawerTitle = computed(() => {
   if (!props.role) return '权限配置'
-  return `${props.role.is_system ? '查看权限' : '配置权限'} · ${props.role.name}`
+  return `${isReadonly.value ? '查看权限' : '配置权限'} · ${props.role.name}`
 })
+const readonlyMessage = computed(() =>
+  props.role?.is_system
+    ? '系统角色为只读安全基线，以下权限仅供查看。'
+    : '当前账号仅有角色查看权限，以下权限不可修改。',
+)
 
 watch(
   [() => props.modelValue, () => props.role],
@@ -79,15 +85,15 @@ function save(): void {
   >
     <template v-if="role">
       <el-alert
-        v-if="readonly"
-        title="系统角色为只读安全基线，以下权限仅供查看。"
+        v-if="isReadonly"
+        :title="readonlyMessage"
         type="info"
         show-icon
         :closable="false"
       />
       <div class="summary" aria-live="polite">
         <span>已选择 {{ selectedPermissionIds.length }} / {{ permissions.length }} 项权限</span>
-        <span v-if="!readonly" class="summary-tip">新增高风险权限时会要求二次确认</span>
+        <span v-if="!isReadonly" class="summary-tip">新增高风险权限时会要求二次确认</span>
       </div>
 
       <el-collapse v-model="expandedGroups" class="permission-groups">
@@ -97,7 +103,7 @@ function save(): void {
               <el-checkbox
                 :model-value="groupSelected(group)"
                 :indeterminate="groupIndeterminate(group)"
-                :disabled="readonly"
+                :disabled="isReadonly"
                 :aria-label="`${group.name} 全选`"
                 @click.stop
                 @change="setGroupSelected(group, Boolean($event))"
@@ -108,7 +114,7 @@ function save(): void {
             </div>
           </template>
 
-          <el-checkbox-group v-model="selectedPermissionIds" :disabled="readonly" class="permission-list">
+          <el-checkbox-group v-model="selectedPermissionIds" :disabled="isReadonly" class="permission-list">
             <el-checkbox
               v-for="permission in group.permissions"
               :key="permission.id"
@@ -119,6 +125,10 @@ function save(): void {
                 <span class="permission-name">{{ permission.name }}</span>
                 <code>{{ permission.code }}</code>
                 <el-tag v-if="permission.sensitive" type="danger" size="small" effect="light">高风险</el-tag>
+                <el-tag v-if="permission.deprecated" type="warning" size="small" effect="light">已废弃</el-tag>
+                <span v-if="permission.deprecated && permission.replacement_code" class="replacement-code">
+                  替代权限：<code>{{ permission.replacement_code }}</code>
+                </span>
               </span>
             </el-checkbox>
           </el-checkbox-group>
@@ -128,8 +138,8 @@ function save(): void {
     <el-empty v-else description="未选择角色" />
 
     <template #footer>
-      <el-button @click="close">{{ readonly ? '关闭' : '取消' }}</el-button>
-      <el-button v-if="role && !readonly" type="primary" :loading="saving" @click="save">
+      <el-button @click="close">{{ isReadonly ? '关闭' : '取消' }}</el-button>
+      <el-button v-if="role && !isReadonly" type="primary" :loading="saving" @click="save">
         保存权限
       </el-button>
     </template>
@@ -157,6 +167,8 @@ function save(): void {
 .permission-label { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
 .permission-name { color: #0f172a; font-weight: 600; }
 .permission-label code { width: 100%; color: #64748b; font-size: 12px; }
+.replacement-code { width: 100%; color: #92400e; font-size: 12px; }
+.replacement-code code { display: inline; color: inherit; }
 @media (max-width: 767px) {
   .summary { align-items: flex-start; flex-direction: column; }
   .permission-list { grid-template-columns: 1fr; }

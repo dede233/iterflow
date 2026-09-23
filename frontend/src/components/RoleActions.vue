@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import type { RoleItem } from '@/types/system'
 
-defineProps<{ role: RoleItem }>()
+defineProps<{
+  role: RoleItem
+  canManage: boolean
+}>()
 
 defineEmits<{
   edit: [role: RoleItem]
@@ -11,7 +14,7 @@ defineEmits<{
 </script>
 
 <template>
-  <template v-if="role.is_system">
+  <template v-if="role.is_system || !canManage">
     <el-button data-testid="view-permissions" link type="primary" @click="$emit('permissions', role)">
       查看权限
     </el-button>

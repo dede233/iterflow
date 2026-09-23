@@ -27,6 +27,8 @@ class PermissionOut(BaseModel):
     category: str
     group: str
     sensitive: bool
+    deprecated: bool
+    replacement_code: str | None
 
 
 class RoleCreate(BaseModel):

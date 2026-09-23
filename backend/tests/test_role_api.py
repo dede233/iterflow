@@ -54,6 +54,18 @@ def role_api(tmp_path: Path) -> Iterator[RoleApiFixture]:
         viewer_role = Role(
             code="ROLE_VIEWER", name="角色查看者", data_scope=DataScope.ALL, is_system=True
         )
+        assigner_role = Role(
+            code="USER_ROLE_ASSIGNER",
+            name="用户角色分配者",
+            data_scope=DataScope.ALL,
+            is_system=True,
+        )
+        legacy_editor_role = Role(
+            code="LEGACY_ROLE_EDITOR",
+            name="遗留角色编辑者",
+            data_scope=DataScope.ALL,
+            is_system=True,
+        )
         system_role = Role(
             code="SUPER_ADMIN", name="超级管理员", data_scope=DataScope.ALL, is_system=True
         )
@@ -61,19 +73,32 @@ def role_api(tmp_path: Path) -> Iterator[RoleApiFixture]:
             code="ASSIGNED_ROLE", name="已分配角色", data_scope=DataScope.SELF, is_system=False
         )
         session.add_all(
-            [manager_role, viewer_role, system_role, assigned_role, *permissions.values()]
+            [
+                manager_role,
+                viewer_role,
+                assigner_role,
+                legacy_editor_role,
+                system_role,
+                assigned_role,
+                *permissions.values(),
+            ]
         )
         session.flush()
         session.add_all(
             [
                 RolePermission(
-                    role_id=manager_role.id, permission_id=permissions["sys.role.view"].id
-                ),
-                RolePermission(
                     role_id=manager_role.id, permission_id=permissions["sys.role.manage"].id
                 ),
                 RolePermission(
                     role_id=viewer_role.id, permission_id=permissions["sys.role.view"].id
+                ),
+                RolePermission(
+                    role_id=assigner_role.id,
+                    permission_id=permissions["sys.user.role.assign"].id,
+                ),
+                RolePermission(
+                    role_id=legacy_editor_role.id,
+                    permission_id=permissions["sys.role.edit"].id,
                 ),
                 RolePermission(
                     role_id=system_role.id, permission_id=permissions["rd.feedback.view"].id
@@ -90,13 +115,19 @@ def role_api(tmp_path: Path) -> Iterator[RoleApiFixture]:
                 must_change_password=False,
             )
 
-        manager, viewer, assigned_user = user("manager"), user("viewer"), user("assigned")
-        session.add_all([manager, viewer, assigned_user])
+        manager = user("manager")
+        viewer = user("viewer")
+        assigner = user("assigner")
+        legacy_editor = user("legacy-editor")
+        assigned_user = user("assigned")
+        session.add_all([manager, viewer, assigner, legacy_editor, assigned_user])
         session.flush()
         session.add_all(
             [
                 UserRole(user_id=manager.id, role_id=manager_role.id),
                 UserRole(user_id=viewer.id, role_id=viewer_role.id),
+                UserRole(user_id=assigner.id, role_id=assigner_role.id),
+                UserRole(user_id=legacy_editor.id, role_id=legacy_editor_role.id),
                 UserRole(user_id=assigned_user.id, role_id=assigned_role.id),
             ]
         )
@@ -105,13 +136,15 @@ def role_api(tmp_path: Path) -> Iterator[RoleApiFixture]:
         ids = {
             "manager": manager.id,
             "viewer": viewer.id,
+            "assigner": assigner.id,
+            "legacy_editor": legacy_editor.id,
             "system_role": system_role.id,
             "assigned_role": assigned_role.id,
             "feedback_permission": permissions["rd.feedback.view"].id,
         }
         headers = {
             name: {"Authorization": f"Bearer {create_access_token(ids[name])}"}
-            for name in ("manager", "viewer")
+            for name in ("manager", "viewer", "assigner", "legacy_editor")
         }
         app.dependency_overrides[get_db] = lambda: session
         with TestClient(app) as client:
@@ -232,9 +265,14 @@ def test_role_crud_and_audit_before_after(role_api: RoleApiFixture):
 
 
 def test_role_write_requires_manage_permission(role_api: RoleApiFixture):
-    client, _session, headers, _ids = role_api
+    client, _session, headers, ids = role_api
 
     assert client.get("/api/v1/roles", headers=headers["viewer"]).status_code == 200
+    assert (
+        client.get(f"/api/v1/roles/{ids['assigned_role']}", headers=headers["viewer"]).status_code
+        == 200
+    )
+    assert client.get("/api/v1/roles/permissions", headers=headers["viewer"]).status_code == 200
     assert (
         client.post(
             "/api/v1/roles",
@@ -243,6 +281,131 @@ def test_role_write_requires_manage_permission(role_api: RoleApiFixture):
         ).status_code
         == 403
     )
+    assert (
+        client.patch(
+            f"/api/v1/roles/{ids['assigned_role']}",
+            headers=headers["viewer"],
+            json={"name": "无权修改", "revision": 1},
+        ).status_code
+        == 403
+    )
+    assert (
+        client.put(
+            f"/api/v1/roles/{ids['assigned_role']}/permissions",
+            headers=headers["viewer"],
+            json={"permission_ids": [], "revision": 1},
+        ).status_code
+        == 403
+    )
+    assert (
+        client.delete(
+            f"/api/v1/roles/{ids['assigned_role']}", headers=headers["viewer"]
+        ).status_code
+        == 403
+    )
+
+
+def test_user_role_assign_permission_can_only_read_role_selection_list(
+    role_api: RoleApiFixture,
+):
+    client, _session, headers, ids = role_api
+    assigner_headers = headers["assigner"]
+
+    assert client.get("/api/v1/roles", headers=assigner_headers).status_code == 200
+    assert client.get("/api/v1/roles/permissions", headers=assigner_headers).status_code == 403
+    assert (
+        client.get(f"/api/v1/roles/{ids['assigned_role']}", headers=assigner_headers).status_code
+        == 403
+    )
+    assert (
+        client.post(
+            "/api/v1/roles",
+            headers=assigner_headers,
+            json={"code": "NOPE", "name": "无权创建", "data_scope": "SELF"},
+        ).status_code
+        == 403
+    )
+    assert (
+        client.patch(
+            f"/api/v1/roles/{ids['assigned_role']}",
+            headers=assigner_headers,
+            json={"name": "无权修改", "revision": 1},
+        ).status_code
+        == 403
+    )
+    assert (
+        client.put(
+            f"/api/v1/roles/{ids['assigned_role']}/permissions",
+            headers=assigner_headers,
+            json={"permission_ids": [], "revision": 1},
+        ).status_code
+        == 403
+    )
+    assert (
+        client.delete(f"/api/v1/roles/{ids['assigned_role']}", headers=assigner_headers).status_code
+        == 403
+    )
+
+
+def test_role_read_any_permission_keeps_wildcard_support(role_api: RoleApiFixture):
+    client, session, _headers, _ids = role_api
+    wildcard_permission = Permission(code="*", name="全部权限")
+    wildcard_role = Role(
+        code="WILDCARD_ROLE",
+        name="通配角色",
+        data_scope=DataScope.ALL,
+        is_system=True,
+    )
+    wildcard_user = User(
+        username="wildcard-user",
+        display_name="Wildcard User",
+        password_hash="unused",
+        status=UserStatus.ACTIVE,
+        must_change_password=False,
+    )
+    session.add_all([wildcard_permission, wildcard_role, wildcard_user])
+    session.flush()
+    session.add_all(
+        [
+            RolePermission(role_id=wildcard_role.id, permission_id=wildcard_permission.id),
+            UserRole(user_id=wildcard_user.id, role_id=wildcard_role.id),
+        ]
+    )
+    session.commit()
+
+    headers = {"Authorization": f"Bearer {create_access_token(wildcard_user.id)}"}
+    assert client.get("/api/v1/roles", headers=headers).status_code == 200
+    assert client.get("/api/v1/roles/permissions", headers=headers).status_code == 200
+
+
+@pytest.mark.parametrize(
+    ("method", "path", "payload"),
+    [
+        ("post", "/api/v1/roles", {"code": "NOPE", "name": "无权创建"}),
+        ("patch", "/api/v1/roles/{role_id}", {"name": "无权修改", "revision": 1}),
+        (
+            "put",
+            "/api/v1/roles/{role_id}/permissions",
+            {"permission_ids": [], "revision": 1},
+        ),
+        ("delete", "/api/v1/roles/{role_id}", None),
+    ],
+)
+def test_deprecated_role_edit_permission_has_no_write_capability(
+    role_api: RoleApiFixture,
+    method: str,
+    path: str,
+    payload: dict | None,
+):
+    client, _session, headers, ids = role_api
+    response = client.request(
+        method,
+        path.format(role_id=ids["assigned_role"]),
+        headers=headers["legacy_editor"],
+        json=payload,
+    )
+
+    assert response.status_code == 403
 
 
 def test_permission_catalog_returns_every_permission_as_read_only_metadata(
@@ -264,9 +427,20 @@ def test_permission_catalog_returns_every_permission_as_read_only_metadata(
     assert {
         item["code"] for item in catalog if item["sensitive"]
     } == PermissionCatalog.SENSITIVE_CODES
+    assert by_code["sys.role.edit"]["deprecated"] is True
+    assert by_code["sys.role.edit"]["replacement_code"] == "sys.role.manage"
+    assert by_code["sys.role.manage"]["deprecated"] is False
+    assert by_code["sys.role.manage"]["replacement_code"] is None
 
     dynamic_path = app.openapi()["paths"]["/api/v1/roles/permissions"]
     assert set(dynamic_path) == {"get"}
+    dynamic_schema = app.openapi()["components"]["schemas"]["PermissionOut"]
+    assert {"deprecated", "replacement_code"} <= set(dynamic_schema["required"])
+    assert dynamic_schema["properties"]["deprecated"]["type"] == "boolean"
+    assert {item["type"] for item in dynamic_schema["properties"]["replacement_code"]["anyOf"]} == {
+        "string",
+        "null",
+    }
 
 
 def test_permission_catalog_keeps_unknown_codes_visible():
@@ -335,9 +509,14 @@ def test_static_openapi_role_management_contract():
         permission_schema = document["components"]["schemas"]["Permission"]
         assert "is_system" in role_schema["required"]
         assert role_schema["properties"]["is_system"] == {"type": "boolean"}
-        assert {"group", "sensitive"} <= set(permission_schema["required"])
+        assert {"group", "sensitive", "deprecated", "replacement_code"} <= set(
+            permission_schema["required"]
+        )
         assert permission_schema["properties"]["group"]["type"] == "string"
         assert permission_schema["properties"]["sensitive"]["type"] == "boolean"
+        assert permission_schema["properties"]["deprecated"]["type"] == "boolean"
+        assert permission_schema["properties"]["replacement_code"]["nullable"] is True
+        assert "sys.user.role.assign" in document["paths"]["/roles"]["get"]["description"]
         assert set(document["paths"]["/roles/permissions"]) == {"get"}
         assert "get" in document["paths"]["/roles/{role_id}"]
         assert "delete" in document["paths"]["/roles/{role_id}"]

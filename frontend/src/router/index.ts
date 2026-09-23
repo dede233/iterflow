@@ -5,7 +5,7 @@ import { pinia } from '@/stores/pinia'
 
 declare module 'vue-router' {
   interface RouteMeta {
-    permission?: string
+    permission?: string | string[]
     public?: boolean
     allowPasswordChangeRequired?: boolean
     requiresAllScope?: boolean
@@ -40,7 +40,7 @@ export const router = createRouter({
         { path: 'releases', name: 'release-list', component: () => import('@/views/release/ReleaseListView.vue'), meta: { permission: 'rd.release.view' } },
         { path: 'notifications', name: 'notifications', component: () => import('@/views/notification/NotificationCenterView.vue') },
         { path: 'admin/audits', name: 'audit-center', component: () => import('@/views/audit/AuditCenterView.vue'), meta: { permission: 'sys.audit.view' } },
-        { path: 'admin/roles', name: 'role-management', component: () => import('@/views/system/RoleListView.vue'), meta: { permission: 'sys.role.manage', requiresAllScope: true } },
+        { path: 'admin/roles', name: 'role-management', component: () => import('@/views/system/RoleListView.vue'), meta: { permission: ['sys.role.view', 'sys.role.manage'], requiresAllScope: true } },
         { path: 'system/users', name: 'user-list', component: () => import('@/views/system/UserListView.vue'), meta: { permission: 'sys.user.view' } },
         { path: 'system/roles', redirect: { name: 'role-management' } },
       ],

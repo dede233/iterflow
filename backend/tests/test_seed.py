@@ -91,6 +91,7 @@ def test_seed_creates_v15_roles_permissions_and_is_idempotent(
     # the shared feedback pool and therefore hold ALL scope; the rest stay SELF.
     for code, expected_scope in EXPECTED_ROLE_SCOPES.items():
         assert roles[code].data_scope is expected_scope, code
+        assert roles[code].is_system is True, code
         assert seed.BASE_ROLES[code].data_scope is expected_scope, code
     customer_service = seed.BASE_ROLES["CUSTOMER_SERVICE_OPERATIONS"]
     assert customer_service.name == "客服/运营"
@@ -145,6 +146,7 @@ def test_seed_repairs_existing_admin_role_and_missing_links(
     assert super_admin.name == "超级管理员"
     assert super_admin.data_scope is DataScope.ALL
     assert super_admin.enabled is True
+    assert super_admin.is_system is True
     assert seed_session.get(UserRole, (admin.id, super_admin.id)) is not None
     permission_ids = set(
         seed_session.scalars(

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
-import { ElMessage } from 'element-plus'
-import { createRole, listPermissions, listRoles, updateRole, updateRolePermissions } from '@/api/roles'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { createRole, deleteRole, listPermissions, listRoles, updateRole, updateRolePermissions } from '@/api/roles'
+import RoleActions from '@/components/RoleActions.vue'
 import { usePermission } from '@/composables/usePermission'
 import type { PermissionItem, RoleItem } from '@/types/system'
 
@@ -86,6 +87,21 @@ async function save(): Promise<void> {
   }
 }
 
+async function remove(role: RoleItem): Promise<void> {
+  try {
+    await ElMessageBox.confirm(`确认删除自定义角色“${role.name}”吗？此操作不可撤销。`, '删除角色', {
+      type: 'warning',
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+    })
+  } catch {
+    return
+  }
+  await deleteRole(role.id)
+  ElMessage.success('角色已删除')
+  await load()
+}
+
 function permissionNames(role: RoleItem): string {
   const labels = role.permission_ids
     .map((permissionId) => permissions.value.find((permission) => permission.id === permissionId)?.name)
@@ -103,12 +119,15 @@ onMounted(load)
         <h1 class="page-title">角色与权限</h1>
         <p class="hint">TEAM 数据范围为保留值，当前版本不可配置。</p>
       </div>
-      <el-button v-if="can('sys.role.edit')" type="primary" @click="openCreate">创建角色</el-button>
+      <el-button v-if="can('sys.role.manage')" type="primary" @click="openCreate">创建角色</el-button>
     </div>
     <el-alert title="角色与权限配置建议在 PC 端完成" type="info" show-icon :closable="false" />
     <el-table v-loading="loading" :data="rows" row-key="id" class="role-table">
       <el-table-column prop="code" label="编码" min-width="180" />
       <el-table-column prop="name" label="角色" min-width="140" />
+      <el-table-column label="类型" width="100">
+        <template #default="scope"><el-tag :type="scope.row.is_system ? 'info' : 'success'">{{ scope.row.is_system ? '系统角色' : '自定义角色' }}</el-tag></template>
+      </el-table-column>
       <el-table-column prop="data_scope" label="数据范围" width="110" />
       <el-table-column label="权限" min-width="280">
         <template #default="scope">{{ permissionNames(scope.row) }}</template>
@@ -116,8 +135,10 @@ onMounted(load)
       <el-table-column label="状态" width="90">
         <template #default="scope"><el-tag :type="scope.row.enabled ? 'success' : 'info'">{{ scope.row.enabled ? '启用' : '停用' }}</el-tag></template>
       </el-table-column>
-      <el-table-column v-if="can('sys.role.edit')" label="操作" width="80" fixed="right">
-        <template #default="scope"><el-button link type="primary" @click="openEdit(scope.row)">编辑</el-button></template>
+      <el-table-column v-if="can('sys.role.manage')" label="操作" width="140" fixed="right">
+        <template #default="scope">
+          <RoleActions :role="scope.row" @edit="openEdit" @delete="remove" />
+        </template>
       </el-table-column>
     </el-table>
 

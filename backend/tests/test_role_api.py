@@ -4,25 +4,20 @@ from pathlib import Path
 import pytest
 import yaml
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import create_access_token
 from app.main import app
-from app.models.entities import (
-    OperationLog,
-    Permission,
-    Role,
-    RolePermission,
-    User,
-    UserRole,
-)
-from app.models.enums import DataScope
+from app.models.entities import OperationLog, Permission, Role, RolePermission, User, UserRole
+from app.models.enums import DataScope, UserStatus
+
+RoleApiFixture = tuple[TestClient, Session, dict[str, dict[str, str]], dict[str, int]]
 
 
 @pytest.fixture
-def role_api(tmp_path: Path) -> Iterator[tuple[TestClient, Session, dict[str, str]]]:
+def role_api(tmp_path: Path) -> Iterator[RoleApiFixture]:
     engine = create_engine(
         f"sqlite:///{tmp_path / 'role-api.db'}", connect_args={"check_same_thread": False}
     )
@@ -38,7 +33,7 @@ def role_api(tmp_path: Path) -> Iterator[tuple[TestClient, Session, dict[str, st
 
     listeners = []
     for model in (User, Role, Permission, OperationLog):
-        counter = iter(range(1, 1000))
+        counter = iter(range(1, 1_000))
 
         def assign_id(_mapper, _connection, target, *, _counter=counter):
             if target.id is None:
@@ -48,30 +43,78 @@ def role_api(tmp_path: Path) -> Iterator[tuple[TestClient, Session, dict[str, st
         listeners.append((model, assign_id))
 
     with Session(engine, expire_on_commit=False) as session:
-        user = User(
-            username="role-reviewer",
-            display_name="Role Reviewer",
-            password_hash="unused",
-            must_change_password=False,
+        permissions = {
+            code: Permission(code=code, name=code)
+            for code in ("sys.role.view", "sys.role.manage", "rd.feedback.view")
+        }
+        manager_role = Role(
+            code="ROLE_MANAGER", name="角色管理员", data_scope=DataScope.ALL, is_system=True
         )
-        authorizer = Role(code="ROLE_AUTHORIZER", name="角色测试授权", data_scope=DataScope.ALL)
-        view_permission = Permission(code="sys.role.view", name="角色查看")
-        edit_permission = Permission(code="sys.role.edit", name="角色编辑")
-        session.add_all([user, authorizer, view_permission, edit_permission])
+        viewer_role = Role(
+            code="ROLE_VIEWER", name="角色查看者", data_scope=DataScope.ALL, is_system=True
+        )
+        system_role = Role(
+            code="SUPER_ADMIN", name="超级管理员", data_scope=DataScope.ALL, is_system=True
+        )
+        assigned_role = Role(
+            code="ASSIGNED_ROLE", name="已分配角色", data_scope=DataScope.SELF, is_system=False
+        )
+        session.add_all(
+            [manager_role, viewer_role, system_role, assigned_role, *permissions.values()]
+        )
         session.flush()
-        session.add(UserRole(user_id=user.id, role_id=authorizer.id))
         session.add_all(
             [
-                RolePermission(role_id=authorizer.id, permission_id=view_permission.id),
-                RolePermission(role_id=authorizer.id, permission_id=edit_permission.id),
+                RolePermission(
+                    role_id=manager_role.id, permission_id=permissions["sys.role.view"].id
+                ),
+                RolePermission(
+                    role_id=manager_role.id, permission_id=permissions["sys.role.manage"].id
+                ),
+                RolePermission(
+                    role_id=viewer_role.id, permission_id=permissions["sys.role.view"].id
+                ),
+                RolePermission(
+                    role_id=system_role.id, permission_id=permissions["rd.feedback.view"].id
+                ),
+            ]
+        )
+
+        def user(username: str) -> User:
+            return User(
+                username=username,
+                display_name=username.title(),
+                password_hash="unused",
+                status=UserStatus.ACTIVE,
+                must_change_password=False,
+            )
+
+        manager, viewer, assigned_user = user("manager"), user("viewer"), user("assigned")
+        session.add_all([manager, viewer, assigned_user])
+        session.flush()
+        session.add_all(
+            [
+                UserRole(user_id=manager.id, role_id=manager_role.id),
+                UserRole(user_id=viewer.id, role_id=viewer_role.id),
+                UserRole(user_id=assigned_user.id, role_id=assigned_role.id),
             ]
         )
         session.commit()
 
+        ids = {
+            "manager": manager.id,
+            "viewer": viewer.id,
+            "system_role": system_role.id,
+            "assigned_role": assigned_role.id,
+            "feedback_permission": permissions["rd.feedback.view"].id,
+        }
+        headers = {
+            name: {"Authorization": f"Bearer {create_access_token(ids[name])}"}
+            for name in ("manager", "viewer")
+        }
         app.dependency_overrides[get_db] = lambda: session
-        headers = {"Authorization": f"Bearer {create_access_token(user.id)}"}
         with TestClient(app) as client:
-            yield client, session, headers
+            yield client, session, headers, ids
         app.dependency_overrides.clear()
 
     for model, listener in listeners:
@@ -79,61 +122,184 @@ def role_api(tmp_path: Path) -> Iterator[tuple[TestClient, Session, dict[str, st
     engine.dispose()
 
 
-def test_role_list_create_and_patch_responses_include_revision(role_api):
-    client, _session, headers = role_api
+def test_role_crud_and_audit_before_after(role_api: RoleApiFixture):
+    client, session, headers, ids = role_api
 
     created = client.post(
         "/api/v1/roles",
-        headers=headers,
-        json={"code": "MEMBER", "name": "普通成员", "data_scope": "SELF"},
+        headers=headers["manager"],
+        json={
+            "code": "CUSTOM_ROLE",
+            "name": "自定义角色",
+            "data_scope": "SELF",
+            "permission_ids": [ids["feedback_permission"]],
+        },
     )
-    assert created.status_code == 200
-    assert created.json()["revision"] == 1
+    assert created.status_code == 200, created.text
+    role = created.json()
+    assert role["is_system"] is False
+    assert role["permission_ids"] == [ids["feedback_permission"]]
 
-    listed = client.get("/api/v1/roles", headers=headers)
+    listed = client.get("/api/v1/roles", headers=headers["manager"])
     assert listed.status_code == 200
-    assert all("revision" in role for role in listed.json())
+    assert any(item["id"] == role["id"] for item in listed.json())
+
+    detail = client.get(f"/api/v1/roles/{role['id']}", headers=headers["manager"])
+    assert detail.status_code == 200
+    assert detail.json()["code"] == "CUSTOM_ROLE"
 
     updated = client.patch(
-        f"/api/v1/roles/{created.json()['id']}",
-        headers=headers,
-        json={"name": "普通成员-更新", "revision": created.json()["revision"]},
+        f"/api/v1/roles/{role['id']}",
+        headers=headers["manager"],
+        json={
+            "code": "CUSTOM_ROLE_UPDATED",
+            "name": "更新后的角色",
+            "data_scope": "ALL",
+            "enabled": False,
+            "revision": role["revision"],
+        },
     )
-    assert updated.status_code == 200
+    assert updated.status_code == 200, updated.text
     assert updated.json()["revision"] == 2
+    assert updated.json()["code"] == "CUSTOM_ROLE_UPDATED"
+    assert updated.json()["data_scope"] == "ALL"
+    assert updated.json()["enabled"] is False
+
+    permissions_updated = client.put(
+        f"/api/v1/roles/{role['id']}/permissions",
+        headers=headers["manager"],
+        json={"permission_ids": [], "revision": updated.json()["revision"]},
+    )
+    assert permissions_updated.status_code == 200
+    assert permissions_updated.json()["permission_ids"] == []
+
+    create_audit = session.scalar(
+        select(OperationLog).where(
+            OperationLog.entity_id == role["id"], OperationLog.action == "ROLE_CREATE"
+        )
+    )
+    update_audit = session.scalar(
+        select(OperationLog)
+        .where(OperationLog.entity_id == role["id"], OperationLog.action == "ROLE_UPDATE")
+        .order_by(OperationLog.id)
+    )
+    permission_audit = session.scalar(
+        select(OperationLog).where(
+            OperationLog.entity_id == role["id"],
+            OperationLog.action == "ROLE_PERMISSION_UPDATE",
+        )
+    )
+    assert create_audit is not None
+    assert create_audit.after_data["code"] == "CUSTOM_ROLE"
+    assert update_audit is not None
+    assert update_audit.before_data["name"] == "自定义角色"
+    assert update_audit.after_data["name"] == "更新后的角色"
+    assert permission_audit is not None
+    assert permission_audit.before_data["permission_ids"] == [ids["feedback_permission"]]
+    assert permission_audit.after_data["permission_ids"] == []
+
+    deleted = client.delete(f"/api/v1/roles/{role['id']}", headers=headers["manager"])
+    assert deleted.status_code == 200, deleted.text
+    assert deleted.json() == {"id": role["id"], "deleted": True}
+    assert client.get(f"/api/v1/roles/{role['id']}", headers=headers["manager"]).status_code == 404
+    delete_audit = session.scalar(
+        select(OperationLog).where(
+            OperationLog.entity_id == role["id"], OperationLog.action == "ROLE_DELETE"
+        )
+    )
+    assert delete_audit is not None
+    assert delete_audit.before_data["code"] == "CUSTOM_ROLE_UPDATED"
+    assert delete_audit.after_data is None
 
 
-def test_role_permission_update_returns_404_for_missing_role(role_api):
-    client, _session, headers = role_api
+def test_role_write_requires_manage_permission(role_api: RoleApiFixture):
+    client, _session, headers, _ids = role_api
 
-    response = client.put(
-        "/api/v1/roles/999/permissions",
-        headers=headers,
-        json={"permission_ids": [], "revision": 1},
+    assert client.get("/api/v1/roles", headers=headers["viewer"]).status_code == 200
+    assert (
+        client.post(
+            "/api/v1/roles",
+            headers=headers["viewer"],
+            json={"code": "NOPE", "name": "无权创建", "data_scope": "SELF"},
+        ).status_code
+        == 403
     )
 
-    assert response.status_code == 404
-    assert response.json()["code"] == 40401
+
+def test_system_role_and_assigned_role_cannot_be_deleted(role_api: RoleApiFixture):
+    client, _session, headers, ids = role_api
+
+    system_delete = client.delete(f"/api/v1/roles/{ids['system_role']}", headers=headers["manager"])
+    assert system_delete.status_code == 409
+
+    assigned_delete = client.delete(
+        f"/api/v1/roles/{ids['assigned_role']}", headers=headers["manager"]
+    )
+    assert assigned_delete.status_code == 409
+    assert assigned_delete.json()["data"]["user_count"] == 1
 
 
-def test_static_openapi_role_contract_exposes_revision_and_role_responses():
-    spec_path = Path(__file__).resolve().parents[2] / "spec" / "openapi-v1.5.yaml"
-    document = yaml.safe_load(spec_path.read_text(encoding="utf-8"))
-    role_schema = document["components"]["schemas"]["Role"]
+def test_system_role_is_read_only_and_permissions_cannot_be_cleared(
+    role_api: RoleApiFixture,
+):
+    client, _session, headers, ids = role_api
+    role_url = f"/api/v1/roles/{ids['system_role']}"
 
-    assert "revision" in role_schema["required"]
-    assert "permission_ids" in role_schema["required"]
-    assert role_schema["properties"]["revision"] == {"type": "integer", "minimum": 1}
-    assert role_schema["properties"]["permission_ids"] == {
-        "type": "array",
-        "items": {"type": "integer"},
-    }
-    assert document["paths"]["/roles"]["get"]["responses"]["200"]["content"]["application/json"][
-        "schema"
-    ]["items"] == {"$ref": "#/components/schemas/Role"}
-    assert document["paths"]["/roles"]["post"]["responses"]["200"]["content"]["application/json"][
-        "schema"
-    ] == {"$ref": "#/components/schemas/Role"}
-    assert document["paths"]["/roles/permissions"]["get"]["responses"]["200"]["content"][
-        "application/json"
-    ]["schema"]["items"] == {"$ref": "#/components/schemas/Permission"}
+    original = client.get(role_url, headers=headers["manager"])
+    assert original.status_code == 200
+    original_role = original.json()
+    assert original_role["code"] == "SUPER_ADMIN"
+    assert original_role["is_system"] is True
+    assert original_role["permission_ids"] == [ids["feedback_permission"]]
+
+    patched = client.patch(
+        role_url,
+        headers=headers["manager"],
+        json={
+            "code": "SUPER_ADMIN_RENAMED",
+            "data_scope": "SELF",
+            "enabled": False,
+            "revision": original_role["revision"],
+        },
+    )
+    assert patched.status_code == 409
+
+    permissions_updated = client.put(
+        f"{role_url}/permissions",
+        headers=headers["manager"],
+        json={"permission_ids": [], "revision": original_role["revision"]},
+    )
+    assert permissions_updated.status_code == 409
+
+    unchanged = client.get(role_url, headers=headers["manager"])
+    assert unchanged.status_code == 200
+    assert unchanged.json()["code"] == "SUPER_ADMIN"
+    assert unchanged.json()["data_scope"] == "ALL"
+    assert unchanged.json()["enabled"] is True
+    assert unchanged.json()["revision"] == original_role["revision"]
+    assert unchanged.json()["permission_ids"] == [ids["feedback_permission"]]
+
+
+def test_static_openapi_role_management_contract():
+    spec_dir = Path(__file__).resolve().parents[2] / "spec"
+    for filename in ("openapi-v1.5.yaml", "需求与版本管理系统_V1.5_OpenAPI.yaml"):
+        document = yaml.safe_load((spec_dir / filename).read_text(encoding="utf-8"))
+        role_schema = document["components"]["schemas"]["Role"]
+        assert "is_system" in role_schema["required"]
+        assert role_schema["properties"]["is_system"] == {"type": "boolean"}
+        assert "get" in document["paths"]["/roles/{role_id}"]
+        assert "delete" in document["paths"]["/roles/{role_id}"]
+        assert (
+            "系统角色"
+            in document["paths"]["/roles/{role_id}"]["patch"]["responses"]["409"]["description"]
+        )
+        assert (
+            "系统角色"
+            in document["paths"]["/roles/{role_id}/permissions"]["put"]["responses"]["409"][
+                "description"
+            ]
+        )
+        assert (
+            "系统角色"
+            in document["paths"]["/roles/{role_id}"]["delete"]["responses"]["409"]["description"]
+        )

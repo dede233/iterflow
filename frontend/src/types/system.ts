@@ -17,6 +17,7 @@ export interface RoleItem {
   name: string
   data_scope: DataScope
   enabled: boolean
+  is_system: boolean
   revision: number
   permission_ids: number[]
 }

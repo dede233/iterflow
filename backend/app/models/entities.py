@@ -92,6 +92,9 @@ class Role(Base, AuditMixin):
         default=DataScope.SELF,
     )
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    is_system: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=text("false"), nullable=False
+    )
 
 
 class Permission(Base):

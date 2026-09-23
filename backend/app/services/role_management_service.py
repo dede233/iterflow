@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+from collections.abc import Sequence
 from typing import Any, cast
 
 from sqlalchemy import delete, update
@@ -7,8 +10,16 @@ from sqlalchemy.orm import Session
 from app.core.exceptions import AppError, ConflictError, NotFoundError
 from app.models.entities import Role, RolePermission
 from app.repositories.role_repository import RoleRepository
-from app.schemas.role import RoleCreate, RoleDeleteOut, RoleOut, RolePermissionUpdate, RoleUpdate
+from app.schemas.role import (
+    PermissionOut,
+    RoleCreate,
+    RoleDeleteOut,
+    RoleOut,
+    RolePermissionUpdate,
+    RoleUpdate,
+)
 from app.services.audit_service import AuditService
+from app.services.permission_catalog import PermissionCatalog
 
 
 class RoleManagementService:
@@ -50,8 +61,8 @@ class RoleManagementService:
     def get(self, role_id: int) -> RoleOut:
         return self._out(self._role_or_404(role_id))
 
-    def list_permissions(self):
-        return self.repo.list_permissions()
+    def list_permissions(self) -> Sequence[PermissionOut]:
+        return PermissionCatalog.serialize_all(self.repo.list_permissions())
 
     def create(self, payload: RoleCreate, operator_id: int) -> RoleOut:
         self._validate_permission_ids(payload.permission_ids)

@@ -2,7 +2,13 @@
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { createRole, deleteRole, listPermissions, listRoles, updateRole, updateRolePermissions } from '@/api/roles'
+import PermissionAssignmentDrawer from '@/components/PermissionAssignmentDrawer.vue'
 import RoleActions from '@/components/RoleActions.vue'
+import {
+  buildPermissionUpdateRequest,
+  buildRoleBasicUpdatePayload,
+  confirmAddedSensitivePermissions,
+} from '@/components/permissionAssignment'
 import { usePermission } from '@/composables/usePermission'
 import type { PermissionItem, RoleItem } from '@/types/system'
 
@@ -13,12 +19,14 @@ const loading = ref(false)
 const dialogVisible = ref(false)
 const editingRole = ref<RoleItem | null>(null)
 const saving = ref(false)
+const permissionDrawerVisible = ref(false)
+const permissionRole = ref<RoleItem | null>(null)
+const permissionSaving = ref(false)
 const form = reactive({
   code: '',
   name: '',
   data_scope: 'SELF' as 'SELF' | 'ALL',
   enabled: true,
-  permission_ids: [] as number[],
 })
 
 async function load(): Promise<void> {
@@ -33,7 +41,7 @@ async function load(): Promise<void> {
 }
 
 function resetForm(): void {
-  Object.assign(form, { code: '', name: '', data_scope: 'SELF', enabled: true, permission_ids: [] })
+  Object.assign(form, { code: '', name: '', data_scope: 'SELF', enabled: true })
 }
 
 function openCreate(): void {
@@ -49,41 +57,73 @@ function openEdit(role: RoleItem): void {
     name: role.name,
     data_scope: role.data_scope === 'ALL' ? 'ALL' : 'SELF',
     enabled: role.enabled,
-    permission_ids: [...role.permission_ids],
   })
   dialogVisible.value = true
+}
+
+function openPermissions(role: RoleItem): void {
+  permissionRole.value = role
+  permissionDrawerVisible.value = true
 }
 
 async function save(): Promise<void> {
   saving.value = true
   try {
     if (!editingRole.value) {
-      await createRole({
+      const created = await createRole({
         code: form.code.trim(),
         name: form.name.trim(),
         data_scope: form.data_scope,
-        permission_ids: form.permission_ids,
+        permission_ids: [],
       })
-      ElMessage.success('角色已创建')
+      ElMessage.success('角色已创建，请继续配置权限')
+      dialogVisible.value = false
+      await load()
+      openPermissions(rows.value.find((role) => role.id === created.id) ?? created)
     } else {
-      let role = await updateRole(editingRole.value.id, {
-        code: form.code.trim(),
-        name: form.name.trim(),
-        data_scope: form.data_scope,
-        enabled: form.enabled,
-        revision: editingRole.value.revision,
-      })
-      const previousPermissions = [...editingRole.value.permission_ids].sort().join(',')
-      const nextPermissions = [...form.permission_ids].sort().join(',')
-      if (previousPermissions !== nextPermissions) {
-        role = await updateRolePermissions(role.id, form.permission_ids, role.revision)
-      }
+      await updateRole(
+        editingRole.value.id,
+        buildRoleBasicUpdatePayload(form, editingRole.value.revision),
+      )
       ElMessage.success('角色已更新')
+      dialogVisible.value = false
+      await load()
     }
-    dialogVisible.value = false
-    await load()
   } finally {
     saving.value = false
+  }
+}
+
+async function savePermissions(permissionIds: number[]): Promise<void> {
+  const role = permissionRole.value
+  if (!role || role.is_system) return
+  const confirmed = await confirmAddedSensitivePermissions(
+    role.permission_ids,
+    permissionIds,
+    permissions.value,
+    (message) =>
+      ElMessageBox.confirm(message, '确认高风险权限', {
+        type: 'warning',
+        confirmButtonText: '确认授权',
+        cancelButtonText: '取消',
+      }),
+  )
+  if (!confirmed) return
+
+  permissionSaving.value = true
+  try {
+    const request = buildPermissionUpdateRequest(role, permissionIds)
+    const updated = await updateRolePermissions(
+      request.roleId,
+      request.permissionIds,
+      request.revision,
+    )
+    permissionRole.value = updated
+    permissionDrawerVisible.value = false
+    ElMessage.success('角色权限已更新')
+    await load()
+  } finally {
+    permissionSaving.value = false
   }
 }
 
@@ -135,14 +175,19 @@ onMounted(load)
       <el-table-column label="状态" width="90">
         <template #default="scope"><el-tag :type="scope.row.enabled ? 'success' : 'info'">{{ scope.row.enabled ? '启用' : '停用' }}</el-tag></template>
       </el-table-column>
-      <el-table-column v-if="can('sys.role.manage')" label="操作" width="140" fixed="right">
+      <el-table-column v-if="can('sys.role.manage')" label="操作" width="240" fixed="right">
         <template #default="scope">
-          <RoleActions :role="scope.row" @edit="openEdit" @delete="remove" />
+          <RoleActions
+            :role="scope.row"
+            @edit="openEdit"
+            @permissions="openPermissions"
+            @delete="remove"
+          />
         </template>
       </el-table-column>
     </el-table>
 
-    <el-dialog v-model="dialogVisible" :title="editingRole ? '编辑角色' : '创建角色'" width="min(680px, 94vw)" destroy-on-close>
+    <el-dialog v-model="dialogVisible" :title="editingRole ? '编辑角色基本信息' : '创建角色'" width="min(680px, 94vw)" destroy-on-close>
       <el-form label-position="top" @submit.prevent="save">
         <el-row :gutter="16">
           <el-col :xs="24" :sm="12"><el-form-item label="编码" required><el-input v-model="form.code" /></el-form-item></el-col>
@@ -155,19 +200,27 @@ onMounted(load)
           </el-radio-group>
         </el-form-item>
         <el-form-item v-if="editingRole" label="状态"><el-switch v-model="form.enabled" active-text="启用" inactive-text="停用" /></el-form-item>
-        <el-form-item label="权限">
-          <el-checkbox-group v-model="form.permission_ids" class="permissions">
-            <el-checkbox v-for="permission in permissions" :key="permission.id" :value="permission.id">
-              {{ permission.name }}（{{ permission.code }}）
-            </el-checkbox>
-          </el-checkbox-group>
-        </el-form-item>
+        <el-alert
+          v-if="!editingRole"
+          title="创建成功后将打开独立权限配置，创建与后续授权为两个明确步骤。"
+          type="info"
+          show-icon
+          :closable="false"
+        />
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
         <el-button type="primary" :loading="saving" @click="save">保存</el-button>
       </template>
     </el-dialog>
+
+    <PermissionAssignmentDrawer
+      v-model="permissionDrawerVisible"
+      :role="permissionRole"
+      :permissions="permissions"
+      :saving="permissionSaving"
+      @save="savePermissions"
+    />
   </section>
 </template>
 
@@ -175,7 +228,5 @@ onMounted(load)
 .head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .hint { margin: -8px 0 16px; color: #64748b; font-size: 13px; }
 .role-table { margin-top: 12px; }
-.permissions { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px 16px; width: 100%; }
-.permissions :deep(.el-checkbox) { height: auto; min-height: 28px; margin-right: 0; white-space: normal; }
 @media (max-width: 767px) { .head { align-items: center; } }
 </style>

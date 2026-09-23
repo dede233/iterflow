@@ -7,11 +7,13 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event, select
 from sqlalchemy.orm import Session
 
+from app.cli.seed import PERMISSIONS as SEEDED_PERMISSIONS
 from app.core.database import get_db
 from app.core.security import create_access_token
 from app.main import app
 from app.models.entities import OperationLog, Permission, Role, RolePermission, User, UserRole
 from app.models.enums import DataScope, UserStatus
+from app.services.permission_catalog import PermissionCatalog
 
 RoleApiFixture = tuple[TestClient, Session, dict[str, dict[str, str]], dict[str, int]]
 
@@ -44,8 +46,7 @@ def role_api(tmp_path: Path) -> Iterator[RoleApiFixture]:
 
     with Session(engine, expire_on_commit=False) as session:
         permissions = {
-            code: Permission(code=code, name=code)
-            for code in ("sys.role.view", "sys.role.manage", "rd.feedback.view")
+            code: Permission(code=code, name=name) for code, name in SEEDED_PERMISSIONS.items()
         }
         manager_role = Role(
             code="ROLE_MANAGER", name="角色管理员", data_scope=DataScope.ALL, is_system=True
@@ -172,6 +173,24 @@ def test_role_crud_and_audit_before_after(role_api: RoleApiFixture):
     )
     assert permissions_updated.status_code == 200
     assert permissions_updated.json()["permission_ids"] == []
+    assert permissions_updated.json()["revision"] == 3
+
+    stale_update = client.put(
+        f"/api/v1/roles/{role['id']}/permissions",
+        headers=headers["manager"],
+        json={
+            "permission_ids": [ids["feedback_permission"]],
+            "revision": updated.json()["revision"],
+        },
+    )
+    assert stale_update.status_code == 409
+
+    unknown_permission = client.put(
+        f"/api/v1/roles/{role['id']}/permissions",
+        headers=headers["manager"],
+        json={"permission_ids": [999_999], "revision": permissions_updated.json()["revision"]},
+    )
+    assert unknown_permission.status_code == 422
 
     create_audit = session.scalar(
         select(OperationLog).where(
@@ -224,6 +243,34 @@ def test_role_write_requires_manage_permission(role_api: RoleApiFixture):
         ).status_code
         == 403
     )
+
+
+def test_permission_catalog_returns_every_permission_as_read_only_metadata(
+    role_api: RoleApiFixture,
+):
+    client, _session, headers, _ids = role_api
+
+    response = client.get("/api/v1/roles/permissions", headers=headers["manager"])
+    assert response.status_code == 200
+    catalog = response.json()
+    assert {item["code"] for item in catalog} == set(SEEDED_PERMISSIONS)
+    assert all(item["group"] != "Other / 其他" for item in catalog)
+
+    by_code = {item["code"]: item for item in catalog}
+    assert by_code["dashboard.view"]["group"] == "Dashboard / 首页"
+    assert by_code["rd.version.publish"]["group"] == "Version / 版本"
+    assert by_code["sys.user.role.assign"]["group"] == "User / 用户管理"
+    assert by_code["sys.file.download"]["group"] == "File / 文件"
+    assert {
+        item["code"] for item in catalog if item["sensitive"]
+    } == PermissionCatalog.SENSITIVE_CODES
+
+    dynamic_path = app.openapi()["paths"]["/api/v1/roles/permissions"]
+    assert set(dynamic_path) == {"get"}
+
+
+def test_permission_catalog_keeps_unknown_codes_visible():
+    assert PermissionCatalog.group_for("integration.webhook.run").label == "Other / 其他"
 
 
 def test_system_role_and_assigned_role_cannot_be_deleted(role_api: RoleApiFixture):
@@ -285,8 +332,13 @@ def test_static_openapi_role_management_contract():
     for filename in ("openapi-v1.5.yaml", "需求与版本管理系统_V1.5_OpenAPI.yaml"):
         document = yaml.safe_load((spec_dir / filename).read_text(encoding="utf-8"))
         role_schema = document["components"]["schemas"]["Role"]
+        permission_schema = document["components"]["schemas"]["Permission"]
         assert "is_system" in role_schema["required"]
         assert role_schema["properties"]["is_system"] == {"type": "boolean"}
+        assert {"group", "sensitive"} <= set(permission_schema["required"])
+        assert permission_schema["properties"]["group"]["type"] == "string"
+        assert permission_schema["properties"]["sensitive"]["type"] == "boolean"
+        assert set(document["paths"]["/roles/permissions"]) == {"get"}
         assert "get" in document["paths"]["/roles/{role_id}"]
         assert "delete" in document["paths"]["/roles/{role_id}"]
         assert (

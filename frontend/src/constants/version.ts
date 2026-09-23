@@ -1,6 +1,8 @@
 // Version vocabulary + human-driven state machine (frontend mirror of the
 // backend VERSION_TRANSITIONS). Backend stays the source of truth.
 
+import type { components } from '@/types/openapi.generated'
+
 export const VERSION_STATUSES = [
   { value: 'PLANNING', label: '规划中' },
   { value: 'DEVELOPING', label: '开发中' },
@@ -22,7 +24,7 @@ export function versionRequirementSetFrozen(status: string): boolean {
 }
 
 export interface VersionStatusAction {
-  target: string
+  target: components['schemas']['ManualVersionStatus']
   label: string
   needsReason: boolean
 }

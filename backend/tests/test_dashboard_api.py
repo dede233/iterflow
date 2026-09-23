@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 import yaml
+from conftest import resolve_openapi_ref
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
@@ -405,10 +406,11 @@ def test_dashboard_openapi_contract_is_synchronized():
     spec_dir = Path(__file__).resolve().parents[2] / "spec"
     for filename in ("openapi-v1.5.yaml", "需求与版本管理系统_V1.5_OpenAPI.yaml"):
         document = yaml.safe_load((spec_dir / filename).read_text(encoding="utf-8"))
-        assert document["paths"]["/dashboard/overview"]["get"]["responses"]["200"]["content"][
-            "application/json"
-        ]["schema"] == {"$ref": "#/components/schemas/DashboardOverview"}
-        schema = document["components"]["schemas"]["DashboardOverview"]
+        response_schema = document["paths"]["/dashboard/overview"]["get"]["responses"]["200"][
+            "content"
+        ]["application/json"]["schema"]
+        assert response_schema == {"$ref": "#/components/schemas/DashboardOverviewOut"}
+        schema = resolve_openapi_ref(document, response_schema)
         assert schema["required"] == [
             "data_scope",
             "feedback",

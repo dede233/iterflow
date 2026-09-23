@@ -23,129 +23,190 @@ paths:
       tags:
       - Auth
       summary: 登录
-      security: []
+      operationId: login_api_v1_auth_login_post
       requestBody:
-        required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/LoginRequest'
+        required: true
       responses:
         '200':
-          description: 成功
+          description: Successful Response
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/TokenPair'
         '401':
-          description: 用户名或密码错误
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /auth/refresh:
     post:
       tags:
       - Auth
       summary: 刷新 Token
-      security: []
+      operationId: refresh_api_v1_auth_refresh_post
       requestBody:
-        required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/RefreshRequest'
+        required: true
       responses:
         '200':
-          description: 成功
+          description: Successful Response
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/TokenPair'
         '401':
-          description: Refresh Token 无效、已过期或已撤销
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /auth/logout:
     post:
       tags:
       - Auth
       summary: 退出登录并撤销当前 Refresh Session
-      security: []
+      operationId: logout_api_v1_auth_logout_post
       requestBody:
-        required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/RefreshRequest'
+        required: true
       responses:
         '200':
-          description: 成功
+          description: Successful Response
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/LogoutResponse'
         '401':
-          description: Refresh Token 无效或已过期
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /auth/change-password:
     post:
       tags:
       - Auth
       summary: 修改密码并撤销旧 Refresh Session
-      security:
-      - bearerAuth: []
+      operationId: change_password_api_v1_auth_change_password_post
       requestBody:
-        required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/ChangePasswordRequest'
+        required: true
       responses:
         '200':
-          description: 成功，返回新 Token Pair
+          description: Successful Response
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/TokenPair'
         '401':
-          description: 当前密码错误或用户不可用
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '409':
-          description: 密码被并发修改
+          description: 业务状态或 revision 冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - bearerAuth: []
   /auth/me:
     get:
       tags:
       - Auth
       summary: 获取当前登录态和权限
-      security:
-      - bearerAuth: []
+      operationId: me_api_v1_auth_me_get
       responses:
         '200':
-          description: 成功
+          description: Successful Response
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthMe'
         '401':
-          description: Access Token 无效或用户不可用
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearerAuth: []
   /dashboard/overview:
     get:
       tags:
       - Dashboard
       summary: 获取权限感知的业务概览
-      description: 需要 dashboard.view。各领域 section 仅在拥有对应 rd.*.view 或 * 权限时返回，否则为 null；所有统计按当前用户的 SELF/ALL DataScope 在数据库查询中直接过滤。
-      security:
-      - bearerAuth: []
+      description: 需要 dashboard.view。各领域 section 仅在拥有对应 rd.*.view 或 * 权限时返回，否则为 null；所有统计按当前用户的 SELF/ALL
+        DataScope 在数据库查询中直接过滤。
+      operationId: get_dashboard_overview_api_v1_dashboard_overview_get
       responses:
         '200':
-          description: 成功；无领域查看权限时仍返回 200，相关 section 为 null。
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DashboardOverview'
+                $ref: '#/components/schemas/DashboardOverviewOut'
         '401':
-          description: 未登录或用户不可用
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: 缺少 dashboard.view
-  /feedbacks:
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearerAuth: []
+  /audits:
     get:
       tags:
-      - Feedback
-      summary: 反馈列表
-      security: &id001
+      - Audit
+      summary: 审计中心查询
+      operationId: list_audits_api_v1_audits_get
+      security:
       - bearerAuth: []
       parameters:
       - name: page
@@ -155,75 +216,251 @@ paths:
           type: integer
           minimum: 1
           default: 1
-      - name: page_size
+          title: Page
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 20
+          title: Size
+      - name: entity_type
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            minLength: 1
+            maxLength: 32
+          - type: 'null'
+          title: Entity Type
+      - name: entity_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+            minimum: 1
+          - type: 'null'
+          title: Entity Id
+      - name: action
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            minLength: 1
+            maxLength: 64
+          - type: 'null'
+          title: Action
+      - name: operator_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+            minimum: 1
+          - type: 'null'
+          title: Operator Id
+      - name: time_from
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Time From
+      - name: time_to
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Time To
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditPage'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: 仅返回当前用户具有业务对象查看权限且处于其数据范围内的审计记录。time_from 与 time_to 共同组成时间范围。
+  /audits/{audit_id}:
+    get:
+      tags:
+      - Audit
+      summary: 审计记录详情
+      operationId: get_audit_api_v1_audits__audit_id__get
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: audit_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Audit Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditOut'
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: 详情与列表使用相同的业务对象权限和数据范围校验。
+  /feedbacks:
+    get:
+      tags:
+      - Feedback
+      summary: 反馈列表
+      operationId: list_feedbacks_api_v1_feedbacks_get
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: page
         in: query
         required: false
         schema:
           type: integer
           minimum: 1
+          default: 1
+          title: Page
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
           maximum: 100
+          minimum: 1
           default: 20
+          title: Page Size
       - name: status
         in: query
         required: false
         schema:
-          type: string
-          enum:
-          - NEW
-          - ACCEPTED
-          - REQUIREMENT_LINKED
-          - ONLINE
-          - DUPLICATE
-          - CANNOT_REPRODUCE
-          - CLOSED
+          anyOf:
+          - $ref: '#/components/schemas/FeedbackStatus'
+          - type: 'null'
+          title: Status
       - name: feedback_type
         in: query
         required: false
         schema:
-          type: string
-          enum:
-          - NEW_FEATURE
-          - FEATURE_OPTIMIZATION
-          - SYSTEM_ISSUE
-          - DATA_ISSUE
-          - UI_UX
-          - OTHER
+          anyOf:
+          - $ref: '#/components/schemas/FeedbackType'
+          - type: 'null'
+          title: Feedback Type
       - name: urgency
         in: query
         required: false
         schema:
-          type: string
-          enum:
-          - NORMAL
-          - URGENT
-          - CRITICAL
+          anyOf:
+          - $ref: '#/components/schemas/FeedbackUrgency'
+          - type: 'null'
+          title: Urgency
       - name: system_id
         in: query
         required: false
         schema:
-          type: integer
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: System Id
       - name: module_id
         in: query
         required: false
         schema:
-          type: integer
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Module Id
       - name: keyword
         in: query
         required: false
         schema:
-          type: string
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Keyword
       responses:
         '200':
-          description: 成功
+          description: Successful Response
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/FeedbackPage'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     post:
       tags:
       - Feedback
       summary: 提交反馈
-      security: *id001
+      operationId: create_feedback_api_v1_feedbacks_post
+      security:
+      - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -232,42 +469,83 @@ paths:
               $ref: '#/components/schemas/FeedbackCreate'
       responses:
         '200':
-          description: 成功
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Feedback'
+                $ref: '#/components/schemas/FeedbackOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /feedbacks/{feedback_id}:
     get:
       tags:
       - Feedback
       summary: 反馈详情
-      security: *id001
+      operationId: get_feedback_api_v1_feedbacks__feedback_id__get
+      security:
+      - bearerAuth: []
       parameters:
       - name: feedback_id
         in: path
         required: true
         schema:
           type: integer
+          title: Feedback Id
       responses:
         '200':
-          description: 成功
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Feedback'
+                $ref: '#/components/schemas/FeedbackOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     patch:
       tags:
       - Feedback
       summary: 编辑反馈
-      description: 必须携带 revision；过期 revision 返回 409。
-      security: *id001
+      operationId: update_feedback_api_v1_feedbacks__feedback_id__patch
+      security:
+      - bearerAuth: []
       parameters:
       - name: feedback_id
         in: path
         required: true
         schema:
           type: integer
+          title: Feedback Id
       requestBody:
         required: true
         content:
@@ -276,23 +554,48 @@ paths:
               $ref: '#/components/schemas/FeedbackUpdate'
       responses:
         '200':
-          description: 成功
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Feedback'
+                $ref: '#/components/schemas/FeedbackOut'
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '409':
-          description: 并发冲突
+          description: 业务状态或 revision 冲突
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Conflict'
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: 必须携带 revision；过期 revision 返回 409。
   /feedbacks/{feedback_id}/status:
     patch:
       tags:
       - Feedback
       summary: 反馈状态变更
-      description: 集中式状态机；必须携带 revision；非法迁移返回 409；ManualFeedbackStatus 之外的值返回 422。
+      operationId: change_feedback_status_api_v1_feedbacks__feedback_id__status_patch
       security:
       - bearerAuth: []
       parameters:
@@ -301,6 +604,7 @@ paths:
         required: true
         schema:
           type: integer
+          title: Feedback Id
       requestBody:
         required: true
         content:
@@ -309,115 +613,240 @@ paths:
               $ref: '#/components/schemas/FeedbackStatusChange'
       responses:
         '200':
-          description: 成功
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Feedback'
+                $ref: '#/components/schemas/FeedbackOut'
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '409':
-          description: 非法状态迁移或并发冲突
+          description: 业务状态或 revision 冲突
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Conflict'
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: 集中式状态机；必须携带 revision；非法迁移返回 409；ManualFeedbackStatus 之外的值返回 422。
   /feedbacks/{feedback_id}/attachments:
     get:
       tags:
       - Feedback
       summary: 反馈附件列表
-      security: &id002
+      operationId: list_feedback_attachments_api_v1_feedbacks__feedback_id__attachments_get
+      security:
       - bearerAuth: []
       parameters:
-      - &id003
-        name: feedback_id
+      - name: feedback_id
         in: path
         required: true
         schema:
           type: integer
+          title: Feedback Id
       responses:
         '200':
-          description: 成功
+          description: Successful Response
           content:
             application/json:
               schema:
                 type: array
                 items:
                   $ref: '#/components/schemas/AttachmentOut'
+                title: Response List Feedback Attachments Api V1 Feedbacks  Feedback Id  Attachments Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     post:
       tags:
       - Feedback
       summary: 上传反馈附件
-      description: 在反馈数据范围内上传并以 file_id 建立 FEEDBACK 附件关系；仅存 file_id，不存物理路径。
-      security: *id002
+      operationId: add_feedback_attachment_api_v1_feedbacks__feedback_id__attachments_post
+      security:
+      - bearerAuth: []
       parameters:
-      - *id003
+      - name: feedback_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Feedback Id
       requestBody:
         required: true
         content:
           multipart/form-data:
             schema:
-              type: object
-              required:
-              - file
-              properties:
-                file:
-                  type: string
-                  format: binary
+              $ref: '#/components/schemas/Body_add_feedback_attachment_api_v1_feedbacks__feedback_id__attachments_post'
       responses:
         '200':
-          description: 成功
+          description: Successful Response
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/AttachmentOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: 在反馈数据范围内上传并以 file_id 建立 FEEDBACK 附件关系；仅存 file_id，不存物理路径。
   /feedbacks/{feedback_id}/attachments/{file_id}/download:
     get:
       tags:
       - Feedback
       summary: 下载反馈附件
-      description: 按反馈数据范围 + 附件关系鉴权，非文件属主鉴权。
-      security: *id002
+      operationId: download_feedback_attachment_api_v1_feedbacks__feedback_id__attachments__file_id__download_get
+      security:
+      - bearerAuth: []
       parameters:
-      - *id003
+      - name: feedback_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Feedback Id
       - name: file_id
         in: path
         required: true
         schema:
           type: integer
+          title: File Id
       responses:
         '200':
-          description: 文件流
+          description: Successful Response
           content:
-            application/octet-stream:
-              schema:
-                type: string
-                format: binary
+            application/json:
+              schema: {}
         '404':
-          description: 附件不存在或无权访问
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: 按反馈数据范围 + 附件关系鉴权，非文件属主鉴权。
   /feedbacks/{feedback_id}/comments:
     get:
       tags:
       - Feedback
       summary: 反馈评论列表
-      security: *id002
+      operationId: list_feedback_comments_api_v1_feedbacks__feedback_id__comments_get
+      security:
+      - bearerAuth: []
       parameters:
-      - *id003
+      - name: feedback_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Feedback Id
       responses:
         '200':
-          description: 成功
+          description: Successful Response
           content:
             application/json:
               schema:
                 type: array
                 items:
                   $ref: '#/components/schemas/CommentOut'
+                title: Response List Feedback Comments Api V1 Feedbacks  Feedback Id  Comments Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     post:
       tags:
       - Feedback
       summary: 发表反馈评论
-      security: *id002
+      operationId: create_feedback_comment_api_v1_feedbacks__feedback_id__comments_post
+      security:
+      - bearerAuth: []
       parameters:
-      - *id003
+      - name: feedback_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Feedback Id
       requestBody:
         required: true
         content:
@@ -426,24 +855,44 @@ paths:
               $ref: '#/components/schemas/CommentCreate'
       responses:
         '200':
-          description: 成功
+          description: Successful Response
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/CommentOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /feedbacks/{feedback_id}/convert:
     post:
       tags:
       - Feedback
       summary: 反馈转正式需求
-      description: CREATE_NEW 仅需要 rd.feedback.convert。LINK_EXISTING 还需要 rd.requirement.view，且目标需求必须在当前 Requirement DataScope 内。操作与关系及审计写入同一事务。
-      security: *id001
+      operationId: convert_feedback_api_v1_feedbacks__feedback_id__convert_post
+      security:
+      - bearerAuth: []
       parameters:
       - name: feedback_id
         in: path
         required: true
         schema:
           type: integer
+          title: Feedback Id
       requestBody:
         required: true
         content:
@@ -452,30 +901,52 @@ paths:
               $ref: '#/components/schemas/FeedbackConvertRequest'
       responses:
         '200':
-          description: 成功
+          description: Successful Response
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/RequirementOut'
-        '404':
-          description: 反馈或目标需求不存在
         '403':
-          description: LINK_EXISTING 缺少 rd.requirement.view
-        '409':
-          description: 并发冲突/非法状态迁移
+          description: 无权执行该操作
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Conflict'
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 业务状态或 revision 冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '422':
-          description: 参数校验失败
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: CREATE_NEW 仅需要 rd.feedback.convert。LINK_EXISTING 还需要 rd.requirement.view，且目标需求必须在当前
+        Requirement DataScope 内。操作与关系及审计写入同一事务。
   /requirements:
     get:
       tags:
       - Requirement
       summary: 需求列表
-      security: *id001
-      parameters: &id004
+      operationId: list_requirements_api_v1_requirements_get
+      security:
+      - bearerAuth: []
+      parameters:
       - name: page
         in: query
         required: false
@@ -483,31 +954,48 @@ paths:
           type: integer
           minimum: 1
           default: 1
+          title: Page
       - name: page_size
         in: query
         required: false
         schema:
           type: integer
-          minimum: 1
           maximum: 100
+          minimum: 1
           default: 20
-      - name: version_id
-        in: query
-        required: false
-        schema:
-          type: integer
+          title: Page Size
       responses:
         '200':
-          description: 成功
+          description: Successful Response
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/RequirementPage'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     post:
       tags:
       - Requirement
       summary: 直接新建正式需求
-      security: *id001
+      operationId: create_requirement_api_v1_requirements_post
+      security:
+      - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -516,97 +1004,35 @@ paths:
               $ref: '#/components/schemas/RequirementCreate'
       responses:
         '200':
-          description: 成功
+          description: Successful Response
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/RequirementOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /requirements/{requirement_id}:
     get:
       tags:
       - Requirement
       summary: 需求详情
-      security: *id001
-      parameters:
-      - name: requirement_id
-        in: path
-        required: true
-        schema:
-          type: integer
-      responses:
-        '200':
-          description: 成功
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/RequirementOut'
-    patch:
-      tags:
-      - Requirement
-      summary: 编辑需求
-      security: *id001
-      parameters:
-      - name: requirement_id
-        in: path
-        required: true
-        schema:
-          type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RequirementUpdate'
-      responses:
-        '200':
-          description: 成功
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/RequirementOut'
-        '409':
-          description: 并发冲突/非法状态迁移
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Conflict'
-  /requirements/{requirement_id}/status:
-    patch:
-      tags:
-      - Requirement
-      summary: 变更需求状态
-      security: *id001
-      parameters:
-      - name: requirement_id
-        in: path
-        required: true
-        schema:
-          type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RequirementStatusChange'
-      responses:
-        '200':
-          description: 成功
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/RequirementOut'
-        '409':
-          description: 并发冲突/非法状态迁移
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Conflict'
-  /requirements/{requirement_id}/feedbacks:
-    get:
-      tags:
-      - Requirement
-      summary: 需求来源反馈
-      description: 需要 rd.requirement.view 与 rd.feedback.view。先校验 Requirement DataScope，再按 Feedback DataScope 过滤关联反馈；仅返回当前用户可见的反馈。
+      operationId: get_requirement_api_v1_requirements__requirement_id__get
       security:
       - bearerAuth: []
       parameters:
@@ -615,344 +1041,201 @@ paths:
         required: true
         schema:
           type: integer
+          title: Requirement Id
       responses:
         '200':
-          description: 成功
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RequirementOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      tags:
+      - Requirement
+      summary: 编辑需求
+      operationId: update_requirement_api_v1_requirements__requirement_id__patch
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: requirement_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Requirement Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequirementUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RequirementOut'
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 业务状态或 revision 冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /requirements/{requirement_id}/feedbacks:
+    get:
+      tags:
+      - Requirement
+      summary: 需求来源反馈
+      operationId: list_requirement_feedbacks_api_v1_requirements__requirement_id__feedbacks_get
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: requirement_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Requirement Id
+      responses:
+        '200':
+          description: Successful Response
           content:
             application/json:
               schema:
                 type: array
                 items:
                   $ref: '#/components/schemas/LinkedFeedbackOut'
-  /versions:
-    get:
-      tags:
-      - Version
-      summary: 版本列表
-      security: *id001
-      parameters: *id004
-      responses:
-        '200':
-          description: 成功
+                title: Response List Requirement Feedbacks Api V1 Requirements  Requirement Id  Feedbacks
+                  Get
+        '422':
+          description: Validation Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/VersionPage'
-    post:
-      tags:
-      - Version
-      summary: 创建版本
-      security: *id001
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/VersionCreate'
-      responses:
-        '200':
-          description: 成功
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/VersionOut'
-  /versions/{version_id}:
-    get:
-      tags:
-      - Version
-      summary: 版本详情
-      security: *id001
-      parameters:
-      - name: version_id
-        in: path
-        required: true
-        schema:
-          type: integer
-      responses:
-        '200':
-          description: 成功
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/VersionOut'
+                $ref: '#/components/schemas/ErrorResponse'
+      description: 需要 rd.requirement.view 与 rd.feedback.view。先校验 Requirement DataScope，再按 Feedback DataScope
+        过滤关联反馈；仅返回当前用户可见的反馈。
+  /requirements/{requirement_id}/status:
     patch:
       tags:
-      - Version
-      summary: 编辑版本
-      security: *id001
-      parameters:
-      - name: version_id
-        in: path
-        required: true
-        schema:
-          type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/VersionUpdate'
-      responses:
-        '200':
-          description: 成功
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/VersionOut'
-        '409':
-          description: 并发冲突/非法状态迁移/版本冻结
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Conflict'
-  /versions/{version_id}/status:
-    patch:
-      tags:
-      - Version
-      summary: 变更版本状态（禁止进入 RELEASED）
-      description: READY 可退回 TESTING，但必须填写 reason。RELEASED 只能通过发布接口进入。
-      security: *id001
-      parameters:
-      - name: version_id
-        in: path
-        required: true
-        schema:
-          type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/VersionStatusChange'
-      responses:
-        '200':
-          description: 成功
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/VersionOut'
-        '409':
-          description: 并发冲突/非法状态迁移/版本冻结
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Conflict'
-  /versions/{version_id}/requirements:
-    get:
-      tags:
-      - Version
-      summary: 版本需求清单与进度
-      description: 需要 rd.version.view 与 rd.requirement.view。Version 和 Requirement 分别校验 DataScope；仅返回可见需求，stats 只基于返回项计算，不暴露隐藏需求数量。
-      security: &id005
+      - Requirement
+      summary: 变更需求状态
+      operationId: change_status_api_v1_requirements__requirement_id__status_patch
+      security:
       - bearerAuth: []
       parameters:
-      - &id006
-        name: version_id
-        in: path
-        required: true
-        schema:
-          type: integer
-      responses:
-        '200':
-          description: 成功
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/VersionRequirementsOut'
-    post:
-      tags:
-      - Version
-      summary: 向版本添加需求
-      description: 需要 rd.version.edit 与 rd.requirement.view；目标 Version 与 Requirement 均须在各自 DataScope 内。通过 VersionService；READY/RELEASED/CANCELED 冻结返回 409。
-      security: *id005
-      parameters:
-      - *id006
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AddRequirementRequest'
-      responses:
-        '200':
-          description: 成功
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/VersionOut'
-        '409':
-          description: 并发冲突/非法状态迁移/版本冻结
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Conflict'
-  /versions/{version_id}/requirements/move:
-    post:
-      tags:
-      - Version
-      summary: 迁移需求到该版本
-      description: 需要 rd.version.edit 与 rd.requirement.view；目标 Version、Requirement 及存在时的 source Version 均须在各自 DataScope 内。
-      security: *id005
-      parameters:
-      - *id006
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/MoveRequirementRequest'
-      responses:
-        '200':
-          description: 成功
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/VersionOut'
-        '409':
-          description: 并发冲突/非法状态迁移/版本冻结
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Conflict'
-  /versions/{version_id}/requirements/{requirement_id}:
-    delete:
-      tags:
-      - Version
-      summary: 从版本移除需求
-      description: 需要 rd.version.edit 与 rd.requirement.view；Version 与 Requirement 均须在各自 DataScope 内。
-      security: *id005
-      parameters:
-      - *id006
       - name: requirement_id
         in: path
         required: true
         schema:
           type: integer
+          title: Requirement Id
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RemoveRequirementRequest'
+              $ref: '#/components/schemas/RequirementStatusChange'
       responses:
         '200':
-          description: 成功
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/VersionOut'
-        '409':
-          description: 并发冲突/非法状态迁移/版本冻结
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Conflict'
-  /versions/{version_id}/publish:
-    post:
-      tags:
-      - Version
-      summary: 发布版本
-      description: 只允许 READY，且 V1.5 仅支持成功发布。Release(SUCCESS) + Version + DONE Requirement -> ONLINE +
-        Feedback -> ONLINE 同一业务事务。
-      security: *id001
-      parameters:
-      - name: version_id
-        in: path
-        required: true
-        schema:
-          type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PublishVersionRequest'
-      responses:
-        '200':
-          description: 发布成功
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PublishResult'
-        '409':
-          description: 版本未就绪/存在未完成需求/并发冲突
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Conflict'
+                $ref: '#/components/schemas/RequirementOut'
         '404':
-          description: 版本不存在或无权访问
-  /versions/{version_id}/publish/check:
-    post:
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 业务状态或 revision 冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /versions:
+    get:
       tags:
       - Version
-      summary: 发布前检查
-      description: 运行与 publish 相同的前置检查；通过返回 200，未通过返回 409 并含 checks。
-      security: &id007
+      summary: 版本列表
+      operationId: list_versions_api_v1_versions_get
+      security:
       - bearerAuth: []
-      parameters:
-      - name: version_id
-        in: path
-        required: true
-        schema:
-          type: integer
-      responses:
-        '200':
-          description: 检查通过
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PublishCheckResult'
-        '409':
-          description: 检查未通过
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Conflict'
-        '404':
-          description: 版本不存在或无权访问
-  /releases:
-    get:
-      tags:
-      - Release
-      summary: 发布记录
-      security: *id001
-      parameters: *id004
-      responses:
-        '200':
-          description: 成功
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ReleasePage'
-  /releases/{release_id}:
-    get:
-      tags:
-      - Release
-      summary: 发布记录详情
-      security: *id007
-      parameters:
-      - name: release_id
-        in: path
-        required: true
-        schema:
-          type: integer
-      responses:
-        '200':
-          description: 成功
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ReleaseOut'
-        '404':
-          description: 发布记录不存在或无权访问
-  /audits:
-    get:
-      tags:
-      - Audit
-      summary: 审计中心查询
-      description: 仅返回当前用户具有业务对象查看权限且处于其数据范围内的审计记录。time_from 与 time_to 共同组成时间范围。
-      security: *id001
       parameters:
       - name: page
         in: query
@@ -961,83 +1244,687 @@ paths:
           type: integer
           minimum: 1
           default: 1
-      - name: size
+          title: Page
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 20
+          title: Page Size
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionPage'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+      - Version
+      summary: 创建版本
+      operationId: create_version_api_v1_versions_post
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VersionCreate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /versions/{version_id}:
+    get:
+      tags:
+      - Version
+      summary: 版本详情
+      operationId: get_version_api_v1_versions__version_id__get
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: version_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Version Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      tags:
+      - Version
+      summary: 编辑版本
+      operationId: update_version_api_v1_versions__version_id__patch
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: version_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Version Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VersionUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionOut'
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 业务状态或 revision 冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /versions/{version_id}/status:
+    patch:
+      tags:
+      - Version
+      summary: 变更版本状态（禁止进入 RELEASED）
+      operationId: change_version_status_api_v1_versions__version_id__status_patch
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: version_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Version Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VersionStatusChange'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionOut'
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 业务状态或 revision 冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: READY 可退回 TESTING，但必须填写 reason。RELEASED 只能通过发布接口进入。
+  /versions/{version_id}/requirements:
+    get:
+      tags:
+      - Version
+      summary: 版本需求清单与进度
+      operationId: list_version_requirements_api_v1_versions__version_id__requirements_get
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: version_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Version Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionRequirementsOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: 需要 rd.version.view 与 rd.requirement.view。Version 和 Requirement 分别校验 DataScope；仅返回可见需求，stats
+        只基于返回项计算，不暴露隐藏需求数量。
+    post:
+      tags:
+      - Version
+      summary: 向版本添加需求
+      operationId: add_version_requirement_api_v1_versions__version_id__requirements_post
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: version_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Version Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddRequirementRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionOut'
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 业务状态或 revision 冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: 需要 rd.version.edit 与 rd.requirement.view；目标 Version 与 Requirement 均须在各自 DataScope 内。通过
+        VersionService；READY/RELEASED/CANCELED 冻结返回 409。
+  /versions/{version_id}/requirements/move:
+    post:
+      tags:
+      - Version
+      summary: 迁移需求到该版本
+      operationId: move_version_requirement_api_v1_versions__version_id__requirements_move_post
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: version_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Version Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MoveRequirementRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionOut'
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 业务状态或 revision 冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: 需要 rd.version.edit 与 rd.requirement.view；目标 Version、Requirement 及存在时的 source Version
+        均须在各自 DataScope 内。
+  /versions/{version_id}/requirements/{requirement_id}:
+    delete:
+      tags:
+      - Version
+      summary: 从版本移除需求
+      operationId: remove_version_requirement_api_v1_versions__version_id__requirements__requirement_id__delete
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: version_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Version Id
+      - name: requirement_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Requirement Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RemoveRequirementRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionOut'
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 业务状态或 revision 冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: 需要 rd.version.edit 与 rd.requirement.view；Version 与 Requirement 均须在各自 DataScope 内。
+  /versions/{version_id}/publish/check:
+    post:
+      tags:
+      - Version
+      summary: 发布前检查
+      operationId: check_version_publish_api_v1_versions__version_id__publish_check_post
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: version_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Version Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublishCheckResult'
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 业务状态或 revision 冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: 运行与 publish 相同的前置检查；通过返回 200，未通过返回 409 并含 checks。
+  /versions/{version_id}/publish:
+    post:
+      tags:
+      - Version
+      summary: 发布版本
+      operationId: publish_version_api_v1_versions__version_id__publish_post
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: version_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Version Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublishVersionRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublishResult'
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 业务状态或 revision 冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: 只允许 READY，且 V1.5 仅支持成功发布。Release(SUCCESS) + Version + DONE Requirement -> ONLINE +
+        Feedback -> ONLINE 同一业务事务。
+  /releases:
+    get:
+      tags:
+      - Release
+      summary: 发布记录
+      operationId: list_releases_api_v1_releases_get
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: page
         in: query
         required: false
         schema:
           type: integer
           minimum: 1
+          default: 1
+          title: Page
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
           maximum: 100
+          minimum: 1
           default: 20
-      - name: entity_type
+          title: Page Size
+      - name: version_id
         in: query
         required: false
         schema:
-          type: string
-      - name: entity_id
-        in: query
-        required: false
-        schema:
-          type: integer
-      - name: action
-        in: query
-        required: false
-        schema:
-          type: string
-      - name: operator_id
-        in: query
-        required: false
-        schema:
-          type: integer
-      - name: time_from
-        in: query
-        required: false
-        schema:
-          type: string
-          format: date-time
-      - name: time_to
-        in: query
-        required: false
-        schema:
-          type: string
-          format: date-time
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Version Id
       responses:
         '200':
-          description: 成功
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuditPage'
+                $ref: '#/components/schemas/ReleasePage'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: 缺少 sys.audit.view 或对象查看权限
-  /audits/{audit_id}:
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /releases/{release_id}:
     get:
       tags:
-      - Audit
-      summary: 审计记录详情
-      description: 详情与列表使用相同的业务对象权限和数据范围校验。
-      security: *id001
+      - Release
+      summary: 发布记录详情
+      operationId: get_release_api_v1_releases__release_id__get
+      security:
+      - bearerAuth: []
       parameters:
-      - name: audit_id
+      - name: release_id
         in: path
         required: true
         schema:
           type: integer
+          title: Release Id
       responses:
         '200':
-          description: 成功
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuditOut'
+                $ref: '#/components/schemas/ReleaseOut'
         '404':
-          description: 审计记录不存在或无权访问
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /notifications:
     get:
       tags:
       - Notification
       summary: 通知中心
-      security: *id001
+      operationId: list_notifications_api_v1_notifications_get
+      security:
+      - bearerAuth: []
       parameters:
       - name: unread_only
         in: query
@@ -1045,110 +1932,279 @@ paths:
         schema:
           type: boolean
           default: false
+          title: Unread Only
       responses:
         '200':
-          description: 成功
+          description: Successful Response
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Notification'
+                  $ref: '#/components/schemas/NotificationOut'
+                title: Response List Notifications Api V1 Notifications Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /notifications/{notification_id}/read:
     post:
       tags:
       - Notification
       summary: 标记通知已读
-      security: *id001
+      operationId: mark_read_api_v1_notifications__notification_id__read_post
+      security:
+      - bearerAuth: []
       parameters:
       - name: notification_id
         in: path
         required: true
         schema:
           type: integer
+          title: Notification Id
       responses:
         '200':
-          description: 成功
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
           content:
             application/json:
               schema:
-                type: object
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /systems:
+    get:
+      tags:
+      - System
+      summary: 业务系统与模块字典
+      operationId: list_systems_api_v1_systems_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessSystemCatalogOut'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearerAuth: []
   /editing/start:
     post:
       tags:
       - Collaboration
       summary: 进入编辑并获取他人编辑提示
-      security: *id001
+      operationId: start_edit_api_v1_editing_start_post
       requestBody:
-        required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/EditingRequest'
+              $ref: '#/components/schemas/EditHeartbeat'
+        required: true
       responses:
         '200':
-          description: 成功
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '403':
+          description: 无权执行该操作
           content:
             application/json:
               schema:
-                type: object
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearerAuth: []
   /editing/heartbeat:
     post:
       tags:
       - Collaboration
       summary: 编辑心跳续期
-      security: *id001
+      operationId: heartbeat_api_v1_editing_heartbeat_post
       requestBody:
-        required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/EditingRequest'
+              $ref: '#/components/schemas/EditHeartbeat'
+        required: true
       responses:
         '200':
-          description: 成功
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '403':
+          description: 无权执行该操作
           content:
             application/json:
               schema:
-                type: object
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearerAuth: []
   /editing/end:
     post:
       tags:
       - Collaboration
       summary: 结束编辑提示
-      security: *id001
+      operationId: end_edit_api_v1_editing_end_post
       requestBody:
-        required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/EditingRequest'
+              $ref: '#/components/schemas/EditHeartbeat'
+        required: true
       responses:
         '200':
-          description: 成功
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '403':
+          description: 无权执行该操作
           content:
             application/json:
               schema:
-                type: object
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearerAuth: []
   /users:
     get:
       tags:
       - System
       summary: 用户列表
-      security: *id001
-      parameters: *id004
+      operationId: list_users_api_v1_users_get
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 20
+          title: Page Size
       responses:
         '200':
-          description: 成功
+          description: Successful Response
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserPage'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     post:
       tags:
       - System
       summary: 创建用户
-      security: *id001
+      operationId: create_user_api_v1_users_post
+      security:
+      - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -1157,86 +2213,96 @@ paths:
               $ref: '#/components/schemas/UserCreate'
       responses:
         '200':
-          description: 成功
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
+                $ref: '#/components/schemas/UserOut'
         '403':
-          description: 无权限、数据范围不足，或普通管理员尝试创建带 SUPER_ADMIN 的用户
-        '409':
-          description: 用户名已存在
-  /users/{user_id}/status:
-    patch:
-      tags:
-      - System
-      summary: 启停用户
-      security: *id001
-      parameters:
-      - name: user_id
-        in: path
-        required: true
-        schema:
-          type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UserStatusChange'
-      responses:
-        '200':
-          description: 成功
+          description: 授予 SUPER_ADMIN 角色需要当前操作人是有效的超级管理员。
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
-        '403':
-          description: 无权修改拥有 SUPER_ADMIN 角色的用户状态
+                $ref: '#/components/schemas/ErrorResponse'
         '409':
-          description: revision 冲突或最后一个有效 SUPER_ADMIN 保护
+          description: 业务状态或 revision 冲突
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Conflict'
-        '404':
-          description: 用户不存在
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /users/{user_id}:
     get:
       tags:
       - System
       summary: 用户详情
-      description: SELF 数据范围只能查看当前登录用户自己的账号信息。
-      security: *id001
+      operationId: get_user_api_v1_users__user_id__get
+      security:
+      - bearerAuth: []
       parameters:
       - name: user_id
         in: path
         required: true
         schema:
           type: integer
+          title: User Id
       responses:
         '200':
-          description: 成功
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
-        '403':
-          description: 数据范围不足
+                $ref: '#/components/schemas/UserOut'
         '404':
-          description: 用户不存在
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: SELF 数据范围只能查看当前登录用户自己的账号信息。
     patch:
       tags:
       - System
       summary: 编辑用户基本信息
-      description: 凭 revision 乐观锁更新；账号状态、角色和密码使用专用接口。
-      security: *id001
+      operationId: update_user_api_v1_users__user_id__patch
+      security:
+      - bearerAuth: []
       parameters:
       - name: user_id
         in: path
         required: true
         schema:
           type: integer
+          title: User Id
       requestBody:
         required: true
         content:
@@ -1245,34 +2311,115 @@ paths:
               $ref: '#/components/schemas/UserUpdate'
       responses:
         '200':
-          description: 成功
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
-        '403':
-          description: 无权限或数据范围不足
+                $ref: '#/components/schemas/UserOut'
         '404':
-          description: 用户不存在
-        '409':
-          description: revision 冲突
+          description: 资源不存在或不在当前数据范围
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Conflict'
-  /users/{user_id}/roles:
-    put:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 业务状态或 revision 冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: 凭 revision 乐观锁更新；账号状态、角色和密码使用专用接口。
+  /users/{user_id}/status:
+    patch:
       tags:
       - System
-      summary: 分配用户角色
-      description: 仅 ALL 数据范围的用户管理权限可执行；凭 revision 乐观锁更新。
-      security: *id001
+      summary: 启停用户
+      operationId: set_status_api_v1_users__user_id__status_patch
+      security:
+      - bearerAuth: []
       parameters:
       - name: user_id
         in: path
         required: true
         schema:
           type: integer
+          title: User Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserStatusChange'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserOut'
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 变更 SUPER_ADMIN 用户状态需要当前操作人是有效的超级管理员。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 不能移除最后一个有效的超级管理员。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /users/{user_id}/roles:
+    put:
+      tags:
+      - System
+      summary: 分配用户角色
+      operationId: update_user_roles_api_v1_users__user_id__roles_put
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: User Id
       requestBody:
         required: true
         content:
@@ -1281,150 +2428,211 @@ paths:
               $ref: '#/components/schemas/UserRoleUpdate'
       responses:
         '200':
-          description: 成功
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
-        '403':
-          description: 无权限、数据范围不足，或无权授予/撤销 SUPER_ADMIN
+                $ref: '#/components/schemas/UserOut'
         '404':
-          description: 用户不存在
-        '409':
-          description: revision 冲突或最后一个有效 SUPER_ADMIN 保护
+          description: 资源不存在或不在当前数据范围
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Conflict'
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 授予或撤销 SUPER_ADMIN 角色需要当前操作人是有效的超级管理员。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 不能移除最后一个有效的超级管理员。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: 仅 ALL 数据范围的用户管理权限可执行；凭 revision 乐观锁更新。
   /roles:
     get:
       tags:
       - System
       summary: 角色列表
-      description: 需要 ALL 数据范围；拥有 sys.role.view、sys.role.manage 或 sys.user.role.assign 任一权限即可读取。sys.user.role.assign 仅据此获取用户角色分配所需的角色选择列表。
-      security: *id001
+      operationId: list_roles_api_v1_roles_get
       responses:
         '200':
-          description: 成功
+          description: Successful Response
           content:
             application/json:
               schema:
-                type: array
                 items:
-                  $ref: '#/components/schemas/Role'
+                  $ref: '#/components/schemas/RoleOut'
+                type: array
+                title: Response List Roles Api V1 Roles Get
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearerAuth: []
+      description: 需要 ALL 数据范围；拥有 sys.role.view、sys.role.manage 或 sys.user.role.assign 任一权限即可读取。sys.user.role.assign
+        仅据此获取用户角色分配所需的角色选择列表。
     post:
       tags:
       - System
       summary: 创建角色
-      description: 仅拥有 sys.role.manage 且数据范围为 ALL 的用户可执行。
-      security: *id001
+      operationId: create_role_api_v1_roles_post
       requestBody:
-        required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/RoleCreate'
+        required: true
       responses:
         '200':
-          description: 成功
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Role'
-        '403':
-          description: 无权限或数据范围不足
+                $ref: '#/components/schemas/RoleOut'
         '409':
-          description: 角色编码已存在
+          description: 业务状态或 revision 冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearerAuth: []
+      description: 仅拥有 sys.role.manage 且数据范围为 ALL 的用户可执行。
   /roles/permissions:
     get:
       tags:
       - System
       summary: 权限码列表
-      description: 需要 ALL 数据范围，并拥有 sys.role.view 或 sys.role.manage；返回代码定义的只读 Permission Catalog。
-      security: *id001
+      operationId: list_permissions_api_v1_roles_permissions_get
       responses:
         '200':
-          description: 成功
+          description: Successful Response
           content:
             application/json:
               schema:
-                type: array
                 items:
-                  $ref: '#/components/schemas/Permission'
-  /roles/{role_id}/permissions:
-    put:
-      tags:
-      - System
-      summary: 更新角色权限
-      description: 仅拥有 sys.role.manage 且数据范围为 ALL 的用户可执行；仅自定义角色可修改权限；系统角色为只读基线并返回 409；revision 用于乐观锁。
-      security: *id001
-      parameters:
-      - name: role_id
-        in: path
-        required: true
-        schema:
-          type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RolePermissionUpdate'
-      responses:
-        '200':
-          description: 成功
+                  $ref: '#/components/schemas/PermissionOut'
+                type: array
+                title: Response List Permissions Api V1 Roles Permissions Get
+        '401':
+          description: 未登录或登录凭证不可用
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Role'
-        '409':
-          description: 系统角色只读或 revision 冲突
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Conflict'
-        '404':
-          description: 角色不存在
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearerAuth: []
+      description: 需要 ALL 数据范围，并拥有 sys.role.view 或 sys.role.manage；返回代码定义的只读 Permission Catalog。
   /roles/{role_id}:
     get:
       tags:
       - System
       summary: 角色详情
-      description: 需要 ALL 数据范围，并拥有 sys.role.view 或 sys.role.manage。
-      security: *id001
+      operationId: get_role_api_v1_roles__role_id__get
+      security:
+      - bearerAuth: []
       parameters:
       - name: role_id
         in: path
         required: true
         schema:
           type: integer
+          title: Role Id
       responses:
         '200':
-          description: 成功
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Role'
-        '403':
-          description: 无权限或数据范围不足
+                $ref: '#/components/schemas/RoleOut'
         '404':
-          description: 角色不存在
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: 需要 ALL 数据范围，并拥有 sys.role.view 或 sys.role.manage。
     patch:
       tags:
       - System
       summary: 修改角色基础信息
-      description: 仅拥有 sys.role.manage 且数据范围为 ALL 的用户可执行；仅自定义角色可修改；系统角色为只读基线并返回 409。TEAM 数据范围在 V1.5 中保留，提交 TEAM 返回 422；revision 用于乐观锁。
-      security: *id001
+      operationId: update_role_api_v1_roles__role_id__patch
+      security:
+      - bearerAuth: []
       parameters:
       - name: role_id
         in: path
         required: true
         schema:
           type: integer
+          title: Role Id
       requestBody:
         required: true
         content:
@@ -1433,281 +2641,796 @@ paths:
               $ref: '#/components/schemas/RoleUpdate'
       responses:
         '200':
-          description: 成功
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Role'
-        '409':
-          description: 系统角色只读或 revision 冲突
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Conflict'
-        '422':
-          description: 参数错误或尝试配置保留的 TEAM 数据范围
+                $ref: '#/components/schemas/RoleOut'
         '404':
-          description: 角色不存在
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 系统角色只读 revision 冲突或业务状态无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: 请求参数或业务数据无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: 仅拥有 sys.role.manage 且数据范围为 ALL 的用户可执行；仅自定义角色可修改；系统角色为只读基线并返回 409。TEAM 数据范围在 V1.5 中保留，提交
+        TEAM 返回 422；revision 用于乐观锁。
     delete:
       tags:
       - System
       summary: 删除自定义角色
-      description: 仅拥有 sys.role.manage 且数据范围为 ALL 的用户可执行；系统角色为只读基线且不可删除；仍被用户分配的自定义角色返回 409。
-      security: *id001
+      operationId: delete_role_api_v1_roles__role_id__delete
+      security:
+      - bearerAuth: []
       parameters:
       - name: role_id
         in: path
         required: true
         schema:
           type: integer
+          title: Role Id
       responses:
         '200':
-          description: 成功
+          description: Successful Response
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/RoleDeleteOut'
-        '403':
-          description: 无权限或数据范围不足
         '404':
-          description: 角色不存在
-        '409':
-          description: 系统角色只读或自定义角色仍被用户分配
-  /systems:
-    get:
-      tags:
-      - System
-      summary: 业务系统与模块字典
-      security: *id001
-      responses:
-        '200':
-          description: 成功
+          description: 资源不存在或不在当前数据范围
           content:
             application/json:
               schema:
-                type: object
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 系统角色只读不可删除 仍分配给用户的自定义角色也不可删除
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: 仅拥有 sys.role.manage 且数据范围为 ALL 的用户可执行；系统角色为只读基线且不可删除；仍被用户分配的自定义角色返回 409。
+  /roles/{role_id}/permissions:
+    put:
+      tags:
+      - System
+      summary: 更新角色权限
+      operationId: update_permissions_api_v1_roles__role_id__permissions_put
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: role_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Role Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RolePermissionUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoleOut'
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 系统角色只读 revision 冲突或业务状态无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: 仅拥有 sys.role.manage 且数据范围为 ALL 的用户可执行；仅自定义角色可修改权限；系统角色为只读基线并返回 409；revision 用于乐观锁。
   /files:
     post:
       tags:
       - File
       summary: 上传附件
-      description: 需要 sys.file.upload。MIME 与扩展名必须匹配，并校验 PNG/JPEG/WEBP/PDF/UTF-8 文本/OOXML 内容签名；文件名会去除路径与控制字符。单文件默认 50MB，响应不公开 storage_key。
-      security: *id001
+      operationId: upload_file_api_v1_files_post
       requestBody:
-        required: true
         content:
           multipart/form-data:
             schema:
-              type: object
-              required:
-              - file
-              properties:
-                file:
-                  type: string
-                  format: binary
+              $ref: '#/components/schemas/Body_upload_file_api_v1_files_post'
+        required: true
       responses:
         '200':
-          description: 成功
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/FileMetadata'
+                $ref: '#/components/schemas/FileOut'
         '422':
-          description: 文件类型或大小不允许
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearerAuth: []
+      description: 需要 sys.file.upload。MIME 白名单，单文件默认 50MB；按 MIME/扩展名与内容签名校验。文件由 StorageService 写入当前配置的
+        Driver，规范化后的原始文件名不会作为物理路径，响应不公开 storage_key。
   /files/{file_id}/download:
     get:
       tags:
       - File
-      summary: 下载独立附件
-      description: 需要 sys.file.download。仅用于未绑定任何 AttachmentRelation 的 standalone FileObject。已绑定业务对象的文件必须通过对应业务附件接口授权访问，此通用接口返回 404。
-      security: *id001
+      summary: 下载附件
+      operationId: download_file_api_v1_files__file_id__download_get
+      security:
+      - bearerAuth: []
       parameters:
       - name: file_id
         in: path
         required: true
         schema:
           type: integer
+          title: File Id
       responses:
         '200':
-          description: 文件内容
+          description: Successful Response
           content:
-            application/octet-stream:
-              schema:
-                type: string
-                format: binary
-        '307':
-          description: 重定向到短时有效的 S3 signed URL
+            application/json:
+              schema: {}
         '404':
-          description: 文件不存在或已绑定业务对象
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '307':
+          description: 重定向到短时下载地址
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: 需要 sys.file.download。仅用于未绑定 AttachmentRelation 的 standalone FileObject。已绑定业务对象的文件必须通过对应业务附件接口授权访问；此通用接口返回
+        404。
   /files/{file_id}/exists:
     get:
       tags:
       - File
-      summary: 检查独立附件是否存在
-      description: 需要 sys.file.download。仅检查 standalone FileObject。已绑定业务对象的文件通过此通用接口返回 404。
-      security: *id001
+      summary: 检查附件是否存在
+      operationId: file_exists_api_v1_files__file_id__exists_get
+      security:
+      - bearerAuth: []
       parameters:
       - name: file_id
         in: path
         required: true
         schema:
           type: integer
+          title: File Id
       responses:
         '200':
-          description: 检查成功
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/FileExistsResponse'
+                $ref: '#/components/schemas/FileExistsOut'
         '404':
-          description: 文件不存在或已绑定业务对象
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: 需要 sys.file.download。仅检查未绑定 AttachmentRelation 的 standalone FileObject。已绑定业务对象的文件通过此通用接口返回
+        404。
   /files/{file_id}:
     delete:
       tags:
       - File
-      summary: 删除独立附件
-      description: 需要 sys.file.delete；仅允许删除未绑定 AttachmentRelation 的 standalone FileObject，已绑定文件返回 409。
-      security: *id001
+      summary: 删除附件
+      operationId: delete_file_api_v1_files__file_id__delete
+      security:
+      - bearerAuth: []
       parameters:
       - name: file_id
         in: path
         required: true
         schema:
           type: integer
+          title: File Id
       responses:
         '204':
-          description: 删除成功
+          description: Successful Response
         '404':
-          description: 文件不存在
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '409':
-          description: 文件已被业务对象引用，不能删除
+          description: 业务状态或 revision 冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: 需要 sys.file.delete。仅允许删除未绑定 AttachmentRelation 的 standalone FileObject；已绑定业务对象的文件返回
+        409。
 components:
-  securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
   schemas:
-    LoginRequest:
+    AddRequirementRequest:
+      properties:
+        requirement_id:
+          type: integer
+          title: Requirement Id
+        revision:
+          type: integer
+          minimum: 1.0
+          title: Revision
+        version_revision:
+          type: integer
+          minimum: 1.0
+          title: Version Revision
       type: object
       required:
-      - username
-      - password
+      - requirement_id
+      - revision
+      - version_revision
+      title: AddRequirementRequest
+    AttachmentOut:
       properties:
+        file_id:
+          type: integer
+          title: File Id
+        original_name:
+          type: string
+          title: Original Name
+        size:
+          type: integer
+          title: Size
+        mime_type:
+          type: string
+          title: Mime Type
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        created_by:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Created By
+      type: object
+      required:
+      - file_id
+      - original_name
+      - size
+      - mime_type
+      - created_at
+      - created_by
+      title: AttachmentOut
+      description: Business-facing attachment metadata. Never exposes storage_key/path.
+    AuditOperatorOut:
+      properties:
+        id:
+          type: integer
+          title: Id
         username:
           type: string
-        password:
+          title: Username
+        display_name:
           type: string
-          format: password
-    TokenPair:
-      type: object
-      required:
-      - access_token
-      - refresh_token
-      - token_type
-      - must_change_password
-      properties:
-        access_token:
-          type: string
-        refresh_token:
-          type: string
-        token_type:
-          type: string
-          example: bearer
-        must_change_password:
-          type: boolean
-    RefreshRequest:
-      type: object
-      required:
-      - refresh_token
-      properties:
-        refresh_token:
-          type: string
-    LogoutResponse:
-      type: object
-      required:
-      - ok
-      properties:
-        ok:
-          type: boolean
-    ChangePasswordRequest:
-      type: object
-      required:
-      - current_password
-      - new_password
-      properties:
-        current_password:
-          type: string
-          format: password
-          minLength: 6
-          maxLength: 128
-        new_password:
-          type: string
-          format: password
-          minLength: 8
-          maxLength: 128
-    AuthMe:
+          title: Display Name
       type: object
       required:
       - id
       - username
       - display_name
+      title: AuditOperatorOut
+      description: A minimal, non-sensitive representation of the audit operator.
+    AuditOut:
+      properties:
+        id:
+          type: integer
+          title: Id
+        entity_type:
+          type: string
+          title: Entity Type
+        entity_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Entity Id
+        action:
+          type: string
+          title: Action
+        operator:
+          anyOf:
+          - $ref: '#/components/schemas/AuditOperatorOut'
+          - type: 'null'
+        before:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Before
+        after:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: After
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+      type: object
+      required:
+      - id
+      - entity_type
+      - entity_id
+      - action
+      - operator
+      - before
+      - after
+      - created_at
+      title: AuditOut
+    AuditPage:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/AuditOut'
+          type: array
+          title: Items
+        page:
+          type: integer
+          title: Page
+        size:
+          type: integer
+          title: Size
+        total:
+          type: integer
+          title: Total
+      type: object
+      required:
+      - items
+      - page
+      - size
+      - total
+      title: AuditPage
+    AuthMe:
+      properties:
+        id:
+          type: integer
+          title: Id
+        username:
+          type: string
+          title: Username
+        display_name:
+          type: string
+          title: Display Name
+        email:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Email
+        status:
+          $ref: '#/components/schemas/UserStatus'
+        revision:
+          type: integer
+          title: Revision
+        must_change_password:
+          type: boolean
+          title: Must Change Password
+        data_scope:
+          $ref: '#/components/schemas/DataScope'
+        role_ids:
+          items:
+            type: integer
+          type: array
+          title: Role Ids
+        permission_codes:
+          items:
+            type: string
+          type: array
+          title: Permission Codes
+      type: object
+      required:
+      - id
+      - username
+      - display_name
+      - email
       - status
       - revision
       - must_change_password
       - data_scope
       - role_ids
       - permission_codes
+      title: AuthMe
+      description: The safe account shape returned only for the authenticated user.
+    BlockingRequirement:
       properties:
         id:
           type: integer
-        username:
+          title: Id
+        requirement_no:
           type: string
-        display_name:
-          type: string
-        email:
-          type:
-          - string
-          - 'null'
+          title: Requirement No
         status:
           type: string
-          enum:
-          - ACTIVE
-          - DISABLED
-          - LOCKED
-        revision:
-          type: integer
-          minimum: 1
-        must_change_password:
-          type: boolean
-        data_scope:
-          type: string
-          enum:
-          - SELF
-          - TEAM
-          - ALL
-        role_ids:
-          type: array
-          items:
-            type: integer
-        permission_codes:
-          type: array
-          items:
-            type: string
-    DashboardOverview:
+          title: Status
       type: object
       required:
-      - data_scope
-      - feedback
-      - requirements
-      - versions
-      - releases
+      - id
+      - requirement_no
+      - status
+      title: BlockingRequirement
+    Body_add_feedback_attachment_api_v1_feedbacks__feedback_id__attachments_post:
+      properties:
+        file:
+          type: string
+          contentMediaType: application/octet-stream
+          title: File
+      type: object
+      required:
+      - file
+      title: Body_add_feedback_attachment_api_v1_feedbacks__feedback_id__attachments_post
+    Body_upload_file_api_v1_files_post:
+      properties:
+        file:
+          type: string
+          contentMediaType: application/octet-stream
+          title: File
+      type: object
+      required:
+      - file
+      title: Body_upload_file_api_v1_files_post
+    BusinessModuleOut:
+      properties:
+        id:
+          type: integer
+          title: Id
+        system_id:
+          type: integer
+          title: System Id
+        code:
+          type: string
+          title: Code
+        name:
+          type: string
+          title: Name
+        enabled:
+          type: boolean
+          title: Enabled
+        sort_order:
+          type: integer
+          title: Sort Order
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        created_by:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Created By
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+        updated_by:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Updated By
+        revision:
+          type: integer
+          title: Revision
+      type: object
+      required:
+      - id
+      - system_id
+      - code
+      - name
+      - enabled
+      - sort_order
+      - created_at
+      - created_by
+      - updated_at
+      - updated_by
+      - revision
+      title: BusinessModuleOut
+    BusinessSystemCatalogOut:
+      properties:
+        systems:
+          items:
+            $ref: '#/components/schemas/BusinessSystemOut'
+          type: array
+          title: Systems
+        modules:
+          items:
+            $ref: '#/components/schemas/BusinessModuleOut'
+          type: array
+          title: Modules
+      type: object
+      required:
+      - systems
+      - modules
+      title: BusinessSystemCatalogOut
+    BusinessSystemOut:
+      properties:
+        id:
+          type: integer
+          title: Id
+        code:
+          type: string
+          title: Code
+        name:
+          type: string
+          title: Name
+        enabled:
+          type: boolean
+          title: Enabled
+        sort_order:
+          type: integer
+          title: Sort Order
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        created_by:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Created By
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+        updated_by:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Updated By
+        revision:
+          type: integer
+          title: Revision
+      type: object
+      required:
+      - id
+      - code
+      - name
+      - enabled
+      - sort_order
+      - created_at
+      - created_by
+      - updated_at
+      - updated_by
+      - revision
+      title: BusinessSystemOut
+    ChangePasswordRequest:
+      properties:
+        current_password:
+          type: string
+          maxLength: 128
+          minLength: 6
+          title: Current Password
+        new_password:
+          type: string
+          maxLength: 128
+          minLength: 8
+          title: New Password
+      type: object
+      required:
+      - current_password
+      - new_password
+      title: ChangePasswordRequest
+    CommentCreate:
+      properties:
+        content:
+          type: string
+          maxLength: 5000
+          minLength: 1
+          title: Content
+      type: object
+      required:
+      - content
+      title: CommentCreate
+    CommentOut:
+      properties:
+        id:
+          type: integer
+          title: Id
+        entity_type:
+          type: string
+          title: Entity Type
+        entity_id:
+          type: integer
+          title: Entity Id
+        content:
+          type: string
+          title: Content
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        created_by:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Created By
+      type: object
+      required:
+      - id
+      - entity_type
+      - entity_id
+      - content
+      - created_at
+      - created_by
+      title: CommentOut
+    ConfigurableDataScope:
+      type: string
+      enum:
+      - SELF
+      - ALL
+    DashboardActiveVersionStatus:
+      type: string
+      enum:
+      - PLANNING
+      - DEVELOPING
+      - TESTING
+      - READY
+    DashboardDataScope:
+      type: string
+      enum:
+      - SELF
+      - ALL
+    DashboardFeedbackOverview:
+      properties:
+        pending_count:
+          type: integer
+          minimum: 0.0
+          title: Pending Count
+        total_count:
+          type: integer
+          minimum: 0.0
+          title: Total Count
+        by_status:
+          additionalProperties:
+            type: integer
+          type: object
+          title: By Status
+      type: object
+      required:
+      - pending_count
+      - total_count
+      - by_status
+      title: DashboardFeedbackOverview
+    DashboardOverviewOut:
       properties:
         data_scope:
-          type: string
-          enum:
-          - SELF
-          - ALL
+          $ref: '#/components/schemas/DashboardDataScope'
         feedback:
           anyOf:
           - $ref: '#/components/schemas/DashboardFeedbackOverview'
@@ -1724,98 +3447,34 @@ components:
           anyOf:
           - $ref: '#/components/schemas/DashboardReleaseOverview'
           - type: 'null'
-    DashboardFeedbackOverview:
       type: object
       required:
-      - pending_count
-      - total_count
-      - by_status
-      properties:
-        pending_count:
-          type: integer
-          minimum: 0
-        total_count:
-          type: integer
-          minimum: 0
-        by_status:
-          type: object
-          additionalProperties:
-            type: integer
-            minimum: 0
-    DashboardRequirementOverview:
-      type: object
-      required:
-      - active_count
-      - total_count
-      - by_status
-      properties:
-        active_count:
-          type: integer
-          minimum: 0
-        total_count:
-          type: integer
-          minimum: 0
-        by_status:
-          type: object
-          additionalProperties:
-            type: integer
-            minimum: 0
-    DashboardVersionItem:
-      type: object
-      required:
-      - id
-      - version_no
-      - name
-      - status
-      - planned_release_date
-      - updated_at
+      - data_scope
+      - feedback
+      - requirements
+      - versions
+      - releases
+      title: DashboardOverviewOut
+    DashboardReleaseItem:
       properties:
         id:
           type: integer
+          title: Id
+        version_id:
+          type: integer
+          title: Version Id
         version_no:
           type: string
-        name:
+          title: Version No
+        version_name:
           type: string
-        status:
-          type: string
-          enum:
-          - PLANNING
-          - DEVELOPING
-          - TESTING
-          - READY
-        planned_release_date:
-          type:
-          - string
-          - 'null'
-          format: date
-        updated_at:
+          title: Version Name
+        released_at:
           type: string
           format: date-time
-    DashboardVersionOverview:
-      type: object
-      required:
-      - active_count
-      - total_count
-      - by_status
-      - recent_active_versions
-      properties:
-        active_count:
-          type: integer
-          minimum: 0
-        total_count:
-          type: integer
-          minimum: 0
-        by_status:
-          type: object
-          additionalProperties:
-            type: integer
-            minimum: 0
-        recent_active_versions:
-          type: array
-          maxItems: 5
-          items:
-            $ref: '#/components/schemas/DashboardVersionItem'
-    DashboardReleaseItem:
+          title: Released At
+        result:
+          $ref: '#/components/schemas/DashboardReleaseResult'
       type: object
       required:
       - id
@@ -1824,977 +3483,535 @@ components:
       - version_name
       - released_at
       - result
-      properties:
-        id:
-          type: integer
-        version_id:
-          type: integer
-        version_no:
-          type: string
-        version_name:
-          type: string
-        released_at:
-          type: string
-          format: date-time
-        result:
-          type: string
-          enum:
-          - SUCCESS
+      title: DashboardReleaseItem
     DashboardReleaseOverview:
+      properties:
+        total_count:
+          type: integer
+          minimum: 0.0
+          title: Total Count
+        recent_releases:
+          items:
+            $ref: '#/components/schemas/DashboardReleaseItem'
+          type: array
+          maxItems: 5
+          title: Recent Releases
       type: object
       required:
       - total_count
       - recent_releases
+      title: DashboardReleaseOverview
+    DashboardReleaseResult:
+      type: string
+      const: SUCCESS
+    DashboardRequirementOverview:
       properties:
+        active_count:
+          type: integer
+          minimum: 0.0
+          title: Active Count
         total_count:
           type: integer
-          minimum: 0
-        recent_releases:
+          minimum: 0.0
+          title: Total Count
+        by_status:
+          additionalProperties:
+            type: integer
+          type: object
+          title: By Status
+      type: object
+      required:
+      - active_count
+      - total_count
+      - by_status
+      title: DashboardRequirementOverview
+    DashboardVersionItem:
+      properties:
+        id:
+          type: integer
+          title: Id
+        version_no:
+          type: string
+          title: Version No
+        name:
+          type: string
+          title: Name
+        status:
+          $ref: '#/components/schemas/DashboardActiveVersionStatus'
+        planned_release_date:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Planned Release Date
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+      type: object
+      required:
+      - id
+      - version_no
+      - name
+      - status
+      - planned_release_date
+      - updated_at
+      title: DashboardVersionItem
+    DashboardVersionOverview:
+      properties:
+        active_count:
+          type: integer
+          minimum: 0.0
+          title: Active Count
+        total_count:
+          type: integer
+          minimum: 0.0
+          title: Total Count
+        by_status:
+          additionalProperties:
+            type: integer
+          type: object
+          title: By Status
+        recent_active_versions:
+          items:
+            $ref: '#/components/schemas/DashboardVersionItem'
           type: array
           maxItems: 5
-          items:
-            $ref: '#/components/schemas/DashboardReleaseItem'
+          title: Recent Active Versions
+      type: object
+      required:
+      - active_count
+      - total_count
+      - by_status
+      - recent_active_versions
+      title: DashboardVersionOverview
+    DataScope:
+      type: string
+      enum:
+      - SELF
+      - TEAM
+      - ALL
+      title: DataScope
+    EditHeartbeat:
+      properties:
+        entity_type:
+          $ref: '#/components/schemas/EditingEntityType'
+        entity_id:
+          type: integer
+          title: Entity Id
+      type: object
+      required:
+      - entity_type
+      - entity_id
+      title: EditHeartbeat
+    EditingEntityType:
+      type: string
+      enum:
+      - FEEDBACK
+      - REQUIREMENT
+      - VERSION
+      title: EditingEntityType
+    ErrorResponse:
+      properties:
+        code:
+          title: Code
+          type: integer
+        message:
+          title: Message
+          type: string
+        data:
+          anyOf:
+          - {}
+          - type: 'null'
+          title: Data
+        request_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Request Id
+      required:
+      - code
+      - message
+      - data
+      - request_id
+      title: ErrorResponse
+      type: object
+    FeedbackConvertRequest:
+      properties:
+        type:
+          $ref: '#/components/schemas/FeedbackConvertType'
+        revision:
+          type: integer
+          minimum: 1.0
+          title: Revision
+        requirement_title:
+          anyOf:
+          - type: string
+            maxLength: 200
+            minLength: 2
+          - type: 'null'
+          title: Requirement Title
+        requirement_type:
+          anyOf:
+          - type: string
+            maxLength: 32
+            minLength: 1
+            pattern: ^[A-Z][A-Z0-9_]*$
+          - type: 'null'
+          title: Requirement Type
+        priority:
+          $ref: '#/components/schemas/Priority'
+          default: P2
+        description:
+          anyOf:
+          - type: string
+            minLength: 2
+          - type: 'null'
+          title: Description
+        acceptance_criteria:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Acceptance Criteria
+        requirement_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Requirement Id
+      type: object
+      required:
+      - type
+      - revision
+      title: FeedbackConvertRequest
+      description: 'Convert a feedback into a requirement (Phase 4).
+
+
+        CREATE_NEW builds a brand-new requirement from the feedback; LINK_EXISTING
+
+        attaches the feedback to an existing requirement. No version association here
+
+        (that is a later phase).'
+    FeedbackConvertType:
+      type: string
+      enum:
+      - CREATE_NEW
+      - LINK_EXISTING
+      title: FeedbackConvertType
+      description: How a Feedback is turned into / attached to a Requirement (Phase 4).
     FeedbackCreate:
+      properties:
+        title:
+          type: string
+          maxLength: 200
+          minLength: 2
+          title: Title
+        feedback_type:
+          $ref: '#/components/schemas/FeedbackType'
+        urgency:
+          $ref: '#/components/schemas/FeedbackUrgency'
+          default: NORMAL
+        system_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: System Id
+        module_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Module Id
+        description:
+          type: string
+          minLength: 2
+          title: Description
+        expected_result:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Expected Result
+        actual_result:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Actual Result
+        reproduce_steps:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Reproduce Steps
       type: object
       required:
       - title
       - feedback_type
       - description
-      properties:
-        title:
-          type: string
-          minLength: 2
-          maxLength: 200
-        feedback_type:
-          type: string
-          enum:
-          - NEW_FEATURE
-          - FEATURE_OPTIMIZATION
-          - SYSTEM_ISSUE
-          - DATA_ISSUE
-          - UI_UX
-          - OTHER
-        urgency:
-          type: string
-          enum:
-          - NORMAL
-          - URGENT
-          - CRITICAL
-          default: NORMAL
-        system_id:
-          type:
-          - integer
-          - 'null'
-        module_id:
-          type:
-          - integer
-          - 'null'
-        description:
-          type: string
-          minLength: 2
-        expected_result:
-          type:
-          - string
-          - 'null'
-        actual_result:
-          type:
-          - string
-          - 'null'
-        reproduce_steps:
-          type:
-          - string
-          - 'null'
-    FeedbackUpdate:
-      type: object
-      required:
-      - revision
-      properties:
-        title:
-          type: string
-          minLength: 2
-          maxLength: 200
-        feedback_type:
-          type: string
-          enum:
-          - NEW_FEATURE
-          - FEATURE_OPTIMIZATION
-          - SYSTEM_ISSUE
-          - DATA_ISSUE
-          - UI_UX
-          - OTHER
-        urgency:
-          type: string
-          enum:
-          - NORMAL
-          - URGENT
-          - CRITICAL
-        system_id:
-          type:
-          - integer
-          - 'null'
-        module_id:
-          type:
-          - integer
-          - 'null'
-        description:
-          type: string
-          minLength: 2
-        expected_result:
-          type:
-          - string
-          - 'null'
-        actual_result:
-          type:
-          - string
-          - 'null'
-        reproduce_steps:
-          type:
-          - string
-          - 'null'
-        revision:
-          type: integer
-          minimum: 1
-    FeedbackConvertRequest:
-      type: object
-      required:
-      - type
-      - revision
-      properties:
-        type:
-          type: string
-          enum:
-          - CREATE_NEW
-          - LINK_EXISTING
-        revision:
-          type: integer
-          minimum: 1
-        requirement_title:
-          type:
-          - string
-          - 'null'
-        requirement_type:
-          type:
-          - string
-          - 'null'
-        priority:
-          type: string
-          enum:
-          - P0
-          - P1
-          - P2
-          - P3
-          - P4
-          default: P2
-        description:
-          type:
-          - string
-          - 'null'
-        acceptance_criteria:
-          type:
-          - string
-          - 'null'
-        requirement_id:
-          type:
-          - integer
-          - 'null'
-    Feedback:
-      type: object
+      title: FeedbackCreate
+    FeedbackOut:
       properties:
         id:
           type: integer
+          title: Id
         feedback_no:
           type: string
+          title: Feedback No
         title:
           type: string
+          title: Title
         feedback_type:
-          type: string
-          enum:
-          - NEW_FEATURE
-          - FEATURE_OPTIMIZATION
-          - SYSTEM_ISSUE
-          - DATA_ISSUE
-          - UI_UX
-          - OTHER
+          $ref: '#/components/schemas/FeedbackType'
         urgency:
-          type: string
-          enum:
-          - NORMAL
-          - URGENT
-          - CRITICAL
+          $ref: '#/components/schemas/FeedbackUrgency'
         status:
-          type: string
-          enum:
-          - NEW
-          - ACCEPTED
-          - REQUIREMENT_LINKED
-          - ONLINE
-          - DUPLICATE
-          - CANNOT_REPRODUCE
-          - CLOSED
+          $ref: '#/components/schemas/FeedbackStatus'
         system_id:
-          type:
-          - integer
-          - 'null'
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: System Id
         module_id:
-          type:
-          - integer
-          - 'null'
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Module Id
         submitter_id:
           type: integer
+          title: Submitter Id
         description:
           type: string
-        main_requirement_id:
-          type:
-          - integer
-          - 'null'
-        revision:
-          type: integer
+          title: Description
         expected_result:
-          type:
-          - string
-          - 'null'
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Expected Result
         actual_result:
-          type:
-          - string
-          - 'null'
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Actual Result
         reproduce_steps:
-          type:
-          - string
-          - 'null'
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Reproduce Steps
+        main_requirement_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Main Requirement Id
         duplicate_of_id:
-          type:
-          - integer
-          - 'null'
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Duplicate Of Id
         created_at:
           type: string
           format: date-time
+          title: Created At
         updated_at:
           type: string
           format: date-time
+          title: Updated At
         updated_by:
-          type:
-          - integer
-          - 'null'
-    RequirementCreate:
-      type: object
-      required:
-      - title
-      - requirement_type
-      - description
-      properties:
-        title:
-          type: string
-        requirement_type:
-          type: string
-        priority:
-          type: string
-          enum:
-          - P0
-          - P1
-          - P2
-          - P3
-          - P4
-          default: P2
-        system_id:
-          type:
-          - integer
-          - 'null'
-        module_id:
-          type:
-          - integer
-          - 'null'
-        owner_id:
-          type:
-          - integer
-          - 'null'
-        description:
-          type: string
-        acceptance_criteria:
-          type:
-          - string
-          - 'null'
-        version_id:
-          type:
-          - integer
-          - 'null'
-          description: 关联版本时必须同时提供 version_revision；关系写入遵循 Version 的冻结和并发规则。
-        version_revision:
-          type:
-          - integer
-          - 'null'
-          minimum: 1
-          description: version_id 非空时必填，表示客户端读取到的 Version revision。
-    RequirementUpdate:
-      type: object
-      required:
-      - revision
-      properties:
-        title:
-          type: string
-        requirement_type:
-          type: string
-        priority:
-          type: string
-          enum:
-          - P0
-          - P1
-          - P2
-          - P3
-          - P4
-        system_id:
-          type:
-          - integer
-          - 'null'
-        module_id:
-          type:
-          - integer
-          - 'null'
-        owner_id:
-          type:
-          - integer
-          - 'null'
-        description:
-          type: string
-        acceptance_criteria:
-          type:
-          - string
-          - 'null'
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Updated By
         revision:
           type: integer
-          minimum: 1
-    RequirementStatusChange:
-      type: object
-      required:
-      - status
-      - revision
-      properties:
-        status:
-          type: string
-          enum:
-          - DRAFT
-          - CONFIRMED
-          - PLANNED
-          - DEVELOPING
-          - TESTING
-          - DONE
-          - PAUSED
-          - CANCELED
-        reason:
-          type:
-          - string
-          - 'null'
-          maxLength: 500
-          description: DONE 退回 DEVELOPING 时必填；ONLINE 只能由成功发布事务产生。
-        revision:
-          type: integer
-          minimum: 1
-    Requirement:
-      type: object
-      properties:
-        id:
-          type: integer
-        requirement_no:
-          type: string
-        title:
-          type: string
-        requirement_type:
-          type: string
-        source:
-          type: string
-          enum:
-          - DIRECT
-          - FEEDBACK
-        priority:
-          type: string
-          enum:
-          - P0
-          - P1
-          - P2
-          - P3
-          - P4
-        status:
-          type: string
-          enum:
-          - DRAFT
-          - CONFIRMED
-          - PLANNED
-          - DEVELOPING
-          - TESTING
-          - DONE
-          - ONLINE
-          - PAUSED
-          - CANCELED
-        owner_id:
-          type:
-          - integer
-          - 'null'
-        current_version_id:
-          type:
-          - integer
-          - 'null'
-        description:
-          type: string
-        acceptance_criteria:
-          type:
-          - string
-          - 'null'
-        revision:
-          type: integer
-    VersionCreate:
-      type: object
-      required:
-      - version_no
-      - name
-      properties:
-        version_no:
-          type: string
-        name:
-          type: string
-        owner_id:
-          type:
-          - integer
-          - 'null'
-        planned_release_date:
-          type:
-          - string
-          - 'null'
-          format: date
-        description:
-          type:
-          - string
-          - 'null'
-    VersionUpdate:
-      type: object
-      required:
-      - revision
-      properties:
-        name:
-          type: string
-        owner_id:
-          type:
-          - integer
-          - 'null'
-        planned_release_date:
-          type:
-          - string
-          - 'null'
-          format: date
-        description:
-          type:
-          - string
-          - 'null'
-        revision:
-          type: integer
-          minimum: 1
-    VersionStatusChange:
-      type: object
-      required:
-      - status
-      - revision
-      properties:
-        status:
-          type: string
-          enum:
-          - PLANNING
-          - DEVELOPING
-          - TESTING
-          - READY
-          - CANCELED
-        revision:
-          type: integer
-          minimum: 1
-        reason:
-          type:
-          - string
-          - 'null'
-          maxLength: 500
-          description: READY 退回 TESTING 时必填；RELEASED 只能通过发布接口进入。
-    PublishVersionRequest:
-      type: object
-      additionalProperties: false
-      required:
-      - released_at
-      - release_notes
-      - revision
-      properties:
-        released_at:
-          type: string
-          format: date-time
-        release_notes:
-          type: string
-        revision:
-          type: integer
-          minimum: 1
-    Version:
-      type: object
-      properties:
-        id:
-          type: integer
-        version_no:
-          type: string
-        name:
-          type: string
-        status:
-          type: string
-          enum:
-          - PLANNING
-          - DEVELOPING
-          - TESTING
-          - READY
-          - RELEASED
-          - CANCELED
-        owner_id:
-          type:
-          - integer
-          - 'null'
-        planned_release_date:
-          type:
-          - string
-          - 'null'
-          format: date
-        released_at:
-          type:
-          - string
-          - 'null'
-          format: date-time
-        description:
-          type:
-          - string
-          - 'null'
-        revision:
-          type: integer
-    UserCreate:
-      type: object
-      required:
-      - username
-      - display_name
-      - password
-      properties:
-        username:
-          type: string
-        display_name:
-          type: string
-        password:
-          type: string
-        email:
-          type:
-          - string
-          - 'null'
-        mobile:
-          type:
-          - string
-          - 'null'
-        role_ids:
-          type: array
-          items:
-            type: integer
-    UserUpdate:
-      type: object
-      required:
-      - revision
-      properties:
-        display_name:
-          type: string
-          minLength: 1
-          maxLength: 100
-        email:
-          type:
-          - string
-          - 'null'
-          maxLength: 255
-        mobile:
-          type:
-          - string
-          - 'null'
-          maxLength: 32
-        revision:
-          type: integer
-          minimum: 1
-    User:
+          title: Revision
       type: object
       required:
       - id
-      - username
-      - display_name
+      - feedback_no
+      - title
+      - feedback_type
+      - urgency
       - status
+      - system_id
+      - module_id
+      - submitter_id
+      - description
+      - expected_result
+      - actual_result
+      - reproduce_steps
+      - main_requirement_id
+      - duplicate_of_id
+      - created_at
+      - updated_at
+      - updated_by
       - revision
-      - role_ids
+      title: FeedbackOut
+    FeedbackPage:
       properties:
-        id:
-          type: integer
-        username:
-          type: string
-        display_name:
-          type: string
-        email:
-          type:
-          - string
-          - 'null'
-        mobile:
-          type:
-          - string
-          - 'null'
-        status:
-          type: string
-          enum:
-          - ACTIVE
-          - DISABLED
-          - LOCKED
-        revision:
-          type: integer
-          minimum: 1
-        role_ids:
-          type: array
+        items:
           items:
-            type: integer
-    UserPage:
+            $ref: '#/components/schemas/FeedbackOut'
+          type: array
+          title: Items
+        page:
+          type: integer
+          title: Page
+        page_size:
+          type: integer
+          title: Page Size
+        total:
+          type: integer
+          title: Total
       type: object
       required:
       - items
       - page
       - page_size
       - total
+      title: FeedbackPage
+    FeedbackStatus:
+      type: string
+      enum:
+      - NEW
+      - ACCEPTED
+      - REQUIREMENT_LINKED
+      - ONLINE
+      - DUPLICATE
+      - CANNOT_REPRODUCE
+      - CLOSED
+      title: FeedbackStatus
+    FeedbackStatusChange:
       properties:
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/User'
-        page:
+        status:
+          $ref: '#/components/schemas/ManualFeedbackStatus'
+        revision:
           type: integer
-          minimum: 1
-        page_size:
-          type: integer
-          minimum: 1
-        total:
-          type: integer
-          minimum: 0
-    UserStatusChange:
+          minimum: 1.0
+          title: Revision
+        reason:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Reason
+        duplicate_of_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Duplicate Of Id
       type: object
       required:
       - status
       - revision
+      title: FeedbackStatusChange
+    FeedbackType:
+      type: string
+      enum:
+      - NEW_FEATURE
+      - FEATURE_OPTIMIZATION
+      - SYSTEM_ISSUE
+      - DATA_ISSUE
+      - UI_UX
+      - OTHER
+      title: FeedbackType
+    FeedbackUpdate:
       properties:
-        status:
-          type: string
-          enum:
-          - ACTIVE
-          - DISABLED
-          - LOCKED
-        revision:
-          type: integer
-          minimum: 1
-    UserRoleUpdate:
-      type: object
-      required:
-      - role_ids
-      - revision
-      properties:
-        role_ids:
-          type: array
-          items:
-            type: integer
-        revision:
-          type: integer
-          minimum: 1
-    RoleCreate:
-      type: object
-      required:
-      - code
-      - name
-      properties:
-        code:
-          type: string
-        name:
-          type: string
-        data_scope:
-          type: string
-          default: SELF
-          description: TEAM 是保留枚举值，V1.5 不允许通过 API 配置。
-          enum:
-          - SELF
-          - ALL
-        permission_ids:
-          type: array
-          items:
-            type: integer
-    RoleUpdate:
-      type: object
-      required:
-      - revision
-      properties:
-        code:
-          type: string
-        name:
-          type: string
-        data_scope:
-          type: string
-          description: TEAM 是保留枚举值，V1.5 不允许通过 API 配置。
-          enum:
-          - SELF
-          - ALL
-        enabled:
-          type: boolean
-        revision:
-          type: integer
-          minimum: 1
-    Role:
-      type: object
-      required:
-      - id
-      - code
-      - name
-      - data_scope
-      - enabled
-      - is_system
-      - revision
-      - permission_ids
-      properties:
-        id:
-          type: integer
-        code:
-          type: string
-        name:
-          type: string
-        data_scope:
-          type: string
-          description: TEAM 为保留值，V1.5 不允许配置新值但可能用于识别历史数据。
-          enum:
-          - SELF
-          - TEAM
-          - ALL
-        enabled:
-          type: boolean
-        is_system:
-          type: boolean
-        revision:
-          type: integer
-          minimum: 1
-        permission_ids:
-          type: array
-          items:
-            type: integer
-    RoleDeleteOut:
-      type: object
-      required:
-      - id
-      - deleted
-      properties:
-        id:
-          type: integer
-        deleted:
-          type: boolean
-    Permission:
-      type: object
-      required:
-      - id
-      - code
-      - name
-      - category
-      - group
-      - sensitive
-      - deprecated
-      - replacement_code
-      properties:
-        id:
-          type: integer
-        code:
-          type: string
-        name:
-          type: string
-        category:
-          type: string
-        group:
-          type: string
-          description: 由 permission.code 在应用层派生的稳定模块分组，不写入数据库。
-        sensitive:
-          type: boolean
-          description: 是否为需要在分配时显式确认的敏感权限。
-        deprecated:
-          type: boolean
-          description: 是否为仅保留兼容性的已废弃权限码。
-        replacement_code:
-          type: string
-          nullable: true
-          description: 已废弃权限的替代权限码；未废弃时为 null。
-    RolePermissionUpdate:
-      type: object
-      required:
-      - permission_ids
-      - revision
-      properties:
-        permission_ids:
-          type: array
-          items:
-            type: integer
-        revision:
-          type: integer
-          minimum: 1
-    Dictionary:
-      type: object
-      required:
-      - id
-      - code
-      - name
-      - enabled
-      - revision
-      properties:
-        id:
-          type: integer
-        code:
-          type: string
-        name:
-          type: string
-        description:
-          type: string
-          nullable: true
-        enabled:
-          type: boolean
-        revision:
-          type: integer
-          minimum: 1
-    DictionaryItem:
-      type: object
-      required:
-      - id
-      - dictionary_id
-      - code
-      - label
-      - value
-      - sort_order
-      - enabled
-      - revision
-      properties:
-        id:
-          type: integer
-        dictionary_id:
-          type: integer
-        code:
-          type: string
-        label:
-          type: string
-        value:
-          type: string
-        sort_order:
-          type: integer
-        enabled:
-          type: boolean
-        revision:
-          type: integer
-          minimum: 1
-    Notification:
-      type: object
-      required:
-      - id
-      - type
-      - title
-      - content
-      - created_at
-      properties:
-        id:
-          type: integer
-        type:
-          type: string
-          enum:
-          - SYSTEM
-          - FEEDBACK
-          - REQUIREMENT
-          - VERSION
-          - RELEASE
         title:
-          type: string
-        content:
-          type: string
-        entity_type:
-          type: string
-          nullable: true
-        entity_id:
+          anyOf:
+          - type: string
+            maxLength: 200
+            minLength: 2
+          - type: 'null'
+          title: Title
+        feedback_type:
+          anyOf:
+          - $ref: '#/components/schemas/FeedbackType'
+          - type: 'null'
+        urgency:
+          anyOf:
+          - $ref: '#/components/schemas/FeedbackUrgency'
+          - type: 'null'
+        system_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: System Id
+        module_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Module Id
+        description:
+          anyOf:
+          - type: string
+            minLength: 2
+          - type: 'null'
+          title: Description
+        expected_result:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Expected Result
+        actual_result:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Actual Result
+        reproduce_steps:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Reproduce Steps
+        revision:
           type: integer
-          nullable: true
-        read_at:
+          minimum: 1.0
+          title: Revision
+      type: object
+      required:
+      - revision
+      title: FeedbackUpdate
+    FeedbackUrgency:
+      type: string
+      enum:
+      - NORMAL
+      - URGENT
+      - CRITICAL
+      title: FeedbackUrgency
+    FileExistsOut:
+      properties:
+        file_id:
+          type: integer
+          title: File Id
+        exists:
+          type: boolean
+          title: Exists
+      type: object
+      required:
+      - file_id
+      - exists
+      title: FileExistsOut
+    FileOut:
+      properties:
+        id:
+          type: integer
+          title: Id
+        original_name:
           type: string
-          format: date-time
-          nullable: true
+          title: Original Name
+        size:
+          type: integer
+          title: Size
+        mime_type:
+          type: string
+          title: Mime Type
+        sha256:
+          type: string
+          title: Sha256
+        storage_driver:
+          $ref: '#/components/schemas/StorageDriver'
         created_at:
           type: string
           format: date-time
-    EditingRequest:
-      type: object
-      required:
-      - entity_type
-      - entity_id
-      properties:
-        entity_type:
-          type: string
-          enum:
-          - FEEDBACK
-          - REQUIREMENT
-          - VERSION
-        entity_id:
-          type: integer
-    Conflict:
-      type: object
-      properties:
-        code:
-          type: integer
-          example: 40910
-        message:
-          type: string
-        data:
-          type: object
-          properties:
-            current_revision:
-              type: integer
-            current_updated_at:
-              type: string
-            current_updated_by:
-              type: integer
-        request_id:
-          type: string
-    FeedbackStatusChange:
-      type: object
-      required:
-      - status
-      - revision
-      properties:
-        status:
-          type: string
-          enum:
-          - NEW
-          - ACCEPTED
-          - DUPLICATE
-          - CANNOT_REPRODUCE
-          - CLOSED
-          description: 仅允许人工可设置状态（ManualFeedbackStatus）
-        revision:
-          type: integer
-          minimum: 1
-        reason:
-          type:
-          - string
-          - 'null'
-        duplicate_of_id:
-          type:
-          - integer
-          - 'null'
-    FeedbackPage:
-      type: object
-      required:
-      - items
-      - page
-      - page_size
-      - total
-      properties:
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/Feedback'
-        page:
-          type: integer
-        page_size:
-          type: integer
-        total:
-          type: integer
-    FileMetadata:
+          title: Created At
+        created_by:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Created By
       type: object
       required:
       - id
@@ -2805,188 +4022,33 @@ components:
       - storage_driver
       - created_at
       - created_by
+      title: FileOut
+    HTTPValidationError:
       properties:
-        id:
-          type: integer
-          minimum: 1
-        original_name:
-          type: string
-          maxLength: 255
-        size:
-          type: integer
-          minimum: 0
-        mime_type:
-          type: string
-        sha256:
-          type: string
-          pattern: ^[0-9a-f]{64}$
-        storage_driver:
-          type: string
-          enum:
-          - LOCAL
-          - S3
-        created_at:
-          type: string
-          format: date-time
-        created_by:
-          type: integer
-          nullable: true
-    FileExistsResponse:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
       type: object
-      required:
-      - file_id
-      - exists
+      title: HTTPValidationError
+    LinkedFeedbackOut:
       properties:
-        file_id:
+        feedback_id:
           type: integer
-        exists:
-          type: boolean
-    AttachmentOut:
-      type: object
-      required:
-      - file_id
-      - original_name
-      - size
-      - mime_type
-      - created_at
-      properties:
-        file_id:
-          type: integer
-        original_name:
+          title: Feedback Id
+        feedback_no:
           type: string
-        size:
-          type: integer
-        mime_type:
-          type: string
-        created_at:
-          type: string
-          format: date-time
-        created_by:
-          type:
-          - integer
-          - 'null'
-    CommentCreate:
-      type: object
-      required:
-      - content
-      properties:
-        content:
-          type: string
-          minLength: 1
-          maxLength: 5000
-    CommentOut:
-      type: object
-      required:
-      - id
-      - entity_type
-      - entity_id
-      - content
-      - created_at
-      properties:
-        id:
-          type: integer
-        entity_type:
-          type: string
-        entity_id:
-          type: integer
-        content:
-          type: string
-        created_at:
-          type: string
-          format: date-time
-        created_by:
-          type:
-          - integer
-          - 'null'
-    RequirementOut:
-      type: object
-      properties:
-        id:
-          type: integer
-        requirement_no:
-          type: string
+          title: Feedback No
         title:
           type: string
-        requirement_type:
-          type: string
-        source:
-          type: string
-          enum:
-          - DIRECT
-          - FEEDBACK
-        priority:
-          type: string
-          enum:
-          - P0
-          - P1
-          - P2
-          - P3
-          - P4
+          title: Title
         status:
           type: string
-          enum:
-          - DRAFT
-          - CONFIRMED
-          - PLANNED
-          - DEVELOPING
-          - TESTING
-          - DONE
-          - ONLINE
-          - PAUSED
-          - CANCELED
-        system_id:
-          type:
-          - integer
-          - 'null'
-        module_id:
-          type:
-          - integer
-          - 'null'
-        owner_id:
-          type:
-          - integer
-          - 'null'
-        current_version_id:
-          type:
-          - integer
-          - 'null'
-        description:
-          type: string
-        acceptance_criteria:
-          type:
-          - string
-          - 'null'
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-        updated_by:
-          type:
-          - integer
-          - 'null'
-        revision:
-          type: integer
-    RequirementPage:
-      type: object
-      required:
-      - items
-      - page
-      - page_size
-      - total
-      properties:
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/RequirementOut'
-        page:
-          type: integer
-        page_size:
-          type: integer
-        total:
-          type: integer
-    LinkedFeedbackOut:
+          title: Status
+        is_primary:
+          type: boolean
+          title: Is Primary
       type: object
       required:
       - feedback_id
@@ -2994,167 +4056,324 @@ components:
       - title
       - status
       - is_primary
+      title: LinkedFeedbackOut
+      description: A feedback linked to a requirement (source traceability).
+    LoginRequest:
       properties:
-        feedback_id:
-          type: integer
-        feedback_no:
+        username:
           type: string
-        title:
+          maxLength: 64
+          minLength: 2
+          title: Username
+        password:
           type: string
-        status:
-          type: string
-        is_primary:
+          maxLength: 128
+          minLength: 6
+          title: Password
+      type: object
+      required:
+      - username
+      - password
+      title: LoginRequest
+    LogoutResponse:
+      properties:
+        ok:
           type: boolean
-    VersionOut:
+          title: Ok
+          default: true
       type: object
-      properties:
-        id:
-          type: integer
-        version_no:
-          type: string
-        name:
-          type: string
-        status:
-          type: string
-          enum:
-          - PLANNING
-          - DEVELOPING
-          - TESTING
-          - READY
-          - RELEASED
-          - CANCELED
-        owner_id:
-          type:
-          - integer
-          - 'null'
-        planned_release_date:
-          type:
-          - string
-          - 'null'
-          format: date
-        released_at:
-          type:
-          - string
-          - 'null'
-          format: date-time
-        description:
-          type:
-          - string
-          - 'null'
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-        updated_by:
-          type:
-          - integer
-          - 'null'
-        revision:
-          type: integer
-    VersionPage:
-      type: object
-      required:
-      - items
-      - page
-      - page_size
-      - total
-      properties:
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/VersionOut'
-        page:
-          type: integer
-        page_size:
-          type: integer
-        total:
-          type: integer
-    VersionStats:
-      type: object
-      required:
-      - total
-      - by_status
-      - completed
-      - completion_rate
-      properties:
-        total:
-          type: integer
-        by_status:
-          type: object
-          additionalProperties:
-            type: integer
-        completed:
-          type: integer
-        completion_rate:
-          type: number
-    VersionRequirementsOut:
-      type: object
-      required:
-      - version_id
-      - stats
-      - items
-      properties:
-        version_id:
-          type: integer
-        stats:
-          $ref: '#/components/schemas/VersionStats'
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/RequirementOut'
-    AddRequirementRequest:
-      type: object
-      required:
-      - requirement_id
-      - revision
-      - version_revision
+      title: LogoutResponse
+    ManualFeedbackStatus:
+      type: string
+      enum:
+      - NEW
+      - ACCEPTED
+      - DUPLICATE
+      - CANNOT_REPRODUCE
+      - CLOSED
+      title: ManualFeedbackStatus
+      description: 'Feedback statuses a human may set through the status API.
+
+
+        REQUIREMENT_LINKED and ONLINE are produced only by convert and publish
+
+        transactions. They are intentionally excluded here so they can never be set
+
+        by hand.'
+    ManualRequirementStatus:
+      type: string
+      enum:
+      - DRAFT
+      - CONFIRMED
+      - PLANNED
+      - DEVELOPING
+      - TESTING
+      - DONE
+      - PAUSED
+      - CANCELED
+      title: ManualRequirementStatus
+    ManualVersionStatus:
+      type: string
+      enum:
+      - PLANNING
+      - DEVELOPING
+      - TESTING
+      - READY
+      - CANCELED
+      title: ManualVersionStatus
+    MoveRequirementRequest:
       properties:
         requirement_id:
           type: integer
+          title: Requirement Id
         revision:
           type: integer
-          minimum: 1
+          minimum: 1.0
+          title: Revision
         version_revision:
           type: integer
-          minimum: 1
-    RemoveRequirementRequest:
-      type: object
-      required:
-      - revision
-      - version_revision
-      properties:
-        revision:
-          type: integer
-          minimum: 1
-        version_revision:
-          type: integer
-          minimum: 1
+          minimum: 1.0
+          title: Version Revision
         reason:
-          type:
-          - string
-          - 'null'
-    MoveRequirementRequest:
+          type: string
+          maxLength: 500
+          minLength: 2
+          title: Reason
       type: object
       required:
       - requirement_id
       - revision
       - version_revision
       - reason
+      title: MoveRequirementRequest
+    NotificationOut:
       properties:
-        requirement_id:
+        id:
           type: integer
+          title: Id
+        type:
+          $ref: '#/components/schemas/NotificationType'
+        title:
+          type: string
+          title: Title
+        content:
+          type: string
+          title: Content
+        entity_type:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Entity Type
+        entity_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Entity Id
+        read_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Read At
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+      type: object
+      required:
+      - id
+      - type
+      - title
+      - content
+      - entity_type
+      - entity_id
+      - read_at
+      - created_at
+      title: NotificationOut
+    NotificationType:
+      type: string
+      enum:
+      - SYSTEM
+      - FEEDBACK
+      - REQUIREMENT
+      - VERSION
+      - RELEASE
+      title: NotificationType
+    PermissionOut:
+      properties:
+        id:
+          type: integer
+          title: Id
+        code:
+          type: string
+          title: Code
+        name:
+          type: string
+          title: Name
+        category:
+          type: string
+          title: Category
+        group:
+          type: string
+          title: Group
+        sensitive:
+          type: boolean
+          title: Sensitive
+        deprecated:
+          type: boolean
+          title: Deprecated
+        replacement_code:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Replacement Code
+      type: object
+      required:
+      - id
+      - code
+      - name
+      - category
+      - group
+      - sensitive
+      - deprecated
+      - replacement_code
+      title: PermissionOut
+    Priority:
+      type: string
+      enum:
+      - P0
+      - P1
+      - P2
+      - P3
+      - P4
+      title: Priority
+    PublishCheckItem:
+      properties:
+        type:
+          type: string
+          title: Type
+        passed:
+          type: boolean
+          title: Passed
+        message:
+          type: string
+          title: Message
+        blocking_requirements:
+          items:
+            $ref: '#/components/schemas/BlockingRequirement'
+          type: array
+          title: Blocking Requirements
+          default: []
+      type: object
+      required:
+      - type
+      - passed
+      - message
+      title: PublishCheckItem
+    PublishCheckResult:
+      properties:
+        passed:
+          type: boolean
+          title: Passed
+        checks:
+          items:
+            $ref: '#/components/schemas/PublishCheckItem'
+          type: array
+          title: Checks
+      type: object
+      required:
+      - passed
+      - checks
+      title: PublishCheckResult
+    PublishResult:
+      properties:
+        release:
+          $ref: '#/components/schemas/ReleaseOut'
+        version_id:
+          type: integer
+          title: Version Id
+        released_requirement_ids:
+          items:
+            type: integer
+          type: array
+          title: Released Requirement Ids
+        online_feedback_ids:
+          items:
+            type: integer
+          type: array
+          title: Online Feedback Ids
+      type: object
+      required:
+      - release
+      - version_id
+      - released_requirement_ids
+      - online_feedback_ids
+      title: PublishResult
+      description: Outcome of a successful version publish transaction.
+    PublishVersionRequest:
+      properties:
+        released_at:
+          type: string
+          format: date-time
+          title: Released At
+        release_notes:
+          type: string
+          minLength: 1
+          title: Release Notes
         revision:
           type: integer
-          minimum: 1
-        version_revision:
-          type: integer
-          minimum: 1
-        reason:
+          minimum: 1.0
+          title: Revision
+      additionalProperties: false
+      type: object
+      required:
+      - released_at
+      - release_notes
+      - revision
+      title: PublishVersionRequest
+    RefreshRequest:
+      properties:
+        refresh_token:
           type: string
-          minLength: 2
+          title: Refresh Token
+      type: object
+      required:
+      - refresh_token
+      title: RefreshRequest
     ReleaseOut:
+      properties:
+        id:
+          type: integer
+          title: Id
+        version_id:
+          type: integer
+          title: Version Id
+        released_at:
+          type: string
+          format: date-time
+          title: Released At
+        result:
+          $ref: '#/components/schemas/ReleaseResult'
+        release_notes:
+          type: string
+          title: Release Notes
+        rollback_notes:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Rollback Notes
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        created_by:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Created By
+        revision:
+          type: integer
+          title: Revision
       type: object
       required:
       - id
@@ -3162,181 +4381,890 @@ components:
       - released_at
       - result
       - release_notes
+      - rollback_notes
+      - created_at
+      - created_by
       - revision
-      properties:
-        id:
-          type: integer
-        version_id:
-          type: integer
-        released_at:
-          type: string
-          format: date-time
-        result:
-          type: string
-          enum:
-          - SUCCESS
-        release_notes:
-          type: string
-        rollback_notes:
-          type:
-          - string
-          - 'null'
-        created_at:
-          type: string
-          format: date-time
-        created_by:
-          type:
-          - integer
-          - 'null'
-        revision:
-          type: integer
+      title: ReleaseOut
+      description: 'A release RECORD (record-type entity). Produced only by the publish
+
+        transaction; it has no independent workflow/state of its own.'
     ReleasePage:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/ReleaseOut'
+          type: array
+          title: Items
+        page:
+          type: integer
+          title: Page
+        page_size:
+          type: integer
+          title: Page Size
+        total:
+          type: integer
+          title: Total
       type: object
       required:
       - items
       - page
       - page_size
       - total
+      title: ReleasePage
+    ReleaseResult:
+      type: string
+      enum:
+      - SUCCESS
+      title: ReleaseResult
+    RemoveRequirementRequest:
+      properties:
+        revision:
+          type: integer
+          minimum: 1.0
+          title: Revision
+        version_revision:
+          type: integer
+          minimum: 1.0
+          title: Version Revision
+        reason:
+          anyOf:
+          - type: string
+            maxLength: 500
+          - type: 'null'
+          title: Reason
+      type: object
+      required:
+      - revision
+      - version_revision
+      title: RemoveRequirementRequest
+    RequirementCreate:
+      properties:
+        title:
+          type: string
+          maxLength: 200
+          minLength: 2
+          title: Title
+        requirement_type:
+          type: string
+          maxLength: 32
+          minLength: 1
+          pattern: ^[A-Z][A-Z0-9_]*$
+          title: Requirement Type
+        priority:
+          $ref: '#/components/schemas/Priority'
+          default: P2
+        system_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: System Id
+        module_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Module Id
+        owner_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Owner Id
+        description:
+          type: string
+          title: Description
+        acceptance_criteria:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Acceptance Criteria
+        version_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Version Id
+        version_revision:
+          anyOf:
+          - type: integer
+            minimum: 1.0
+          - type: 'null'
+          title: Version Revision
+      type: object
+      required:
+      - title
+      - requirement_type
+      - description
+      title: RequirementCreate
+    RequirementOut:
+      properties:
+        id:
+          type: integer
+          title: Id
+        requirement_no:
+          type: string
+          title: Requirement No
+        title:
+          type: string
+          title: Title
+        requirement_type:
+          type: string
+          title: Requirement Type
+        source:
+          $ref: '#/components/schemas/RequirementSource'
+        priority:
+          $ref: '#/components/schemas/Priority'
+        status:
+          $ref: '#/components/schemas/RequirementStatus'
+        system_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: System Id
+        module_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Module Id
+        owner_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Owner Id
+        current_version_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Current Version Id
+        description:
+          type: string
+          title: Description
+        acceptance_criteria:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Acceptance Criteria
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+        updated_by:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Updated By
+        revision:
+          type: integer
+          title: Revision
+      type: object
+      required:
+      - id
+      - requirement_no
+      - title
+      - requirement_type
+      - source
+      - priority
+      - status
+      - system_id
+      - module_id
+      - owner_id
+      - current_version_id
+      - description
+      - acceptance_criteria
+      - created_at
+      - updated_at
+      - updated_by
+      - revision
+      title: RequirementOut
+    RequirementPage:
       properties:
         items:
-          type: array
           items:
-            $ref: '#/components/schemas/ReleaseOut'
+            $ref: '#/components/schemas/RequirementOut'
+          type: array
+          title: Items
         page:
           type: integer
+          title: Page
         page_size:
           type: integer
+          title: Page Size
         total:
           type: integer
-    AuditOperatorOut:
+          title: Total
+      type: object
+      required:
+      - items
+      - page
+      - page_size
+      - total
+      title: RequirementPage
+    RequirementSource:
+      type: string
+      enum:
+      - DIRECT
+      - FEEDBACK
+      title: RequirementSource
+    RequirementStatus:
+      type: string
+      enum:
+      - DRAFT
+      - CONFIRMED
+      - PLANNED
+      - DEVELOPING
+      - TESTING
+      - DONE
+      - ONLINE
+      - PAUSED
+      - CANCELED
+      title: RequirementStatus
+    RequirementStatusChange:
+      properties:
+        status:
+          $ref: '#/components/schemas/ManualRequirementStatus'
+        revision:
+          type: integer
+          minimum: 1.0
+          title: Revision
+        reason:
+          anyOf:
+          - type: string
+            maxLength: 500
+            minLength: 2
+          - type: 'null'
+          title: Reason
+      type: object
+      required:
+      - status
+      - revision
+      title: RequirementStatusChange
+    RequirementUpdate:
+      properties:
+        title:
+          anyOf:
+          - type: string
+            maxLength: 200
+          - type: 'null'
+          title: Title
+        requirement_type:
+          anyOf:
+          - type: string
+            maxLength: 32
+            minLength: 1
+            pattern: ^[A-Z][A-Z0-9_]*$
+          - type: 'null'
+          title: Requirement Type
+        priority:
+          anyOf:
+          - $ref: '#/components/schemas/Priority'
+          - type: 'null'
+        system_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: System Id
+        module_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Module Id
+        owner_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Owner Id
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+        acceptance_criteria:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Acceptance Criteria
+        revision:
+          type: integer
+          minimum: 1.0
+          title: Revision
+      type: object
+      required:
+      - revision
+      title: RequirementUpdate
+    RoleCreate:
+      properties:
+        code:
+          type: string
+          maxLength: 64
+          minLength: 2
+          title: Code
+        name:
+          type: string
+          maxLength: 100
+          minLength: 1
+          title: Name
+        data_scope:
+          $ref: '#/components/schemas/ConfigurableDataScope'
+          default: SELF
+        permission_ids:
+          items:
+            type: integer
+          type: array
+          title: Permission Ids
+      type: object
+      required:
+      - code
+      - name
+      title: RoleCreate
+    RoleDeleteOut:
+      properties:
+        id:
+          type: integer
+          title: Id
+        deleted:
+          type: boolean
+          title: Deleted
+          default: true
+      type: object
+      required:
+      - id
+      title: RoleDeleteOut
+    RoleOut:
+      properties:
+        id:
+          type: integer
+          title: Id
+        code:
+          type: string
+          title: Code
+        name:
+          type: string
+          title: Name
+        data_scope:
+          $ref: '#/components/schemas/DataScope'
+        enabled:
+          type: boolean
+          title: Enabled
+        is_system:
+          type: boolean
+          title: Is System
+        revision:
+          type: integer
+          title: Revision
+        permission_ids:
+          items:
+            type: integer
+          type: array
+          title: Permission Ids
+      type: object
+      required:
+      - id
+      - code
+      - name
+      - data_scope
+      - enabled
+      - is_system
+      - revision
+      title: RoleOut
+    RolePermissionUpdate:
+      properties:
+        permission_ids:
+          items:
+            type: integer
+          type: array
+          title: Permission Ids
+        revision:
+          type: integer
+          minimum: 1.0
+          title: Revision
+      type: object
+      required:
+      - permission_ids
+      - revision
+      title: RolePermissionUpdate
+    RoleUpdate:
+      properties:
+        code:
+          anyOf:
+          - type: string
+            maxLength: 64
+            minLength: 2
+          - type: 'null'
+          title: Code
+        name:
+          anyOf:
+          - type: string
+            maxLength: 100
+            minLength: 1
+          - type: 'null'
+          title: Name
+        data_scope:
+          anyOf:
+          - $ref: '#/components/schemas/ConfigurableDataScope'
+          - type: 'null'
+        enabled:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Enabled
+        revision:
+          type: integer
+          minimum: 1.0
+          title: Revision
+      type: object
+      required:
+      - revision
+      title: RoleUpdate
+    StorageDriver:
+      type: string
+      enum:
+      - LOCAL
+      - S3
+      title: StorageDriver
+    TokenPair:
+      properties:
+        access_token:
+          type: string
+          title: Access Token
+        refresh_token:
+          type: string
+          title: Refresh Token
+        token_type:
+          type: string
+          title: Token Type
+          default: bearer
+        must_change_password:
+          type: boolean
+          title: Must Change Password
+      type: object
+      required:
+      - access_token
+      - refresh_token
+      - must_change_password
+      title: TokenPair
+    UserCreate:
+      properties:
+        username:
+          type: string
+          maxLength: 64
+          minLength: 2
+          title: Username
+        display_name:
+          type: string
+          maxLength: 100
+          minLength: 1
+          title: Display Name
+        password:
+          type: string
+          maxLength: 128
+          minLength: 8
+          title: Password
+        email:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Email
+        mobile:
+          anyOf:
+          - type: string
+            maxLength: 32
+          - type: 'null'
+          title: Mobile
+        role_ids:
+          items:
+            type: integer
+          type: array
+          title: Role Ids
+      type: object
+      required:
+      - username
+      - display_name
+      - password
+      title: UserCreate
+    UserOut:
+      properties:
+        id:
+          type: integer
+          title: Id
+        username:
+          type: string
+          title: Username
+        display_name:
+          type: string
+          title: Display Name
+        email:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Email
+        mobile:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Mobile
+        status:
+          $ref: '#/components/schemas/UserStatus'
+        revision:
+          type: integer
+          title: Revision
+        role_ids:
+          items:
+            type: integer
+          type: array
+          title: Role Ids
       type: object
       required:
       - id
       - username
       - display_name
+      - email
+      - status
+      - revision
+      title: UserOut
+    UserPage:
       properties:
-        id:
+        items:
+          items:
+            $ref: '#/components/schemas/UserOut'
+          type: array
+          title: Items
+        page:
           type: integer
-        username:
-          type: string
-        display_name:
-          type: string
-    AuditOut:
-      type: object
-      required:
-      - id
-      - entity_type
-      - entity_id
-      - action
-      - operator
-      - before
-      - after
-      - created_at
-      properties:
-        id:
+          title: Page
+        page_size:
           type: integer
-        entity_type:
-          type: string
-        entity_id:
-          anyOf:
-          - type: integer
-          - type: 'null'
-        action:
-          type: string
-        operator:
-          anyOf:
-          - $ref: '#/components/schemas/AuditOperatorOut'
-          - type: 'null'
-        before:
-          anyOf:
-          - type: object
-            additionalProperties: true
-          - type: 'null'
-        after:
-          anyOf:
-          - type: object
-            additionalProperties: true
-          - type: 'null'
-        created_at:
-          type: string
-          format: date-time
-    AuditPage:
+          title: Page Size
+        total:
+          type: integer
+          title: Total
       type: object
       required:
       - items
       - page
-      - size
+      - page_size
       - total
+      title: UserPage
+    UserRoleUpdate:
       properties:
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/AuditOut'
-        page:
-          type: integer
-        size:
-          type: integer
-        total:
-          type: integer
-    PublishResult:
-      type: object
-      required:
-      - release
-      - version_id
-      - released_requirement_ids
-      - online_feedback_ids
-      properties:
-        release:
-          $ref: '#/components/schemas/ReleaseOut'
-        version_id:
-          type: integer
-        released_requirement_ids:
-          type: array
+        role_ids:
           items:
             type: integer
-        online_feedback_ids:
           type: array
-          items:
-            type: integer
-    BlockingRequirement:
+          title: Role Ids
+        revision:
+          type: integer
+          minimum: 1.0
+          title: Revision
       type: object
       required:
-      - id
-      - requirement_no
+      - role_ids
+      - revision
+      title: UserRoleUpdate
+    UserStatus:
+      type: string
+      enum:
+      - ACTIVE
+      - DISABLED
+      - LOCKED
+      title: UserStatus
+    UserStatusChange:
+      properties:
+        status:
+          $ref: '#/components/schemas/UserStatus'
+        revision:
+          type: integer
+          minimum: 1.0
+          title: Revision
+      type: object
+      required:
       - status
+      - revision
+      title: UserStatusChange
+    UserUpdate:
+      properties:
+        display_name:
+          anyOf:
+          - type: string
+            maxLength: 100
+            minLength: 1
+          - type: 'null'
+          title: Display Name
+        email:
+          anyOf:
+          - type: string
+            maxLength: 255
+          - type: 'null'
+          title: Email
+        mobile:
+          anyOf:
+          - type: string
+            maxLength: 32
+          - type: 'null'
+          title: Mobile
+        revision:
+          type: integer
+          minimum: 1.0
+          title: Revision
+      type: object
+      required:
+      - revision
+      title: UserUpdate
+      description: Editable account profile fields; credentials, status, and roles have dedicated APIs.
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+        input:
+          title: Input
+        ctx:
+          type: object
+          title: Context
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+    VersionCreate:
+      properties:
+        version_no:
+          type: string
+          maxLength: 32
+          minLength: 1
+          title: Version No
+        name:
+          type: string
+          maxLength: 100
+          minLength: 1
+          title: Name
+        owner_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Owner Id
+        planned_release_date:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Planned Release Date
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+      type: object
+      required:
+      - version_no
+      - name
+      title: VersionCreate
+    VersionOut:
       properties:
         id:
           type: integer
-        requirement_no:
+          title: Id
+        version_no:
           type: string
+          title: Version No
+        name:
+          type: string
+          title: Name
         status:
+          $ref: '#/components/schemas/VersionStatus'
+        owner_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Owner Id
+        planned_release_date:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Planned Release Date
+        released_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Released At
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+        created_at:
           type: string
-    PublishCheckItem:
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+        updated_by:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Updated By
+        revision:
+          type: integer
+          title: Revision
       type: object
       required:
-      - type
-      - passed
-      - message
+      - id
+      - version_no
+      - name
+      - status
+      - owner_id
+      - planned_release_date
+      - released_at
+      - description
+      - created_at
+      - updated_at
+      - updated_by
+      - revision
+      title: VersionOut
+    VersionPage:
       properties:
-        type:
-          type: string
-        passed:
-          type: boolean
-        message:
-          type: string
-        blocking_requirements:
-          type: array
+        items:
           items:
-            $ref: '#/components/schemas/BlockingRequirement'
-    PublishCheckResult:
+            $ref: '#/components/schemas/VersionOut'
+          type: array
+          title: Items
+        page:
+          type: integer
+          title: Page
+        page_size:
+          type: integer
+          title: Page Size
+        total:
+          type: integer
+          title: Total
       type: object
       required:
-      - passed
-      - checks
+      - items
+      - page
+      - page_size
+      - total
+      title: VersionPage
+    VersionRequirementsOut:
       properties:
-        passed:
-          type: boolean
-        checks:
-          type: array
+        version_id:
+          type: integer
+          title: Version Id
+        stats:
+          $ref: '#/components/schemas/VersionStats'
+        items:
           items:
-            $ref: '#/components/schemas/PublishCheckItem'
+            $ref: '#/components/schemas/RequirementOut'
+          type: array
+          title: Items
+      type: object
+      required:
+      - version_id
+      - stats
+      - items
+      title: VersionRequirementsOut
+    VersionStats:
+      properties:
+        total:
+          type: integer
+          title: Total
+        by_status:
+          additionalProperties:
+            type: integer
+          type: object
+          title: By Status
+        completed:
+          type: integer
+          title: Completed
+        completion_rate:
+          type: number
+          title: Completion Rate
+      type: object
+      required:
+      - total
+      - by_status
+      - completed
+      - completion_rate
+      title: VersionStats
+    VersionStatus:
+      type: string
+      enum:
+      - PLANNING
+      - DEVELOPING
+      - TESTING
+      - READY
+      - RELEASED
+      - CANCELED
+      title: VersionStatus
+    VersionStatusChange:
+      properties:
+        status:
+          $ref: '#/components/schemas/ManualVersionStatus'
+        revision:
+          type: integer
+          minimum: 1.0
+          title: Revision
+        reason:
+          anyOf:
+          - type: string
+            maxLength: 500
+            minLength: 2
+          - type: 'null'
+          title: Reason
+      type: object
+      required:
+      - status
+      - revision
+      title: VersionStatusChange
+    VersionUpdate:
+      properties:
+        name:
+          anyOf:
+          - type: string
+            maxLength: 100
+          - type: 'null'
+          title: Name
+        owner_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Owner Id
+        planned_release_date:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Planned Release Date
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+        revision:
+          type: integer
+          minimum: 1.0
+          title: Revision
+      type: object
+      required:
+      - revision
+      title: VersionUpdate
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

@@ -15,7 +15,12 @@ import {
   feedbackTypeLabel,
   feedbackUrgencyLabel,
 } from '@/constants/feedback'
-import type { BusinessModuleItem, BusinessSystemItem, Feedback } from '@/types/domain'
+import type {
+  BusinessModuleItem,
+  BusinessSystemItem,
+  Feedback,
+  FeedbackListParams,
+} from '@/types/domain'
 
 const router = useRouter()
 const { isMobile } = useResponsive()
@@ -31,9 +36,9 @@ const canReadSystems = computed(() => can('sys.system.view'))
 
 const filters = reactive({
   keyword: '',
-  status: '',
-  feedback_type: '',
-  urgency: '',
+  status: '' as FeedbackListParams['status'],
+  feedback_type: '' as FeedbackListParams['feedback_type'],
+  urgency: '' as FeedbackListParams['urgency'],
   system_id: null as number | null,
   module_id: null as number | null,
   page: 1,

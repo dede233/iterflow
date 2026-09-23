@@ -1,252 +1,46 @@
-export interface PageResult<T> { items: T[]; page: number; page_size: number; total: number }
-export interface Feedback {
-  id: number
-  feedback_no: string
-  title: string
-  feedback_type: string
-  urgency: string
-  status: string
-  system_id?: number | null
-  module_id?: number | null
-  submitter_id: number
-  description: string
-  expected_result?: string | null
-  actual_result?: string | null
-  reproduce_steps?: string | null
-  main_requirement_id?: number | null
-  duplicate_of_id?: number | null
-  created_at: string
-  updated_at: string
-  updated_by?: number | null
-  revision: number
-}
+import type { components, paths } from './openapi.generated'
 
-export interface FeedbackListParams {
-  page?: number
-  page_size?: number
-  status?: string
-  feedback_type?: string
-  urgency?: string
-  system_id?: number | null
-  module_id?: number | null
-  keyword?: string
-}
+type Schema<Name extends keyof components['schemas']> = components['schemas'][Name]
+export type Feedback = Schema<'FeedbackOut'>
+export type FeedbackPage = Schema<'FeedbackPage'>
+export type FeedbackListParams = NonNullable<paths['/feedbacks']['get']['parameters']['query']>
+export type FeedbackCreatePayload = Schema<'FeedbackCreate'>
+export type PriorityValue = Schema<'Priority'>
+export type FeedbackUpdatePayload = Schema<'FeedbackUpdate'>
+export type FeedbackStatusChangePayload = Schema<'FeedbackStatusChange'>
+export type ConvertFeedbackPayload = Schema<'FeedbackConvertRequest'>
 
-export interface FeedbackCreatePayload {
-  title: string
-  feedback_type: string
-  urgency: string
-  system_id?: number | null
-  module_id?: number | null
-  description: string
-  expected_result?: string | null
-  actual_result?: string | null
-  reproduce_steps?: string | null
-}
+export type SystemsResponse = Schema<'BusinessSystemCatalogOut'>
+export type BusinessSystemItem = SystemsResponse['systems'][number]
+export type BusinessModuleItem = SystemsResponse['modules'][number]
+export type AttachmentItem = Schema<'AttachmentOut'>
+export type CommentItem = Schema<'CommentOut'>
 
-export interface FeedbackUpdatePayload {
-  title?: string
-  feedback_type?: string
-  urgency?: string
-  system_id?: number | null
-  module_id?: number | null
-  description?: string
-  expected_result?: string | null
-  actual_result?: string | null
-  reproduce_steps?: string | null
-  revision: number
-}
+export type Requirement = Schema<'RequirementOut'>
+export type RequirementPage = Schema<'RequirementPage'>
+export type RequirementCreatePayload = Schema<'RequirementCreate'>
+export type RequirementUpdatePayload = Schema<'RequirementUpdate'>
+export type RequirementStatusChangePayload = Schema<'RequirementStatusChange'>
+export type LinkedFeedback = Schema<'LinkedFeedbackOut'>
 
-export interface FeedbackStatusChangePayload {
-  status: string
-  revision: number
-  reason?: string | null
-  duplicate_of_id?: number | null
-}
+export type VersionItem = Schema<'VersionOut'>
+export type VersionPage = Schema<'VersionPage'>
+export type VersionCreatePayload = Schema<'VersionCreate'>
+export type VersionUpdatePayload = Schema<'VersionUpdate'>
+export type VersionStatusChangePayload = Schema<'VersionStatusChange'>
+export type VersionStats = Schema<'VersionStats'>
+export type VersionRequirementsResult = Schema<'VersionRequirementsOut'>
+export type AddRequirementPayload = Schema<'AddRequirementRequest'>
+export type RemoveRequirementPayload = Schema<'RemoveRequirementRequest'>
+export type MoveRequirementPayload = Schema<'MoveRequirementRequest'>
+export type PublishCheckItem = Schema<'PublishCheckItem'>
+export type PublishCheckResult = Schema<'PublishCheckResult'>
+export type PublishResult = Schema<'PublishResult'>
 
-export interface BusinessSystemItem { id: number; code: string; name: string; enabled: boolean }
-export interface BusinessModuleItem {
-  id: number
-  system_id: number
-  code: string
-  name: string
-  enabled: boolean
-}
-
-export interface AttachmentItem {
-  file_id: number
-  original_name: string
-  size: number
-  mime_type: string
-  created_at: string
-  created_by?: number | null
-}
-
-export interface CommentItem {
-  id: number
-  entity_type: string
-  entity_id: number
-  content: string
-  created_at: string
-  created_by?: number | null
-}
-export interface Requirement {
-  id: number
-  requirement_no: string
-  title: string
-  requirement_type: string
-  source: string
-  priority: string
-  status: string
-  system_id?: number | null
-  module_id?: number | null
-  owner_id?: number | null
-  current_version_id?: number | null
-  description: string
-  acceptance_criteria?: string | null
-  created_at: string
-  updated_at: string
-  updated_by?: number | null
-  revision: number
-}
-
-export interface RequirementCreatePayload {
-  title: string
-  requirement_type: string
-  priority: string
-  description: string
-  acceptance_criteria?: string | null
-  version_id?: number | null
-  version_revision?: number | null
-}
-
-export interface RequirementUpdatePayload {
-  title?: string
-  requirement_type?: string
-  priority?: string
-  description?: string
-  acceptance_criteria?: string | null
-  revision: number
-}
-
-export interface LinkedFeedback {
-  feedback_id: number
-  feedback_no: string
-  title: string
-  status: string
-  is_primary: boolean
-}
-
-export interface ConvertFeedbackPayload {
-  type: 'CREATE_NEW' | 'LINK_EXISTING'
-  revision: number
-  requirement_title?: string
-  requirement_type?: string
-  priority?: string
-  description?: string
-  acceptance_criteria?: string | null
-  requirement_id?: number | null
-}
-export interface VersionItem {
-  id: number
-  version_no: string
-  name: string
-  status: string
-  owner_id?: number | null
-  planned_release_date?: string | null
-  released_at?: string | null
-  description?: string | null
-  created_at?: string
-  updated_at?: string
-  updated_by?: number | null
-  revision: number
-}
-
-export interface VersionCreatePayload {
-  version_no: string
-  name: string
-  planned_release_date?: string | null
-  description?: string | null
-}
-
-export interface VersionUpdatePayload {
-  name?: string
-  planned_release_date?: string | null
-  description?: string | null
-  revision: number
-}
-
-export interface VersionStats {
-  total: number
-  by_status: Record<string, number>
-  completed: number
-  completion_rate: number
-}
-
-export interface VersionRequirementsResult {
-  version_id: number
-  stats: VersionStats
-  items: Requirement[]
-}
-
-export interface PublishCheckItem {
-  type: string
-  passed: boolean
-  message: string
-  blocking_requirements?: { id: number; requirement_no: string; status: string }[]
-}
-
-export interface PublishCheckResult {
-  passed: boolean
-  checks: PublishCheckItem[]
-}
-
-export interface ReleaseItem {
-  id: number
-  version_id: number
-  released_at: string
-  result: string
-  release_notes: string
-  rollback_notes?: string | null
-  created_at: string
-  created_by?: number | null
-  revision: number
-}
-
-export interface AuditOperator {
-  id: number
-  username: string
-  display_name: string
-}
-
-export interface AuditItem {
-  id: number
-  entity_type: string
-  entity_id?: number | null
-  action: string
-  operator?: AuditOperator | null
-  before?: Record<string, unknown> | null
-  after?: Record<string, unknown> | null
-  created_at: string
-}
-
-export interface AuditListParams {
-  page?: number
-  size?: number
-  entity_type?: string
-  entity_id?: number
-  action?: string
-  operator_id?: number
-  time_from?: string
-  time_to?: string
-}
-
-export interface AuditPage {
-  items: AuditItem[]
-  page: number
-  size: number
-  total: number
-}
-
-export type NotificationType = 'SYSTEM' | 'FEEDBACK' | 'REQUIREMENT' | 'VERSION' | 'RELEASE'
-export interface NotificationItem { id:number; type:NotificationType; title:string; content:string; entity_type?:string|null; entity_id?:number|null; read_at?:string|null; created_at:string }
+export type ReleaseItem = Schema<'ReleaseOut'>
+export type ReleasePage = Schema<'ReleasePage'>
+export type AuditOperator = Schema<'AuditOperatorOut'>
+export type AuditItem = Schema<'AuditOut'>
+export type AuditListParams = NonNullable<paths['/audits']['get']['parameters']['query']>
+export type AuditPage = Schema<'AuditPage'>
+export type NotificationItem = Schema<'NotificationOut'>

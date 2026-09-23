@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 import yaml
+from conftest import resolve_openapi_ref
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event, select
 from sqlalchemy.exc import IntegrityError
@@ -527,6 +528,7 @@ def test_openapi_declares_requirement_and_convert_contract(spec_name):
     assert "RequirementPage" in schemas
     assert "RequirementOut" in schemas
     convert = schemas["FeedbackConvertRequest"]["properties"]
-    assert set(convert["type"]["enum"]) == {"CREATE_NEW", "LINK_EXISTING"}
+    convert_type = resolve_openapi_ref(spec, convert["type"])
+    assert set(convert_type["enum"]) == {"CREATE_NEW", "LINK_EXISTING"}
     assert "requirement_id" in convert
     assert "requirement_title" in convert

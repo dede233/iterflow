@@ -22,7 +22,7 @@ const enabledRoles = computed(() => props.roles.filter((role) => role.enabled))
 watch(
   [() => props.modelValue, () => props.user],
   ([visible, user]) => {
-    if (visible && user) selectedRoleIds.value = [...user.role_ids]
+    if (visible && user) selectedRoleIds.value = [...(user.role_ids ?? [])]
   },
   { immediate: true },
 )

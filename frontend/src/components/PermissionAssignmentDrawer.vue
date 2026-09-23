@@ -38,7 +38,7 @@ watch(
   [() => props.modelValue, () => props.role],
   ([visible, role]) => {
     if (!visible || !role) return
-    selectedPermissionIds.value = [...role.permission_ids]
+    selectedPermissionIds.value = [...(role.permission_ids ?? [])]
     expandedGroups.value = groups.value.map((group) => group.name)
   },
   { immediate: true },

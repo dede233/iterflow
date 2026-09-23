@@ -125,7 +125,10 @@ async function saveRoles(roleIds: number[]): Promise<void> {
   roleSaving.value = true
   try {
     const request = buildUserRoleUpdateRequest(user, roleIds)
-    const updated = await updateUserRoles(request.userId, request.roleIds, request.revision)
+    const updated = await updateUserRoles(request.userId, {
+      role_ids: request.roleIds,
+      revision: request.revision,
+    })
     roleUser.value = updated
     roleDrawerVisible.value = false
     ElMessage.success('用户角色已更新')
@@ -150,16 +153,17 @@ async function toggleStatus(user: UserItem): Promise<void> {
     cancelButtonText: '取消',
     type: 'warning',
   })
-  await updateUserStatus(user.id, status, user.revision)
+  await updateUserStatus(user.id, { status, revision: user.revision })
   ElMessage.success(`用户已${action}`)
   await load()
 }
 
 function roleNames(user: UserItem): string {
   if (!canReadRoleDefinitions.value) {
-    return user.role_ids.length ? `已分配 ${user.role_ids.length} 个角色` : '未分配'
+    const roleIds = user.role_ids ?? []
+    return roleIds.length ? `已分配 ${roleIds.length} 个角色` : '未分配'
   }
-  const labels = user.role_ids
+  const labels = (user.role_ids ?? [])
     .map((roleId) => roles.value.find((role) => role.id === roleId)?.name)
     .filter((name): name is string => Boolean(name))
   return labels.length ? labels.join('、') : '未分配'

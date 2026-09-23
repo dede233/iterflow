@@ -6,14 +6,14 @@ import type {
   Feedback,
   FeedbackCreatePayload,
   FeedbackListParams,
+  FeedbackPage,
   FeedbackStatusChangePayload,
   FeedbackUpdatePayload,
-  PageResult,
   Requirement,
 } from '@/types/domain'
 
 export const listFeedbacks = (params: FeedbackListParams = {}) =>
-  api.get<PageResult<Feedback>>('/feedbacks', { params }).then((r) => r.data)
+  api.get<FeedbackPage>('/feedbacks', { params }).then((r) => r.data)
 
 export const getFeedback = (id: number) =>
   api.get<Feedback>(`/feedbacks/${id}`).then((r) => r.data)

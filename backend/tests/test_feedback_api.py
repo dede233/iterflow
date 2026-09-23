@@ -6,6 +6,7 @@ from unittest.mock import Mock
 
 import pytest
 import yaml
+from conftest import resolve_openapi_ref
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event, select
 from sqlalchemy.orm import Session
@@ -1005,12 +1006,14 @@ def test_openapi_specs_declare_feedback_status_contract(spec_name):
     assert "patch" in status_path
 
     schemas = spec["components"]["schemas"]
-    assert set(schemas["FeedbackStatusChange"]["properties"]["status"]["enum"]) == {
-        s.value for s in ManualFeedbackStatus
-    }
-    assert set(schemas["Feedback"]["properties"]["status"]["enum"]) == {
-        s.value for s in FeedbackStatus
-    }
+    status_schema = resolve_openapi_ref(
+        spec, schemas["FeedbackStatusChange"]["properties"]["status"]
+    )
+    assert set(status_schema["enum"]) == {s.value for s in ManualFeedbackStatus}
+    feedback_status_schema = resolve_openapi_ref(
+        spec, schemas["FeedbackOut"]["properties"]["status"]
+    )
+    assert set(feedback_status_schema["enum"]) == {s.value for s in FeedbackStatus}
     assert "FeedbackPage" in schemas
 
     # List filters are part of the contract.
@@ -1034,7 +1037,7 @@ def test_openapi_specs_declare_feedback_status_contract(spec_name):
         assert schema_name in schemas
     # Business attachment metadata must never expose storage_key.
     assert "storage_key" not in schemas["AttachmentOut"]["properties"]
-    assert "storage_key" not in schemas["FileMetadata"]["properties"]
+    assert "storage_key" not in schemas["FileOut"]["properties"]
     assert "get" in spec["paths"]["/files/{file_id}/download"]
     assert "get" in spec["paths"]["/files/{file_id}/exists"]
     assert "delete" in spec["paths"]["/files/{file_id}"]

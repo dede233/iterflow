@@ -37,6 +37,8 @@ import type {
   BusinessSystemItem,
   CommentItem,
   Feedback,
+  FeedbackUpdatePayload,
+  PriorityValue,
 } from '@/types/domain'
 
 const route = useRoute()
@@ -70,7 +72,7 @@ const convertForm = reactive({
   type: 'CREATE_NEW' as 'CREATE_NEW' | 'LINK_EXISTING',
   requirement_title: '',
   requirement_type: 'FEATURE',
-  priority: 'P2',
+  priority: 'P2' as PriorityValue,
   description: '',
   acceptance_criteria: '',
   requirement_id: null as number | null,
@@ -180,8 +182,8 @@ const editDialog = ref(false)
 const editSubmitting = ref(false)
 const editForm = reactive({
   title: '',
-  feedback_type: '',
-  urgency: '',
+  feedback_type: '' as FeedbackUpdatePayload['feedback_type'],
+  urgency: '' as FeedbackUpdatePayload['urgency'],
   system_id: null as number | null,
   module_id: null as number | null,
   description: '',

@@ -2,6 +2,11 @@
 // backend ALLOWED_TRANSITIONS). Backend stays the source of truth; these tables
 // only drive labels and which status buttons to render.
 
+import type { components } from '@/types/openapi.generated'
+
+export type RequirementPriority = components['schemas']['Priority']
+export type ManualRequirementStatus = components['schemas']['ManualRequirementStatus']
+
 export const REQUIREMENT_PRIORITIES = [
   { value: 'P0', label: 'P0' },
   { value: 'P1', label: 'P1' },
@@ -38,7 +43,7 @@ export const requirementStatusLabel = label(REQUIREMENT_STATUSES)
 export const requirementTypeLabel = label(REQUIREMENT_TYPES)
 
 export interface ReqStatusAction {
-  target: string
+  target: ManualRequirementStatus
   label: string
   needsReason: boolean
 }

@@ -2,6 +2,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { createRole, deleteRole, listPermissions, listRoles, updateRole, updateRolePermissions } from '@/api/roles'
+import RoleActions from '@/components/RoleActions.vue'
 import { usePermission } from '@/composables/usePermission'
 import type { PermissionItem, RoleItem } from '@/types/system'
 
@@ -125,7 +126,7 @@ onMounted(load)
       <el-table-column prop="code" label="编码" min-width="180" />
       <el-table-column prop="name" label="角色" min-width="140" />
       <el-table-column label="类型" width="100">
-        <template #default="scope"><el-tag :type="scope.row.is_system ? 'info' : 'success'">{{ scope.row.is_system ? '系统' : '自定义' }}</el-tag></template>
+        <template #default="scope"><el-tag :type="scope.row.is_system ? 'info' : 'success'">{{ scope.row.is_system ? '系统角色' : '自定义角色' }}</el-tag></template>
       </el-table-column>
       <el-table-column prop="data_scope" label="数据范围" width="110" />
       <el-table-column label="权限" min-width="280">
@@ -136,8 +137,7 @@ onMounted(load)
       </el-table-column>
       <el-table-column v-if="can('sys.role.manage')" label="操作" width="140" fixed="right">
         <template #default="scope">
-          <el-button link type="primary" @click="openEdit(scope.row)">编辑</el-button>
-          <el-button v-if="!scope.row.is_system" link type="danger" @click="remove(scope.row)">删除</el-button>
+          <RoleActions :role="scope.row" @edit="openEdit" @delete="remove" />
         </template>
       </el-table-column>
     </el-table>

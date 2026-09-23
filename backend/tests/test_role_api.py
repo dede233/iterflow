@@ -54,7 +54,7 @@ def role_api(tmp_path: Path) -> Iterator[RoleApiFixture]:
             code="ROLE_VIEWER", name="角色查看者", data_scope=DataScope.ALL, is_system=True
         )
         system_role = Role(
-            code="SYSTEM_ROLE", name="受保护系统角色", data_scope=DataScope.ALL, is_system=True
+            code="SUPER_ADMIN", name="超级管理员", data_scope=DataScope.ALL, is_system=True
         )
         assigned_role = Role(
             code="ASSIGNED_ROLE", name="已分配角色", data_scope=DataScope.SELF, is_system=False
@@ -73,6 +73,9 @@ def role_api(tmp_path: Path) -> Iterator[RoleApiFixture]:
                 ),
                 RolePermission(
                     role_id=viewer_role.id, permission_id=permissions["sys.role.view"].id
+                ),
+                RolePermission(
+                    role_id=system_role.id, permission_id=permissions["rd.feedback.view"].id
                 ),
             ]
         )
@@ -148,10 +151,18 @@ def test_role_crud_and_audit_before_after(role_api: RoleApiFixture):
     updated = client.patch(
         f"/api/v1/roles/{role['id']}",
         headers=headers["manager"],
-        json={"name": "更新后的角色", "enabled": False, "revision": role["revision"]},
+        json={
+            "code": "CUSTOM_ROLE_UPDATED",
+            "name": "更新后的角色",
+            "data_scope": "ALL",
+            "enabled": False,
+            "revision": role["revision"],
+        },
     )
     assert updated.status_code == 200, updated.text
     assert updated.json()["revision"] == 2
+    assert updated.json()["code"] == "CUSTOM_ROLE_UPDATED"
+    assert updated.json()["data_scope"] == "ALL"
     assert updated.json()["enabled"] is False
 
     permissions_updated = client.put(
@@ -172,11 +183,20 @@ def test_role_crud_and_audit_before_after(role_api: RoleApiFixture):
         .where(OperationLog.entity_id == role["id"], OperationLog.action == "ROLE_UPDATE")
         .order_by(OperationLog.id)
     )
+    permission_audit = session.scalar(
+        select(OperationLog).where(
+            OperationLog.entity_id == role["id"],
+            OperationLog.action == "ROLE_PERMISSION_UPDATE",
+        )
+    )
     assert create_audit is not None
     assert create_audit.after_data["code"] == "CUSTOM_ROLE"
     assert update_audit is not None
     assert update_audit.before_data["name"] == "自定义角色"
     assert update_audit.after_data["name"] == "更新后的角色"
+    assert permission_audit is not None
+    assert permission_audit.before_data["permission_ids"] == [ids["feedback_permission"]]
+    assert permission_audit.after_data["permission_ids"] == []
 
     deleted = client.delete(f"/api/v1/roles/{role['id']}", headers=headers["manager"])
     assert deleted.status_code == 200, deleted.text
@@ -188,7 +208,7 @@ def test_role_crud_and_audit_before_after(role_api: RoleApiFixture):
         )
     )
     assert delete_audit is not None
-    assert delete_audit.before_data["code"] == "CUSTOM_ROLE"
+    assert delete_audit.before_data["code"] == "CUSTOM_ROLE_UPDATED"
     assert delete_audit.after_data is None
 
 
@@ -219,6 +239,47 @@ def test_system_role_and_assigned_role_cannot_be_deleted(role_api: RoleApiFixtur
     assert assigned_delete.json()["data"]["user_count"] == 1
 
 
+def test_system_role_is_read_only_and_permissions_cannot_be_cleared(
+    role_api: RoleApiFixture,
+):
+    client, _session, headers, ids = role_api
+    role_url = f"/api/v1/roles/{ids['system_role']}"
+
+    original = client.get(role_url, headers=headers["manager"])
+    assert original.status_code == 200
+    original_role = original.json()
+    assert original_role["code"] == "SUPER_ADMIN"
+    assert original_role["is_system"] is True
+    assert original_role["permission_ids"] == [ids["feedback_permission"]]
+
+    patched = client.patch(
+        role_url,
+        headers=headers["manager"],
+        json={
+            "code": "SUPER_ADMIN_RENAMED",
+            "data_scope": "SELF",
+            "enabled": False,
+            "revision": original_role["revision"],
+        },
+    )
+    assert patched.status_code == 409
+
+    permissions_updated = client.put(
+        f"{role_url}/permissions",
+        headers=headers["manager"],
+        json={"permission_ids": [], "revision": original_role["revision"]},
+    )
+    assert permissions_updated.status_code == 409
+
+    unchanged = client.get(role_url, headers=headers["manager"])
+    assert unchanged.status_code == 200
+    assert unchanged.json()["code"] == "SUPER_ADMIN"
+    assert unchanged.json()["data_scope"] == "ALL"
+    assert unchanged.json()["enabled"] is True
+    assert unchanged.json()["revision"] == original_role["revision"]
+    assert unchanged.json()["permission_ids"] == [ids["feedback_permission"]]
+
+
 def test_static_openapi_role_management_contract():
     spec_dir = Path(__file__).resolve().parents[2] / "spec"
     for filename in ("openapi-v1.5.yaml", "需求与版本管理系统_V1.5_OpenAPI.yaml"):
@@ -228,3 +289,17 @@ def test_static_openapi_role_management_contract():
         assert role_schema["properties"]["is_system"] == {"type": "boolean"}
         assert "get" in document["paths"]["/roles/{role_id}"]
         assert "delete" in document["paths"]["/roles/{role_id}"]
+        assert (
+            "系统角色"
+            in document["paths"]["/roles/{role_id}"]["patch"]["responses"]["409"]["description"]
+        )
+        assert (
+            "系统角色"
+            in document["paths"]["/roles/{role_id}/permissions"]["put"]["responses"]["409"][
+                "description"
+            ]
+        )
+        assert (
+            "系统角色"
+            in document["paths"]["/roles/{role_id}"]["delete"]["responses"]["409"]["description"]
+        )

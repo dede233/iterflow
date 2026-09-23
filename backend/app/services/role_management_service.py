@@ -33,6 +33,11 @@ class RoleManagementService:
             raise NotFoundError("角色不存在")
         return role
 
+    @staticmethod
+    def _ensure_custom_role(role: Role) -> None:
+        if role.is_system:
+            raise ConflictError("系统角色为只读基线, 禁止修改")
+
     def _validate_permission_ids(self, permission_ids: list[int]) -> None:
         existing_ids = self.repo.existing_permission_ids(permission_ids)
         missing_ids = sorted(set(permission_ids) - existing_ids)
@@ -72,6 +77,7 @@ class RoleManagementService:
 
     def update(self, role_id: int, payload: RoleUpdate, operator_id: int) -> RoleOut:
         role = self._role_or_404(role_id)
+        self._ensure_custom_role(role)
         before = self._snapshot(role)
         values = payload.model_dump(exclude={"revision"}, exclude_unset=True)
         if "code" in values:
@@ -100,6 +106,7 @@ class RoleManagementService:
         self, role_id: int, payload: RolePermissionUpdate, operator_id: int
     ) -> RoleOut:
         role = self._role_or_404(role_id)
+        self._ensure_custom_role(role)
         self._validate_permission_ids(payload.permission_ids)
         before = self._snapshot(role)
         result = cast(
@@ -118,15 +125,20 @@ class RoleManagementService:
             self.db.add(RolePermission(role_id=role_id, permission_id=permission_id))
         self.db.flush()
         self.db.refresh(role)
-        self.audit.log("ROLE", role_id, "ROLE_UPDATE", before=before, after=self._snapshot(role))
+        self.audit.log(
+            "ROLE",
+            role_id,
+            "ROLE_PERMISSION_UPDATE",
+            before=before,
+            after=self._snapshot(role),
+        )
         self.db.commit()
         self.db.refresh(role)
         return self._out(role)
 
     def delete(self, role_id: int, operator_id: int) -> RoleDeleteOut:
         role = self._role_or_404(role_id)
-        if role.is_system:
-            raise ConflictError("系统角色不可删除")
+        self._ensure_custom_role(role)
         user_count = self.repo.user_count(role_id)
         if user_count:
             raise ConflictError("角色已分配给用户, 无法删除", {"user_count": user_count})

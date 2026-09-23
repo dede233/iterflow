@@ -65,16 +65,22 @@ def require_permission(code: str) -> Callable:
     return require_any_permission(code)
 
 
-def require_all_permissions(*codes: str) -> Callable:
+def ensure_all_permissions(user: User, db: Session, *codes: str) -> None:
     if not codes:
         raise ValueError("at least one permission code is required")
 
     required = frozenset(codes)
+    permissions = UserRepository(db).permission_codes(user.id)
+    if "*" not in permissions and not required.issubset(permissions):
+        raise PermissionDenied()
+
+
+def require_all_permissions(*codes: str) -> Callable:
+    if not codes:
+        raise ValueError("at least one permission code is required")
 
     def checker(user: User = Depends(current_user), db: Session = Depends(get_db)) -> User:
-        permissions = UserRepository(db).permission_codes(user.id)
-        if "*" not in permissions and not required.issubset(permissions):
-            raise PermissionDenied()
+        ensure_all_permissions(user, db, *codes)
         return user
 
     setattr(checker, "__iterflow_required_permissions__", ("all", tuple(codes)))  # noqa: B010

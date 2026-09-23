@@ -24,6 +24,13 @@ CORE_ROUTE_PERMISSION_MATRIX: dict[tuple[str, str], dict[str, Any]] = {
         "conditional": {"LINK_EXISTING": "rd.requirement.view"},
         "scope": "target-requirement-SELF-404",
     },
+    ("POST", "/api/v1/requirements"): {
+        "gates": [("any", ("rd.requirement.create",))],
+        "conditional": {
+            "version_id": {"all": ("rd.version.edit", "rd.requirement.view")},
+        },
+        "scope": "target-version-SELF-404-when-version-id-is-present",
+    },
     ("GET", "/api/v1/requirements/{requirement_id}/feedbacks"): {
         "gates": [("all", ("rd.requirement.view", "rd.feedback.view"))],
         "scope": "requirement-and-feedback-SELF-404-filter",

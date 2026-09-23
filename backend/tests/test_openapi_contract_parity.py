@@ -106,3 +106,19 @@ def test_runtime_openapi_matches_static_contract() -> None:
 def test_openapi_sync_generator_is_idempotent() -> None:
     canonical = yaml.safe_load(CANONICAL.read_text(encoding="utf-8"))
     assert generated_spec(canonical) == canonical
+
+
+def test_requirement_create_conditional_authorization_is_documented() -> None:
+    static = yaml.safe_load(CANONICAL.read_text(encoding="utf-8"))
+    runtime_description = app.openapi()["paths"]["/api/v1/requirements"]["post"]["description"]
+    static_description = static["paths"]["/requirements"]["post"]["description"]
+    assert static_description == runtime_description
+    for term in (
+        "rd.requirement.create",
+        "version_id",
+        "version_revision",
+        "rd.version.edit",
+        "rd.requirement.view",
+        "Version DataScope",
+    ):
+        assert term in static_description

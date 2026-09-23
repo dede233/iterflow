@@ -297,7 +297,10 @@ export interface paths {
         /** 需求列表 */
         get: operations["list_requirements_api_v1_requirements_get"];
         put?: never;
-        /** 直接新建正式需求 */
+        /**
+         * 直接新建正式需求
+         * @description 普通创建需要 rd.requirement.create。指定 version_id 与 version_revision 时还需要 rd.version.edit 和 rd.requirement.view。目标版本同时受 Version DataScope 限制。
+         */
         post: operations["create_requirement_api_v1_requirements_post"];
         delete?: never;
         options?: never;

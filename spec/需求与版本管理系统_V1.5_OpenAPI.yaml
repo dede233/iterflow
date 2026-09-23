@@ -993,6 +993,8 @@ paths:
       tags:
       - Requirement
       summary: 直接新建正式需求
+      description: 普通创建需要 rd.requirement.create。指定 version_id 与 version_revision 时还需要 rd.version.edit
+        和 rd.requirement.view。目标版本同时受 Version DataScope 限制。
       operationId: create_requirement_api_v1_requirements_post
       security:
       - bearerAuth: []

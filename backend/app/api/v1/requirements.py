@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from app.api.deps import require_all_permissions, require_permission
+from app.api.deps import ensure_all_permissions, require_all_permissions, require_permission
 from app.api.openapi import api_error_responses
 from app.core.database import get_db
 from app.core.exceptions import NotFoundError
@@ -51,12 +51,21 @@ def list_requirements(
     return {"items": items, "page": page, "page_size": page_size, "total": total}
 
 
-@router.post("", response_model=RequirementOut)
+@router.post(
+    "",
+    response_model=RequirementOut,
+    description=(
+        "普通创建需要 rd.requirement.create。指定 version_id 与 version_revision 时还需要 "
+        "rd.version.edit 和 rd.requirement.view。目标版本同时受 Version DataScope 限制。"
+    ),
+)
 def create_requirement(
     payload: RequirementCreate,
     db: Session = Depends(get_db),
     user: User = Depends(require_permission("rd.requirement.create")),
 ):
+    if payload.version_id is not None:
+        ensure_all_permissions(user, db, "rd.version.edit", "rd.requirement.view")
     scope = UserRepository(db).data_scope(user.id)
     _ensure_scoped_version(db, user, payload.version_id)
     return RequirementService(db).create(payload, user.id, viewer_scope=scope)

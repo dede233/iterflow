@@ -2,13 +2,17 @@ from uuid import uuid4
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
+from fastapi.routing import APIRoute
 
+from app.api.deps import current_user
 from app.api.v1.router import api_router
 from app.core.audit_context import AuditContext, reset_audit_context, set_audit_context
 from app.core.config import get_settings
 from app.core.exceptions import AppError
 from app.core.readiness import readiness_status
+from app.schemas.common import ErrorResponse
 
 settings = get_settings()
 app = FastAPI(title=settings.app_name, version="1.5.0")
@@ -20,6 +24,70 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(api_router, prefix=settings.api_prefix)
+
+
+def _dependency_calls(dependant):
+    for dependency in dependant.dependencies:
+        yield dependency.call
+        yield from _dependency_calls(dependency)
+
+
+def _effective_api_routes(routes):
+    """Flatten FastAPI's lazily included routers into effective route contexts."""
+    for route in routes:
+        if isinstance(route, APIRoute):
+            yield route
+            continue
+
+        effective_candidates = getattr(route, "effective_candidates", None)
+        if effective_candidates is None:
+            continue
+        for candidate in effective_candidates():
+            if isinstance(candidate, APIRoute) or getattr(candidate, "dependant", None):
+                yield candidate
+            else:
+                yield from _effective_api_routes([candidate])
+
+
+def _error_response(description: str) -> dict:
+    return {
+        "description": description,
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}},
+    }
+
+
+def custom_openapi() -> dict:
+    if app.openapi_schema is not None:
+        return app.openapi_schema
+
+    schema = get_openapi(title=app.title, version=app.version, routes=app.routes)
+    schema.setdefault("components", {}).setdefault("schemas", {})["ErrorResponse"] = (
+        ErrorResponse.model_json_schema()
+    )
+
+    for route in _effective_api_routes(app.routes):
+        path = getattr(route, "path_format", route.path_format)
+        operations = schema.get("paths", {}).get(path, {})
+        calls = set(_dependency_calls(route.dependant))
+        authenticated = current_user in calls
+        has_permission_gate = any(
+            getattr(call, "__iterflow_required_permissions__", None) is not None for call in calls
+        )
+        for method in route.methods or ():
+            operation = operations.get(method.lower())
+            if operation is None:
+                continue
+            responses = operation.setdefault("responses", {})
+            if authenticated:
+                responses.setdefault("401", _error_response("未登录或登录凭证不可用"))
+            if has_permission_gate:
+                responses.setdefault("403", _error_response("无权执行该操作"))
+
+    app.openapi_schema = schema
+    return schema
+
+
+app.openapi = custom_openapi  # type: ignore[method-assign]
 
 
 @app.middleware("http")
@@ -61,12 +129,12 @@ async def app_error_handler(request: Request, exc: AppError):
     )
 
 
-@app.get("/health")
+@app.get("/health", include_in_schema=False)
 def health():
     return {"status": "ok", "version": "1.5.0"}
 
 
-@app.get("/ready")
+@app.get("/ready", include_in_schema=False)
 def ready():
     is_ready, components = readiness_status()
     payload = {

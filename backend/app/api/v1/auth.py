@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.api.deps import current_user
+from app.api.openapi import api_error_responses
 from app.core.database import get_db
 from app.models.entities import User
 from app.schemas.auth import (
@@ -17,22 +18,22 @@ from app.services.auth_service import AuthService
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/login", response_model=TokenPair)
+@router.post("/login", response_model=TokenPair, responses=api_error_responses(401))
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
     return AuthService(db).login(payload.username, payload.password)
 
 
-@router.post("/refresh", response_model=TokenPair)
+@router.post("/refresh", response_model=TokenPair, responses=api_error_responses(401))
 def refresh(payload: RefreshRequest, db: Session = Depends(get_db)):
     return AuthService(db).refresh(payload.refresh_token)
 
 
-@router.post("/logout", response_model=LogoutResponse)
+@router.post("/logout", response_model=LogoutResponse, responses=api_error_responses(401))
 def logout(payload: RefreshRequest, db: Session = Depends(get_db)):
     return AuthService(db).logout(payload.refresh_token)
 
 
-@router.post("/change-password", response_model=TokenPair)
+@router.post("/change-password", response_model=TokenPair, responses=api_error_responses(401, 409))
 def change_password(
     payload: ChangePasswordRequest,
     db: Session = Depends(get_db),

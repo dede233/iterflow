@@ -1,13 +1,10 @@
-from typing import Any, cast
-
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import update
-from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_all_data_scope, require_permission
+from app.api.openapi import api_error_responses
 from app.core.database import get_db
-from app.core.exceptions import ConflictError, NotFoundError, PermissionDenied
+from app.core.exceptions import NotFoundError, PermissionDenied
 from app.models.entities import User
 from app.models.enums import DataScope
 from app.repositories.user_repository import UserRepository
@@ -19,7 +16,6 @@ from app.schemas.user import (
     UserStatusChange,
     UserUpdate,
 )
-from app.services.audit_service import AuditService
 from app.services.user_administration_service import UserAdministrationService
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -73,7 +69,7 @@ def list_users(
     }
 
 
-@router.get("/{user_id}", response_model=UserOut)
+@router.get("/{user_id}", response_model=UserOut, responses=api_error_responses(404))
 def get_user(
     user_id: int,
     db: Session = Depends(get_db),
@@ -83,7 +79,15 @@ def get_user(
     return _user_out(repository, _get_user_in_scope(repository, user_id, current))
 
 
-@router.post("", response_model=UserOut)
+@router.post(
+    "",
+    response_model=UserOut,
+    responses=api_error_responses(
+        403,
+        409,
+        descriptions={403: "授予 SUPER_ADMIN 角色需要当前操作人是有效的超级管理员。"},
+    ),
+)
 def create_user(
     payload: UserCreate,
     db: Session = Depends(get_db),
@@ -94,7 +98,7 @@ def create_user(
     return UserAdministrationService(db).create(payload, current.id)
 
 
-@router.patch("/{user_id}", response_model=UserOut)
+@router.patch("/{user_id}", response_model=UserOut, responses=api_error_responses(404, 409))
 def update_user(
     user_id: int,
     payload: UserUpdate,
@@ -102,32 +106,23 @@ def update_user(
     current: User = Depends(require_permission("sys.user.edit")),
 ):
     repository = UserRepository(db)
-    item = _get_user_in_scope(repository, user_id, current)
-    before = {
-        "display_name": item.display_name,
-        "email": item.email,
-        "mobile": item.mobile,
-    }
-    values = payload.model_dump(exclude={"revision"}, exclude_unset=True)
-    values["updated_by"] = current.id
-    result = cast(
-        CursorResult[Any],
-        db.execute(
-            update(User)
-            .where(User.id == user_id, User.revision == payload.revision)
-            .values(**values, revision=User.revision + 1)
-        ),
-    )
-    if not result.rowcount:
-        db.refresh(item)
-        raise ConflictError("用户已被其他用户修改", {"current_revision": item.revision})
-    AuditService(db).log("USER", user_id, "UPDATE", before=before, after=values)
-    db.commit()
-    db.refresh(item)
-    return _user_out(repository, item)
+    _get_user_in_scope(repository, user_id, current)
+    return UserAdministrationService(db).update_profile(user_id, payload, current.id)
 
 
-@router.patch("/{user_id}/status", response_model=UserOut)
+@router.patch(
+    "/{user_id}/status",
+    response_model=UserOut,
+    responses=api_error_responses(
+        404,
+        403,
+        409,
+        descriptions={
+            403: "变更 SUPER_ADMIN 用户状态需要当前操作人是有效的超级管理员。",
+            409: "不能移除最后一个有效的超级管理员。",
+        },
+    ),
+)
 def set_status(
     user_id: int,
     payload: UserStatusChange,
@@ -138,7 +133,19 @@ def set_status(
     return UserAdministrationService(db).set_status(user_id, payload, current.id)
 
 
-@router.put("/{user_id}/roles", response_model=UserOut)
+@router.put(
+    "/{user_id}/roles",
+    response_model=UserOut,
+    responses=api_error_responses(
+        404,
+        403,
+        409,
+        descriptions={
+            403: "授予或撤销 SUPER_ADMIN 角色需要当前操作人是有效的超级管理员。",
+            409: "不能移除最后一个有效的超级管理员。",
+        },
+    ),
+)
 def update_user_roles(
     user_id: int,
     payload: UserRoleUpdate,

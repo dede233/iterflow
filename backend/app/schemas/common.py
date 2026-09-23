@@ -1,4 +1,4 @@
-from typing import TypeVar
+from typing import Any, TypeVar
 
 from pydantic import BaseModel, Field
 
@@ -21,3 +21,10 @@ class PageResult[T](BaseModel):
 
 class RevisionPayload(BaseModel):
     revision: int = Field(ge=1)
+
+
+class ErrorResponse(BaseModel):
+    code: int
+    message: str
+    data: Any | None
+    request_id: str | None

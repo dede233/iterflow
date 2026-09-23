@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.api.deps import current_user
+from app.api.openapi import api_error_responses
 from app.core.database import get_db
 from app.models.entities import User
 from app.models.enums import EditingEntityType
@@ -16,7 +17,7 @@ class EditHeartbeat(BaseModel):
     entity_id: int
 
 
-@router.post("/start")
+@router.post("/start", responses=api_error_responses(403, 404))
 def start_edit(
     payload: EditHeartbeat,
     db: Session = Depends(get_db),
@@ -29,7 +30,7 @@ def start_edit(
     return {"existing_editor": existing}
 
 
-@router.post("/heartbeat")
+@router.post("/heartbeat", responses=api_error_responses(403, 404))
 def heartbeat(
     payload: EditHeartbeat,
     db: Session = Depends(get_db),
@@ -45,7 +46,7 @@ def heartbeat(
     return {"ok": existing is None, "existing_editor": existing}
 
 
-@router.post("/end")
+@router.post("/end", responses=api_error_responses(403, 404))
 def end_edit(
     payload: EditHeartbeat,
     db: Session = Depends(get_db),

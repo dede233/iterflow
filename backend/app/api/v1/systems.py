@@ -1,26 +1,17 @@
 from fastapi import APIRouter, Depends
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_permission
 from app.core.database import get_db
-from app.models.entities import BusinessModule, BusinessSystem, User
+from app.models.entities import User
+from app.schemas.system import BusinessSystemCatalogOut
+from app.services.system_query_service import SystemQueryService
 
 router = APIRouter(prefix="/systems", tags=["systems"])
 
 
-@router.get("")
+@router.get("", response_model=BusinessSystemCatalogOut)
 def list_systems(
     db: Session = Depends(get_db), user: User = Depends(require_permission("sys.system.view"))
 ):
-    systems = db.scalars(
-        select(BusinessSystem)
-        .where(BusinessSystem.enabled.is_(True))
-        .order_by(BusinessSystem.sort_order)
-    ).all()
-    modules = db.scalars(
-        select(BusinessModule)
-        .where(BusinessModule.enabled.is_(True))
-        .order_by(BusinessModule.sort_order)
-    ).all()
-    return {"systems": systems, "modules": modules}
+    return SystemQueryService(db).list_enabled()

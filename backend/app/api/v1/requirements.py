@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_all_permissions, require_permission
+from app.api.openapi import api_error_responses
 from app.core.database import get_db
 from app.core.exceptions import NotFoundError
 from app.models.entities import Requirement, User
@@ -92,7 +93,11 @@ def list_requirement_feedbacks(
     ]
 
 
-@router.patch("/{requirement_id}", response_model=RequirementOut)
+@router.patch(
+    "/{requirement_id}",
+    response_model=RequirementOut,
+    responses=api_error_responses(404, 409),
+)
 def update_requirement(
     requirement_id: int,
     payload: RequirementUpdate,
@@ -103,7 +108,11 @@ def update_requirement(
     return RequirementService(db).update(requirement_id, payload, user.id)
 
 
-@router.patch("/{requirement_id}/status", response_model=RequirementOut)
+@router.patch(
+    "/{requirement_id}/status",
+    response_model=RequirementOut,
+    responses=api_error_responses(404, 409),
+)
 def change_status(
     requirement_id: int,
     payload: RequirementStatusChange,

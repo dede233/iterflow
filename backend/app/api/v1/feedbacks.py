@@ -5,6 +5,7 @@ from fastapi.responses import Response, StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_permission
+from app.api.openapi import api_error_responses
 from app.core.database import get_db
 from app.core.exceptions import NotFoundError, PermissionDenied
 from app.models.entities import Feedback, User
@@ -93,7 +94,7 @@ def get_feedback(
     return _scoped_feedback_or_404(db, user, feedback_id)
 
 
-@router.patch("/{feedback_id}", response_model=FeedbackOut)
+@router.patch("/{feedback_id}", response_model=FeedbackOut, responses=api_error_responses(404, 409))
 def update_feedback(
     feedback_id: int,
     payload: FeedbackUpdate,
@@ -104,7 +105,9 @@ def update_feedback(
     return FeedbackService(db).update(feedback_id, payload, user.id)
 
 
-@router.patch("/{feedback_id}/status", response_model=FeedbackOut)
+@router.patch(
+    "/{feedback_id}/status", response_model=FeedbackOut, responses=api_error_responses(404, 409)
+)
 def change_feedback_status(
     feedback_id: int,
     payload: FeedbackStatusChange,
@@ -178,7 +181,7 @@ async def add_feedback_attachment(
     )
 
 
-@router.get("/{feedback_id}/attachments/{file_id}/download")
+@router.get("/{feedback_id}/attachments/{file_id}/download", responses=api_error_responses(404))
 def download_feedback_attachment(
     feedback_id: int,
     file_id: int,
@@ -224,7 +227,11 @@ def create_feedback_comment(
     return CommentService(db).create_for_entity("FEEDBACK", feedback_id, payload.content, user.id)
 
 
-@router.post("/{feedback_id}/convert", response_model=RequirementOut)
+@router.post(
+    "/{feedback_id}/convert",
+    response_model=RequirementOut,
+    responses=api_error_responses(403, 404, 409),
+)
 def convert_feedback(
     feedback_id: int,
     payload: FeedbackConvertRequest,

@@ -15,8 +15,18 @@ fi
 cleanup
 "${COMPOSE[@]}" up -d --build
 for service in db redis api web; do
-  state="$("${COMPOSE[@]}" ps --format json "$service" | jq -r '.Health')"
-  [[ "$state" == healthy ]] || { echo "$service is not healthy: $state" >&2; exit 1; }
+  state=""
+  for attempt in {1..40}; do
+    state="$("${COMPOSE[@]}" ps --format json "$service" | jq -r '.Health')"
+    [[ "$state" == healthy ]] && break
+    [[ "$state" == unhealthy ]] && break
+    sleep 2
+  done
+  if [[ "$state" != healthy ]]; then
+    echo "$service is not healthy: $state" >&2
+    "${COMPOSE[@]}" logs --tail 80 "$service" >&2
+    exit 1
+  fi
 done
 for service in migrate seed; do
   state="$("${COMPOSE[@]}" ps --all --format json "$service" | jq -r '.State')"

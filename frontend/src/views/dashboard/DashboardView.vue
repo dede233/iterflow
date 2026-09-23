@@ -1,10 +1,30 @@
-<template><div class="page"><div class="page-title">首页</div><el-row :gutter="12"><el-col :xs="12" :sm="6" v-for="item in items" :key="item.label"><el-card><div class="label">{{item.label}}</div><div class="value">{{item.value}}</div></el-card></el-col></el-row><el-card style="margin-top:16px"><h3>最近动态</h3><el-timeline><el-timeline-item timestamp="刚刚">V1.0.1 进入测试阶段</el-timeline-item><el-timeline-item timestamp="2小时前">FB-20260920-0003 已转为需求</el-timeline-item></el-timeline></el-card></div></template>
 <script setup lang="ts">
-const items = [
-  { label: '待处理反馈', value: 12 },
-  { label: '进行中需求', value: 28 },
-  { label: '当前版本', value: 'V1.0.1' },
-  { label: '累计发布', value: 18 },
-]
+import { onMounted, ref } from 'vue'
+import { ElMessage } from 'element-plus'
+import { getDashboardOverview } from '@/api/dashboard'
+import DashboardOverviewContent from '@/components/DashboardOverviewContent.vue'
+import type { DashboardOverview } from '@/types/dashboard'
+
+const loading = ref(true)
+const overview = ref<DashboardOverview | null>(null)
+const failed = ref(false)
+
+onMounted(async () => {
+  try {
+    overview.value = await getDashboardOverview()
+  } catch {
+    failed.value = true
+    ElMessage.error('系统概览加载失败，请稍后重试')
+  } finally {
+    loading.value = false
+  }
+})
 </script>
-<style scoped>.label{color:#64748b}.value{font-size:28px;font-weight:800;margin-top:8px}</style>
+
+<template>
+  <div class="page">
+    <el-skeleton v-if="loading" :rows="8" animated aria-label="正在加载系统概览" />
+    <el-result v-else-if="failed" icon="error" title="系统概览加载失败" sub-title="请稍后刷新重试" />
+    <DashboardOverviewContent v-else-if="overview" :overview="overview" />
+  </div>
+</template>

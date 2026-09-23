@@ -37,7 +37,7 @@ export const listFeedbackAttachments = (id: number) =>
 export const uploadFeedbackAttachment = (id: number, file: File) => {
   const form = new FormData()
   form.append('file', file)
-  return api.post<AttachmentItem>(`/feedbacks/${id}/attachments`, form).then((r) => r.data)
+  return api.post<AttachmentItem>(`/feedbacks/${id}/attachments`, form, { timeout: 120000 }).then((r) => r.data)
 }
 
 // Download goes through the authenticated axios client (Authorization header),

@@ -139,8 +139,8 @@ def test_seed_repairs_existing_admin_role_and_missing_links(
     seed_session.add_all([admin, super_admin])
     seed_session.commit()
 
-    seed.seed_database(seed_session, username="existing-admin", password="ignored-password")
-    seed.seed_database(seed_session, username="existing-admin", password="ignored-password")
+    seed.seed_database(seed_session, username="existing-admin", password=None)
+    seed.seed_database(seed_session, username="existing-admin", password=None)
 
     assert admin.password_hash == "existing-password-hash"
     assert super_admin.name == "超级管理员"
@@ -155,3 +155,11 @@ def test_seed_repairs_existing_admin_role_and_missing_links(
     )
     assert len(permission_ids) == len(seed.PERMISSIONS)
     assert _count(seed_session, UserRole) == 1
+
+
+def test_seed_refuses_missing_or_short_bootstrap_password(seed_session: Session) -> None:
+    with pytest.raises(ValueError, match="8-128"):
+        seed.seed_database(seed_session, username="fresh-admin", password=None)
+    with pytest.raises(ValueError, match="8-128"):
+        seed.seed_database(seed_session, username="fresh-admin", password="short")
+    assert _count(seed_session, User) == 0

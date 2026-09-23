@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from app.api.deps import require_permission
+from app.api.deps import require_all_permissions, require_permission
 from app.core.database import get_db
 from app.core.exceptions import NotFoundError
 from app.models.entities import Requirement, User
@@ -56,8 +56,9 @@ def create_requirement(
     db: Session = Depends(get_db),
     user: User = Depends(require_permission("rd.requirement.create")),
 ):
+    scope = UserRepository(db).data_scope(user.id)
     _ensure_scoped_version(db, user, payload.version_id)
-    return RequirementService(db).create(payload, user.id)
+    return RequirementService(db).create(payload, user.id, viewer_scope=scope)
 
 
 @router.get("/{requirement_id}", response_model=RequirementOut)
@@ -73,9 +74,10 @@ def get_requirement(
 def list_requirement_feedbacks(
     requirement_id: int,
     db: Session = Depends(get_db),
-    user: User = Depends(require_permission("rd.requirement.view")),
+    user: User = Depends(require_all_permissions("rd.requirement.view", "rd.feedback.view")),
 ):
     _scoped_requirement_or_404(db, user, requirement_id)
+    feedback_scope = UserRepository(db).data_scope(user.id)
     return [
         LinkedFeedbackOut(
             feedback_id=fb.id,
@@ -84,7 +86,9 @@ def list_requirement_feedbacks(
             status=fb.status,
             is_primary=is_primary,
         )
-        for fb, is_primary in FeedbackService(db).linked_feedbacks(requirement_id)
+        for fb, is_primary in FeedbackService(db).linked_feedbacks(
+            requirement_id, viewer_id=user.id, viewer_scope=feedback_scope
+        )
     ]
 
 

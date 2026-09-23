@@ -5,6 +5,7 @@ from app.core.exceptions import AppError, ConflictError, NotFoundError
 from app.core.ids import next_business_no
 from app.models.entities import Requirement, Version
 from app.models.enums import (
+    DataScope,
     ManualRequirementStatus,
     RequirementSource,
     RequirementStatus,
@@ -65,6 +66,8 @@ class RequirementService:
         payload: RequirementCreate,
         operator_id: int,
         source: RequirementSource = RequirementSource.DIRECT,
+        *,
+        viewer_scope: DataScope,
     ) -> Requirement:
         item = Requirement(
             requirement_no=next_business_no(
@@ -89,6 +92,7 @@ class RequirementService:
                 item,
                 version_revision=payload.version_revision,
                 operator_id=operator_id,
+                viewer_scope=viewer_scope,
             )
         self.audit.log(
             "REQUIREMENT",

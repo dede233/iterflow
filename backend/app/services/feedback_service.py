@@ -381,11 +381,17 @@ class FeedbackService:
         self.db.refresh(target)
         return target
 
-    def linked_feedbacks(self, requirement_id: int) -> list[tuple[Feedback, bool]]:
-        rows = self.db.execute(
+    def linked_feedbacks(
+        self, requirement_id: int, *, viewer_id: int, viewer_scope: DataScope
+    ) -> list[tuple[Feedback, bool]]:
+        statement = (
             select(Feedback, RequirementFeedback.is_primary)
             .join(RequirementFeedback, RequirementFeedback.feedback_id == Feedback.id)
             .where(RequirementFeedback.requirement_id == requirement_id)
-            .order_by(RequirementFeedback.is_primary.desc(), Feedback.id.asc())
+        )
+        if viewer_scope is not DataScope.ALL:
+            statement = statement.where(Feedback.submitter_id == viewer_id)
+        rows = self.db.execute(
+            statement.order_by(RequirementFeedback.is_primary.desc(), Feedback.id.asc())
         ).all()
         return [(fb, bool(is_primary)) for fb, is_primary in rows]

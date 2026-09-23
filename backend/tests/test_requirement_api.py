@@ -75,12 +75,30 @@ def req_api(tmp_path: Path) -> Iterator[Fixture]:
     with Session(engine, expire_on_commit=False) as session:
         role_all = Role(code="ALLROLE", name="全域", data_scope=DataScope.ALL)
         role_self = Role(code="SELFROLE", name="本人", data_scope=DataScope.SELF)
+        requirement_reader_role = Role(
+            code="REQUIREMENT_READER", name="仅需求查看", data_scope=DataScope.ALL
+        )
+        converter_role = Role(code="CONVERTER", name="仅反馈转换", data_scope=DataScope.ALL)
         perms = {code: Permission(code=code, name=code) for code in sorted(PERMS)}
-        session.add_all([role_all, role_self, *perms.values()])
+        session.add_all(
+            [role_all, role_self, requirement_reader_role, converter_role, *perms.values()]
+        )
         session.flush()
         for role in (role_all, role_self):
             for perm in perms.values():
                 session.add(RolePermission(role_id=role.id, permission_id=perm.id))
+        session.add(
+            RolePermission(
+                role_id=requirement_reader_role.id,
+                permission_id=perms["rd.requirement.view"].id,
+            )
+        )
+        session.add(
+            RolePermission(
+                role_id=converter_role.id,
+                permission_id=perms["rd.feedback.convert"].id,
+            )
+        )
 
         def user(name: str) -> User:
             return User(
@@ -94,18 +112,28 @@ def req_api(tmp_path: Path) -> Iterator[Fixture]:
         boss = user("boss")  # ALL
         alice = user("alice")  # SELF
         bob = user("bob")  # SELF
-        session.add_all([boss, alice, bob])
+        reader = user("requirement-reader")  # ALL, without feedback.view
+        converter = user("converter")  # ALL, feedback.convert only
+        session.add_all([boss, alice, bob, reader, converter])
         session.flush()
         session.add_all(
             [
                 UserRole(user_id=boss.id, role_id=role_all.id),
                 UserRole(user_id=alice.id, role_id=role_self.id),
                 UserRole(user_id=bob.id, role_id=role_self.id),
+                UserRole(user_id=reader.id, role_id=requirement_reader_role.id),
+                UserRole(user_id=converter.id, role_id=converter_role.id),
             ]
         )
         session.commit()
 
-        ids = {"boss": boss.id, "alice": alice.id, "bob": bob.id}
+        ids = {
+            "boss": boss.id,
+            "alice": alice.id,
+            "bob": bob.id,
+            "reader": reader.id,
+            "converter": converter.id,
+        }
         headers = {
             name: {"Authorization": f"Bearer {create_access_token(uid)}"}
             for name, uid in ids.items()
@@ -358,6 +386,57 @@ def test_convert_link_existing_out_of_scope_is_404(req_api):
     )
 
 
+def test_linked_feedback_requires_both_permissions_and_filters_feedback_scope(req_api):
+    client, session, headers, _ids = req_api
+    requirement = _create_req(client, headers["alice"], title="可见需求")
+    alice_feedback = _create_feedback(client, headers["alice"], title="本人反馈")
+    bob_feedback = _create_feedback(client, headers["bob"], title="他人反馈")
+    session.add_all(
+        [
+            RequirementFeedback(requirement_id=requirement["id"], feedback_id=alice_feedback["id"]),
+            RequirementFeedback(requirement_id=requirement["id"], feedback_id=bob_feedback["id"]),
+        ]
+    )
+    session.commit()
+
+    forbidden = client.get(
+        f"/api/v1/requirements/{requirement['id']}/feedbacks", headers=headers["reader"]
+    )
+    assert forbidden.status_code == 403
+
+    visible = client.get(
+        f"/api/v1/requirements/{requirement['id']}/feedbacks", headers=headers["alice"]
+    )
+    assert visible.status_code == 200
+    assert [item["feedback_id"] for item in visible.json()] == [alice_feedback["id"]]
+
+
+def test_converter_without_requirement_view_can_create_but_not_link(req_api):
+    client, _session, headers, _ids = req_api
+    existing = _create_req(client, headers["alice"], title="已有需求")
+    linked_feedback = _create_feedback(client, headers["alice"], title="不能关联")
+    link = client.post(
+        f"/api/v1/feedbacks/{linked_feedback['id']}/convert",
+        headers=headers["converter"],
+        json={"type": "LINK_EXISTING", "revision": 1, "requirement_id": existing["id"]},
+    )
+    assert link.status_code == 403
+
+    new_feedback = _create_feedback(client, headers["alice"], title="可以新建")
+    create = client.post(
+        f"/api/v1/feedbacks/{new_feedback['id']}/convert",
+        headers=headers["converter"],
+        json={
+            "type": "CREATE_NEW",
+            "revision": 1,
+            "requirement_title": "从反馈新建",
+            "requirement_type": "FEATURE",
+            "description": "描述内容",
+        },
+    )
+    assert create.status_code == 200, create.text
+
+
 def test_convert_stale_revision_rolls_back(req_api):
     client, session, headers, _ids = req_api
     fb = _create_feedback(client, headers["alice"], title="并发反馈")
@@ -436,6 +515,13 @@ def test_openapi_declares_requirement_and_convert_contract(spec_name):
     assert "patch" in paths["/requirements/{requirement_id}"]
     assert "patch" in paths["/requirements/{requirement_id}/status"]
     assert "get" in paths["/requirements/{requirement_id}/feedbacks"]
+    linked_feedbacks_description = paths["/requirements/{requirement_id}/feedbacks"]["get"][
+        "description"
+    ]
+    assert "rd.requirement.view" in linked_feedbacks_description
+    assert "rd.feedback.view" in linked_feedbacks_description
+    assert "Feedback DataScope" in linked_feedbacks_description
+    assert "rd.requirement.view" in paths["/feedbacks/{feedback_id}/convert"]["post"]["description"]
 
     schemas = spec["components"]["schemas"]
     assert "RequirementPage" in schemas

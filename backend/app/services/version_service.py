@@ -166,8 +166,10 @@ class VersionService:
             return RequirementStatus.PLANNED
         return RequirementStatus(current)
 
-    def requirements_view(self, version_id: int) -> tuple[list[Requirement], dict[str, Any]]:
-        requirements = self.repo.active_requirements(version_id)
+    def requirements_view(
+        self, version_id: int, viewer_id: int, viewer_scope: DataScope
+    ) -> tuple[list[Requirement], dict[str, Any]]:
+        requirements = self.repo.active_requirements_scoped(version_id, viewer_id, viewer_scope)
         by_status: dict[str, int] = {}
         completed = 0
         for req in requirements:
@@ -182,6 +184,13 @@ class VersionService:
             "completion_rate": round(completed / total, 4) if total else 0.0,
         }
         return requirements, stats
+
+    @staticmethod
+    def _ensure_version_scope(version: Version, viewer_id: int, viewer_scope: DataScope) -> None:
+        if viewer_scope is DataScope.ALL:
+            return
+        if version.owner_id != viewer_id and version.created_by != viewer_id:
+            raise NotFoundError("版本不存在")
 
     def _requirement_conflict(
         self, req_repo: RequirementRepository, requirement_id: int
@@ -282,11 +291,13 @@ class VersionService:
         *,
         version_revision: int | None,
         operator_id: int,
+        viewer_scope: DataScope,
     ) -> None:
         """Attach a just-created Requirement without committing the outer transaction."""
         if version_revision is None:  # schema validation normally catches this.
             raise AppError(42241, "关联版本时必须提供 version_revision", 422)
         version = self._lock_version(version_id, message="目标版本不存在")
+        self._ensure_version_scope(version, operator_id, viewer_scope)
         self._ensure_mutable(version)
         self._ensure_version_revision(version, version_revision)
 
@@ -317,6 +328,7 @@ class VersionService:
         viewer_id: int,
     ) -> Version:
         version = self._lock_version(version_id)
+        self._ensure_version_scope(version, viewer_id, viewer_scope)
         self._ensure_mutable(version)
         self._ensure_version_revision(version, payload.version_revision)
         req_repo = RequirementRepository(self.db)
@@ -368,17 +380,20 @@ class VersionService:
         requirement_id: int,
         payload: RemoveRequirementRequest,
         operator_id: int,
+        viewer_scope: DataScope,
+        viewer_id: int,
     ) -> Version:
         version = self._lock_version(version_id)
+        self._ensure_version_scope(version, viewer_id, viewer_scope)
         self._ensure_mutable(version)
         self._ensure_version_revision(version, payload.version_revision)
+        req_repo = RequirementRepository(self.db)
+        requirement = req_repo.get_scoped(requirement_id, viewer_id, viewer_scope)
+        if requirement is None:
+            raise NotFoundError("需求不存在")
         relation = self.repo.active_relation(version_id, requirement_id)
         if relation is None:
             raise NotFoundError("该需求不在此版本中")
-        req_repo = RequirementRepository(self.db)
-        requirement = req_repo.get(requirement_id)
-        if requirement is None:
-            raise NotFoundError("需求不存在")
         previous_current_version_id = requirement.current_version_id
         if not req_repo.update_with_revision(
             requirement_id,
@@ -436,20 +451,24 @@ class VersionService:
             target = locked_versions.get(target_version_id)
             if target is None:
                 raise NotFoundError("目标版本不存在")
+            self._ensure_version_scope(target, viewer_id, viewer_scope)
             old = self.repo.active_relation_of_requirement(requirement.id)
             if old is None or old.version_id in version_ids:
                 break
             version_ids.add(old.version_id)
 
-        self._ensure_mutable(target)
-        self._ensure_version_revision(target, payload.version_revision)
         old_version_id = old.version_id if old else None
         old_version = locked_versions.get(old_version_id) if old_version_id is not None else None
         if old is not None:
-            if old.version_id == target_version_id:
-                raise AppError(40933, "需求已在目标版本中", 409)
             if old_version is None:
                 raise NotFoundError("原版本不存在")
+            self._ensure_version_scope(old_version, viewer_id, viewer_scope)
+
+        self._ensure_mutable(target)
+        self._ensure_version_revision(target, payload.version_revision)
+        if old is not None and old_version is not None:
+            if old.version_id == target_version_id:
+                raise AppError(40933, "需求已在目标版本中", 409)
             self._ensure_mutable(old_version)  # cannot move out of a frozen source
 
         previous_current_version_id = requirement.current_version_id

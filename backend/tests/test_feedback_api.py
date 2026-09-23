@@ -1,5 +1,8 @@
+import hashlib
+import io
 from collections.abc import Iterator
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
 import yaml
@@ -28,14 +31,19 @@ from app.models.enums import (
     DataScope,
     FeedbackStatus,
     ManualFeedbackStatus,
+    StorageDriver,
     UserStatus,
 )
+from app.services.file_service import FileService
 
 FEEDBACK_PERMISSIONS = {
     "rd.feedback.view",
     "rd.feedback.create",
     "rd.feedback.edit",
     "rd.feedback.convert",
+    "sys.file.upload",
+    "sys.file.download",
+    "sys.file.delete",
 }
 
 SPEC_DIR = Path(__file__).resolve().parents[2] / "spec"
@@ -103,11 +111,22 @@ def feedback_api(tmp_path: Path) -> Iterator[FeedbackFixture]:
             for code in codes:
                 session.add(RolePermission(role_id=role.id, permission_id=permissions[code].id))
 
-        grant(member_role, {"rd.feedback.view", "rd.feedback.create", "rd.feedback.edit"})
+        grant(
+            member_role,
+            {"rd.feedback.view", "rd.feedback.create", "rd.feedback.edit", "sys.file.delete"},
+        )
         grant(cs_role, {"rd.feedback.view", "rd.feedback.create", "rd.feedback.edit"})
         grant(
             pm_role,
-            {"rd.feedback.view", "rd.feedback.create", "rd.feedback.edit", "rd.feedback.convert"},
+            {
+                "rd.feedback.view",
+                "rd.feedback.create",
+                "rd.feedback.edit",
+                "rd.feedback.convert",
+                "sys.file.upload",
+                "sys.file.download",
+                "sys.file.delete",
+            },
         )
 
         def make_user(username: str) -> User:
@@ -305,6 +324,146 @@ def test_all_scope_can_see_and_accept_others_feedback(feedback_api):
     )
     assert closed.status_code == 200
     assert closed.json()["status"] == "CLOSED"
+
+
+def test_business_attachment_bypasses_generic_file_scope_only_after_feedback_auth(
+    feedback_api, monkeypatch
+):
+    client, session, headers, _ids = feedback_api
+    feedback = _create(client, headers["alice"], title="含附件反馈")
+    item = FileObject(
+        id=500,
+        storage_key="uploads/opaque-key",
+        original_name="evidence.txt",
+        mime_type="text/plain",
+        size=8,
+        sha256=hashlib.sha256(b"evidence").hexdigest(),
+        storage_driver=StorageDriver.LOCAL,
+        created_by=1,
+        updated_by=1,
+    )
+    session.add(item)
+    session.flush()
+    session.add(
+        AttachmentRelation(file_id=item.id, entity_type="FEEDBACK", entity_id=feedback["id"])
+    )
+    session.commit()
+
+    class MemoryStorage:
+        def exists(self, _key: str) -> bool:
+            return True
+
+        def open(self, _key: str):
+            return io.BytesIO(b"evidence")
+
+    monkeypatch.setattr(FileService, "_storage", lambda self, _driver: MemoryStorage())
+
+    assert client.get(f"/api/v1/files/{item.id}/download", headers=headers["pm"]).status_code == 404
+    assert client.get(f"/api/v1/files/{item.id}/exists", headers=headers["pm"]).status_code == 404
+    assert client.delete(f"/api/v1/files/{item.id}", headers=headers["pm"]).status_code == 409
+
+    business = client.get(
+        f"/api/v1/feedbacks/{feedback['id']}/attachments/{item.id}/download",
+        headers=headers["alice"],
+    )
+    assert business.status_code == 200
+    assert business.content == b"evidence"
+    assert "\r" not in business.headers["content-disposition"]
+    assert "\n" not in business.headers["content-disposition"]
+    hidden_feedback = client.get(
+        f"/api/v1/feedbacks/{feedback['id']}/attachments/{item.id}/download",
+        headers=headers["bob"],
+    )
+    assert hidden_feedback.status_code == 404
+    assert (
+        "storage_key"
+        not in client.get(f"/api/v1/feedbacks/{feedback['id']}", headers=headers["alice"]).json()
+    )
+
+
+def test_generic_file_delete_checks_data_scope_before_attachment_existence(
+    feedback_api, monkeypatch
+):
+    client, session, headers, ids = feedback_api
+    storage = Mock()
+    monkeypatch.setattr(FileService, "_storage", lambda self, _driver: storage)
+
+    def add_file(*, owner_id: int, key: str, attached: bool) -> FileObject:
+        item = FileObject(
+            storage_key=key,
+            original_name=f"{key}.txt",
+            mime_type="text/plain",
+            size=1,
+            sha256=hashlib.sha256(key.encode()).hexdigest(),
+            storage_driver=StorageDriver.LOCAL,
+            created_by=owner_id,
+            updated_by=owner_id,
+        )
+        session.add(item)
+        session.flush()
+        if attached:
+            session.add(AttachmentRelation(file_id=item.id, entity_type="FEEDBACK", entity_id=999))
+            session.flush()
+        return item
+
+    foreign_attached = add_file(owner_id=ids["bob"], key="foreign-attached", attached=True)
+    own_attached = add_file(owner_id=ids["alice"], key="own-attached", attached=True)
+    all_attached = add_file(owner_id=ids["bob"], key="all-attached", attached=True)
+    foreign_standalone = add_file(owner_id=ids["bob"], key="foreign-standalone", attached=False)
+    own_standalone = add_file(owner_id=ids["alice"], key="own-standalone", attached=False)
+    session.commit()
+
+    # An out-of-scope attached file must be indistinguishable from a missing file.
+    response = client.delete(f"/api/v1/files/{foreign_attached.id}", headers=headers["alice"])
+    assert response.status_code == 404
+    assert session.get(FileObject, foreign_attached.id) is not None
+    assert (
+        session.scalar(
+            select(AttachmentRelation.id).where(AttachmentRelation.file_id == foreign_attached.id)
+        )
+        is not None
+    )
+    storage.delete.assert_not_called()
+
+    # In-scope attached files remain protected for both SELF and ALL users.
+    response = client.delete(f"/api/v1/files/{own_attached.id}", headers=headers["alice"])
+    assert response.status_code == 409
+    response = client.delete(f"/api/v1/files/{all_attached.id}", headers=headers["pm"])
+    assert response.status_code == 409
+    for item in (own_attached, all_attached):
+        assert session.get(FileObject, item.id) is not None
+        assert (
+            session.scalar(
+                select(AttachmentRelation.id).where(AttachmentRelation.file_id == item.id)
+            )
+            is not None
+        )
+    storage.delete.assert_not_called()
+
+    # SELF scope also hides another user's standalone file, while allowing its own.
+    response = client.delete(f"/api/v1/files/{foreign_standalone.id}", headers=headers["alice"])
+    assert response.status_code == 404
+    assert session.get(FileObject, foreign_standalone.id) is not None
+    storage.delete.assert_not_called()
+
+    response = client.delete(f"/api/v1/files/{own_standalone.id}", headers=headers["alice"])
+    assert response.status_code == 204
+    assert session.get(FileObject, own_standalone.id) is None
+    storage.delete.assert_called_once_with(own_standalone.storage_key)
+
+
+def test_http_upload_rejects_spoofed_mime_before_storage(feedback_api, monkeypatch):
+    client, _session, headers, _ids = feedback_api
+    storage = Mock()
+    monkeypatch.setattr(FileService, "_storage", lambda self, _driver: storage)
+
+    response = client.post(
+        "/api/v1/files",
+        headers=headers["pm"],
+        files={"file": ("spoof.png", b"not a png", "image/png")},
+    )
+    assert response.status_code == 422
+    storage.upload.assert_not_called()
 
 
 # --------------------------------------------------------------------------- #
@@ -875,6 +1034,11 @@ def test_openapi_specs_declare_feedback_status_contract(spec_name):
         assert schema_name in schemas
     # Business attachment metadata must never expose storage_key.
     assert "storage_key" not in schemas["AttachmentOut"]["properties"]
+    assert "storage_key" not in schemas["FileMetadata"]["properties"]
+    assert "get" in spec["paths"]["/files/{file_id}/download"]
+    assert "get" in spec["paths"]["/files/{file_id}/exists"]
+    assert "delete" in spec["paths"]["/files/{file_id}"]
+    assert "standalone" in spec["paths"]["/files/{file_id}/download"]["get"]["description"]
 
 
 def _ids_of(session: Session, username: str) -> int:

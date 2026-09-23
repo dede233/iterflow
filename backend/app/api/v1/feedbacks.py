@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import require_permission
 from app.core.database import get_db
-from app.core.exceptions import NotFoundError
+from app.core.exceptions import NotFoundError, PermissionDenied
 from app.models.entities import Feedback, User
 from app.models.enums import FeedbackStatus, FeedbackType, FeedbackUrgency
 from app.repositories.feedback_repository import FeedbackRepository
@@ -154,8 +154,12 @@ async def add_feedback_attachment(
 ):
     _scoped_feedback_or_404(db, user, feedback_id)
     content = await file.read(MAX_UPLOAD_SIZE + 1)
-    original_name = file.filename or "file"
-    validate_upload(size=len(content), mime_type=file.content_type, original_name=original_name)
+    original_name = validate_upload(
+        size=len(content),
+        mime_type=file.content_type,
+        original_name=file.filename,
+        content=content,
+    )
     service = FeedbackService(db)
     stored = FileService(db).upload(
         content=content,
@@ -183,12 +187,10 @@ def download_feedback_attachment(
     user: User = Depends(require_permission("rd.feedback.view")),
 ) -> Response:
     _scoped_feedback_or_404(db, user, feedback_id)
-    service = FeedbackService(db)
-    if service.attachment_file(feedback_id, file_id) is None:
-        # Either not attached to this feedback, or the feedback is out of scope.
-        raise NotFoundError("附件不存在")
     file_service = FileService(db)
-    item, stream = file_service.open_unchecked(file_id)
+    item, stream = file_service.open_authorized_attachment(
+        file_id, entity_type="FEEDBACK", entity_id=feedback_id
+    )
     background_tasks.add_task(stream.close)
     return StreamingResponse(
         stream,
@@ -230,6 +232,10 @@ def convert_feedback(
     user: User = Depends(require_permission("rd.feedback.convert")),
 ):
     _scoped_feedback_or_404(db, user, feedback_id)
+    if payload.type.value == "LINK_EXISTING":
+        permissions = UserRepository(db).permission_codes(user.id)
+        if "*" not in permissions and "rd.requirement.view" not in permissions:
+            raise PermissionDenied()
     scope = UserRepository(db).data_scope(user.id)
     return FeedbackService(db).convert(
         feedback_id, payload, user.id, viewer_scope=scope, viewer_id=user.id

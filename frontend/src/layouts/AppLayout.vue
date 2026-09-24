@@ -52,6 +52,7 @@ async function logout(): Promise<void> {
       </template>
       <div class="account">
         <span>{{ auth.user?.display_name }}</span>
+        <router-link to="/profile">个人中心</router-link>
         <el-button text type="primary" @click="logout">退出登录</el-button>
       </div>
     </aside>

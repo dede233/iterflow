@@ -34,3 +34,42 @@ describe('role management route permissions', () => {
     ])
   })
 })
+
+describe('profile route', () => {
+  it('lets a MEMBER with no business or administration permissions open their profile', async () => {
+    const auth = useAuthStore(pinia)
+    auth.$patch({
+      accessToken: 'member-token',
+      initialized: true,
+      user: {
+        id: 2,
+        username: 'member',
+        display_name: '普通成员',
+        email: null,
+        status: 'ACTIVE',
+        revision: 1,
+        role_ids: [],
+        permission_codes: [],
+        data_scope: 'SELF',
+        must_change_password: false,
+      },
+    })
+
+    await router.push('/profile')
+
+    expect(router.currentRoute.value.name).toBe('profile')
+    expect(router.currentRoute.value.meta.permission).toBeUndefined()
+    expect(router.currentRoute.value.meta.requiresAllScope).toBeUndefined()
+  })
+
+  it('redirects an unauthenticated visitor to login', async () => {
+    const auth = useAuthStore(pinia)
+    await router.push('/notifications')
+    auth.$patch({ accessToken: '', initialized: true, user: null })
+
+    await router.push('/profile')
+
+    expect(router.currentRoute.value.name).toBe('login')
+    expect(router.currentRoute.value.query.redirect).toBe('/profile')
+  })
+})

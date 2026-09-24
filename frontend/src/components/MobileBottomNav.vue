@@ -9,6 +9,7 @@ const items = computed(() => [
   { to: '/requirements', label: '需求', permission: 'rd.requirement.view' },
   { to: '/versions', label: '版本', permission: 'rd.version.view' },
   { to: '/notifications', label: '消息' },
+  { to: '/profile', label: '我的' },
 ].filter((item) => !item.permission || auth.hasPermission(item.permission)))
 </script>
 
@@ -40,6 +41,12 @@ const items = computed(() => [
 @media (max-width: 767px) {
   .bottom {
     display: flex;
+  }
+  .bottom a {
+    flex: 1 1 0;
+    min-width: 0;
+    text-align: center;
+    padding: 16px 0;
   }
 }
 </style>

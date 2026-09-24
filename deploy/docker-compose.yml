@@ -109,13 +109,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test:
-        - CMD
-        - python
-        - -c
-        - >-
-          import urllib.request;
-          urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=5)
+      test: ["CMD", "python", "-m", "app.cli.healthcheck"]
       interval: 10s
       timeout: 5s
       retries: 12

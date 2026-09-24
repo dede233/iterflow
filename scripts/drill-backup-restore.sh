@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
-BASE="http://127.0.0.1:${WEB_PORT:-8080}/api/v1"
+BASE="http://${ITERFLOW_WEB_HOST:-127.0.0.1}:${WEB_PORT:-8080}/api/v1"
 COMPOSE=(docker compose -f deploy/docker-compose.yml)
 TEMP_DIR="$(mktemp -d)"
 stage="initialization"
@@ -42,9 +42,18 @@ storage_key="$("${COMPOSE[@]}" exec -T db psql -U iterflow -d iterflow -tAc \
   "SELECT storage_key FROM sys_file WHERE id=$file_id")"
 [[ "$storage_key" == uploads/* ]]
 
+stage="database-only backup creation"
+bash deploy/scripts/backup-database.sh "$TEMP_DIR/database-only"
+jq -e '.objects_included == false and .storage_mode == "local"' "$TEMP_DIR/database-only/manifest.json"
+(cd "$TEMP_DIR/database-only" && shasum -a 256 -c SHA256SUMS)
 stage="backup creation"
 bash deploy/scripts/backup.sh "$TEMP_DIR/backup"
 stage="destructive test-data mutation"
+"${COMPOSE[@]}" exec -T db psql -U iterflow -d iterflow -v ON_ERROR_STOP=1 -c \
+  'CREATE TABLE phase83_restore_sentinel (id integer PRIMARY KEY)'
+sentinel_before="$("${COMPOSE[@]}" exec -T db psql -U iterflow -d iterflow -tAc \
+  "SELECT to_regclass('public.phase83_restore_sentinel') IS NOT NULL")"
+[[ "$sentinel_before" == t ]]
 "${COMPOSE[@]}" exec -T db psql -U iterflow -d iterflow -c \
   "UPDATE rd_feedback SET title='CORRUPTED_BY_RESTORE_DRILL' WHERE id=$feedback_id"
 "${COMPOSE[@]}" run -T --rm --no-deps api python -c \
@@ -53,6 +62,13 @@ stage="destructive test-data mutation"
 
 stage="backup restoration"
 CONFIRM_RESTORE=YES bash deploy/scripts/restore.sh "$TEMP_DIR/backup"
+stage="restored schema verification"
+sentinel_after="$("${COMPOSE[@]}" exec -T db psql -U iterflow -d iterflow -tAc \
+  "SELECT to_regclass('public.phase83_restore_sentinel') IS NULL")"
+[[ "$sentinel_after" == t ]]
+revision="$("${COMPOSE[@]}" exec -T db psql -U iterflow -d iterflow -tAc \
+  'SELECT version_num FROM alembic_version')"
+[[ "$revision" == 0004_integrity ]]
 stage="restored administrator login"
 restored_login="$(curl --fail --silent --show-error -H 'Content-Type: application/json' \
   -d "$(jq -nc --arg u "$username" --arg p "$new_password" '{username:$u,password:$p}')" \
@@ -69,5 +85,5 @@ curl --fail --silent --show-error -H "Authorization: Bearer $restored_token" \
 [[ "$(shasum -a 256 "$TEMP_DIR/attachment.txt" | awk '{print $1}')" == \
    "$(shasum -a 256 "$TEMP_DIR/restored.txt" | awk '{print $1}')" ]]
 stage="restored readiness verification"
-curl --fail --silent --show-error "http://127.0.0.1:${API_PORT:-8000}/ready" | jq -e '.status == "ok"'
+"${COMPOSE[@]}" exec -T api python -m app.cli.healthcheck
 echo "Database, attachment and SHA256 restore drill passed"

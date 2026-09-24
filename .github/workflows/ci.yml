@@ -2,8 +2,12 @@ name: CI
 
 on:
   push:
-    branches: [phase/8.3-production-release-readiness]
+    branches:
+      - master
+      - "phase/**"
+      - "fix/**"
   pull_request:
+  workflow_dispatch:
 
 jobs:
   backend:
@@ -66,6 +70,13 @@ jobs:
       - name: Production Python dependency audit
         working-directory: backend
         run: python -m pip_audit -r requirements.lock
+      - name: Production lock installation smoke
+        run: |
+          python -m venv /tmp/iterflow-production-lock
+          /tmp/iterflow-production-lock/bin/python -m pip install --require-hashes -r backend/requirements.lock
+          /tmp/iterflow-production-lock/bin/python -m pip install --no-deps ./backend
+          /tmp/iterflow-production-lock/bin/python -m pip check
+          /tmp/iterflow-production-lock/bin/python -c 'import app, fastapi, sqlalchemy, alembic'
 
   frontend:
     runs-on: ubuntu-latest

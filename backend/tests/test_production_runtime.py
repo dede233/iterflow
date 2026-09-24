@@ -4,6 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
+from app.cli.healthcheck import healthcheck_host
 from app.core.config import Settings
 from app.main import app
 
@@ -36,6 +37,13 @@ def test_s3_credentials_must_be_paired():
     with pytest.raises(ValidationError, match="S3_ACCESS_KEY"):
         _settings(storage_driver="s3", s3_secret_key="secret")
     assert _settings(storage_driver="s3").s3_access_key is None
+
+
+def test_healthcheck_uses_a_host_allowed_by_production_policy():
+    exact = _settings(app_env="production", allowed_hosts="iterflow.example.test")
+    assert healthcheck_host(exact) == "iterflow.example.test"
+    wildcard = _settings(app_env="production", allowed_hosts="*.example.test")
+    assert healthcheck_host(wildcard) == "health.example.test"
 
 
 @pytest.mark.parametrize("request_id", ["bad\nheader", "bad@header", "x" * 65, "bad\trequest"])

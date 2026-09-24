@@ -31,3 +31,13 @@ def test_web_defaults_to_localhost_and_images_are_patch_pinned():
     ]
     assert compose["services"]["db"]["image"].startswith("postgres:17.")
     assert compose["services"]["redis"]["image"].startswith("redis:8.")
+
+
+def test_api_healthcheck_uses_allowed_host_helper():
+    compose = yaml.safe_load((ROOT / "deploy/docker-compose.yml").read_text())
+    assert compose["services"]["api"]["healthcheck"]["test"] == [
+        "CMD",
+        "python",
+        "-m",
+        "app.cli.healthcheck",
+    ]

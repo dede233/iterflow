@@ -79,4 +79,10 @@ describe('application navigation permissions', () => {
     expect(visible).toContain('href="/"')
     expect(hidden).not.toContain('href="/"')
   })
+
+  it('shows a personal center entry even without business permissions', async () => {
+    const html = await renderLayout([], 'SELF')
+    expect(html).toContain('href="/profile"')
+    expect(html).toContain('个人中心')
+  })
 })

@@ -29,6 +29,10 @@ def create_storage_service(
     if normalised_driver == "s3":
         if not s3_bucket:
             raise StorageConfigurationError("S3_BUCKET is required for S3 storage")
+        if bool(s3_access_key) != bool(s3_secret_key):
+            raise StorageConfigurationError(
+                "S3_ACCESS_KEY and S3_SECRET_KEY must be provided together"
+            )
         return S3Storage(
             bucket=s3_bucket,
             region=s3_region,

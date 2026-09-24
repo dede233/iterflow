@@ -2,7 +2,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import ClassVar, Literal
 
-from pydantic import Field, SecretStr, field_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -11,6 +11,13 @@ class Settings(BaseSettings):
 
     app_name: ClassVar[str] = "迭程 IterFlow · 需求与版本协作管理系统"
     api_prefix: ClassVar[str] = "/api/v1"
+    app_env: Literal["development", "test", "production"] = "development"
+    cors_origins: str = "http://localhost:5173,http://localhost:8080"
+    allowed_hosts: str = ""
+    trust_proxy_headers: bool = False
+    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
+    enable_api_docs: bool = True
+    build_sha: str = "unknown"
     database_url: str = Field(min_length=1)
     redis_url: str = Field(min_length=1)
     jwt_secret: SecretStr = Field(min_length=32)
@@ -40,7 +47,23 @@ class Settings(BaseSettings):
 
     @property
     def cors_origin_list(self) -> list[str]:
-        return ["http://localhost:5173", "http://localhost:8080"]
+        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @property
+    def allowed_host_list(self) -> list[str]:
+        return [host.strip() for host in self.allowed_hosts.split(",") if host.strip()]
+
+    @model_validator(mode="after")
+    def validate_production(self) -> "Settings":
+        if "*" in self.cors_origin_list:
+            raise ValueError("CORS_ORIGINS cannot contain '*' with credentials enabled")
+        if self.app_env == "production" and not self.allowed_host_list:
+            raise ValueError("ALLOWED_HOSTS must be set in production")
+        if self.app_env == "production" and "*" in self.allowed_host_list:
+            raise ValueError("ALLOWED_HOSTS cannot contain '*' in production")
+        if self.storage_driver == "s3" and bool(self.s3_access_key) != bool(self.s3_secret_key):
+            raise ValueError("S3_ACCESS_KEY and S3_SECRET_KEY must be provided together")
+        return self
 
     @property
     def local_storage_root(self) -> Path:

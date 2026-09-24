@@ -145,8 +145,11 @@ BASE_ROLES = {
 }
 
 
-def seed_database(db: Session, *, username: str, password: str) -> None:
+def seed_database(db: Session, *, username: str, password: str | None) -> None:
     """Create or repair the V1.5 foundation roles, permissions, and administrator."""
+    existing_admin = db.scalar(select(User).where(User.username == username))
+    if existing_admin is None and (password is None or not 8 <= len(password) <= 128):
+        raise ValueError("INIT_ADMIN_PASSWORD must be 8-128 characters for a new administrator")
     permissions = {
         item.code: item
         for item in db.scalars(select(Permission).where(Permission.code.in_(PERMISSIONS))).all()
@@ -197,6 +200,7 @@ def seed_database(db: Session, *, username: str, password: str) -> None:
     admin_role = roles["SUPER_ADMIN"]
     user = db.scalar(select(User).where(User.username == username))
     if user is None:
+        assert password is not None
         user = User(
             username=username,
             display_name="系统管理员",
@@ -215,11 +219,9 @@ def main() -> None:
     settings = get_settings()
     username = settings.init_admin_username
     password = settings.init_admin_password
-    if not username or password is None or not password.get_secret_value():
-        raise RuntimeError(
-            "INIT_ADMIN_USERNAME and INIT_ADMIN_PASSWORD must be explicitly configured"
-        )
-    plain_password = password.get_secret_value()
+    if not username:
+        raise RuntimeError("INIT_ADMIN_USERNAME must be explicitly configured")
+    plain_password = password.get_secret_value() if password is not None else None
     db = SessionLocal()
     try:
         seed_database(db, username=username, password=plain_password)

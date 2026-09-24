@@ -74,11 +74,13 @@ Redis 服务：iterflow-redis
 
 ## 4. 环境变量
 
-从根目录复制：
+本地 Python/Vite 分进程开发在根目录复制：
 
 ```bash
 cp .env.example .env
 ```
+
+Docker Compose 一键部署则复制到 `deploy/.env`；不要误以为根目录 `.env` 会自动被 `deploy/docker-compose.yml` 读取。
 
 生产/共享环境禁止继续使用示例密码。
 
@@ -114,7 +116,7 @@ Docker Compose 另需 `POSTGRES_PASSWORD` 用于初始化 PostgreSQL；该变量
 docker compose -f deploy/docker-compose.yml up -d db redis
 ```
 
-若 PostgreSQL 与 Redis 已由 ServBay 启动，可以跳过此步并在 `.env` 中填写本机连接地址。当前基础 Compose 只包含 `db`、`redis`、`api`、`web`；S3 自托管服务不是强制依赖。
+若 PostgreSQL 与 Redis 已由 ServBay 启动，可以跳过此步并在 `.env` 中填写本机连接地址。生产 Compose 包含 `db`、`redis`、一次性的 `migrate`/`seed`、`api` 与 `web`；S3 自托管服务不是强制依赖。
 
 检查容器：
 
@@ -243,7 +245,7 @@ npm run test
 
 ## 9. Docker 全量启动
 
-当阶段性模块完成后：
+配置 `deploy/.env` 后一键启动（从根目录复制 `.env.example`）：
 
 ```bash
 docker compose -f deploy/docker-compose.yml up -d --build
@@ -257,6 +259,8 @@ docker compose -f deploy/docker-compose.yml up -d --build
 - LocalFileStorage 可读写；配置 S3 时 S3Storage 可连接
 - 登录可用
 - 主链路可用
+
+`migrate` 与 `seed` 自动执行，失败则 API 不启动。首次管理员密码仅首次创建时必需；已有管理员时可留空。生产 Web 默认只绑定回环地址，公网接入必须经 HTTPS 反向代理。详见 `docs/production-runbook.md`。
 
 ## 10. 数据库变更
 
@@ -279,11 +283,10 @@ alembic upgrade head
 
 API 修改流程：
 
-1. 先修改 `spec/openapi-v1.5.yaml`
-2. 更新 Backend schema/router/service
-3. 更新 Frontend TypeScript types/api
-4. 增加/更新测试
-5. 运行构建与测试
+1. 更新 Backend schema/router/service，运行时 OpenAPI 是接口事实来源。
+2. 执行 `cd backend && python scripts/sync_openapi.py`，同步两份静态 OpenAPI。
+3. 执行 `cd frontend && npm run generate:api-types`，生成 TypeScript DTO。
+4. 增加/更新测试，并执行 OpenAPI parity、`npm run check:api-types` 和构建门禁。
 
 核心契约变化需要用户确认。
 

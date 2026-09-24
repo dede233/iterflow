@@ -1,7 +1,11 @@
+import ipaddress
+import re
+from time import perf_counter
 from uuid import uuid4
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
@@ -12,10 +16,20 @@ from app.core.audit_context import AuditContext, reset_audit_context, set_audit_
 from app.core.config import get_settings
 from app.core.exceptions import AppError
 from app.core.readiness import readiness_status
+from app.core.runtime_logging import configure_logging
 from app.schemas.common import ErrorResponse
 
 settings = get_settings()
-app = FastAPI(title=settings.app_name, version="1.5.0")
+logger = configure_logging(settings.log_level)
+app = FastAPI(
+    title=settings.app_name,
+    version="1.5.0",
+    docs_url="/docs" if settings.enable_api_docs else None,
+    redoc_url="/redoc" if settings.enable_api_docs else None,
+    openapi_url="/openapi.json" if settings.enable_api_docs else None,
+)
+if settings.allowed_host_list:
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.allowed_host_list)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
@@ -92,15 +106,22 @@ app.openapi = custom_openapi  # type: ignore[method-assign]
 
 @app.middleware("http")
 async def request_id_middleware(request: Request, call_next):
-    supplied_request_id = request.headers.get("X-Request-ID", "").strip()
+    supplied_request_id = request.headers.get("X-Request-ID", "")
     request_id = (
         supplied_request_id
-        if supplied_request_id and len(supplied_request_id) <= 64
+        if re.fullmatch(r"[A-Za-z0-9._:-]{1,64}", supplied_request_id)
         else f"req_{uuid4().hex[:16]}"
     )
     request.state.request_id = request_id
     user_agent = request.headers.get("User-Agent")
     client_ip = request.client.host if request.client else None
+    if settings.trust_proxy_headers:
+        forwarded_ip = request.headers.get("X-Real-IP")
+        if forwarded_ip:
+            try:
+                client_ip = str(ipaddress.ip_address(forwarded_ip))
+            except ValueError:
+                pass
     token = set_audit_context(
         AuditContext(
             request_id=request_id,
@@ -108,11 +129,37 @@ async def request_id_middleware(request: Request, call_next):
             user_agent=user_agent[:512] if user_agent else None,
         )
     )
+    started = perf_counter()
+    status_code = 500
     try:
-        response = await call_next(request)
+        try:
+            response = await call_next(request)
+            status_code = response.status_code
+        except Exception:
+            logger.exception("unhandled request exception", extra={"request_id": request_id})
+            response = JSONResponse(
+                status_code=500,
+                content={
+                    "code": 50000,
+                    "message": "服务器内部错误",
+                    "data": None,
+                    "request_id": request_id,
+                },
+            )
         response.headers["X-Request-ID"] = request_id
         return response
     finally:
+        logger.info(
+            "http request",
+            extra={
+                "request_id": request_id,
+                "method": request.method,
+                "path": request.url.path,
+                "status_code": status_code,
+                "duration_ms": round((perf_counter() - started) * 1000, 2),
+                "client_ip": client_ip,
+            },
+        )
         reset_audit_context(token)
 
 
@@ -131,7 +178,7 @@ async def app_error_handler(request: Request, exc: AppError):
 
 @app.get("/health", include_in_schema=False)
 def health():
-    return {"status": "ok", "version": "1.5.0"}
+    return {"status": "ok", "version": "1.5.0", "build_sha": settings.build_sha}
 
 
 @app.get("/ready", include_in_schema=False)

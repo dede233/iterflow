@@ -48,13 +48,15 @@ Redis 服务：iterflow-redis
 - `deploy/`: Docker Compose 与 Nginx 入口
 - `spec/`: OpenAPI、状态机与接口说明
 
-## 启动顺序
+## 生产 Compose 一键启动
 
-1. `cp .env.example .env`，为所有密码、密钥和初始管理员变量填写非空安全值。
-2. 本机 ServBay 启动 PostgreSQL 与 Redis，或运行 `docker compose -f deploy/docker-compose.yml up -d db redis`
-3. 在 backend 安装依赖并执行 `alembic upgrade head`
-4. 启动 FastAPI：`uvicorn app.main:app --reload --port 8000`
-5. 启动前端：`npm install && npm run dev`
+1. `cp .env.example deploy/.env`，填写数据库密码、JWT 密钥、允许的 Host 与首次管理员密码。
+2. 在可信的 HTTPS 反向代理后运行 `docker compose -f deploy/docker-compose.yml up -d --build`。
+3. Compose 自动等待数据库、执行 migration 与 seed，再启动 API 和 Web。无需手工进入容器初始化。
+
+Web 默认仅绑定 `127.0.0.1:8080`。**不得将纯 HTTP 端口直接暴露公网**；TLS 由前置代理或负载均衡器提供。完整部署、备份与回滚见 [生产运维手册](docs/production-runbook.md)。
+
+本地非容器开发仍可按 [DEVELOPMENT.md](DEVELOPMENT.md) 分别启动后端与前端。
 
 > V1.5 是工程基线，不包含工时、Story Point 或单需求预计时长功能。
 
@@ -64,7 +66,7 @@ Redis 服务：iterflow-redis
 
 ## 初始化管理员与权限
 
-执行 migration 后：`python -m app.cli.seed`。生产环境务必通过 `INIT_ADMIN_PASSWORD` 指定随机初始密码，首次登录强制改密。
+首次启动需通过 `INIT_ADMIN_PASSWORD` 指定 8–128 位随机密码（建议 20 位以上），首次登录强制改密。管理员已存在后可从环境中移除该密码；重复 seed 不会重置现有密码。
 
 ## 开发 Agent 开工入口
 

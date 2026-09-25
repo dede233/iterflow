@@ -11,6 +11,7 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    AppIcon: typeof import('./src/components/ui/AppIcon.vue')['default']
     DashboardOverviewContent: typeof import('./src/components/DashboardOverviewContent.vue')['default']
     ElAlert: typeof import('element-plus/es')['ElAlert']
     ElButton: typeof import('element-plus/es')['ElButton']
@@ -45,11 +46,17 @@ declare module 'vue' {
     ElTableColumn: typeof import('element-plus/es')['ElTableColumn']
     ElTag: typeof import('element-plus/es')['ElTag']
     ElUpload: typeof import('element-plus/es')['ElUpload']
+    EmptyState: typeof import('./src/components/ui/EmptyState.vue')['default']
+    ErrorState: typeof import('./src/components/ui/ErrorState.vue')['default']
+    InfoGrid: typeof import('./src/components/ui/InfoGrid.vue')['default']
+    ListCard: typeof import('./src/components/ui/ListCard.vue')['default']
     MobileBottomNav: typeof import('./src/components/MobileBottomNav.vue')['default']
+    PageHeader: typeof import('./src/components/ui/PageHeader.vue')['default']
     PermissionAssignmentDrawer: typeof import('./src/components/PermissionAssignmentDrawer.vue')['default']
     RoleActions: typeof import('./src/components/RoleActions.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    SectionCard: typeof import('./src/components/ui/SectionCard.vue')['default']
     StatusTag: typeof import('./src/components/StatusTag.vue')['default']
     UserRoleAssignmentDrawer: typeof import('./src/components/UserRoleAssignmentDrawer.vue')['default']
   }

@@ -219,6 +219,7 @@ onMounted(async () => {
           <el-link type="primary" @click.stop="router.push('/feedbacks/' + s.row.id)">查看</el-link>
         </template>
       </el-table-column>
+      <template #empty><EmptyState description="暂无反馈" compact /></template>
     </el-table>
 
     <!-- Mobile cards -->

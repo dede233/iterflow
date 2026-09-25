@@ -212,6 +212,7 @@ onMounted(load)
           </el-button>
         </template>
       </el-table-column>
+      <template #empty><EmptyState description="暂无用户" compact /></template>
     </el-table>
     <div v-else v-loading="loading" class="user-cards">
       <article v-for="user in rows" :key="user.id" class="user-card">

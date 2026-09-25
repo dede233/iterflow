@@ -133,6 +133,7 @@ onMounted(() => void load())
       <el-table-column label="操作人" min-width="160"><template #default="scope">{{ operatorName(scope.row) }}</template></el-table-column>
       <el-table-column label="时间" min-width="180"><template #default="scope">{{ formatLocalDateTime(scope.row.created_at) }}</template></el-table-column>
       <el-table-column label="详情" width="80" fixed="right"><template #default="scope"><el-button link type="primary" @click.stop="showDetail(scope.row)">查看</el-button></template></el-table-column>
+      <template #empty><EmptyState description="暂无可查看的审计记录" compact /></template>
     </el-table>
 
     <div v-else v-loading="loading" class="cards">

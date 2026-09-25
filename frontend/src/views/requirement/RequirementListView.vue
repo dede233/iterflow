@@ -84,6 +84,7 @@ onMounted(load)
           <el-link type="primary" @click.stop="router.push('/requirements/' + s.row.id)">查看</el-link>
         </template>
       </el-table-column>
+      <template #empty><EmptyState description="暂无需求" compact /></template>
     </el-table>
 
     <div v-else v-loading="loading" class="cards">

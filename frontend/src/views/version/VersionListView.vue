@@ -81,6 +81,7 @@ onMounted(load)
           <el-link type="primary" @click.stop="router.push('/versions/' + s.row.id)">查看</el-link>
         </template>
       </el-table-column>
+      <template #empty><EmptyState description="暂无版本" compact /></template>
     </el-table>
 
     <div v-else v-loading="loading" class="cards">

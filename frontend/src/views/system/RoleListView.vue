@@ -195,6 +195,7 @@ onMounted(load)
           />
         </template>
       </el-table-column>
+      <template #empty><EmptyState description="暂无角色" compact /></template>
     </el-table>
     <div v-else v-loading="loading" class="role-cards">
       <article v-for="role in rows" :key="role.id" class="role-card">

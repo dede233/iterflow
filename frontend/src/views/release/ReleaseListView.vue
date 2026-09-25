@@ -55,6 +55,7 @@ onMounted(load)
         <el-table-column v-if="can('rd.version.view')" label="操作" width="100" fixed="right">
           <template #default="s"><el-button link type="primary" @click="router.push('/versions/' + s.row.version_id)">查看版本</el-button></template>
         </el-table-column>
+        <template #empty><EmptyState description="暂无发布记录" compact /></template>
       </el-table>
       <div v-else v-loading="loading" class="cards">
         <article v-for="release in rows" :key="release.id" class="release-card">
@@ -63,8 +64,8 @@ onMounted(load)
           <p>{{ release.release_notes }}</p>
           <el-button v-if="can('rd.version.view')" link type="primary" @click="router.push('/versions/' + release.version_id)">查看版本</el-button>
         </article>
+        <EmptyState v-if="!loading && !rows.length" description="暂无发布记录" compact />
       </div>
-      <EmptyState v-if="!loading && !rows.length" description="暂无发布记录" compact />
     </SectionCard>
     <el-pagination class="pager" layout="prev, pager, next, total" :total="total" :current-page="paging.page" :page-size="paging.page_size" background @current-change="(page: number) => { paging.page = page; void load() }" />
   </section>

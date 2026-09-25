@@ -3,6 +3,12 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { createUser, listUsers, updateUser, updateUserRoles, updateUserStatus } from '@/api/users'
 import { listRoles } from '@/api/roles'
+import PageHeader from '@/components/ui/PageHeader.vue'
+import SectionCard from '@/components/ui/SectionCard.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
+import ErrorState from '@/components/ui/ErrorState.vue'
+import StatusTag from '@/components/StatusTag.vue'
+import { useResponsive } from '@/composables/useResponsive'
 import UserRoleAssignmentDrawer from '@/components/UserRoleAssignmentDrawer.vue'
 import {
   buildUserBasicUpdatePayload,
@@ -18,10 +24,12 @@ import { useAuthStore } from '@/stores/auth'
 import type { RoleItem, UserItem } from '@/types/system'
 
 const { can } = usePermission()
+const { isMobile } = useResponsive()
 const auth = useAuthStore()
 const rows = ref<UserItem[]>([])
 const roles = ref<RoleItem[]>([])
 const loading = ref(false)
+const failed = ref(false)
 const dialogVisible = ref(false)
 const editingUser = ref<UserItem | null>(null)
 const saving = ref(false)
@@ -48,12 +56,15 @@ const operatorIsSuperAdmin = computed(() => isCurrentUserSuperAdmin(auth.user, r
 
 async function load(): Promise<void> {
   loading.value = true
+  failed.value = false
   try {
     const users = await listUsers()
     rows.value = users.items
     roles.value = canReadRoleDefinitions.value
       ? (await listRoles()).filter((role) => role.enabled)
       : []
+  } catch {
+    failed.value = true
   } finally {
     loading.value = false
   }
@@ -174,15 +185,13 @@ onMounted(load)
 
 <template>
   <section class="page">
-    <div class="head">
-      <div>
-        <h1 class="page-title">用户管理</h1>
-        <p class="hint">账号密码不会在列表或接口响应中展示。</p>
-      </div>
-      <el-button v-if="canCreateUsers" type="primary" @click="openCreate">创建用户</el-button>
-    </div>
+    <PageHeader title="用户管理" description="管理账号、状态与角色分配。" eyebrow="系统治理">
+      <template #actions><el-button v-if="canCreateUsers" type="primary" @click="openCreate">创建用户</el-button></template>
+    </PageHeader>
 
-    <el-table v-loading="loading" :data="rows" row-key="id">
+    <ErrorState v-if="failed" title="用户列表加载失败" description="请检查网络后重试。" retry-label="重新加载" @retry="load" />
+    <SectionCard v-else title="账号列表" :description="`共 ${rows.length} 个账号`" :padded="false">
+    <el-table v-if="!isMobile" v-loading="loading" :data="rows" row-key="id">
       <el-table-column prop="username" label="用户名" min-width="130" />
       <el-table-column prop="display_name" label="姓名" min-width="130" />
       <el-table-column prop="email" label="邮箱" min-width="180" />
@@ -191,7 +200,7 @@ onMounted(load)
       </el-table-column>
       <el-table-column label="状态" width="100">
         <template #default="scope">
-          <el-tag :type="scope.row.status === 'ACTIVE' ? 'success' : 'info'">{{ scope.row.status }}</el-tag>
+          <StatusTag :status="scope.row.status" :label="scope.row.status === 'ACTIVE' ? '启用' : '停用'" />
         </template>
       </el-table-column>
       <el-table-column v-if="canEditUsers || canAssignUserRoles || canChangeUserStatus" label="操作" width="240" fixed="right">
@@ -204,6 +213,23 @@ onMounted(load)
         </template>
       </el-table-column>
     </el-table>
+    <div v-else v-loading="loading" class="user-cards">
+      <article v-for="user in rows" :key="user.id" class="user-card">
+        <div class="user-card__head">
+          <div><strong>{{ user.display_name }}</strong><span class="user-card__id">{{ user.username }}</span></div>
+          <StatusTag :status="user.status" :label="user.status === 'ACTIVE' ? '启用' : '停用'" size="sm" />
+        </div>
+        <div class="user-card__details"><span>角色</span><span>{{ roleNames(user) }}</span></div>
+        <div v-if="user.email" class="user-card__details"><span>邮箱</span><span>{{ user.email }}</span></div>
+        <div v-if="canEditUsers || canAssignUserRoles || mayChangeStatus(user)" class="user-card__actions">
+          <el-button v-if="canEditUsers" @click="openEdit(user)">编辑</el-button>
+          <el-button v-if="canAssignUserRoles" @click="openRoles(user)">配置角色</el-button>
+          <el-button v-if="mayChangeStatus(user)" :type="user.status === 'ACTIVE' ? 'danger' : 'success'" plain @click="toggleStatus(user)">{{ user.status === 'ACTIVE' ? '停用' : '启用' }}</el-button>
+        </div>
+      </article>
+      <EmptyState v-if="!loading && !rows.length" description="暂无用户" compact />
+    </div>
+    </SectionCard>
 
     <el-dialog v-model="dialogVisible" :title="editingUser ? '编辑用户基本资料' : '创建用户'" width="min(560px, 92vw)" destroy-on-close>
       <el-form label-position="top" @submit.prevent="save">
@@ -256,8 +282,14 @@ onMounted(load)
 </template>
 
 <style scoped>
-.head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
-.hint { margin: -8px 0 16px; color: #64748b; font-size: 13px; }
 .create-role-list { display: grid; grid-template-columns: 1fr; gap: 8px; }
-@media (max-width: 767px) { .head { align-items: center; } }
+.user-cards { display: grid; gap: 10px; padding: var(--if-space-4); }
+.user-card { min-width: 0; padding: 14px; background: var(--if-bg-surface); border: 1px solid var(--if-border); border-radius: var(--if-radius); }
+.user-card__head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 12px; }
+.user-card__head strong { display: block; font-size: 15px; }
+.user-card__id { display: block; margin-top: 3px; color: var(--if-text-3); font-family: var(--if-font-mono); font-size: 12px; }
+.user-card__details { display: grid; grid-template-columns: 42px minmax(0, 1fr); gap: 8px; margin-top: 6px; color: var(--if-text-2); font-size: 12px; }
+.user-card__details span:last-child { color: var(--if-text-1); overflow-wrap: anywhere; }
+.user-card__actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--if-border); }
+.user-card__actions :deep(.el-button + .el-button) { margin-left: 0; }
 </style>

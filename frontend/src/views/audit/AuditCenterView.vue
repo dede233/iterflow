@@ -3,12 +3,20 @@ import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getAudit, listAudits } from '@/api/audits'
 import { useResponsive } from '@/composables/useResponsive'
+import AppIcon from '@/components/ui/AppIcon.vue'
+import PageHeader from '@/components/ui/PageHeader.vue'
+import SectionCard from '@/components/ui/SectionCard.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
+import ErrorState from '@/components/ui/ErrorState.vue'
+import { formatLocalDateTime } from '@/utils/dates'
 import type { AuditItem, AuditListParams } from '@/types/domain'
 
 const { isMobile } = useResponsive()
 const rows = ref<AuditItem[]>([])
 const total = ref(0)
 const loading = ref(false)
+const failed = ref(false)
+const filterDrawer = ref(false)
 const detailLoading = ref(false)
 const drawerVisible = ref(false)
 const selected = ref<AuditItem | null>(null)
@@ -38,12 +46,15 @@ function buildParams(): AuditListParams {
 
 async function load(): Promise<void> {
   loading.value = true
+  failed.value = false
   try {
     const result = await listAudits(buildParams())
     rows.value = result.items
     total.value = result.total
     paging.page = result.page
     paging.size = result.size
+  } catch {
+    failed.value = true
   } finally {
     loading.value = false
   }
@@ -51,6 +62,7 @@ async function load(): Promise<void> {
 
 function search(): void {
   paging.page = 1
+  filterDrawer.value = false
   void load()
 }
 
@@ -74,10 +86,6 @@ async function showDetail(row: AuditItem): Promise<void> {
   }
 }
 
-function formatTime(value: string): string {
-  return new Date(value).toLocaleString()
-}
-
 function formatData(value: Record<string, unknown> | null | undefined): string {
   return value ? JSON.stringify(value, null, 2) : '无'
 }
@@ -91,14 +99,13 @@ onMounted(() => void load())
 
 <template>
   <section class="page">
-    <div class="head">
-      <div>
-        <h1 class="page-title">审计中心</h1>
-        <p class="hint">仅展示当前账号有权查看且处于数据范围内的业务操作记录。</p>
-      </div>
-    </div>
+    <PageHeader title="审计中心" description="查看当前账号权限与数据范围内的操作记录。" eyebrow="系统治理">
+      <template v-if="isMobile" #actions>
+        <el-button @click="filterDrawer = true"><AppIcon name="filter" :size="16" />筛选记录</el-button>
+      </template>
+    </PageHeader>
 
-    <el-form class="filters" label-position="top" @submit.prevent="search">
+    <el-form v-if="!isMobile" class="filters filter-panel" label-position="top" @submit.prevent="search">
       <el-form-item label="实体类型">
         <el-select v-model="filters.entity_type" clearable placeholder="全部实体">
           <el-option v-for="item in entityTypes" :key="item" :label="item" :value="item" />
@@ -116,25 +123,40 @@ onMounted(() => void load())
       </div>
     </el-form>
 
+    <ErrorState v-if="failed" title="审计记录加载失败" description="请检查网络后重试。" retry-label="重新加载" @retry="load" />
+    <SectionCard v-else title="操作记录" :description="`共 ${total} 条记录`" :padded="false">
     <el-table v-if="!isMobile" v-loading="loading" :data="rows" class="audit-table" @row-click="showDetail">
       <el-table-column prop="id" label="ID" width="90" />
       <el-table-column prop="entity_type" label="实体" width="130" />
       <el-table-column prop="entity_id" label="实体 ID" width="110" />
       <el-table-column prop="action" label="操作" min-width="180" />
       <el-table-column label="操作人" min-width="160"><template #default="scope">{{ operatorName(scope.row) }}</template></el-table-column>
-      <el-table-column label="时间" min-width="180"><template #default="scope">{{ formatTime(scope.row.created_at) }}</template></el-table-column>
+      <el-table-column label="时间" min-width="180"><template #default="scope">{{ formatLocalDateTime(scope.row.created_at) }}</template></el-table-column>
       <el-table-column label="详情" width="80" fixed="right"><template #default="scope"><el-button link type="primary" @click.stop="showDetail(scope.row)">查看</el-button></template></el-table-column>
     </el-table>
 
     <div v-else v-loading="loading" class="cards">
-      <el-card v-for="item in rows" :key="item.id" shadow="never" class="audit-card" @click="showDetail(item)">
-        <div class="card-head"><strong>{{ item.entity_type }} #{{ item.entity_id ?? '-' }}</strong><el-tag size="small">{{ item.action }}</el-tag></div>
-        <div class="card-meta">{{ operatorName(item) }} · {{ formatTime(item.created_at) }}</div>
-      </el-card>
-      <el-empty v-if="!loading && !rows.length" description="暂无可查看的审计记录" />
+      <button v-for="item in rows" :key="item.id" type="button" class="audit-card" @click="showDetail(item)">
+        <span class="card-head"><strong>{{ item.entity_type }} #{{ item.entity_id ?? '-' }}</strong><span class="card-id">记录 #{{ item.id }}</span></span>
+        <span class="card-action">{{ item.action }}</span>
+        <span class="card-meta">{{ operatorName(item) }} · {{ formatLocalDateTime(item.created_at) }}</span>
+      </button>
+      <EmptyState v-if="!loading && !rows.length" description="暂无可查看的审计记录" compact />
     </div>
+    </SectionCard>
 
-    <el-pagination class="pager" layout="prev, pager, next, total" :total="total" :current-page="paging.page" :page-size="paging.size" background @current-change="(page: number) => { paging.page = page; void load() }" />
+    <el-pagination v-if="!failed" class="pager" layout="prev, pager, next, total" :total="total" :current-page="paging.page" :page-size="paging.size" background @current-change="(page: number) => { paging.page = page; void load() }" />
+
+    <el-drawer v-model="filterDrawer" title="筛选审计记录" size="min(420px, 100%)" destroy-on-close>
+      <el-form class="drawer-filters" label-position="top" @submit.prevent="search">
+        <el-form-item label="实体类型"><el-select v-model="filters.entity_type" clearable placeholder="全部实体"><el-option v-for="item in entityTypes" :key="item" :label="item" :value="item" /></el-select></el-form-item>
+        <el-form-item label="实体 ID"><el-input-number v-model="filters.entity_id" :min="1" controls-position="right" /></el-form-item>
+        <el-form-item label="操作"><el-input v-model="filters.action" clearable placeholder="如 STATUS_CHANGE" /></el-form-item>
+        <el-form-item label="操作人 ID"><el-input-number v-model="filters.operator_id" :min="1" controls-position="right" /></el-form-item>
+        <el-form-item label="时间范围"><el-date-picker v-model="timeRange" type="datetimerange" range-separator="至" start-placeholder="开始时间" end-placeholder="结束时间" /></el-form-item>
+      </el-form>
+      <template #footer><div class="drawer-actions"><el-button @click="reset">重置</el-button><el-button type="primary" @click="search">查询</el-button></div></template>
+    </el-drawer>
 
     <el-drawer v-model="drawerVisible" title="审计记录详情" size="min(620px, 100%)" destroy-on-close>
       <div v-loading="detailLoading" class="drawer-content">
@@ -144,7 +166,7 @@ onMounted(() => void load())
             <el-descriptions-item label="实体">{{ selected.entity_type }} #{{ selected.entity_id ?? '-' }}</el-descriptions-item>
             <el-descriptions-item label="操作">{{ selected.action }}</el-descriptions-item>
             <el-descriptions-item label="操作人">{{ operatorName(selected) }}</el-descriptions-item>
-            <el-descriptions-item label="发生时间">{{ formatTime(selected.created_at) }}</el-descriptions-item>
+            <el-descriptions-item label="发生时间">{{ formatLocalDateTime(selected.created_at) }}</el-descriptions-item>
           </el-descriptions>
           <h3>变更前</h3><pre>{{ formatData(selected.before) }}</pre>
           <h3>变更后</h3><pre>{{ formatData(selected.after) }}</pre>
@@ -155,20 +177,23 @@ onMounted(() => void load())
 </template>
 
 <style scoped>
-.head { margin-bottom: 12px; }
-.hint { margin: -8px 0 0; color: #64748b; font-size: 13px; }
-.filters { display: grid; grid-template-columns: repeat(5, minmax(130px, 1fr)) auto; gap: 0 12px; align-items: end; padding: 14px; margin-bottom: 12px; border: 1px solid #e5e7eb; border-radius: 8px; }
+.filters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0 12px; align-items: end; margin-bottom: var(--if-space-4); }
 .filters :deep(.el-form-item) { margin-bottom: 12px; }
-.time-filter { min-width: 260px; }
+.filters :deep(.el-select), .filters :deep(.el-input-number), .filters :deep(.el-date-editor) { width: 100%; }
+.time-filter { grid-column: span 3; }
 .filter-actions { display: flex; gap: 8px; padding-bottom: 12px; }
 .audit-table { cursor: pointer; }
-.cards { display: grid; gap: 10px; }
-.audit-card { cursor: pointer; }
-.card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.card-meta { margin-top: 10px; color: #64748b; font-size: 13px; }
-.pager { margin-top: 16px; justify-content: flex-end; }
+.cards { display: grid; gap: 10px; padding: var(--if-space-4); }
+.audit-card { display: grid; gap: 8px; width: 100%; min-width: 0; padding: 14px; background: var(--if-bg-surface); border: 1px solid var(--if-border); border-radius: var(--if-radius); color: var(--if-text-1); font: inherit; text-align: left; cursor: pointer; }
+.audit-card:hover, .audit-card:focus-visible { border-color: var(--if-brand-500); box-shadow: var(--if-shadow); }
+.card-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; font-size: 13px; }
+.card-id, .card-meta { color: var(--if-text-3); font-size: 12px; }
+.card-action { color: var(--if-info-fg); font-family: var(--if-font-mono); font-size: 12px; overflow-wrap: anywhere; }
+.pager { margin-top: var(--if-space-4); justify-content: flex-end; }
+.drawer-filters :deep(.el-select), .drawer-filters :deep(.el-input-number), .drawer-filters :deep(.el-date-editor) { width: 100%; max-width: 100%; }
+.drawer-actions { display: flex; justify-content: flex-end; gap: 8px; }
 .drawer-content h3 { margin-top: 22px; font-size: 14px; }
-pre { max-height: 280px; padding: 12px; overflow: auto; color: #334155; background: #f8fafc; border-radius: 6px; font-size: 12px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
-@media (max-width: 1199px) { .filters { grid-template-columns: repeat(3, minmax(150px, 1fr)); } }
-@media (max-width: 767px) { .filters { grid-template-columns: 1fr; } .time-filter { min-width: 0; } .filter-actions { padding-bottom: 0; } .pager { justify-content: center; } }
+pre { max-height: 280px; padding: 12px; overflow: auto; color: var(--if-text-2); background: var(--if-bg-subtle); border-radius: var(--if-radius-sm); font-size: 12px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+@media (max-width: 1199px) { .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } .time-filter { grid-column: span 2; } }
+@media (max-width: 767px) { .pager { justify-content: center; } .drawer-filters :deep(.el-range-input) { min-width: 0; font-size: 11px; } }
 </style>

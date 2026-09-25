@@ -1,5 +1,5 @@
 <script setup lang="ts">
-defineProps<{ title?: string; description?: string; padded?: boolean }>()
+withDefaults(defineProps<{ title?: string; description?: string; padded?: boolean }>(), { padded: true })
 </script>
 
 <template>

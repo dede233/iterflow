@@ -20,6 +20,11 @@ import {
   finishFeedbackConversion,
 } from '@/security/detailAuthorization'
 import StatusTag from '@/components/StatusTag.vue'
+import PageHeader from '@/components/ui/PageHeader.vue'
+import SectionCard from '@/components/ui/SectionCard.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
+import ErrorState from '@/components/ui/ErrorState.vue'
+import { useResponsive } from '@/composables/useResponsive'
 import { REQUIREMENT_PRIORITIES, REQUIREMENT_TYPES } from '@/constants/requirement'
 import {
   FEEDBACK_TYPES,
@@ -40,14 +45,17 @@ import type {
   FeedbackUpdatePayload,
   PriorityValue,
 } from '@/types/domain'
+import { formatLocalDateTime } from '@/utils/dates'
 
 const route = useRoute()
 const router = useRouter()
 const { can } = usePermission()
+const { isMobile } = useResponsive()
 const feedbackId = Number(route.params.id)
 
 const item = ref<Feedback | null>(null)
 const loading = ref(false)
+const failed = ref(false)
 const attachments = ref<AttachmentItem[]>([])
 const comments = ref<CommentItem[]>([])
 const systems = ref<BusinessSystemItem[]>([])
@@ -286,10 +294,14 @@ function moduleName(id: number | null | undefined): string {
 
 async function load(): Promise<void> {
   loading.value = true
+  failed.value = false
   try {
     item.value = await getFeedback(feedbackId)
     attachments.value = await listFeedbackAttachments(feedbackId)
     comments.value = await listFeedbackComments(feedbackId)
+  } catch {
+    failed.value = true
+    item.value = null
   } finally {
     loading.value = false
   }
@@ -311,22 +323,15 @@ onMounted(async () => {
 
 <template>
   <section v-loading="loading" class="page">
+    <ErrorState v-if="failed" title="反馈加载失败" description="请检查网络或确认反馈是否仍可访问。" retry-label="重新加载" @retry="load" />
     <template v-if="item">
-      <div class="head">
-        <div>
-          <div class="no">{{ item.feedback_no }}</div>
-          <h1 class="page-title">{{ item.title }}</h1>
-        </div>
-        <StatusTag
-          :status="item.status"
-          :label="feedbackStatusLabel[item.status]"
-          :type="feedbackStatusTagType(item.status)"
-        />
-      </div>
-
-      <div v-if="canEdit || canConvert || statusActions.length" class="toolbar">
+      <PageHeader :title="item.title" :eyebrow="item.feedback_no">
+        <template #status>
+          <StatusTag :status="item.status" :label="feedbackStatusLabel[item.status]" :type="feedbackStatusTagType(item.status)" />
+        </template>
+        <template v-if="canEdit || canConvert || statusActions.length" #actions>
         <el-button v-if="canEdit" @click="openEdit">编辑</el-button>
-        <el-button v-if="canConvert" type="success" @click="openConvert">转需求</el-button>
+        <el-button v-if="canConvert" type="primary" @click="openConvert">转需求</el-button>
         <el-button
           v-for="action in statusActions"
           :key="action.target"
@@ -336,10 +341,12 @@ onMounted(async () => {
         >
           {{ action.label }}
         </el-button>
-      </div>
+        </template>
+      </PageHeader>
 
-      <el-card shadow="never">
-        <el-descriptions :column="1" border>
+      <div class="detail-grid">
+      <SectionCard title="反馈详情" description="问题内容与复现信息" class="detail-main">
+        <el-descriptions :column="isMobile ? 1 : 2">
           <el-descriptions-item label="类型">
             {{ feedbackTypeLabel[item.feedback_type] ?? item.feedback_type }}
           </el-descriptions-item>
@@ -348,32 +355,34 @@ onMounted(async () => {
           </el-descriptions-item>
           <el-descriptions-item label="所属系统">{{ systemName(item.system_id) }}</el-descriptions-item>
           <el-descriptions-item label="所属模块">{{ moduleName(item.module_id) }}</el-descriptions-item>
-          <el-descriptions-item label="详细描述">
+          <el-descriptions-item label="详细描述" :span="isMobile ? 1 : 2">
             <div class="multiline">{{ item.description }}</div>
           </el-descriptions-item>
-          <el-descriptions-item v-if="item.expected_result" label="期望结果">
+          <el-descriptions-item v-if="item.expected_result" label="期望结果" :span="isMobile ? 1 : 2">
             <div class="multiline">{{ item.expected_result }}</div>
           </el-descriptions-item>
-          <el-descriptions-item v-if="item.actual_result" label="实际结果">
+          <el-descriptions-item v-if="item.actual_result" label="实际结果" :span="isMobile ? 1 : 2">
             <div class="multiline">{{ item.actual_result }}</div>
           </el-descriptions-item>
-          <el-descriptions-item v-if="item.reproduce_steps" label="复现步骤">
+          <el-descriptions-item v-if="item.reproduce_steps" label="复现步骤" :span="isMobile ? 1 : 2">
             <div class="multiline">{{ item.reproduce_steps }}</div>
           </el-descriptions-item>
-          <el-descriptions-item label="关联需求">{{ item.main_requirement_id || '-' }}</el-descriptions-item>
-          <el-descriptions-item v-if="item.duplicate_of_id" label="重复于">
-            #{{ item.duplicate_of_id }}
-          </el-descriptions-item>
-          <el-descriptions-item label="提交人">#{{ item.submitter_id }}</el-descriptions-item>
-          <el-descriptions-item label="创建时间">{{ item.created_at }}</el-descriptions-item>
-          <el-descriptions-item label="更新时间">{{ item.updated_at }}</el-descriptions-item>
         </el-descriptions>
-      </el-card>
+      </SectionCard>
+      <SectionCard title="流转信息" description="关联对象与记录时间" class="detail-side">
+        <dl class="side-fields">
+          <div><dt>关联需求</dt><dd>{{ item.main_requirement_id || '-' }}</dd></div>
+          <div v-if="item.duplicate_of_id"><dt>重复于</dt><dd>#{{ item.duplicate_of_id }}</dd></div>
+          <div><dt>提交人</dt><dd>#{{ item.submitter_id }}</dd></div>
+          <div><dt>创建时间</dt><dd>{{ formatLocalDateTime(item.created_at) }}</dd></div>
+          <div><dt>更新时间</dt><dd>{{ formatLocalDateTime(item.updated_at) }}</dd></div>
+        </dl>
+      </SectionCard>
+      </div>
 
       <!-- attachments -->
-      <el-card shadow="never" class="section">
-        <div class="section-head">
-          <span class="section-title">附件</span>
+      <SectionCard title="附件" class="section">
+        <template #actions>
           <el-upload
             v-if="canAttach"
             :show-file-list="false"
@@ -381,26 +390,25 @@ onMounted(async () => {
           >
             <el-button size="small">上传附件</el-button>
           </el-upload>
-        </div>
+        </template>
         <ul v-if="attachments.length" class="attachments">
           <li v-for="a in attachments" :key="a.file_id">
             <el-link type="primary" @click="download(a)">{{ a.original_name }}</el-link>
             <span class="att-size">{{ Math.max(1, Math.round(a.size / 1024)) }} KB</span>
           </li>
         </ul>
-        <el-empty v-else :image-size="60" description="暂无附件" />
-      </el-card>
+        <EmptyState v-else description="暂无附件" compact />
+      </SectionCard>
 
       <!-- comments -->
-      <el-card shadow="never" class="section">
-        <div class="section-title">评论</div>
+      <SectionCard title="评论" class="section">
         <ul v-if="comments.length" class="comments">
           <li v-for="c in comments" :key="c.id">
-            <div class="comment-meta">#{{ c.created_by }} · {{ c.created_at }}</div>
+            <div class="comment-meta">#{{ c.created_by }} · {{ formatLocalDateTime(c.created_at) }}</div>
             <div class="multiline">{{ c.content }}</div>
           </li>
         </ul>
-        <el-empty v-else :image-size="60" description="暂无评论" />
+        <EmptyState v-else description="暂无评论" compact />
         <div class="comment-form">
           <el-input v-model="commentText" type="textarea" :rows="2" placeholder="写下评论…" />
           <el-button
@@ -412,7 +420,7 @@ onMounted(async () => {
             发表
           </el-button>
         </div>
-      </el-card>
+      </SectionCard>
     </template>
 
     <!-- status change dialog -->
@@ -534,18 +542,26 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
-.no { font-size: 12px; color: #94a3b8; }
-.toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
-.multiline { white-space: pre-wrap; }
-.section { margin-top: 16px; }
-.section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-.section-title { font-weight: 600; }
+.detail-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(250px, 300px); align-items: start; gap: var(--if-space-4); }
+.detail-main, .detail-side { min-width: 0; }
+.detail-main :deep(.el-descriptions__body), .detail-main :deep(.el-descriptions__table) { width: 100%; }
+.detail-main :deep(.el-descriptions__label) { color: var(--if-text-3); font-size: 12px; }
+.detail-main :deep(.el-descriptions__content) { color: var(--if-text-1); overflow-wrap: anywhere; }
+.multiline { white-space: pre-wrap; overflow-wrap: anywhere; }
+.side-fields { display: grid; gap: 13px; margin: 0; }
+.side-fields > div { min-width: 0; padding-bottom: 12px; border-bottom: 1px solid var(--if-border); }
+.side-fields > div:last-child { border-bottom: 0; padding-bottom: 0; }
+.side-fields dt { margin-bottom: 4px; color: var(--if-text-3); font-size: 12px; }
+.side-fields dd { margin: 0; color: var(--if-text-1); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.section { margin-top: var(--if-space-4); }
 .attachments, .comments { list-style: none; margin: 0; padding: 0; }
-.attachments li { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
-.att-size { color: #94a3b8; font-size: 12px; }
-.comments li { padding: 8px 0; border-bottom: 1px solid #f1f5f9; }
-.comment-meta { color: #94a3b8; font-size: 12px; margin-bottom: 2px; }
-.comment-form { display: flex; gap: 8px; align-items: flex-start; margin-top: 12px; }
+.attachments li { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--if-border); }
+.attachments li:last-child { border-bottom: 0; }
+.att-size { color: var(--if-text-3); font-size: 12px; }
+.comments li { padding: 12px 0; border-bottom: 1px solid var(--if-border); }
+.comment-meta { color: var(--if-text-3); font-size: 12px; margin-bottom: 4px; }
+.comment-form { display: flex; gap: 8px; align-items: flex-start; margin-top: 16px; }
 .comment-form .el-button { flex-shrink: 0; }
+@media (max-width: 1199px) { .detail-grid { grid-template-columns: 1fr; } }
+@media (max-width: 767px) { .comment-form { flex-direction: column; } .comment-form .el-button { align-self: flex-end; } }
 </style>

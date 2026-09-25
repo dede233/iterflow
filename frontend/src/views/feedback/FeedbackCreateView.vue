@@ -7,6 +7,8 @@ import { createFeedback, uploadFeedbackAttachment } from '@/api/feedbacks'
 import { listSystems } from '@/api/systems'
 import { usePermission } from '@/composables/usePermission'
 import { FEEDBACK_TYPES, FEEDBACK_URGENCIES } from '@/constants/feedback'
+import PageHeader from '@/components/ui/PageHeader.vue'
+import SectionCard from '@/components/ui/SectionCard.vue'
 import type { BusinessModuleItem, BusinessSystemItem } from '@/types/domain'
 
 const router = useRouter()
@@ -86,15 +88,16 @@ onMounted(async () => {
 
 <template>
   <section class="page">
-    <h1 class="page-title">提交反馈</h1>
-    <el-card shadow="never">
+    <PageHeader title="提交反馈" description="说明你遇到的问题或希望改进的体验，便于团队跟进。" eyebrow="反馈中心 / 新建" />
+    <SectionCard title="反馈内容" description="先填写基本信息，再补充细节与附件。" class="form-card">
       <el-form label-position="top" @submit.prevent="submit">
+        <div class="form-grid">
         <el-form-item label="反馈类型" required>
           <el-select v-model="form.feedback_type" style="width: 100%">
             <el-option v-for="t in FEEDBACK_TYPES" :key="t.value" :label="t.label" :value="t.value" />
           </el-select>
         </el-form-item>
-        <el-form-item label="标题" required>
+        <el-form-item label="标题" required class="span-2">
           <el-input v-model="form.title" maxlength="200" show-word-limit />
         </el-form-item>
         <el-form-item label="紧急程度">
@@ -122,6 +125,8 @@ onMounted(async () => {
             </el-select>
           </el-form-item>
         </template>
+        </div>
+        <h2 class="form-subtitle">详细说明</h2>
         <el-form-item label="详细描述" required>
           <el-input v-model="form.description" type="textarea" :rows="6" />
         </el-form-item>
@@ -147,16 +152,21 @@ onMounted(async () => {
             </template>
           </el-upload>
         </el-form-item>
-        <div class="actions">
+        <div class="actions form-actions">
           <el-button @click="router.back()">取消</el-button>
           <el-button type="primary" native-type="submit" :loading="saving">提交</el-button>
         </div>
       </el-form>
-    </el-card>
+    </SectionCard>
   </section>
 </template>
 
 <style scoped>
-.actions { display: flex; justify-content: flex-end; gap: 8px; }
-.upload-tip { color: #94a3b8; font-size: 12px; line-height: 1.5; }
+.form-card { max-width: 940px; }
+.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 24px; }
+.span-2 { grid-column: 1 / -1; }
+.form-subtitle { margin: 4px 0 18px; padding-top: 20px; border-top: 1px solid var(--if-border); font-size: 14px; font-weight: 700; }
+.actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 16px; border-top: 1px solid var(--if-border); }
+.upload-tip { color: var(--if-text-3); font-size: 12px; line-height: 1.5; }
+@media (max-width: 767px) { .form-grid { grid-template-columns: 1fr; } .span-2 { grid-column: auto; } .form-actions { position: sticky; bottom: calc(var(--if-bottom-nav-height) + env(safe-area-inset-bottom)); z-index: 8; padding: 12px 0; background: var(--if-bg-surface); } .form-actions .el-button { flex: 1; margin: 0; } }
 </style>

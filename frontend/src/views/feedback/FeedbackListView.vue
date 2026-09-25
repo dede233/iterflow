@@ -6,6 +6,12 @@ import { listSystems } from '@/api/systems'
 import { useResponsive } from '@/composables/useResponsive'
 import { usePermission } from '@/composables/usePermission'
 import StatusTag from '@/components/StatusTag.vue'
+import AppIcon from '@/components/ui/AppIcon.vue'
+import PageHeader from '@/components/ui/PageHeader.vue'
+import SectionCard from '@/components/ui/SectionCard.vue'
+import ListCard from '@/components/ui/ListCard.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
+import ErrorState from '@/components/ui/ErrorState.vue'
 import {
   FEEDBACK_STATUSES,
   FEEDBACK_TYPES,
@@ -29,6 +35,7 @@ const { can } = usePermission()
 const rows = ref<Feedback[]>([])
 const total = ref(0)
 const loading = ref(false)
+const failed = ref(false)
 const filterDrawer = ref(false)
 const systems = ref<BusinessSystemItem[]>([])
 const modules = ref<BusinessModuleItem[]>([])
@@ -51,6 +58,7 @@ const moduleOptions = computed(() =>
 
 async function load(): Promise<void> {
   loading.value = true
+  failed.value = false
   try {
     const page = await listFeedbacks({
       page: filters.page,
@@ -64,6 +72,8 @@ async function load(): Promise<void> {
     })
     rows.value = page.items
     total.value = page.total
+  } catch {
+    failed.value = true
   } finally {
     loading.value = false
   }
@@ -113,25 +123,21 @@ onMounted(async () => {
 
 <template>
   <section class="page">
-    <div class="head">
-      <div>
-        <h1 class="page-title">反馈中心</h1>
-        <p class="hint">按你的数据范围展示反馈。</p>
-      </div>
-      <div class="head-actions">
-        <el-button v-if="isMobile" @click="filterDrawer = true">筛选</el-button>
+    <PageHeader title="反馈中心" description="收集、受理并追踪每一条反馈。" eyebrow="研发协作">
+      <template #actions>
+        <el-button v-if="isMobile" @click="filterDrawer = true"><AppIcon name="filter" :size="16" />筛选</el-button>
         <el-button
           v-if="can('rd.feedback.create')"
           type="primary"
           @click="router.push('/feedbacks/new')"
         >
-          提交反馈
+          <AppIcon name="plus" :size="16" />提交反馈
         </el-button>
-      </div>
-    </div>
+      </template>
+    </PageHeader>
 
     <!-- Desktop filter bar -->
-    <el-form v-if="!isMobile" class="filters" :inline="true">
+    <el-form v-if="!isMobile" class="filters filter-panel" :inline="true">
       <el-form-item label="关键词">
         <el-input
           v-model="filters.keyword"
@@ -178,6 +184,8 @@ onMounted(async () => {
       </el-form-item>
     </el-form>
 
+    <ErrorState v-if="failed" title="反馈加载失败" description="请检查网络后重试。" retry-label="重新加载" @retry="load" />
+    <SectionCard v-else title="反馈列表" :description="`共 ${total} 条反馈`" :padded="false">
     <!-- Desktop table -->
     <el-table
       v-if="!isMobile"
@@ -215,20 +223,16 @@ onMounted(async () => {
 
     <!-- Mobile cards -->
     <div v-else v-loading="loading" class="cards">
-      <el-card v-for="r in rows" :key="r.id" shadow="never" @click="router.push('/feedbacks/' + r.id)">
-        <div class="card-title">{{ r.feedback_no }}</div>
-        <div class="card-heading">{{ r.title }}</div>
-        <div class="meta">
+      <ListCard v-for="r in rows" :key="r.id" :code="r.feedback_no" :title="r.title" @open="router.push('/feedbacks/' + r.id)">
+        <template #status>
+          <StatusTag :status="r.status" :label="feedbackStatusLabel[r.status]" :type="feedbackStatusTagType(r.status)" size="sm" />
+        </template>
           <span>{{ feedbackTypeLabel[r.feedback_type] ?? r.feedback_type }}</span>
-          <StatusTag
-            :status="r.status"
-            :label="feedbackStatusLabel[r.status]"
-            :type="feedbackStatusTagType(r.status)"
-          />
-        </div>
-      </el-card>
-      <el-empty v-if="!loading && !rows.length" description="暂无反馈" />
+          <span>{{ feedbackUrgencyLabel[r.urgency] ?? r.urgency }}</span>
+      </ListCard>
+      <EmptyState v-if="!loading && !rows.length" description="暂无反馈" compact />
     </div>
+    </SectionCard>
 
     <el-pagination
       class="pager"
@@ -246,7 +250,7 @@ onMounted(async () => {
     />
 
     <!-- Mobile filter drawer -->
-    <el-drawer v-model="filterDrawer" title="筛选" direction="rtl" size="80%">
+    <el-drawer v-model="filterDrawer" title="筛选反馈" direction="rtl" size="min(420px, 100%)">
       <el-form label-position="top">
         <el-form-item label="关键词">
           <el-input v-model="filters.keyword" placeholder="编号/标题/描述" clearable />
@@ -266,6 +270,16 @@ onMounted(async () => {
             <el-option v-for="u in FEEDBACK_URGENCIES" :key="u.value" :label="u.label" :value="u.value" />
           </el-select>
         </el-form-item>
+        <el-form-item v-if="canReadSystems" label="系统">
+          <el-select v-model="filters.system_id" clearable placeholder="全部" style="width: 100%" @change="onSystemChange">
+            <el-option v-for="s in systems" :key="s.id" :label="s.name" :value="s.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item v-if="canReadSystems && filters.system_id" label="模块">
+          <el-select v-model="filters.module_id" clearable placeholder="全部" style="width: 100%">
+            <el-option v-for="m in moduleOptions" :key="m.id" :label="m.name" :value="m.id" />
+          </el-select>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="resetFilters">重置</el-button>
@@ -276,14 +290,8 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
-.hint { margin: -8px 0 16px; color: #64748b; font-size: 13px; }
-.head-actions { display: flex; gap: 8px; }
-.filters { margin-bottom: 8px; }
-.cards { display: grid; gap: 10px; }
-.cards .el-card { cursor: pointer; }
-.card-title { font-size: 12px; color: #94a3b8; }
-.card-heading { font-weight: 600; margin: 2px 0 8px; }
-.meta { display: flex; justify-content: space-between; align-items: center; color: #64748b; }
-.pager { margin-top: 16px; justify-content: flex-end; }
+.filters { margin-bottom: var(--if-space-4); }
+.cards { display: grid; gap: 8px; padding: var(--if-space-3); }
+.pager { margin-top: var(--if-space-4); justify-content: flex-end; }
+@media (max-width: 767px) { .pager { justify-content: center; } }
 </style>

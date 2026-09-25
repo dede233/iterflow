@@ -3,6 +3,8 @@ import { reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 import { createVersion } from '@/api/versions'
+import PageHeader from '@/components/ui/PageHeader.vue'
+import SectionCard from '@/components/ui/SectionCard.vue'
 
 const router = useRouter()
 const saving = ref(false)
@@ -40,9 +42,10 @@ async function submit(): Promise<void> {
 
 <template>
   <section class="page">
-    <h1 class="page-title">新建版本</h1>
-    <el-card shadow="never">
+    <PageHeader title="新建版本" description="设置版本标识与计划上线日期。" eyebrow="版本管理 / 新建" />
+    <SectionCard title="版本信息" description="创建后可在版本详情中管理需求清单。" class="editor-card">
       <el-form label-position="top" @submit.prevent="submit">
+        <div class="editor-grid">
         <el-form-item label="版本号" required>
           <el-input v-model="form.version_no" placeholder="如 V1.0.0" maxlength="32" />
         </el-form-item>
@@ -58,18 +61,15 @@ async function submit(): Promise<void> {
             style="width: 100%"
           />
         </el-form-item>
-        <el-form-item label="说明">
+        <el-form-item label="说明" class="span-2">
           <el-input v-model="form.description" type="textarea" :rows="4" />
         </el-form-item>
-        <div class="actions">
+        </div>
+        <div class="editor-actions">
           <el-button @click="router.back()">取消</el-button>
           <el-button type="primary" native-type="submit" :loading="saving">创建</el-button>
         </div>
       </el-form>
-    </el-card>
+    </SectionCard>
   </section>
 </template>
-
-<style scoped>
-.actions { display: flex; justify-content: flex-end; gap: 8px; }
-</style>

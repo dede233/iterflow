@@ -15,6 +15,12 @@ import {
   loadRequirementFeedbackSection,
 } from '@/security/detailAuthorization'
 import StatusTag from '@/components/StatusTag.vue'
+import PageHeader from '@/components/ui/PageHeader.vue'
+import SectionCard from '@/components/ui/SectionCard.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
+import ErrorState from '@/components/ui/ErrorState.vue'
+import { useResponsive } from '@/composables/useResponsive'
+import { formatLocalDateTime } from '@/utils/dates'
 import {
   REQUIREMENT_PRIORITIES,
   REQUIREMENT_TYPES,
@@ -30,11 +36,13 @@ import type { LinkedFeedback, Requirement } from '@/types/domain'
 const route = useRoute()
 const router = useRouter()
 const { can } = usePermission()
+const { isMobile } = useResponsive()
 const id = Number(route.params.id)
 
 const item = ref<Requirement | null>(null)
 const feedbacks = ref<LinkedFeedback[]>([])
 const loading = ref(false)
+const failed = ref(false)
 const canEdit = computed(() => can('rd.requirement.edit'))
 const canChangeStatus = computed(() => can('rd.requirement.status'))
 const canViewFeedbacks = computed(() => can('rd.feedback.view'))
@@ -129,9 +137,13 @@ async function submitEdit(): Promise<void> {
 
 async function load(): Promise<void> {
   loading.value = true
+  failed.value = false
   try {
     item.value = await getRequirement(id)
     feedbacks.value = await loadRequirementFeedbackSection(id, can, listRequirementFeedbacks)
+  } catch {
+    failed.value = true
+    item.value = null
   } finally {
     loading.value = false
   }
@@ -157,20 +169,13 @@ onBeforeUnmount(() => {
 
 <template>
   <section v-loading="loading" class="page">
+    <ErrorState v-if="failed" title="需求加载失败" description="请检查网络或确认需求是否仍可访问。" retry-label="重新加载" @retry="load" />
     <template v-if="item">
-      <div class="head">
-        <div>
-          <div class="no">{{ item.requirement_no }}</div>
-          <h1 class="page-title">{{ item.title }}</h1>
-        </div>
-        <StatusTag
-          :status="item.status"
-          :label="requirementStatusLabel[item.status]"
-          :type="requirementStatusTagType(item.status)"
-        />
-      </div>
-
-      <div v-if="canEdit || statusActions.length" class="toolbar">
+      <PageHeader :title="item.title" :eyebrow="item.requirement_no">
+        <template #status>
+          <StatusTag :status="item.status" :label="requirementStatusLabel[item.status]" :type="requirementStatusTagType(item.status)" />
+        </template>
+        <template v-if="canEdit || statusActions.length" #actions>
         <el-button v-if="canEdit" @click="openEdit">编辑</el-button>
         <el-button
           v-for="action in statusActions"
@@ -181,31 +186,35 @@ onBeforeUnmount(() => {
         >
           {{ action.label }}
         </el-button>
-      </div>
+        </template>
+      </PageHeader>
 
-      <el-card shadow="never">
-        <el-descriptions :column="1" border>
+      <div class="detail-grid">
+      <SectionCard title="需求详情" description="范围与验收标准" class="detail-main">
+        <el-descriptions :column="isMobile ? 1 : 2">
           <el-descriptions-item label="类型">
             {{ requirementTypeLabel[item.requirement_type] ?? item.requirement_type }}
           </el-descriptions-item>
           <el-descriptions-item label="优先级">{{ item.priority }}</el-descriptions-item>
-          <el-descriptions-item label="来源">
-            {{ item.source === 'FEEDBACK' ? '反馈转化' : '直接创建' }}
-          </el-descriptions-item>
-          <el-descriptions-item label="当前版本">{{ item.current_version_id || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="需求描述">
+          <el-descriptions-item label="需求描述" :span="isMobile ? 1 : 2">
             <div class="multiline">{{ item.description }}</div>
           </el-descriptions-item>
-          <el-descriptions-item label="验收标准">
+          <el-descriptions-item label="验收标准" :span="isMobile ? 1 : 2">
             <div class="multiline">{{ item.acceptance_criteria || '-' }}</div>
           </el-descriptions-item>
-          <el-descriptions-item label="更新时间">{{ item.updated_at }}</el-descriptions-item>
         </el-descriptions>
-      </el-card>
+      </SectionCard>
+      <SectionCard title="流转信息" description="来源与版本归属" class="detail-side">
+        <dl class="side-fields">
+          <div><dt>来源</dt><dd>{{ item.source === 'FEEDBACK' ? '反馈转化' : '直接创建' }}</dd></div>
+          <div><dt>当前版本</dt><dd>{{ item.current_version_id || '-' }}</dd></div>
+          <div><dt>更新时间</dt><dd>{{ formatLocalDateTime(item.updated_at) }}</dd></div>
+        </dl>
+      </SectionCard>
+      </div>
 
       <!-- source feedbacks -->
-      <el-card v-if="canViewFeedbacks" shadow="never" class="section">
-        <div class="section-title">来源反馈</div>
+      <SectionCard v-if="canViewFeedbacks" title="来源反馈" class="section">
         <ul v-if="feedbacks.length" class="links">
           <li v-for="f in feedbacks" :key="f.feedback_id">
             <el-link type="primary" @click="router.push('/feedbacks/' + f.feedback_id)">
@@ -214,8 +223,8 @@ onBeforeUnmount(() => {
             <el-tag v-if="f.is_primary" size="small" type="success" effect="light">主</el-tag>
           </li>
         </ul>
-        <el-empty v-else :image-size="60" description="暂无可见来源反馈" />
-      </el-card>
+        <EmptyState v-else description="暂无可见来源反馈" compact />
+      </SectionCard>
     </template>
 
     <!-- status dialog -->
@@ -268,12 +277,18 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
-.no { font-size: 12px; color: #94a3b8; }
-.toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
-.multiline { white-space: pre-wrap; }
-.section { margin-top: 16px; }
-.section-title { font-weight: 600; margin-bottom: 8px; }
+.detail-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(250px, 300px); align-items: start; gap: var(--if-space-4); }
+.detail-main, .detail-side { min-width: 0; }
+.detail-main :deep(.el-descriptions__content) { overflow-wrap: anywhere; }
+.multiline { white-space: pre-wrap; overflow-wrap: anywhere; }
+.side-fields { display: grid; gap: 13px; margin: 0; }
+.side-fields > div { min-width: 0; padding-bottom: 12px; border-bottom: 1px solid var(--if-border); }
+.side-fields > div:last-child { border-bottom: 0; padding-bottom: 0; }
+.side-fields dt { margin-bottom: 4px; color: var(--if-text-3); font-size: 12px; }
+.side-fields dd { margin: 0; font-size: 13px; overflow-wrap: anywhere; }
+.section { margin-top: var(--if-space-4); }
 .links { list-style: none; margin: 0; padding: 0; }
-.links li { display: flex; align-items: center; gap: 8px; padding: 6px 0; }
+.links li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--if-border); }
+.links li:last-child { border-bottom: 0; }
+@media (max-width: 1199px) { .detail-grid { grid-template-columns: 1fr; } }
 </style>

@@ -216,7 +216,7 @@ describe('detail views enforce permission-aware loading in mounted components', 
     expect(mocks.listVersionRequirements).not.toHaveBeenCalled()
     expect(mocks.listReleases).not.toHaveBeenCalled()
     expect(wrapper.text()).toContain('1.5.0')
-    expect(wrapper.text()).not.toContain('可见需求清单')
+    expect(wrapper.text()).not.toContain('需求清单')
     expect(wrapper.text()).not.toContain('发布历史')
   })
 
@@ -226,7 +226,7 @@ describe('detail views enforce permission-aware loading in mounted components', 
     await flushPromises()
     expect(mocks.listVersionRequirements).toHaveBeenCalledOnce()
     expect(mocks.listReleases).not.toHaveBeenCalled()
-    expect(wrapper.text()).toContain('可见需求清单')
+    expect(wrapper.text()).toContain('需求清单')
     expect(wrapper.text()).not.toContain('发布历史')
     wrapper.unmount()
 
@@ -236,7 +236,7 @@ describe('detail views enforce permission-aware loading in mounted components', 
     await flushPromises()
     expect(mocks.listVersionRequirements).not.toHaveBeenCalled()
     expect(mocks.listReleases).toHaveBeenCalledOnce()
-    expect(releasesOnly.text()).not.toContain('可见需求清单')
+    expect(releasesOnly.text()).not.toContain('需求清单')
     expect(releasesOnly.text()).toContain('发布历史')
   })
 

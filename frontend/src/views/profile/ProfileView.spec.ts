@@ -40,7 +40,7 @@ describe('personal center', () => {
   it('renders current account details without loading administrator user APIs', () => {
     const wrapper = view()
     expect(wrapper.text()).toContain('个人中心')
-    for (const value of ['普通成员', 'member.long.name', 'member@example.com', 'ACTIVE', 'SELF']) {
+    for (const value of ['普通成员', 'member.long.name', 'member@example.com', '启用', '我的数据']) {
       expect(wrapper.text()).toContain(value)
     }
     expect(wrapper.text()).not.toContain('permission_codes')

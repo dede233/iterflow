@@ -33,7 +33,7 @@ test('profile remains usable at all five release viewports', async ({ page }) =>
     await page.goto('/profile')
     await expect(page).toHaveURL(/\/profile$/)
     await expect(page.getByRole('heading', { name: '个人中心' })).toBeVisible()
-    await expect(page.getByText(member.username)).toBeVisible()
+    await expect(page.getByText(member.username, { exact: true })).toBeVisible()
     await expect(page.getByText(member.email)).toBeVisible()
     await expect(page.getByRole('button', { name: '修改密码' })).toBeVisible()
     await expect(page.getByRole('main').getByRole('button', { name: '退出登录' })).toBeVisible()

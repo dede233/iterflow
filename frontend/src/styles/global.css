@@ -81,6 +81,8 @@ code { font-family: var(--if-font-mono); }
 .el-table { --el-table-header-bg-color: var(--if-bg-subtle); --el-table-row-hover-bg-color: var(--if-brand-50); border-radius: var(--if-radius); }
 .el-table th.el-table__cell { color: var(--if-text-2); font-weight: 600; font-size: 12px; }
 .el-dialog { border-radius: var(--if-radius-lg); max-width: calc(100vw - 24px); }
+.create-dialog { display: flex; flex-direction: column; max-height: calc(100dvh - 48px); }
+.create-dialog .el-dialog__body { min-height: 0; overflow-y: auto; }
 .el-dialog__title, .el-drawer__title { font-weight: 700; color: var(--if-text-1); }
 .el-drawer__header { margin-bottom: 0; padding-bottom: var(--if-space-4); border-bottom: 1px solid var(--if-border); }
 .el-drawer__footer { border-top: 1px solid var(--if-border); padding-top: var(--if-space-3); }

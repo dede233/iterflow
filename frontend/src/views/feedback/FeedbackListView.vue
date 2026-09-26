@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { listFeedbacks } from '@/api/feedbacks'
+import FeedbackCreateView from './FeedbackCreateView.vue'
 import { listSystems } from '@/api/systems'
 import { useResponsive } from '@/composables/useResponsive'
 import { usePermission } from '@/composables/usePermission'
@@ -37,6 +38,7 @@ const total = ref(0)
 const loading = ref(false)
 const failed = ref(false)
 const filterDrawer = ref(false)
+const createDialog = ref(false)
 const systems = ref<BusinessSystemItem[]>([])
 const modules = ref<BusinessModuleItem[]>([])
 const canReadSystems = computed(() => can('sys.system.view'))
@@ -107,6 +109,12 @@ function systemName(id: number | null | undefined): string {
   return systems.value.find((s) => s.id === id)?.name ?? `#${id}`
 }
 
+async function onFeedbackCreated(id: number): Promise<void> {
+  createDialog.value = false
+  await load()
+  await router.push(`/feedbacks/${id}`)
+}
+
 onMounted(async () => {
   if (canReadSystems.value) {
     try {
@@ -129,7 +137,7 @@ onMounted(async () => {
         <el-button
           v-if="can('rd.feedback.create')"
           type="primary"
-          @click="router.push('/feedbacks/new')"
+          @click="createDialog = true"
         >
           <AppIcon name="plus" :size="16" />提交反馈
         </el-button>
@@ -287,6 +295,10 @@ onMounted(async () => {
         <el-button type="primary" @click="applyFilters">查询</el-button>
       </template>
     </el-drawer>
+
+    <el-dialog v-model="createDialog" title="提交反馈" class="create-dialog" width="min(860px, calc(100vw - 24px))" destroy-on-close :close-on-click-modal="false">
+      <FeedbackCreateView v-if="createDialog" embedded @cancel="createDialog = false" @created="onFeedbackCreated" />
+    </el-dialog>
   </section>
 </template>
 

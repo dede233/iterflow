@@ -12,6 +12,8 @@ import SectionCard from '@/components/ui/SectionCard.vue'
 import type { BusinessModuleItem, BusinessSystemItem } from '@/types/domain'
 
 const router = useRouter()
+const props = withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
+const emit = defineEmits<{ cancel: []; created: [id: number] }>()
 const { can } = usePermission()
 const saving = ref(false)
 const systems = ref<BusinessSystemItem[]>([])
@@ -37,6 +39,11 @@ const moduleOptions = computed(() =>
 
 function onSystemChange(): void {
   form.module_id = null
+}
+
+function cancel(): void {
+  if (props.embedded) emit('cancel')
+  else router.back()
 }
 
 async function submit(): Promise<void> {
@@ -67,7 +74,8 @@ async function submit(): Promise<void> {
       if (raw) await uploadFeedbackAttachment(created.id, raw as File)
     }
     ElMessage.success('反馈已提交')
-    await router.replace(`/feedbacks/${created.id}`)
+    if (props.embedded) emit('created', created.id)
+    else await router.replace(`/feedbacks/${created.id}`)
   } finally {
     saving.value = false
   }
@@ -87,9 +95,9 @@ onMounted(async () => {
 </script>
 
 <template>
-  <section class="page">
-    <PageHeader title="提交反馈" description="说明你遇到的问题或希望改进的体验，便于团队跟进。" eyebrow="反馈中心 / 新建" />
-    <SectionCard title="反馈内容" description="先填写基本信息，再补充细节与附件。" class="form-card">
+  <section :class="props.embedded ? 'embedded-form' : 'page'">
+    <PageHeader v-if="!props.embedded" title="提交反馈" description="说明你遇到的问题或希望改进的体验，便于团队跟进。" eyebrow="反馈中心 / 新建" />
+    <SectionCard :title="props.embedded ? undefined : '反馈内容'" :description="props.embedded ? undefined : '先填写基本信息，再补充细节与附件。'" class="form-card">
       <el-form label-position="top" @submit.prevent="submit">
         <div class="form-grid">
         <el-form-item label="反馈类型" required>
@@ -153,7 +161,7 @@ onMounted(async () => {
           </el-upload>
         </el-form-item>
         <div class="actions form-actions">
-          <el-button @click="router.back()">取消</el-button>
+          <el-button @click="cancel">取消</el-button>
           <el-button type="primary" native-type="submit" :loading="saving">提交</el-button>
         </div>
       </el-form>
@@ -168,5 +176,7 @@ onMounted(async () => {
 .form-subtitle { margin: 4px 0 18px; padding-top: 20px; border-top: 1px solid var(--if-border); font-size: 14px; font-weight: 700; }
 .actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 16px; border-top: 1px solid var(--if-border); }
 .upload-tip { color: var(--if-text-3); font-size: 12px; line-height: 1.5; }
-@media (max-width: 767px) { .form-grid { grid-template-columns: 1fr; } .span-2 { grid-column: auto; } .form-actions { position: sticky; bottom: calc(var(--if-bottom-nav-height) + env(safe-area-inset-bottom)); z-index: 8; padding: 12px 0; background: var(--if-bg-surface); } .form-actions .el-button { flex: 1; margin: 0; } }
+.embedded-form { min-width: 0; }
+.embedded-form :deep(.section-card) { border: 0; box-shadow: none; }
+@media (max-width: 767px) { .form-grid { grid-template-columns: 1fr; } .span-2 { grid-column: auto; } .form-actions { position: sticky; bottom: calc(var(--if-bottom-nav-height) + env(safe-area-inset-bottom)); z-index: 8; padding: 12px 0; background: var(--if-bg-surface); } .embedded-form .form-actions { bottom: 0; } .form-actions .el-button { flex: 1; margin: 0; } }
 </style>

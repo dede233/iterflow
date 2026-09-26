@@ -2,6 +2,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { listRequirements } from '@/api/requirements'
+import RequirementCreateView from './RequirementCreateView.vue'
 import { useResponsive } from '@/composables/useResponsive'
 import { usePermission } from '@/composables/usePermission'
 import StatusTag from '@/components/StatusTag.vue'
@@ -22,6 +23,7 @@ const rows = ref<Requirement[]>([])
 const total = ref(0)
 const loading = ref(false)
 const failed = ref(false)
+const createDialog = ref(false)
 const paging = reactive({ page: 1, page_size: 20 })
 
 async function load(): Promise<void> {
@@ -38,6 +40,12 @@ async function load(): Promise<void> {
   }
 }
 
+async function onRequirementCreated(id: number): Promise<void> {
+  createDialog.value = false
+  await load()
+  await router.push(`/requirements/${id}`)
+}
+
 onMounted(load)
 </script>
 
@@ -48,7 +56,7 @@ onMounted(load)
       <el-button
         v-if="can('rd.requirement.create')"
         type="primary"
-        @click="router.push('/requirements/new')"
+        @click="createDialog = true"
       >
         <AppIcon name="plus" :size="16" />新建需求
       </el-button>
@@ -119,6 +127,10 @@ onMounted(load)
         }
       "
     />
+
+    <el-dialog v-model="createDialog" title="新建需求" class="create-dialog" width="min(720px, calc(100vw - 24px))" destroy-on-close :close-on-click-modal="false">
+      <RequirementCreateView v-if="createDialog" embedded @cancel="createDialog = false" @created="onRequirementCreated" />
+    </el-dialog>
   </section>
 </template>
 

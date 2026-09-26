@@ -2,6 +2,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { listVersions } from '@/api/versions'
+import VersionCreateView from './VersionCreateView.vue'
 import { useResponsive } from '@/composables/useResponsive'
 import { usePermission } from '@/composables/usePermission'
 import StatusTag from '@/components/StatusTag.vue'
@@ -22,6 +23,7 @@ const rows = ref<VersionItem[]>([])
 const total = ref(0)
 const loading = ref(false)
 const failed = ref(false)
+const createDialog = ref(false)
 const paging = reactive({ page: 1, page_size: 20 })
 
 async function load(): Promise<void> {
@@ -38,6 +40,12 @@ async function load(): Promise<void> {
   }
 }
 
+async function onVersionCreated(id: number): Promise<void> {
+  createDialog.value = false
+  await load()
+  await router.push(`/versions/${id}`)
+}
+
 onMounted(load)
 </script>
 
@@ -48,7 +56,7 @@ onMounted(load)
       <el-button
         v-if="can('rd.version.create')"
         type="primary"
-        @click="router.push('/versions/new')"
+        @click="createDialog = true"
       >
         <AppIcon name="plus" :size="16" />新建版本
       </el-button>
@@ -109,6 +117,10 @@ onMounted(load)
         }
       "
     />
+
+    <el-dialog v-model="createDialog" title="新建版本" class="create-dialog" width="min(720px, calc(100vw - 24px))" destroy-on-close :close-on-click-modal="false">
+      <VersionCreateView v-if="createDialog" embedded @cancel="createDialog = false" @created="onVersionCreated" />
+    </el-dialog>
   </section>
 </template>
 

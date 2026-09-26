@@ -142,27 +142,45 @@ jobs:
       - name: Install backend test dependencies
         working-directory: backend
         run: python -m pip install -e '.[dev]'
-      - name: Start disposable MinIO
+      - name: Start disposable S3-compatible server
         run: |
           password="$(openssl rand -hex 24)"
           echo "::add-mask::$password"
           echo "ITERFLOW_TEST_S3_SECRET_KEY=$password" >> "$GITHUB_ENV"
-          docker run -d --name iterflow-minio -p 127.0.0.1:9000:9000 \
-            -e MINIO_ROOT_USER="$ITERFLOW_TEST_S3_ACCESS_KEY" \
-            -e MINIO_ROOT_PASSWORD="$password" \
-            quay.io/minio/minio:RELEASE.2025-07-23T15-54-02Z server /data
+          export ITERFLOW_TEST_S3_SECRET_KEY="$password"
+          python - <<'PY' > "$RUNNER_TEMP/iterflow-s3.json"
+          import json
+          import os
+
+          print(json.dumps({"identities": [{
+              "name": "ci-admin",
+              "credentials": [{
+                  "accessKey": os.environ["ITERFLOW_TEST_S3_ACCESS_KEY"],
+                  "secretKey": os.environ["ITERFLOW_TEST_S3_SECRET_KEY"],
+              }],
+              "actions": ["Admin", "Read", "List", "Tagging", "Write"],
+          }]}))
+          PY
+          chmod 644 "$RUNNER_TEMP/iterflow-s3.json"
+          docker run -d --name iterflow-s3 -p 127.0.0.1:9000:8333 -p 127.0.0.1:9333:9333 \
+            -v "$RUNNER_TEMP/iterflow-s3.json:/etc/seaweedfs/s3.json:ro" \
+            chrislusf/seaweedfs:4.22 server -filer -s3 \
+            -s3.config=/etc/seaweedfs/s3.json -master.volumeSizeLimitMB=128
           for attempt in {1..30}; do
-            if curl --fail --silent http://127.0.0.1:9000/minio/health/live; then exit 0; fi
+            if curl --fail --silent http://127.0.0.1:9333/cluster/healthz \
+              && curl --silent --output /dev/null http://127.0.0.1:9000/; then exit 0; fi
             sleep 2
           done
-          docker logs iterflow-minio
+          docker logs iterflow-s3
           exit 1
       - name: Real S3-compatible round trip
         working-directory: backend
         run: python -m pytest -q -rs tests/test_s3_integration.py
-      - name: Stop MinIO
+      - name: Stop disposable S3-compatible server
         if: always()
-        run: docker rm -f iterflow-minio || true
+        run: |
+          docker rm -f iterflow-s3 || true
+          rm -f "$RUNNER_TEMP/iterflow-s3.json"
 
   browser_smoke:
     runs-on: ubuntu-latest

@@ -601,11 +601,95 @@ export interface paths {
         /** 业务系统与模块字典 */
         get: operations["list_systems_api_v1_systems_get"];
         put?: never;
+        /**
+         * 创建业务系统
+         * @description 需要 sys.system.manage 与 ALL 数据范围；创建和审计在同一事务中完成。
+         */
+        post: operations["create_system_api_v1_systems_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/systems/manage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 管理端业务系统与模块列表
+         * @description 需要 sys.system.manage 与 ALL 数据范围；包含已停用的系统与模块。
+         */
+        get: operations["list_all_systems_api_v1_systems_manage_get"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/systems/{system_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * 编辑业务系统
+         * @description 需要 sys.system.manage 与 ALL 数据范围；携带 revision，停用保留历史关联。
+         */
+        patch: operations["update_system_api_v1_systems__system_id__patch"];
+        trace?: never;
+    };
+    "/systems/{system_id}/modules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 创建业务模块
+         * @description 需要 sys.system.manage 与 ALL 数据范围。
+         */
+        post: operations["create_module_api_v1_systems__system_id__modules_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/systems/modules/{module_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * 编辑业务模块
+         * @description 需要 sys.system.manage 与 ALL 数据范围；携带 revision，停用保留历史关联。
+         */
+        patch: operations["update_module_api_v1_systems_modules__module_id__patch"];
         trace?: never;
     };
     "/editing/start": {
@@ -1035,6 +1119,23 @@ export interface components {
             /** File */
             file: string;
         };
+        /** BusinessModuleCreate */
+        BusinessModuleCreate: {
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /**
+             * Sort Order
+             * @default 0
+             */
+            sort_order: number;
+        };
         /** BusinessModuleOut */
         BusinessModuleOut: {
             /** Id */
@@ -1066,12 +1167,42 @@ export interface components {
             /** Revision */
             revision: number;
         };
+        /** BusinessModuleUpdate */
+        BusinessModuleUpdate: {
+            /** Code */
+            code?: string | null;
+            /** Name */
+            name?: string | null;
+            /** Enabled */
+            enabled?: boolean | null;
+            /** Sort Order */
+            sort_order?: number | null;
+            /** Revision */
+            revision: number;
+        };
         /** BusinessSystemCatalogOut */
         BusinessSystemCatalogOut: {
             /** Systems */
             systems: components["schemas"]["BusinessSystemOut"][];
             /** Modules */
             modules: components["schemas"]["BusinessModuleOut"][];
+        };
+        /** BusinessSystemCreate */
+        BusinessSystemCreate: {
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /**
+             * Sort Order
+             * @default 0
+             */
+            sort_order: number;
         };
         /** BusinessSystemOut */
         BusinessSystemOut: {
@@ -1099,6 +1230,19 @@ export interface components {
             updated_at: string;
             /** Updated By */
             updated_by: number | null;
+            /** Revision */
+            revision: number;
+        };
+        /** BusinessSystemUpdate */
+        BusinessSystemUpdate: {
+            /** Code */
+            code?: string | null;
+            /** Name */
+            name?: string | null;
+            /** Enabled */
+            enabled?: boolean | null;
+            /** Sort Order */
+            sort_order?: number | null;
             /** Revision */
             revision: number;
         };
@@ -4291,6 +4435,317 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    create_system_api_v1_systems_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BusinessSystemCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessSystemOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或 revision 冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_all_systems_api_v1_systems_manage_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessSystemCatalogOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    update_system_api_v1_systems__system_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                system_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BusinessSystemUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessSystemOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或 revision 冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_module_api_v1_systems__system_id__modules_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                system_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BusinessModuleCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessModuleOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或 revision 冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_module_api_v1_systems_modules__module_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                module_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BusinessModuleUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessModuleOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或 revision 冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

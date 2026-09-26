@@ -9,6 +9,7 @@ import SectionCard from '@/components/ui/SectionCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
 import { formatLocalDateTime } from '@/utils/dates'
+import { auditActionLabel, auditActionOptions, auditEntityLabel, auditEntityOptions } from '@/utils/auditLabels'
 import type { AuditItem, AuditListParams } from '@/types/domain'
 
 const { isMobile } = useResponsive()
@@ -28,8 +29,6 @@ const filters = reactive({
   action: '',
   operator_id: undefined as number | undefined,
 })
-
-const entityTypes = ['FEEDBACK', 'REQUIREMENT', 'VERSION', 'RELEASE', 'USER', 'ROLE', 'AUTH']
 
 function buildParams(): AuditListParams {
   return {
@@ -107,12 +106,12 @@ onMounted(() => void load())
 
     <el-form v-if="!isMobile" class="filters filter-panel" label-position="top" @submit.prevent="search">
       <el-form-item label="实体类型">
-        <el-select v-model="filters.entity_type" clearable placeholder="全部实体">
-          <el-option v-for="item in entityTypes" :key="item" :label="item" :value="item" />
+        <el-select v-model="filters.entity_type" clearable filterable placeholder="全部实体">
+          <el-option v-for="item in auditEntityOptions" :key="item.value" :label="item.label" :value="item.value" />
         </el-select>
       </el-form-item>
       <el-form-item label="实体 ID"><el-input-number v-model="filters.entity_id" :min="1" controls-position="right" /></el-form-item>
-      <el-form-item label="操作"><el-input v-model="filters.action" clearable placeholder="如 STATUS_CHANGE" /></el-form-item>
+      <el-form-item label="操作"><el-select v-model="filters.action" clearable filterable placeholder="全部操作"><el-option v-for="item in auditActionOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item>
       <el-form-item label="操作人 ID"><el-input-number v-model="filters.operator_id" :min="1" controls-position="right" /></el-form-item>
       <el-form-item label="时间范围" class="time-filter">
         <el-date-picker v-model="timeRange" type="datetimerange" range-separator="至" start-placeholder="开始时间" end-placeholder="结束时间" />
@@ -127,9 +126,9 @@ onMounted(() => void load())
     <SectionCard v-else title="操作记录" :description="`共 ${total} 条记录`" :padded="false">
     <el-table v-if="!isMobile" v-loading="loading" :data="rows" class="audit-table" @row-click="showDetail">
       <el-table-column prop="id" label="ID" width="90" />
-      <el-table-column prop="entity_type" label="实体" width="130" />
+      <el-table-column label="实体" width="130"><template #default="scope">{{ auditEntityLabel(scope.row.entity_type) }}</template></el-table-column>
       <el-table-column prop="entity_id" label="实体 ID" width="110" />
-      <el-table-column prop="action" label="操作" min-width="180" />
+      <el-table-column label="操作" min-width="180"><template #default="scope">{{ auditActionLabel(scope.row.action) }}</template></el-table-column>
       <el-table-column label="操作人" min-width="160"><template #default="scope">{{ operatorName(scope.row) }}</template></el-table-column>
       <el-table-column label="时间" min-width="180"><template #default="scope">{{ formatLocalDateTime(scope.row.created_at) }}</template></el-table-column>
       <el-table-column label="详情" width="80" fixed="right"><template #default="scope"><el-button link type="primary" @click.stop="showDetail(scope.row)">查看</el-button></template></el-table-column>
@@ -138,8 +137,8 @@ onMounted(() => void load())
 
     <div v-else v-loading="loading" class="cards">
       <button v-for="item in rows" :key="item.id" type="button" class="audit-card" @click="showDetail(item)">
-        <span class="card-head"><strong>{{ item.entity_type }} #{{ item.entity_id ?? '-' }}</strong><span class="card-id">记录 #{{ item.id }}</span></span>
-        <span class="card-action">{{ item.action }}</span>
+        <span class="card-head"><strong>{{ auditEntityLabel(item.entity_type) }} #{{ item.entity_id ?? '-' }}</strong><span class="card-id">记录 #{{ item.id }}</span></span>
+        <span class="card-action">{{ auditActionLabel(item.action) }}</span>
         <span class="card-meta">{{ operatorName(item) }} · {{ formatLocalDateTime(item.created_at) }}</span>
       </button>
       <EmptyState v-if="!loading && !rows.length" description="暂无可查看的审计记录" compact />
@@ -150,9 +149,9 @@ onMounted(() => void load())
 
     <el-drawer v-model="filterDrawer" title="筛选审计记录" size="min(420px, 100%)" destroy-on-close>
       <el-form class="drawer-filters" label-position="top" @submit.prevent="search">
-        <el-form-item label="实体类型"><el-select v-model="filters.entity_type" clearable placeholder="全部实体"><el-option v-for="item in entityTypes" :key="item" :label="item" :value="item" /></el-select></el-form-item>
+        <el-form-item label="实体类型"><el-select v-model="filters.entity_type" clearable filterable placeholder="全部实体"><el-option v-for="item in auditEntityOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item>
         <el-form-item label="实体 ID"><el-input-number v-model="filters.entity_id" :min="1" controls-position="right" /></el-form-item>
-        <el-form-item label="操作"><el-input v-model="filters.action" clearable placeholder="如 STATUS_CHANGE" /></el-form-item>
+        <el-form-item label="操作"><el-select v-model="filters.action" clearable filterable placeholder="全部操作"><el-option v-for="item in auditActionOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item>
         <el-form-item label="操作人 ID"><el-input-number v-model="filters.operator_id" :min="1" controls-position="right" /></el-form-item>
         <el-form-item label="时间范围"><el-date-picker v-model="timeRange" type="datetimerange" range-separator="至" start-placeholder="开始时间" end-placeholder="结束时间" /></el-form-item>
       </el-form>
@@ -164,8 +163,8 @@ onMounted(() => void load())
         <template v-if="selected">
           <el-descriptions :column="1" border>
             <el-descriptions-item label="记录 ID">{{ selected.id }}</el-descriptions-item>
-            <el-descriptions-item label="实体">{{ selected.entity_type }} #{{ selected.entity_id ?? '-' }}</el-descriptions-item>
-            <el-descriptions-item label="操作">{{ selected.action }}</el-descriptions-item>
+            <el-descriptions-item label="实体">{{ auditEntityLabel(selected.entity_type) }} #{{ selected.entity_id ?? '-' }}</el-descriptions-item>
+            <el-descriptions-item label="操作">{{ auditActionLabel(selected.action) }}</el-descriptions-item>
             <el-descriptions-item label="操作人">{{ operatorName(selected) }}</el-descriptions-item>
             <el-descriptions-item label="发生时间">{{ formatLocalDateTime(selected.created_at) }}</el-descriptions-item>
           </el-descriptions>
@@ -189,7 +188,7 @@ onMounted(() => void load())
 .audit-card:hover, .audit-card:focus-visible { border-color: var(--if-brand-500); box-shadow: var(--if-shadow); }
 .card-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; font-size: 13px; }
 .card-id, .card-meta { color: var(--if-text-3); font-size: 12px; }
-.card-action { color: var(--if-info-fg); font-family: var(--if-font-mono); font-size: 12px; overflow-wrap: anywhere; }
+.card-action { color: var(--if-info-fg); font-size: 12px; overflow-wrap: anywhere; }
 .pager { margin-top: var(--if-space-4); justify-content: flex-end; }
 .drawer-filters :deep(.el-select), .drawer-filters :deep(.el-input-number), .drawer-filters :deep(.el-date-editor) { width: 100%; max-width: 100%; }
 .drawer-actions { display: flex; justify-content: flex-end; gap: 8px; }

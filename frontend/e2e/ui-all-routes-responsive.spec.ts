@@ -81,18 +81,19 @@ const responses: Record<string, unknown> = {
     email: admin.email, mobile: null, status: 'ACTIVE', revision: 1, role_ids: [2] }),
   '/api/v1/roles': [role],
   '/api/v1/roles/permissions': [permission],
+  '/api/v1/systems/manage': { systems: [], modules: [] },
 }
 
 test('guest login fits every release viewport', async ({ page }) => {
   for (const width of [375, 390, 768, 1280, 1440]) {
     await page.setViewportSize({ width, height: 900 })
-    await page.goto('/login')
+    await page.goto('/#/login')
     await expect(page.getByRole('button', { name: '登录' })).toBeVisible()
     expect(await page.evaluate(() => document.documentElement.scrollWidth), `${width}px login`).toBeLessThanOrEqual(width + 1)
   }
 })
 
-test('all 18 authenticated screens render at every release viewport', async ({ page }) => {
+test('all 19 authenticated screens render at every release viewport', async ({ page }) => {
   test.setTimeout(180000)
   const pageErrors: string[] = []
   const unexpectedRequests: string[] = []
@@ -118,19 +119,24 @@ test('all 18 authenticated screens render at every release viewport', async ({ p
     ['/versions', version.version_no], ['/versions/new', '新建版本'],
     ['/versions/3', longTitle], ['/releases', release.release_notes],
     ['/notifications', '系统通知'], ['/profile', admin.email],
-    ['/admin/audits', audit.action], ['/system/users', admin.username],
+    ['/admin/audits', '变更状态'], ['/admin/systems', '暂无系统，先创建一个业务系统'], ['/system/users', admin.username],
     ['/admin/roles', role.name], ['/change-password?from=profile', '修改密码'],
     ['/forbidden', '无权访问'],
   ]
   for (const width of [375, 390, 768, 1280, 1440]) {
     await page.setViewportSize({ width, height: 900 })
     for (const [path, expected] of paths) {
-      await page.goto(path)
+      await page.goto(`/#${path}`)
       await expect(page.locator('h1').first(), `${path} at ${width}px`).toBeVisible()
       await expect(page.getByText(expected, { exact: true }).first(), `${path} data at ${width}px`).toBeVisible()
-      await expect(page).toHaveURL(new RegExp(path.split('?')[0].replaceAll('/', '\\/') + '(?:\\?|$)'))
+      await expect(page).toHaveURL(new RegExp(`#${path.split('?')[0].replaceAll('/', '\\/')}(?:\\?|$)`))
       const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth)
       expect(scrollWidth, `${path} at ${width}px`).toBeLessThanOrEqual(width + 1)
+      if (width === 1280 && path === '/feedbacks') {
+        const sidebar = page.locator('.side-nav')
+        await expect(sidebar.getByRole('link', { name: '首页' })).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+        await expect(sidebar.getByRole('link', { name: '反馈中心' })).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+      }
     }
   }
   expect(unexpectedRequests).toEqual([])
@@ -169,18 +175,18 @@ test('core detail dialogs stay operable on a 375px screen', async ({ page }) => 
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(376)
   }
 
-  await page.goto('/feedbacks/1')
+  await page.goto('/#/feedbacks/1')
   await expect(page.getByRole('heading', { name: longTitle })).toBeVisible()
   await page.getByRole('button', { name: '编辑', exact: true }).click()
   await checkDialog()
   await page.keyboard.press('Escape')
   await page.getByRole('button', { name: '转需求' }).click()
   await checkDialog()
-  await page.goto('/requirements/2')
+  await page.goto('/#/requirements/2')
   await expect(page.getByRole('heading', { name: longTitle })).toBeVisible()
   await page.getByRole('button', { name: '重新开发' }).click()
   await checkDialog()
-  await page.goto('/versions/3')
+  await page.goto('/#/versions/3')
   await expect(page.getByRole('heading', { name: longTitle })).toBeVisible()
   await page.getByRole('button', { name: '发布', exact: true }).click()
   await checkDialog()

@@ -28,6 +28,7 @@ describe('role management route permissions', () => {
     await router.push('/admin/roles')
 
     expect(router.currentRoute.value.name).toBe('role-management')
+    expect(window.location.hash).toBe('#/admin/roles')
     expect(router.currentRoute.value.meta.permission).toEqual([
       'sys.role.view',
       'sys.role.manage',

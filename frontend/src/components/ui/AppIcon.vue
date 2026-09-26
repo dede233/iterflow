@@ -9,6 +9,7 @@ const PATHS: Record<string, string> = {
   release: 'M5 19c3-1 4-4 4-4l-3-3s-3 1-4 4 M9 15l6-6c2-2 4-5 5-6-1 1-4 3-6 5l-6 6 M14 5l5 5',
   bell: 'M6 16V11a6 6 0 1 1 12 0v5l2 2H4z M10 21h4',
   audit: 'M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z M9 12l2 2 4-4',
+  system: 'M3 3h8v8H3z M13 3h8v8h-8z M3 13h8v8H3z M13 13h8v8h-8z',
   users: 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M2 21c0-4 3-6 7-6s7 2 7 6 M17 11a3 3 0 1 0 0-6 M22 20c0-3-2-5-5-5',
   shield: 'M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z',
   user: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M4 21c0-4 4-6 8-6s8 2 8 6',

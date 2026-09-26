@@ -43,6 +43,7 @@ const groups = computed<NavigationGroup[]>(() => [
     label: '系统设置',
     items: [
       { to: '/admin/audits', label: '审计中心', icon: 'audit', permission: 'sys.audit.view' },
+      { to: '/admin/systems', label: '系统与模块', icon: 'system', permission: 'sys.system.manage', requiresAllScope: true },
       { to: '/system/users', label: '用户管理', icon: 'users', permission: 'sys.user.view' },
       { to: '/admin/roles', label: '角色管理', icon: 'shield', permission: ['sys.role.view', 'sys.role.manage'], requiresAllScope: true },
     ],
@@ -76,7 +77,7 @@ async function logout(): Promise<void> {
       <nav class="side-nav">
         <div v-for="group in visibleGroups" :key="group.label" class="nav-group">
           <div class="group">{{ group.label }}</div>
-          <router-link v-for="item in group.items" :key="item.to" :to="item.to" class="nav-link">
+          <router-link v-for="item in group.items" :key="item.to" :to="item.to" class="nav-link" :class="{ home: item.to === '/' }">
             <AppIcon :name="item.icon" />
             <span>{{ item.label }}</span>
           </router-link>
@@ -116,7 +117,8 @@ async function logout(): Promise<void> {
 .nav-link { display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 10px; border-radius: 8px; color: #cbd5e1; font-size: 14px; transition: background .15s, color .15s; }
 .nav-link:hover { background: rgba(255, 255, 255, .06); color: #fff; }
 .nav-link.router-link-exact-active,
-.nav-link.router-link-active:not([href="/"]) { background: rgba(91, 140, 255, .18); color: #fff; box-shadow: inset 3px 0 0 #5b8cff; }
+.nav-link.router-link-active:not(.home) { background: rgba(91, 140, 255, .18); color: #fff; box-shadow: inset 3px 0 0 #5b8cff; }
+.nav-link:focus-visible { outline: 2px solid #91b1ff; outline-offset: -2px; }
 .account { display: grid; gap: 4px; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, .08); }
 .account-link { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 8px; }
 .account-link:hover, .account-link.router-link-active { background: rgba(255, 255, 255, .06); }

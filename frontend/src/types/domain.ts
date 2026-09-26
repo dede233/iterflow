@@ -13,6 +13,10 @@ export type ConvertFeedbackPayload = Schema<'FeedbackConvertRequest'>
 export type SystemsResponse = Schema<'BusinessSystemCatalogOut'>
 export type BusinessSystemItem = SystemsResponse['systems'][number]
 export type BusinessModuleItem = SystemsResponse['modules'][number]
+export type BusinessSystemCreatePayload = Schema<'BusinessSystemCreate'>
+export type BusinessSystemUpdatePayload = Schema<'BusinessSystemUpdate'>
+export type BusinessModuleCreatePayload = Schema<'BusinessModuleCreate'>
+export type BusinessModuleUpdatePayload = Schema<'BusinessModuleUpdate'>
 export type AttachmentItem = Schema<'AttachmentOut'>
 export type CommentItem = Schema<'CommentOut'>
 

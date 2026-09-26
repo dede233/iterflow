@@ -13,7 +13,7 @@ test('production Web login, first password change and feedback creation', async 
     if (message.type() === 'error') browserErrors.push(message.text())
   })
 
-  await page.goto('/')
+  await page.goto('/#/')
   await expect(page.getByRole('heading', { name: '迭程 IterFlow' })).toBeVisible()
   await page.getByPlaceholder('用户名').fill(username)
   await page.getByPlaceholder('密码').fill(initialPassword)
@@ -25,15 +25,15 @@ test('production Web login, first password change and feedback creation', async 
   await page.getByRole('button', { name: '保存新密码' }).click()
   await expect(page.getByRole('heading', { name: '首页 / 系统概览' })).toBeVisible()
 
-  await page.goto('/feedbacks')
+  await page.goto('/#/feedbacks')
   await expect(page.getByRole('heading', { name: '反馈中心' })).toBeVisible()
-  await page.goto('/feedbacks/new')
+  await page.goto('/#/feedbacks/new')
   const title = `发布验收反馈-${Date.now()}`
   await page.locator('.el-form-item').filter({ hasText: '标题' }).locator('input').fill(title)
   await page.locator('.el-form-item').filter({ hasText: '详细描述' }).locator('textarea').fill('生产构建浏览器验收反馈')
   await page.getByRole('button', { name: '提交', exact: true }).click()
-  await expect(page).toHaveURL(/\/feedbacks\/\d+$/)
-  await page.goto('/feedbacks')
+  await expect(page).toHaveURL(/\/#\/feedbacks\/\d+$/)
+  await page.goto('/#/feedbacks')
   await expect(page.getByText(title)).toBeVisible()
   expect(browserErrors).toEqual([])
 })

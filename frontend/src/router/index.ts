@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHashHistory } from 'vue-router'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { useAuthStore } from '@/stores/auth'
 import { pinia } from '@/stores/pinia'
@@ -13,7 +13,7 @@ declare module 'vue-router' {
 }
 
 export const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHashHistory(import.meta.env.BASE_URL),
   routes: [
     { path: '/login', name: 'login', component: () => import('@/views/auth/LoginView.vue'), meta: { public: true } },
     {
@@ -41,6 +41,7 @@ export const router = createRouter({
         { path: 'notifications', name: 'notifications', component: () => import('@/views/notification/NotificationCenterView.vue') },
         { path: 'profile', name: 'profile', component: () => import('@/views/profile/ProfileView.vue') },
         { path: 'admin/audits', name: 'audit-center', component: () => import('@/views/audit/AuditCenterView.vue'), meta: { permission: 'sys.audit.view' } },
+        { path: 'admin/systems', name: 'system-catalog', component: () => import('@/views/system/SystemCatalogView.vue'), meta: { permission: 'sys.system.manage', requiresAllScope: true } },
         { path: 'admin/roles', name: 'role-management', component: () => import('@/views/system/RoleListView.vue'), meta: { permission: ['sys.role.view', 'sys.role.manage'], requiresAllScope: true } },
         { path: 'system/users', name: 'user-list', component: () => import('@/views/system/UserListView.vue'), meta: { permission: 'sys.user.view' } },
         { path: 'system/roles', redirect: { name: 'role-management' } },

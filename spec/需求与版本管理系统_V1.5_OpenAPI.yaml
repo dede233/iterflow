@@ -2017,6 +2017,256 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
       security:
       - bearerAuth: []
+    post:
+      tags:
+      - System
+      summary: 创建业务系统
+      description: 需要 sys.system.manage 与 ALL 数据范围；创建和审计在同一事务中完成。
+      operationId: create_system_api_v1_systems_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BusinessSystemCreate'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessSystemOut'
+        '409':
+          description: 业务状态或 revision 冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearerAuth: []
+  /systems/manage:
+    get:
+      tags:
+      - System
+      summary: 管理端业务系统与模块列表
+      description: 需要 sys.system.manage 与 ALL 数据范围；包含已停用的系统与模块。
+      operationId: list_all_systems_api_v1_systems_manage_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessSystemCatalogOut'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearerAuth: []
+  /systems/{system_id}:
+    patch:
+      tags:
+      - System
+      summary: 编辑业务系统
+      description: 需要 sys.system.manage 与 ALL 数据范围；携带 revision，停用保留历史关联。
+      operationId: update_system_api_v1_systems__system_id__patch
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: system_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: System Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BusinessSystemUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessSystemOut'
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 业务状态或 revision 冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /systems/{system_id}/modules:
+    post:
+      tags:
+      - System
+      summary: 创建业务模块
+      description: 需要 sys.system.manage 与 ALL 数据范围。
+      operationId: create_module_api_v1_systems__system_id__modules_post
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: system_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: System Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BusinessModuleCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessModuleOut'
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 业务状态或 revision 冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /systems/modules/{module_id}:
+    patch:
+      tags:
+      - System
+      summary: 编辑业务模块
+      description: 需要 sys.system.manage 与 ALL 数据范围；携带 revision，停用保留历史关联。
+      operationId: update_module_api_v1_systems_modules__module_id__patch
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: module_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Module Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BusinessModuleUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessModuleOut'
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 业务状态或 revision 冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /editing/start:
     post:
       tags:
@@ -3208,6 +3458,31 @@ components:
       required:
       - file
       title: Body_upload_file_api_v1_files_post
+    BusinessModuleCreate:
+      properties:
+        code:
+          type: string
+          maxLength: 64
+          minLength: 1
+          title: Code
+        name:
+          type: string
+          maxLength: 100
+          minLength: 1
+          title: Name
+        enabled:
+          type: boolean
+          title: Enabled
+          default: true
+        sort_order:
+          type: integer
+          title: Sort Order
+          default: 0
+      type: object
+      required:
+      - code
+      - name
+      title: BusinessModuleCreate
     BusinessModuleOut:
       properties:
         id:
@@ -3263,6 +3538,40 @@ components:
       - updated_by
       - revision
       title: BusinessModuleOut
+    BusinessModuleUpdate:
+      properties:
+        code:
+          anyOf:
+          - type: string
+            maxLength: 64
+            minLength: 1
+          - type: 'null'
+          title: Code
+        name:
+          anyOf:
+          - type: string
+            maxLength: 100
+            minLength: 1
+          - type: 'null'
+          title: Name
+        enabled:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Enabled
+        sort_order:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Sort Order
+        revision:
+          type: integer
+          minimum: 1.0
+          title: Revision
+      type: object
+      required:
+      - revision
+      title: BusinessModuleUpdate
     BusinessSystemCatalogOut:
       properties:
         systems:
@@ -3280,6 +3589,31 @@ components:
       - systems
       - modules
       title: BusinessSystemCatalogOut
+    BusinessSystemCreate:
+      properties:
+        code:
+          type: string
+          maxLength: 64
+          minLength: 1
+          title: Code
+        name:
+          type: string
+          maxLength: 100
+          minLength: 1
+          title: Name
+        enabled:
+          type: boolean
+          title: Enabled
+          default: true
+        sort_order:
+          type: integer
+          title: Sort Order
+          default: 0
+      type: object
+      required:
+      - code
+      - name
+      title: BusinessSystemCreate
     BusinessSystemOut:
       properties:
         id:
@@ -3331,6 +3665,40 @@ components:
       - updated_by
       - revision
       title: BusinessSystemOut
+    BusinessSystemUpdate:
+      properties:
+        code:
+          anyOf:
+          - type: string
+            maxLength: 64
+            minLength: 1
+          - type: 'null'
+          title: Code
+        name:
+          anyOf:
+          - type: string
+            maxLength: 100
+            minLength: 1
+          - type: 'null'
+          title: Name
+        enabled:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Enabled
+        sort_order:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Sort Order
+        revision:
+          type: integer
+          minimum: 1.0
+          title: Revision
+      type: object
+      required:
+      - revision
+      title: BusinessSystemUpdate
     ChangePasswordRequest:
       properties:
         current_password:

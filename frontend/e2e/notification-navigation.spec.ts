@@ -74,13 +74,13 @@ test('a MEMBER opens the published feedback from its notification after marking 
     throw new Error(`Unexpected API request: ${method} ${pathname}`)
   })
 
-  await page.goto('/notifications')
+  await page.goto('/#/notifications')
   await expect(page.getByText('反馈 FB-001 已上线')).toBeVisible()
   await page.getByRole('button', { name: /反馈 FB-001 已上线/ }).click()
 
   await expect.poll(() => readRequests.length).toBe(1)
   expect(pageErrors).toEqual([])
-  await expect(page).toHaveURL(/\/feedbacks\/123$/)
+  await expect(page).toHaveURL(/\/#\/feedbacks\/123$/)
   await expect(page.getByRole('heading', { name: '发布验收反馈' })).toBeVisible()
   expect(readRequests).toEqual([42])
   expect(pageErrors).toEqual([])

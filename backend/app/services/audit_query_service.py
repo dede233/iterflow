@@ -24,6 +24,8 @@ class AuditQueryService:
         "ROLE": "sys.role.view",
         "SYSTEM": "sys.system.view",
         "DICTIONARY": "sys.system.view",
+        "BUSINESS_SYSTEM": "sys.system.view",
+        "BUSINESS_MODULE": "sys.system.view",
     }
 
     def __init__(self, db: Session):

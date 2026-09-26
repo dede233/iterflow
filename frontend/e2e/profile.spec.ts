@@ -30,8 +30,8 @@ test('profile remains usable at all five release viewports', async ({ page }) =>
   page.on('pageerror', (error) => browserErrors.push(error.message))
   for (const width of [375, 390, 768, 1280, 1440]) {
     await page.setViewportSize({ width, height: 900 })
-    await page.goto('/profile')
-    await expect(page).toHaveURL(/\/profile$/)
+    await page.goto('/#/profile')
+    await expect(page).toHaveURL(/\/#\/profile$/)
     await expect(page.getByRole('heading', { name: '个人中心' })).toBeVisible()
     await expect(page.getByText(member.username, { exact: true })).toBeVisible()
     await expect(page.getByText(member.email)).toBeVisible()
@@ -70,12 +70,12 @@ test('profile remains usable at all five release viewports', async ({ page }) =>
 })
 
 test('profile password entry and logout work for a MEMBER without management permissions', async ({ page }) => {
-  await page.goto('/profile')
+  await page.goto('/#/profile')
   await page.getByRole('button', { name: '修改密码' }).click()
-  await expect(page).toHaveURL(/\/change-password\?from=profile$/)
+  await expect(page).toHaveURL(/\/#\/change-password\?from=profile$/)
   await expect(page.getByRole('heading', { name: '修改密码' })).toBeVisible()
-  await page.goto('/profile')
+  await page.goto('/#/profile')
   await page.getByRole('main').getByRole('button', { name: '退出登录' }).click()
-  await expect(page).toHaveURL(/\/login$/)
+  await expect(page).toHaveURL(/\/#\/login$/)
   expect(await page.evaluate(() => localStorage.getItem('iterflow.access_token'))).toBeNull()
 })

@@ -232,20 +232,30 @@ onMounted(load)
     </div>
     </SectionCard>
 
-    <el-dialog v-model="dialogVisible" :title="editingUser ? '编辑用户基本资料' : '创建用户'" width="min(560px, 92vw)" destroy-on-close>
-      <el-form label-position="top" @submit.prevent="save">
-        <el-form-item label="用户名" required>
-          <el-input v-model="form.username" :disabled="Boolean(editingUser)" autocomplete="username" />
-        </el-form-item>
-        <el-form-item label="显示名称" required>
-          <el-input v-model="form.display_name" />
-        </el-form-item>
-        <el-form-item label="邮箱">
-          <el-input v-model="form.email" type="email" autocomplete="email" />
-        </el-form-item>
-        <el-form-item label="手机号">
-          <el-input v-model="form.mobile" type="tel" autocomplete="tel" />
-        </el-form-item>
+    <el-dialog v-model="dialogVisible" :title="editingUser ? '编辑用户基本资料' : '创建用户'" class="user-dialog" width="min(560px, 92vw)" destroy-on-close>
+      <el-form class="user-form" label-position="top" @submit.prevent="save">
+        <el-row :gutter="16">
+          <el-col :xs="24" :sm="12">
+            <el-form-item label="用户名" required>
+              <el-input v-model="form.username" :disabled="Boolean(editingUser)" autocomplete="username" />
+            </el-form-item>
+          </el-col>
+          <el-col :xs="24" :sm="12">
+            <el-form-item label="显示名称" required>
+              <el-input v-model="form.display_name" />
+            </el-form-item>
+          </el-col>
+          <el-col :xs="24" :sm="12">
+            <el-form-item label="邮箱">
+              <el-input v-model="form.email" type="email" autocomplete="email" />
+            </el-form-item>
+          </el-col>
+          <el-col :xs="24" :sm="12">
+            <el-form-item label="手机号">
+              <el-input v-model="form.mobile" type="tel" autocomplete="tel" />
+            </el-form-item>
+          </el-col>
+        </el-row>
         <el-form-item v-if="!editingUser" label="初始密码" required>
           <el-input v-model="form.password" type="password" show-password autocomplete="new-password" />
         </el-form-item>
@@ -283,7 +293,35 @@ onMounted(load)
 </template>
 
 <style scoped>
-.create-role-list { display: grid; grid-template-columns: 1fr; gap: 8px; }
+.create-role-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.create-role-list :deep(.el-checkbox) {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 42px;
+  margin-right: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--if-border);
+  border-radius: 9px;
+  background: var(--if-bg-surface);
+  transition: border-color .16s ease, background-color .16s ease;
+}
+.create-role-list :deep(.el-checkbox:hover) { border-color: var(--if-brand-100); background: #f9fbff; }
+.create-role-list :deep(.el-checkbox.is-checked) { border-color: var(--if-brand-100); background: var(--if-brand-50); }
+.create-role-list :deep(.el-checkbox__label) {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+  padding-left: 9px;
+  color: var(--if-text-1);
+  font-size: 13px;
+  line-height: 1.4;
+  white-space: normal;
+}
+.create-role-list :deep(.el-checkbox__input) { flex: 0 0 auto; }
+.create-role-list :deep(.el-tag) { margin: 0; }
 .user-cards { display: grid; gap: 10px; padding: var(--if-space-4); }
 .user-card { min-width: 0; padding: 14px; background: var(--if-bg-surface); border: 1px solid var(--if-border); border-radius: var(--if-radius); }
 .user-card__head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 12px; }
@@ -293,4 +331,8 @@ onMounted(load)
 .user-card__details span:last-child { color: var(--if-text-1); overflow-wrap: anywhere; }
 .user-card__actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--if-border); }
 .user-card__actions :deep(.el-button + .el-button) { margin-left: 0; }
+
+@media (max-width: 767px) {
+  .create-role-list { grid-template-columns: 1fr; }
+}
 </style>

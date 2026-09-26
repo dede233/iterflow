@@ -168,6 +168,8 @@ alembic upgrade head
 python -m app.cli.seed
 ```
 
+首次管理员登录并修改密码后，在「系统设置 → 系统与模块」创建至少一个业务系统及模块。反馈表单只显示已启用的选项；停用不会删除历史关联。修改现有系统或模块时需提交当前 `revision`，冲突返回 409。
+
 启动：
 
 ```bash
@@ -200,6 +202,8 @@ cd frontend
 npm install
 npm run dev
 ```
+
+本地 API 不在默认的 `8000` 端口时，可在 `frontend/.env.local` 设置 `ITERFLOW_API_PROXY_TARGET=http://127.0.0.1:8001`，Vite 会将 `/api` 代理到该地址。
 
 构建：
 

@@ -35,6 +35,7 @@ PERMISSIONS = {
     "sys.role.edit": "角色权限编辑（已废弃）",  # noqa: RUF001
     "sys.role.manage": "角色管理",
     "sys.system.view": "系统模块查看",
+    "sys.system.manage": "系统模块管理",
     "sys.audit.view": "审计日志查看",
     "sys.file.upload": "文件上传",
     "sys.file.download": "文件下载",

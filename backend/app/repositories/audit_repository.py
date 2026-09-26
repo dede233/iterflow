@@ -85,7 +85,13 @@ class AuditRepository:
         # Role and system objects are global configuration.  They have no
         # per-user ownership, so SELF never grants their audit history.
         if all_scope:
-            for entity_type in ("ROLE", "SYSTEM", "DICTIONARY"):
+            for entity_type in (
+                "ROLE",
+                "SYSTEM",
+                "DICTIONARY",
+                "BUSINESS_SYSTEM",
+                "BUSINESS_MODULE",
+            ):
                 if entity_type in entity_types:
                     branches.append(OperationLog.entity_type == entity_type)
 

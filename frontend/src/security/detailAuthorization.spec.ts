@@ -90,6 +90,6 @@ describe('detail cross-domain authorization', () => {
     expect(versionViewSource).toContain('item.value = await getVersion(id)')
     expect(versionViewSource).toContain('v-if="canViewRequirements"')
     expect(versionViewSource).toContain('v-if="canViewReleases"')
-    expect(versionViewSource).toContain('可见需求清单')
+    expect(versionViewSource).toContain('title="需求清单"')
   })
 })

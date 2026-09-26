@@ -34,6 +34,7 @@ class PermissionCatalog:
             "sys.user.status",
             "sys.user.role.assign",
             "sys.role.manage",
+            "sys.system.manage",
             "sys.file.delete",
         }
     )

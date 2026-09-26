@@ -2,9 +2,16 @@
 import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { listRequirements } from '@/api/requirements'
+import RequirementCreateView from './RequirementCreateView.vue'
 import { useResponsive } from '@/composables/useResponsive'
 import { usePermission } from '@/composables/usePermission'
 import StatusTag from '@/components/StatusTag.vue'
+import AppIcon from '@/components/ui/AppIcon.vue'
+import PageHeader from '@/components/ui/PageHeader.vue'
+import SectionCard from '@/components/ui/SectionCard.vue'
+import ListCard from '@/components/ui/ListCard.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
+import ErrorState from '@/components/ui/ErrorState.vue'
 import { requirementStatusLabel, requirementStatusTagType } from '@/constants/requirement'
 import type { Requirement } from '@/types/domain'
 
@@ -15,17 +22,28 @@ const { can } = usePermission()
 const rows = ref<Requirement[]>([])
 const total = ref(0)
 const loading = ref(false)
+const failed = ref(false)
+const createDialog = ref(false)
 const paging = reactive({ page: 1, page_size: 20 })
 
 async function load(): Promise<void> {
   loading.value = true
+  failed.value = false
   try {
     const page = await listRequirements({ page: paging.page, page_size: paging.page_size })
     rows.value = page.items
     total.value = page.total
+  } catch {
+    failed.value = true
   } finally {
     loading.value = false
   }
+}
+
+async function onRequirementCreated(id: number): Promise<void> {
+  createDialog.value = false
+  await load()
+  await router.push(`/requirements/${id}`)
 }
 
 onMounted(load)
@@ -33,17 +51,20 @@ onMounted(load)
 
 <template>
   <section class="page">
-    <div class="head">
-      <h1 class="page-title">需求管理</h1>
+    <PageHeader title="需求管理" description="从确认、排期到交付，清晰跟进每项研发需求。" eyebrow="研发协作">
+      <template #actions>
       <el-button
         v-if="can('rd.requirement.create')"
         type="primary"
-        @click="router.push('/requirements/new')"
+        @click="createDialog = true"
       >
-        新建需求
+        <AppIcon name="plus" :size="16" />新建需求
       </el-button>
-    </div>
+      </template>
+    </PageHeader>
 
+    <ErrorState v-if="failed" title="需求加载失败" description="请检查网络后重试。" retry-label="重新加载" @retry="load" />
+    <SectionCard v-else title="需求列表" :description="`共 ${total} 条需求`" :padded="false">
     <el-table
       v-if="!isMobile"
       v-loading="loading"
@@ -71,28 +92,26 @@ onMounted(load)
           <el-link type="primary" @click.stop="router.push('/requirements/' + s.row.id)">查看</el-link>
         </template>
       </el-table-column>
+      <template #empty><EmptyState description="暂无需求" compact /></template>
     </el-table>
 
     <div v-else v-loading="loading" class="cards">
-      <el-card
+      <ListCard
         v-for="r in rows"
         :key="r.id"
-        shadow="never"
-        @click="router.push('/requirements/' + r.id)"
+        :code="r.requirement_no"
+        :title="r.title"
+        @open="router.push('/requirements/' + r.id)"
       >
-        <div class="card-title">{{ r.requirement_no }}</div>
-        <div class="card-heading">{{ r.title }}</div>
-        <div class="meta">
+        <template #status>
+          <StatusTag :status="r.status" :label="requirementStatusLabel[r.status]" :type="requirementStatusTagType(r.status)" size="sm" />
+        </template>
           <span>{{ r.priority }}</span>
-          <StatusTag
-            :status="r.status"
-            :label="requirementStatusLabel[r.status]"
-            :type="requirementStatusTagType(r.status)"
-          />
-        </div>
-      </el-card>
-      <el-empty v-if="!loading && !rows.length" description="暂无需求" />
+          <span>{{ r.source === 'FEEDBACK' ? '反馈转化' : '直接创建' }}</span>
+      </ListCard>
+      <EmptyState v-if="!loading && !rows.length" description="暂无需求" compact />
     </div>
+    </SectionCard>
 
     <el-pagination
       class="pager"
@@ -108,15 +127,15 @@ onMounted(load)
         }
       "
     />
+
+    <el-dialog v-model="createDialog" title="新建需求" class="create-dialog" width="min(720px, calc(100vw - 24px))" destroy-on-close :close-on-click-modal="false">
+      <RequirementCreateView v-if="createDialog" embedded @cancel="createDialog = false" @created="onRequirementCreated" />
+    </el-dialog>
   </section>
 </template>
 
 <style scoped>
-.head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
-.cards { display: grid; gap: 10px; }
-.cards .el-card { cursor: pointer; }
-.card-title { font-size: 12px; color: #94a3b8; }
-.card-heading { font-weight: 600; margin: 2px 0 8px; }
-.meta { display: flex; justify-content: space-between; align-items: center; color: #64748b; }
-.pager { margin-top: 16px; justify-content: flex-end; }
+.cards { display: grid; gap: 8px; padding: var(--if-space-3); }
+.pager { margin-top: var(--if-space-4); justify-content: flex-end; }
+@media (max-width: 767px) { .pager { justify-content: center; } }
 </style>

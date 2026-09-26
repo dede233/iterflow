@@ -87,7 +87,7 @@ function save(): void {
 <style scoped>
 .assignment-summary {
   margin: 16px 0 12px;
-  color: #334155;
+  color: var(--if-text-1);
   font-size: 14px;
   font-weight: 600;
 }
@@ -102,12 +102,12 @@ function save(): void {
   min-height: 64px;
   margin-right: 0;
   padding: 12px;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  border: 1px solid var(--if-border);
+  border-radius: var(--if-radius-sm);
 }
 .role-option :deep(.el-checkbox__label) { min-width: 0; white-space: normal; }
 .role-label { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 8px; }
-.role-label code { width: 100%; color: #64748b; font-size: 12px; }
+.role-label code { width: 100%; color: var(--if-text-3); font-size: 12px; }
 @media (max-width: 767px) {
   .role-list { grid-template-columns: 1fr; }
   .role-option { min-height: 56px; }

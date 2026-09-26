@@ -16,7 +16,8 @@ class SystemQueryService:
         ).all()
         modules = self.db.scalars(
             select(BusinessModule)
-            .where(BusinessModule.enabled.is_(True))
-            .order_by(BusinessModule.sort_order)
+            .join(BusinessSystem, BusinessModule.system_id == BusinessSystem.id)
+            .where(BusinessModule.enabled.is_(True), BusinessSystem.enabled.is_(True))
+            .order_by(BusinessModule.system_id, BusinessModule.sort_order)
         ).all()
         return {"systems": list(systems), "modules": list(modules)}

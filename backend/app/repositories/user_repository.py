@@ -1,3 +1,5 @@
+from typing import Any, cast
+
 from sqlalchemy import Select, func, select
 from sqlalchemy.orm import Session
 
@@ -19,7 +21,7 @@ class UserRepository(BaseRepository[User]):
         )
 
     @staticmethod
-    def super_admin_lock_statement() -> Select[tuple[Role]]:
+    def super_admin_lock_statement() -> Select[Any]:
         """Return the single global lock used by SUPER_ADMIN-sensitive writes."""
         return (
             select(Role)
@@ -28,8 +30,11 @@ class UserRepository(BaseRepository[User]):
         )
 
     def get_super_admin_role_for_update(self) -> Role | None:
-        return self.db.scalar(
-            self.super_admin_lock_statement().execution_options(populate_existing=True)
+        return cast(
+            Role | None,
+            self.db.scalar(
+                self.super_admin_lock_statement().execution_options(populate_existing=True)
+            ),
         )
 
     def roles_by_ids(self, role_ids: list[int]) -> list[Role]:

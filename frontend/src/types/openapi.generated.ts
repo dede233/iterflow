@@ -598,7 +598,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 业务系统与模块字典 */
+        /**
+         * 业务系统与模块字典
+         * @description 需要 sys.system.view 或 sys.system.manage; 仅返回已启用的系统与模块。
+         */
         get: operations["list_systems_api_v1_systems_get"];
         put?: never;
         /**

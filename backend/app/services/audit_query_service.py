@@ -27,6 +27,9 @@ class AuditQueryService:
         "BUSINESS_SYSTEM": "sys.system.view",
         "BUSINESS_MODULE": "sys.system.view",
     }
+    SYSTEM_ENTITY_TYPES: ClassVar[frozenset[str]] = frozenset(
+        {"SYSTEM", "DICTIONARY", "BUSINESS_SYSTEM", "BUSINESS_MODULE"}
+    )
 
     def __init__(self, db: Session):
         self.repo = AuditRepository(db)
@@ -42,6 +45,10 @@ class AuditQueryService:
                 entity_type
                 for entity_type, required_permission in self.ENTITY_VIEW_PERMISSIONS.items()
                 if required_permission in permission_codes
+                or (
+                    entity_type in self.SYSTEM_ENTITY_TYPES
+                    and "sys.system.manage" in permission_codes
+                )
             },
             data_scope,
         )

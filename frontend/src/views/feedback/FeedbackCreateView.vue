@@ -18,7 +18,7 @@ const { can } = usePermission()
 const saving = ref(false)
 const systems = ref<BusinessSystemItem[]>([])
 const modules = ref<BusinessModuleItem[]>([])
-const canReadSystems = computed(() => can('sys.system.view'))
+const canReadSystems = computed(() => can(['sys.system.view', 'sys.system.manage']))
 const fileList = ref<UploadUserFile[]>([])
 
 const form = reactive({

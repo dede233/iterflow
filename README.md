@@ -64,6 +64,10 @@ Web 默认仅绑定 `127.0.0.1:8080`。**不得将纯 HTTP 端口直接暴露公
 
 健康端点：`/health` 只用于 liveness；`/ready` 实际检查 PostgreSQL、Redis 与当前配置的 Storage Driver。
 
+## Online Preview Deployment
+
+The independent Cloudflare trial deployment is documented in [Cloudflare Preview deployment](docs/cloudflare-preview-deployment.md).
+
 ## 初始化管理员与权限
 
 首次启动需通过 `INIT_ADMIN_PASSWORD` 指定 8–128 位随机密码（建议 20 位以上），首次登录强制改密。管理员已存在后可从环境中移除该密码；重复 seed 不会重置现有密码。

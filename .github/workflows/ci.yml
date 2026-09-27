@@ -118,6 +118,39 @@ jobs:
         run: |
           docker compose -f deploy/docker-compose.yml config --quiet
           docker compose -f deploy/docker-compose.yml build
+      - name: Cloudflare Preview merged Compose config
+        run: |
+          python3 - <<'PYCODE'
+          import json
+          import os
+          import subprocess
+
+          env = dict(os.environ)
+          env.update({
+              "POSTGRES_PASSWORD": "ci-only-placeholder",
+              "DATABASE_URL": "postgresql+psycopg://iterflow:ci-only-placeholder@db:5432/iterflow",
+              "JWT_SECRET": "ci-only-preview-secret-long-enough-for-validation",
+              "INIT_ADMIN_PASSWORD": "ci-only-preview-admin-password",
+              "CLOUDFLARE_TUNNEL_TOKEN": "ci-only-placeholder",
+          })
+          command = [
+              "docker", "compose", "--env-file", "deploy/.env.preview.example",
+              "-f", "deploy/docker-compose.yml", "-f", "deploy/docker-compose.cloudflare.yml",
+              "--profile", "cloudflare", "config",
+          ]
+          subprocess.run(command + ["--quiet"], env=env, check=True, capture_output=True)
+          result = subprocess.run(command + ["--format", "json"], env=env, check=True, capture_output=True, text=True)
+          model = json.loads(result.stdout)
+          assert model["name"] == "iterflow-preview"
+          services = model["services"]
+          assert set(services) == {"db", "redis", "migrate", "seed", "api", "web", "cloudflared"}
+          for name in ("db", "redis", "api", "web"):
+              assert all(port["host_ip"] == "127.0.0.1" for port in services[name]["ports"])
+          assert not services["cloudflared"].get("ports")
+          assert services["cloudflared"]["depends_on"]["web"]["condition"] == "service_healthy"
+          assert {"pgdata", "redisdata", "uploads"} == set(model["volumes"])
+          assert all(volume["name"].startswith("iterflow-preview_") for volume in model["volumes"].values())
+          PYCODE
       - name: Fresh-volume migration, seed, health, Web, login and auth/me
         env:
           CONFIRM_EPHEMERAL_COMPOSE: YES

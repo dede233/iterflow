@@ -29,7 +29,8 @@ test('administrator configures a system and module for the feedback form', async
       return route.fulfill({ status: 200, json: {
         id: 1, username: 'admin', display_name: '系统管理员', email: null,
         status: 'ACTIVE', revision: 1, must_change_password: false,
-        data_scope: 'ALL', role_ids: [1], permission_codes: ['*'],
+        data_scope: 'ALL', role_ids: [1],
+        permission_codes: ['sys.system.manage', 'rd.feedback.create', 'rd.feedback.view'],
       } })
     }
     if (pathname === '/api/v1/systems/manage' && method === 'GET') {

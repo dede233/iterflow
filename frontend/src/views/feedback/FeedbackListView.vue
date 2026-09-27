@@ -41,7 +41,7 @@ const filterDrawer = ref(false)
 const createDialog = ref(false)
 const systems = ref<BusinessSystemItem[]>([])
 const modules = ref<BusinessModuleItem[]>([])
-const canReadSystems = computed(() => can('sys.system.view'))
+const canReadSystems = computed(() => can(['sys.system.view', 'sys.system.manage']))
 
 const filters = reactive({
   keyword: '',

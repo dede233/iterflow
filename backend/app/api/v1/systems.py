@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.api.deps import require_all_data_scope, require_permission
+from app.api.deps import require_all_data_scope, require_any_permission, require_permission
 from app.api.openapi import api_error_responses
 from app.core.database import get_db
 from app.models.entities import User
@@ -20,9 +20,14 @@ from app.services.system_query_service import SystemQueryService
 router = APIRouter(prefix="/systems", tags=["systems"])
 
 
-@router.get("", response_model=BusinessSystemCatalogOut)
+@router.get(
+    "",
+    response_model=BusinessSystemCatalogOut,
+    description="需要 sys.system.view 或 sys.system.manage; 仅返回已启用的系统与模块。",
+)
 def list_systems(
-    db: Session = Depends(get_db), user: User = Depends(require_permission("sys.system.view"))
+    db: Session = Depends(get_db),
+    user: User = Depends(require_any_permission("sys.system.view", "sys.system.manage")),
 ):
     return SystemQueryService(db).list_enabled()
 

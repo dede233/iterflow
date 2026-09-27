@@ -1995,6 +1995,7 @@ paths:
       tags:
       - System
       summary: 业务系统与模块字典
+      description: 需要 sys.system.view 或 sys.system.manage; 仅返回已启用的系统与模块。
       operationId: list_systems_api_v1_systems_get
       responses:
         '200':

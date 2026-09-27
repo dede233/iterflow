@@ -66,11 +66,9 @@ def catalog_api(tmp_path: Path) -> Iterator[tuple[TestClient, Session, dict[str,
         session.add_all(
             [
                 RolePermission(role_id=roles["manager"].id, permission_id=manage.id),
-                RolePermission(role_id=roles["manager"].id, permission_id=view.id),
                 RolePermission(role_id=roles["manager"].id, permission_id=audit_view.id),
                 RolePermission(role_id=roles["viewer"].id, permission_id=view.id),
                 RolePermission(role_id=roles["self"].id, permission_id=manage.id),
-                RolePermission(role_id=roles["self"].id, permission_id=view.id),
                 RolePermission(role_id=roles["self"].id, permission_id=audit_view.id),
             ]
         )
@@ -131,6 +129,8 @@ def test_manage_systems_modules_revision_and_audit(catalog_api):
     assert enabled.status_code == 200
     assert [item["code"] for item in enabled.json()["systems"]] == ["ITERFLOW"]
     assert [item["code"] for item in enabled.json()["modules"]] == ["FEEDBACK"]
+    assert client.get("/api/v1/systems", headers=admin).json() == enabled.json()
+    assert client.get("/api/v1/systems", headers=headers["self"]).json() == enabled.json()
 
     renamed = client.patch(
         f"/api/v1/systems/modules/{module['id']}",
@@ -192,14 +192,34 @@ def test_manage_systems_modules_revision_and_audit(catalog_api):
         "BUSINESS_SYSTEM",
         "BUSINESS_MODULE",
     }
+    for entity_type in ("BUSINESS_SYSTEM", "BUSINESS_MODULE"):
+        filtered = client.get("/api/v1/audits", headers=admin, params={"entity_type": entity_type})
+        assert filtered.status_code == 200
+        assert filtered.json()["total"] > 0
+        self_filtered = client.get(
+            "/api/v1/audits", headers=headers["self"], params={"entity_type": entity_type}
+        )
+        assert self_filtered.status_code == 200
+        assert self_filtered.json()["total"] == 0
+    assert client.get(f"/api/v1/audits/{logs[0].id}", headers=admin).status_code == 200
     assert client.get("/api/v1/audits", headers=headers["self"]).json()["total"] == 0
+    assert client.get(f"/api/v1/audits/{logs[0].id}", headers=headers["self"]).status_code == 404
 
 
 def test_catalog_permissions_duplicates_and_validation(catalog_api):
     client, _session, headers = catalog_api
     assert client.get("/api/v1/systems").status_code == 401
+    assert client.get("/api/v1/systems", headers=headers["viewer"]).status_code == 200
     assert client.get("/api/v1/systems/manage", headers=headers["viewer"]).status_code == 403
-    assert client.post("/api/v1/systems", headers=headers["viewer"], json={}).status_code == 403
+    assert (
+        client.post(
+            "/api/v1/systems", headers=headers["viewer"], json={"code": "X", "name": "X"}
+        ).status_code
+        == 403
+    )
+    assert client.get("/api/v1/systems", headers=headers["manager"]).status_code == 200
+    assert client.get("/api/v1/systems/manage", headers=headers["manager"]).status_code == 200
+    assert client.get("/api/v1/systems", headers=headers["self"]).status_code == 200
     assert client.get("/api/v1/systems/manage", headers=headers["self"]).status_code == 403
     assert (
         client.post(
@@ -216,7 +236,34 @@ def test_catalog_permissions_duplicates_and_validation(catalog_api):
         "/api/v1/systems",
         headers=admin,
         json={"code": "APP", "name": "应用"},
-    ).json()
+    )
+    assert system.status_code == 201
+    system = system.json()
+    for restricted in (headers["viewer"], headers["self"]):
+        assert (
+            client.patch(
+                f"/api/v1/systems/{system['id']}",
+                headers=restricted,
+                json={"name": "禁止编辑", "revision": system["revision"]},
+            ).status_code
+            == 403
+        )
+        assert (
+            client.post(
+                f"/api/v1/systems/{system['id']}/modules",
+                headers=restricted,
+                json={"code": "DENIED", "name": "禁止创建"},
+            ).status_code
+            == 403
+        )
+        assert (
+            client.patch(
+                "/api/v1/systems/modules/999",
+                headers=restricted,
+                json={"name": "禁止编辑", "revision": 1},
+            ).status_code
+            == 403
+        )
     duplicate = client.post(
         "/api/v1/systems",
         headers=admin,

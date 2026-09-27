@@ -39,15 +39,18 @@ Redis 服务：iterflow-redis
 发生描述冲突时，按以下优先级处理：
 
 1. `AGENTS.md` 中的非协商规则
-2. `docs/需求与版本管理系统_独立部署版_V1.5_完整开发基线.docx`
-3. 当前开发契约 `spec/openapi-v1.5.yaml`（正式 V1.5 发布快照从 `v1.5.0` 标签读取；首次 V1.6 API 变更时建立 `spec/openapi-v1.6.yaml`）
-4. `spec/status-machines.md`
-5. `DEVELOPMENT.md`
-6. `TASKS.md`
-7. 现有代码实现
+2. V1.5 核心领域冻结规则及 `docs/需求与版本管理系统_独立部署版_V1.5_完整开发基线.docx`
+3. `docs/v1.6-plan.md`：仅定义 V1.6 增量范围、非范围和阶段目标
+4. 当前版本 OpenAPI 契约：Phase 0 使用当前工作树的 `spec/openapi-v1.5.yaml`；首次 V1.6 API 变更后使用新建的 `spec/openapi-v1.6.yaml`
+5. `spec/status-machines.md`
+6. `docs/v1.6-baseline-audit.md`：现有实现事实盘点，不用于推翻冻结业务规则
+7. `DEVELOPMENT.md`
+8. `TASKS.md`
+9. 当前代码和测试
 
 禁止根据旧版本 V1.0–V1.4 文档推翻 V1.5 规则。
 如 V1.5 文档与 OpenAPI 在核心业务上冲突，暂停相关实现，列出冲突点并询问，不得自行改变核心模型。
+V1.6 Plan 不能改变 Feedback → Requirement → Version → Publish → Release 主链、状态机、Publish 事务、Release 记录语义、revision CAS 或 RBAC/DataScope 基本原则。
 
 ## 2. 核心业务模型：不可擅自修改
 

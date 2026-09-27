@@ -544,6 +544,7 @@ onMounted(async () => {
 <style scoped>
 .detail-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(250px, 300px); align-items: start; gap: var(--if-space-4); }
 .detail-main, .detail-side { min-width: 0; }
+.detail-grid > .detail-main + .detail-side { margin-top: 0; }
 .detail-main :deep(.el-descriptions__body), .detail-main :deep(.el-descriptions__table) { width: 100%; }
 .detail-main :deep(.el-descriptions__label) { color: var(--if-text-3); font-size: 12px; }
 .detail-main :deep(.el-descriptions__content) { color: var(--if-text-1); overflow-wrap: anywhere; }

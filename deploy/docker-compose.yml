@@ -1,4 +1,4 @@
-name: iterflow
+name: ${COMPOSE_PROJECT_NAME:-iterflow}
 
 x-logging: &logging
   driver: json-file
@@ -42,7 +42,7 @@ x-backend: &backend
 services:
   db:
     image: postgres:17.7-alpine3.22
-    container_name: iterflow-db
+    container_name: ${CONTAINER_PREFIX:-iterflow}-db
     environment:
       POSTGRES_DB: iterflow
       POSTGRES_USER: iterflow
@@ -63,7 +63,7 @@ services:
 
   redis:
     image: redis:8.2.2-alpine3.22
-    container_name: iterflow-redis
+    container_name: ${CONTAINER_PREFIX:-iterflow}-redis
     command: redis-server --appendonly yes
     ports:
       - "127.0.0.1:${REDIS_PORT:-6379}:6379"
@@ -81,7 +81,7 @@ services:
 
   migrate:
     <<: *backend
-    container_name: iterflow-migrate
+    container_name: ${CONTAINER_PREFIX:-iterflow}-migrate
     command: ["alembic", "upgrade", "head"]
     depends_on:
       db:
@@ -90,7 +90,7 @@ services:
 
   seed:
     <<: *backend
-    container_name: iterflow-seed
+    container_name: ${CONTAINER_PREFIX:-iterflow}-seed
     command: ["python", "-m", "app.cli.seed"]
     depends_on:
       migrate:
@@ -99,7 +99,7 @@ services:
 
   api:
     <<: *backend
-    container_name: iterflow-api
+    container_name: ${CONTAINER_PREFIX:-iterflow}-api
     ports:
       - "127.0.0.1:${API_PORT:-8000}:8000"
     depends_on:
@@ -117,7 +117,7 @@ services:
   web:
     image: iterflow-web:${BUILD_SHA:-local}
     build: ../frontend
-    container_name: iterflow-web
+    container_name: ${CONTAINER_PREFIX:-iterflow}-web
     ports:
       - "${WEB_BIND_HOST:-127.0.0.1}:${WEB_PORT:-8080}:8080"
     depends_on:

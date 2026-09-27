@@ -13,7 +13,14 @@ if [[ "$BACKUP_DIR" != /* ]] || [[ ! -f "$BACKUP_DIR/database.dump" ]] || \
   echo "A complete absolute backup directory is required" >&2
   exit 2
 fi
-COMPOSE=(docker compose -f deploy/docker-compose.yml)
+COMPOSE=(docker compose)
+if [[ -n "${ITERFLOW_COMPOSE_ENV_FILE:-}" ]]; then
+  COMPOSE+=(--env-file "$ITERFLOW_COMPOSE_ENV_FILE")
+fi
+COMPOSE+=(-f deploy/docker-compose.yml)
+if [[ -n "${ITERFLOW_COMPOSE_OVERRIDE:-}" ]]; then
+  COMPOSE+=(-f "$ITERFLOW_COMPOSE_OVERRIDE")
+fi
 destructive_started=0
 trap 'result=$?; if (( result != 0 && destructive_started != 0 )); then "${COMPOSE[@]}" stop web api || true; fi' EXIT
 MODE="$("${COMPOSE[@]}" config --format json | python3 -c 'import json,sys; print(json.load(sys.stdin)["services"]["api"]["environment"]["STORAGE_DRIVER"])')"

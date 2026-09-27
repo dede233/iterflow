@@ -12,7 +12,14 @@ if [[ -e "$BACKUP_DIR" ]]; then
   echo "Backup destination already exists: $BACKUP_DIR" >&2
   exit 2
 fi
-COMPOSE=(docker compose -f deploy/docker-compose.yml)
+COMPOSE=(docker compose)
+if [[ -n "${ITERFLOW_COMPOSE_ENV_FILE:-}" ]]; then
+  COMPOSE+=(--env-file "$ITERFLOW_COMPOSE_ENV_FILE")
+fi
+COMPOSE+=(-f deploy/docker-compose.yml)
+if [[ -n "${ITERFLOW_COMPOSE_OVERRIDE:-}" ]]; then
+  COMPOSE+=(-f "$ITERFLOW_COMPOSE_OVERRIDE")
+fi
 MODE="$("${COMPOSE[@]}" config --format json | python3 -c 'import json,sys; print(json.load(sys.stdin)["services"]["api"]["environment"]["STORAGE_DRIVER"])')"
 if [[ "$MODE" != "local" ]]; then
   echo "S3 object backups must use the provider's recovery mechanism" >&2

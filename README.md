@@ -1,4 +1,6 @@
-# 需求与版本管理系统 V1.5 - 完整开发基线
+# 迭程 IterFlow · 需求与版本协作管理系统
+
+已发布稳定版本是不可变的 `v1.5.0`（`a7e60e39893f162dd49b03d40f5ca975abd5d42d`）。当前 master `f6a20b82b432543de4cadb2309813f376a77eaa6` 是 Post-V1.5 / V1.6 开发基线，不是新的正式发布版。V1.6 现阶段仅冻结规划，见 [基线审计](docs/v1.6-baseline-audit.md)、[V1.6 计划](docs/v1.6-plan.md) 和 [执行清单](TASKS.md)。
 
 独立部署的研发协作系统，主链路为：
 
@@ -58,7 +60,7 @@ Web 默认仅绑定 `127.0.0.1:8080`。**不得将纯 HTTP 端口直接暴露公
 
 本地非容器开发仍可按 [DEVELOPMENT.md](DEVELOPMENT.md) 分别启动后端与前端。
 
-> V1.5 是工程基线，不包含工时、Story Point 或单需求预计时长功能。
+> V1.5 是已发布的历史稳定基线。V1.6 继续不包含工时、Story Point 或单需求预计时长功能。
 
 本地开发默认设置 `STORAGE_DRIVER=local`，文件保存在 `LOCAL_STORAGE_PATH=./data/uploads`。需要接入 SeaweedFS、RustFS、AWS S3 或其他 S3 Compatible Object Storage 时改用 `STORAGE_DRIVER=s3`。
 
@@ -72,9 +74,9 @@ Web 默认仅绑定 `127.0.0.1:8080`。**不得将纯 HTTP 端口直接暴露公
 
 如果由开发 Agent 接手，请先阅读：
 
-1. `START_HERE.md`
-2. `AGENTS.md`
-3. `TASKS.md`
-4. `DEVELOPMENT.md`
+1. `AGENTS.md`
+2. `START_HERE.md`
+3. `docs/v1.6-baseline-audit.md` 与 `docs/v1.6-plan.md`
+4. `TASKS.md` 与 `DEVELOPMENT.md`
 
-V1.5 为当前唯一有效开发基线；V1.0–V1.4 仅为历史方案。
+V1.5 主文档和标签是正式版本的历史依据；V1.0–V1.4 仅为更早历史方案。当前开发任务按 V1.6 规划推进，核心业务规则仍受 `AGENTS.md` 和 V1.5 规格约束。

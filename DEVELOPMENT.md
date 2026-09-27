@@ -29,7 +29,7 @@ Redis 服务：iterflow-redis
 
 ## 1. 开发目标
 
-本仓库用于实现“需求与版本管理系统”独立部署版 V1.5。
+本仓库当前以已发布 `v1.5.0` 为稳定历史，以 master `f6a20b82b432543de4cadb2309813f376a77eaa6` 为 V1.6 开发起点。V1.6 目标与增量范围见 `docs/v1.6-plan.md`；现有能力见 `docs/v1.6-baseline-audit.md`。Phase 0 仅编辑文档。
 
 完成标准不是“代码已生成”，而是：
 
@@ -57,8 +57,8 @@ Redis 服务：iterflow-redis
 ```
 
 ### 规格
-- `docs/`：V1.5 主文档 PDF/Word
-- `spec/openapi-v1.5.yaml`：API 契约
+- `docs/`：V1.5 已发布主文档 PDF/Word、V1.6 规划和基线审计
+- `spec/openapi-v1.5.yaml`：当前工作树的静态 API 契约；正式 V1.5 快照应从 `v1.5.0` 标签读取，首次 V1.6 API 变更时另建 `spec/openapi-v1.6.yaml`
 - `spec/status-machines.md`：状态机
 
 ## 3. 本地环境
@@ -228,7 +228,7 @@ pytest -q
 ruff check app tests
 ```
 
-可选类型检查：
+类型检查：
 
 ```bash
 mypy app
@@ -241,10 +241,12 @@ cd frontend
 npm run build
 ```
 
-如项目已补齐 Vitest：
+Vitest：
 
 ```bash
 npm run test
+npm run check:api-types
+npm run check:bundle
 ```
 
 ## 9. Docker 全量启动
@@ -285,11 +287,11 @@ alembic upgrade head
 
 ## 11. OpenAPI 变更
 
-API 修改流程：
+V1.6 首次 API 修改时先建立 `spec/openapi-v1.6.yaml`。`spec/openapi-v1.5.yaml` 当前已有发布后补充，不继续将其当作 V1.6 增量文件；历史正式契约以 `v1.5.0` 标签为准。API 修改流程：
 
-1. 更新 Backend schema/router/service，运行时 OpenAPI 是接口事实来源。
-2. 执行 `cd backend && python scripts/sync_openapi.py`，同步两份静态 OpenAPI。
-3. 执行 `cd frontend && npm run generate:api-types`，生成 TypeScript DTO。
+1. 先提出并评审 V1.6 静态契约，明确字段与错误行为。
+2. 更新 Backend schema/router/service，并校验运行时 OpenAPI 与 V1.6 静态契约一致；`backend/scripts/sync_openapi.py` 在首次变更时需要适配目标文件，避免覆盖 V1.5 历史文件。
+3. 将 `frontend/package.json` 的 `generate:api-types` 来源切换到 V1.6 契约，再生成 TypeScript DTO。
 4. 增加/更新测试，并执行 OpenAPI parity、`npm run check:api-types` 和构建门禁。
 
 核心契约变化需要用户确认。
@@ -331,16 +333,15 @@ WHERE id = :id
 建议键：
 
 ```text
-edit_lock:requirement:{id}
+edit_lock:{entity_type}:{id}
 ```
 
-值至少：
-- user_id
-- user_name
-- started_at
-- heartbeat_at
+当前 Redis 值包含：
+- `user_id`
+- `display_name`
+- `active_at`（开始或最近一次 heartbeat 时刷新）
 
-TTL 默认 600 秒。
+实体类型为 FEEDBACK、REQUIREMENT、VERSION；当前实现 TTL 为 600 秒，接口见 `backend/app/api/v1/editing.py`。需求详情前端已有部分调用，但尚未对齐真正开始/结束编辑的时机，见 V1.6 Phase 1。
 
 仅用于协作提示，不影响业务写入权限。
 

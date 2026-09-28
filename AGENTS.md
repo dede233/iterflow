@@ -32,20 +32,25 @@ Redis 服务：iterflow-redis
 本文件是“需求与版本管理系统”仓库内所有开发 Agent、代码生成工具和人工开发者的最高优先级工程说明之一。
 进入仓库后应先阅读本文件，再阅读 `DEVELOPMENT.md`、`TASKS.md`、`docs/` 与 `spec/`。
 
+版本状态：`v1.5.0`（解引用 commit `a7e60e39893f162dd49b03d40f5ca975abd5d42d`）是不可变的已发布稳定版；当前 master `f43f76145961b54d279cf3c85dd4afeb3e0e2d3f` 是 V1.6 开发基线。V1.6 增量范围见 `docs/v1.6-plan.md`，事实盘点见 `docs/v1.6-baseline-audit.md`；两者不能推翻本文件的非协商规则和 V1.5 核心领域规则。
+
 ## 1. 规格优先级
 
 发生描述冲突时，按以下优先级处理：
 
 1. `AGENTS.md` 中的非协商规则
-2. `docs/需求与版本管理系统_独立部署版_V1.5_完整开发基线.docx`
-3. `spec/openapi-v1.5.yaml`
-4. `spec/status-machines.md`
-5. `DEVELOPMENT.md`
-6. `TASKS.md`
-7. 现有代码实现
+2. V1.5 核心领域冻结规则及 `docs/需求与版本管理系统_独立部署版_V1.5_完整开发基线.docx`
+3. `docs/v1.6-plan.md`：仅定义 V1.6 增量范围、非范围和阶段目标
+4. 当前版本 OpenAPI 契约：Phase 0 使用当前工作树的 `spec/openapi-v1.5.yaml`；首次 V1.6 API 变更后使用新建的 `spec/openapi-v1.6.yaml`
+5. `spec/status-machines.md`
+6. `docs/v1.6-baseline-audit.md`：现有实现事实盘点，不用于推翻冻结业务规则
+7. `DEVELOPMENT.md`
+8. `TASKS.md`
+9. 当前代码和测试
 
 禁止根据旧版本 V1.0–V1.4 文档推翻 V1.5 规则。
 如 V1.5 文档与 OpenAPI 在核心业务上冲突，暂停相关实现，列出冲突点并询问，不得自行改变核心模型。
+V1.6 Plan 不能改变 Feedback → Requirement → Version → Publish → Release 主链、状态机、Publish 事务、Release 记录语义、revision CAS 或 RBAC/DataScope 基本原则。
 
 ## 2. 核心业务模型：不可擅自修改
 
@@ -215,7 +220,7 @@ Redis 的“正在编辑”标记只用于提示，不是强制排他锁。建�
 
 ## 9. OpenAPI 契约
 
-前后端接口以 `spec/openapi-v1.5.yaml` 为契约。
+当前工作树的前后端接口以 `spec/openapi-v1.5.yaml` 为契约，并继续保持动态/静态 parity；该文件包含 V1.5 发布后的扩展，不等同于不可变标签中的历史契约。Phase 0 不修改任何 OpenAPI。首次 V1.6 API 变更时须创建 `spec/openapi-v1.6.yaml`，同步生成脚本、前端类型来源与 parity 门禁，避免继续覆盖 V1.5 历史。核心业务变更仍按上文规格优先级处理。
 
 开发要求：
 - 不要前后端分别创造字段名

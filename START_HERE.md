@@ -44,11 +44,11 @@ Redis 服务：iterflow-redis
 
 ## 第一条指令
 
-先读基线审计，不要把旧 V1.5 `TASKS.md` 的勾选当成事实。V1.6 Phase 0 只冻结文档与范围；后续每个阶段按 `TASKS.md` 小步实现、测试、报告。未经独立终审及后续授权，不合并当前规划分支，也不提前启动 Phase 1。
+先读基线审计，不要把旧 V1.5 `TASKS.md` 的勾选当成事实。V1.6 Phase 0 已完成并进入开发主线；后续每个阶段按 `TASKS.md` 小步实现、测试、报告，完成独立终审后再决定是否合并。
 
 ## 唯一核心链路
 
-`Feedback -> Requirement -> Version -> Release`
+`Feedback -> Requirement -> Version -> Publish -> Release`
 
 ## 三条绝对规则
 
@@ -58,4 +58,4 @@ Redis 服务：iterflow-redis
 
 ## 可直接复制给开发 Agent
 
-`DEVELOPMENT_AGENT_PROMPT.md` 是 V1.5 历史开工提示，不作为当前 V1.6 的执行清单。
+`DEVELOPMENT_AGENT_PROMPT.md` 是当前 V1.6 开发 Agent 入口；具体阶段范围与验收以 `docs/v1.6-plan.md` 和 `TASKS.md` 为准。

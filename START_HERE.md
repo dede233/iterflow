@@ -2,7 +2,7 @@
 
 # 开发 Agent 从这里开始
 
-这是“需求与版本管理系统”V1.5 的实际开发开工包。
+这是迭程 IterFlow 当前 V1.6 开发规划入口。正式稳定版本 `v1.5.0` 保持不变；当前 master `f43f76145961b54d279cf3c85dd4afeb3e0e2d3f` 是 Post-V1.5 开发基线。
 
 
 ## 项目命名
@@ -34,31 +34,17 @@ Redis 服务：iterflow-redis
 ## 第一次进入仓库必须按此顺序阅读
 
 1. `AGENTS.md`
-2. `TASKS.md`
-3. `DEVELOPMENT.md`
-4. `docs/需求与版本管理系统_独立部署版_V1.5_完整开发基线.pdf`
-5. `spec/openapi-v1.5.yaml`
-6. `spec/status-machines.md`
-7. 现有代码
+2. `README.md`
+3. `docs/v1.6-baseline-audit.md`
+4. `docs/v1.6-plan.md`
+5. `TASKS.md` 与 `DEVELOPMENT.md`
+6. `docs/需求与版本管理系统_独立部署版_V1.5_完整开发基线.pdf`
+7. `spec/status-machines.md` 与当前 `spec/openapi-v1.5.yaml`（历史发布快照以 `v1.5.0` 标签为准）
+8. 现有代码和测试
 
 ## 第一条指令
 
-不要立即重构或大面积写代码。
-
-先完成 `TASKS.md` 的 **Phase 0 — 工程体检与启动基线**，然后汇报：
-
-1. 当前工程能否启动
-2. 缺失实现
-3. 占位实现
-4. 发现的 Bug
-5. 规格冲突
-6. 数据库 migration 情况
-7. 前端 build 情况
-8. Docker 情况
-9. 计划修改/新增文件
-10. Phase 1 的具体实施顺序
-
-确认后再进入实际功能开发。
+先读基线审计，不要把旧 V1.5 `TASKS.md` 的勾选当成事实。V1.6 Phase 0 只冻结文档与范围；后续每个阶段按 `TASKS.md` 小步实现、测试、报告。未经独立终审及后续授权，不合并当前规划分支，也不提前启动 Phase 1。
 
 ## 唯一核心链路
 
@@ -72,4 +58,4 @@ Redis 服务：iterflow-redis
 
 ## 可直接复制给开发 Agent
 
-完整首轮指令已放在 `DEVELOPMENT_AGENT_PROMPT.md`。
+`DEVELOPMENT_AGENT_PROMPT.md` 是 V1.5 历史开工提示，不作为当前 V1.6 的执行清单。

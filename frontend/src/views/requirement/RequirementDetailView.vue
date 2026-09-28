@@ -279,6 +279,7 @@ onBeforeUnmount(() => {
 <style scoped>
 .detail-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(250px, 300px); align-items: start; gap: var(--if-space-4); }
 .detail-main, .detail-side { min-width: 0; }
+.detail-grid > .detail-main + .detail-side { margin-top: 0; }
 .detail-main :deep(.el-descriptions__content) { overflow-wrap: anywhere; }
 .multiline { white-space: pre-wrap; overflow-wrap: anywhere; }
 .side-fields { display: grid; gap: 13px; margin: 0; }

@@ -12,13 +12,13 @@
 - Editing 后端 start/heartbeat/end 与 Redis presence 基础；需求详情已有**部分**前端调用，完整会话语义仍是 Phase 1。
 - Playwright Audit DatePicker flake 修复；master 六项 CI（backend/frontend/docker_smoke/s3/browser_smoke/backup_restore）通过。
 
-## Phase 0 — Baseline & Docs（当前，只有文档）
+## Phase 0 — Baseline & Docs（完成）
 
 - [x] 核对 master、`v1.5.0`、后续提交及工作区基线。
 - [x] 按代码、测试、接口、CI 盘点现有能力和缺口，记录规划稿与代码差异。
 - [x] 冻结核心领域、状态机、Hash Router、V1.6 产品范围与非范围。
 - [x] 新增 `docs/v1.6-baseline-audit.md`、`docs/v1.6-plan.md` 并校准入口文档。
-- [ ] 独立终审通过后，由单独授权决定是否合并规划分支；本阶段不合并。
+- [x] 完成独立终审与最终基线同步，Phase 0 已进入 merge-ready 状态。
 
 ## Phase 1 — Editing Presence（P0）
 

@@ -23,10 +23,6 @@ export function loadRequirementFeedbackSection<Feedbacks>(
   return can('rd.feedback.view') ? load(requirementId) : Promise.resolve([])
 }
 
-export function canStartRequirementEditing(can: PermissionCheck): boolean {
-  return can('rd.requirement.edit') || can('rd.requirement.status')
-}
-
 export function canLinkExistingRequirement(can: PermissionCheck): boolean {
   return can('rd.requirement.view')
 }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
 import {
@@ -8,12 +8,9 @@ import {
   listRequirementFeedbacks,
   updateRequirement,
 } from '@/api/requirements'
-import { editingHeartbeat, endEditing, startEditing } from '@/api/editing'
 import { usePermission } from '@/composables/usePermission'
-import {
-  canStartRequirementEditing,
-  loadRequirementFeedbackSection,
-} from '@/security/detailAuthorization'
+import { useEditingPresence } from '@/composables/useEditingPresence'
+import { loadRequirementFeedbackSection } from '@/security/detailAuthorization'
 import StatusTag from '@/components/StatusTag.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import SectionCard from '@/components/ui/SectionCard.vue'
@@ -38,6 +35,7 @@ const router = useRouter()
 const { can } = usePermission()
 const { isMobile } = useResponsive()
 const id = Number(route.params.id)
+const { start: startPresence, stop: stopPresence, existingEditor } = useEditingPresence('REQUIREMENT', id)
 
 const item = ref<Requirement | null>(null)
 const feedbacks = ref<LinkedFeedback[]>([])
@@ -49,9 +47,6 @@ const canViewFeedbacks = computed(() => can('rd.feedback.view'))
 const statusActions = computed<ReqStatusAction[]>(() =>
   item.value ? availableRequirementStatusActions(item.value.status, canChangeStatus.value) : [],
 )
-
-let timer: ReturnType<typeof setInterval> | undefined
-let editingStarted = false
 
 // --- status dialog ---
 const statusDialog = ref(false)
@@ -102,7 +97,7 @@ const editForm = reactive({
 })
 
 function openEdit(): void {
-  if (!item.value) return
+  if (!item.value || !canEdit.value) return
   Object.assign(editForm, {
     title: item.value.title,
     requirement_type: item.value.requirement_type,
@@ -111,7 +106,12 @@ function openEdit(): void {
     acceptance_criteria: item.value.acceptance_criteria ?? '',
   })
   editDialog.value = true
+  void startPresence()
 }
+
+watch(editDialog, (open) => {
+  if (!open) void stopPresence()
+})
 
 async function submitEdit(): Promise<void> {
   if (!item.value) return
@@ -149,22 +149,7 @@ async function load(): Promise<void> {
   }
 }
 
-onMounted(async () => {
-  await load()
-  if (!canStartRequirementEditing(can)) return
-  try {
-    await startEditing('REQUIREMENT', id)
-    editingStarted = true
-    timer = setInterval(() => editingHeartbeat('REQUIREMENT', id), 120000)
-  } catch {
-    // Editing hint is best-effort only.
-  }
-})
-
-onBeforeUnmount(() => {
-  if (timer) clearInterval(timer)
-  if (editingStarted) void endEditing('REQUIREMENT', id)
-})
+onMounted(load)
 </script>
 
 <template>
@@ -247,6 +232,10 @@ onBeforeUnmount(() => {
 
     <!-- edit dialog -->
     <el-dialog v-model="editDialog" title="编辑需求" width="min(560px, 92vw)" destroy-on-close>
+      <el-alert v-if="existingEditor" type="warning" :closable="false" show-icon class="presence-alert">
+        <template #title>{{ existingEditor.display_name }} 正在编辑此需求</template>
+        你仍可继续编辑；如数据已变化，保存时会通过 revision 冲突保护避免静默覆盖。
+      </el-alert>
       <el-form label-position="top" @submit.prevent="submitEdit">
         <el-form-item label="需求类型">
           <el-select v-model="editForm.requirement_type" style="width: 100%">
@@ -291,5 +280,7 @@ onBeforeUnmount(() => {
 .links { list-style: none; margin: 0; padding: 0; }
 .links li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--if-border); }
 .links li:last-child { border-bottom: 0; }
+.presence-alert { min-width: 0; margin-bottom: var(--if-space-4); overflow-wrap: anywhere; }
+.presence-alert :deep(.el-alert__content), .presence-alert :deep(.el-alert__title) { min-width: 0; overflow-wrap: anywhere; }
 @media (max-width: 1199px) { .detail-grid { grid-template-columns: 1fr; } }
 </style>

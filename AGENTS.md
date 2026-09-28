@@ -32,7 +32,7 @@ Redis 服务：iterflow-redis
 本文件是“需求与版本管理系统”仓库内所有开发 Agent、代码生成工具和人工开发者的最高优先级工程说明之一。
 进入仓库后应先阅读本文件，再阅读 `DEVELOPMENT.md`、`TASKS.md`、`docs/` 与 `spec/`。
 
-版本状态：`v1.5.0`（解引用 commit `a7e60e39893f162dd49b03d40f5ca975abd5d42d`）是不可变的已发布稳定版；当前 master `f6a20b82b432543de4cadb2309813f376a77eaa6` 是 V1.6 开发基线。V1.6 增量范围见 `docs/v1.6-plan.md`，事实盘点见 `docs/v1.6-baseline-audit.md`；两者不能推翻本文件的非协商规则和 V1.5 核心领域规则。
+版本状态：`v1.5.0`（解引用 commit `a7e60e39893f162dd49b03d40f5ca975abd5d42d`）是不可变的已发布稳定版；当前 master `f43f76145961b54d279cf3c85dd4afeb3e0e2d3f` 是 V1.6 开发基线。V1.6 增量范围见 `docs/v1.6-plan.md`，事实盘点见 `docs/v1.6-baseline-audit.md`；两者不能推翻本文件的非协商规则和 V1.5 核心领域规则。
 
 ## 1. 规格优先级
 

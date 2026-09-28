@@ -29,7 +29,7 @@ Redis 服务：iterflow-redis
 
 ## 1. 开发目标
 
-本仓库当前以已发布 `v1.5.0` 为稳定历史，以 master `f6a20b82b432543de4cadb2309813f376a77eaa6` 为 V1.6 开发起点。V1.6 目标与增量范围见 `docs/v1.6-plan.md`；现有能力见 `docs/v1.6-baseline-audit.md`。Phase 0 仅编辑文档。
+本仓库当前以已发布 `v1.5.0` 为稳定历史，以 master `f43f76145961b54d279cf3c85dd4afeb3e0e2d3f` 为 V1.6 开发基线。V1.6 目标与增量范围见 `docs/v1.6-plan.md`；现有能力见 `docs/v1.6-baseline-audit.md`。Phase 0 仅编辑文档。
 
 完成标准不是“代码已生成”，而是：
 

@@ -2,7 +2,7 @@
 
 # 开发 Agent 从这里开始
 
-这是迭程 IterFlow 当前 V1.6 开发规划入口。正式稳定版本 `v1.5.0` 保持不变；当前 master `f6a20b82b432543de4cadb2309813f376a77eaa6` 是 Post-V1.5 开发基线。
+这是迭程 IterFlow 当前 V1.6 开发规划入口。正式稳定版本 `v1.5.0` 保持不变；当前 master `f43f76145961b54d279cf3c85dd4afeb3e0e2d3f` 是 Post-V1.5 开发基线。
 
 
 ## 项目命名

@@ -1,6 +1,6 @@
 # IterFlow V1.6 Development Tasks
 
-> 当前开发基线：master `f6a20b82b432543de4cadb2309813f376a77eaa6`。已发布稳定版 `v1.5.0` 不变。事实盘点见 `docs/v1.6-baseline-audit.md`，产品边界与验收见 `docs/v1.6-plan.md`。本清单只记录 V1.6 增量，不能替代代码与 CI 证据。
+> 当前开发基线：master `f43f76145961b54d279cf3c85dd4afeb3e0e2d3f`。已发布稳定版 `v1.5.0` 不变。事实盘点见 `docs/v1.6-baseline-audit.md`，产品边界与验收见 `docs/v1.6-plan.md`。本清单只记录 V1.6 增量，不能替代代码与 CI 证据。
 
 ## V1.6 Baseline — Already Completed
 
@@ -8,6 +8,7 @@
 - 完整 UI Redesign、八个现有设计组件、桌面侧栏、移动底部导航、375/390/768/1280/1440 响应式验收。
 - 正式 Hash Router `createWebHashHistory(import.meta.env.BASE_URL)` 与 `/#/...` 路由。
 - System/Module 管理、`sys.system.view/manage` 权限语义、CAS、审计中文展示。
+- Feedback/Requirement Detail Grid 对齐修复：双列详情页的侧栏卡片与主卡片顶部对齐。
 - Editing 后端 start/heartbeat/end 与 Redis presence 基础；需求详情已有**部分**前端调用，完整会话语义仍是 Phase 1。
 - Playwright Audit DatePicker flake 修复；master 六项 CI（backend/frontend/docker_smoke/s3/browser_smoke/backup_restore）通过。
 

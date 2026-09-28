@@ -16,7 +16,7 @@ Internet HTTPS :443 → Cloudflare DNS/edge → remotely managed Tunnel
 
 Use a Docker Engine host with Compose v2, outbound connectivity to Cloudflare, this branch checked out, and a Cloudflare account managing the `luqingyao.cc.cd` zone. Keep this host and its Docker volumes available during the trial. No inbound router port forwarding is needed. [Cloudflare's tunnel setup](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/get-started/create-remote-tunnel/) documents the current Dashboard flow; check its certificate requirements if the hostname is nested below a different zone.
 
-The stack uses project `iterflow-preview`, containers prefixed `iterflow-preview`, and separate named volumes `iterflow-preview_pgdata`, `iterflow-preview_redisdata`, and `iterflow-preview_uploads`. PostgreSQL, Redis, API, and Web diagnostic ports bind only to `127.0.0.1` at 55432, 56379, 18000, and 18080 respectively. The tunnel has no published port. Do not expose these ports through a host firewall, router, or another proxy.
+The stack uses project `iterflow-preview`, containers prefixed `iterflow-preview`, and separate named volumes `iterflow-preview_pgdata`, `iterflow-preview_redisdata`, and `iterflow-preview_uploads`. PostgreSQL, Redis, API, and Web diagnostic ports bind only to `127.0.0.1` at 55432, 56379, 18000, and 18080 respectively. The tunnel has no published port. Do not expose these ports through a host firewall, router, or another proxy. Preview pins `cloudflared` to HTTP/2 over outbound TCP port 7844 because this host's QUIC/UDP connections to Cloudflare time out; allow that egress in the host network and firewall.
 
 ## Cloudflare Dashboard
 
@@ -104,7 +104,7 @@ Never point the restore script at the ordinary `iterflow` project by omitting th
 
 In Cloudflare Dashboard, open this tunnel, refresh the token, replace only `CLOUDFLARE_TUNNEL_TOKEN` in the protected env file, and recreate the connector with the startup command. Expect a short outage with one connector; schedule rotation accordingly. Do not put the token on a command line or in logs. `cloudflared` reads it through `TUNNEL_TOKEN` environment variable, as in [Cloudflare's container guidance](https://developers.cloudflare.com/tunnel/guides/kubernetes/).
 
-- Tunnel down: confirm `web` is healthy, `cloudflared` logs show a connection, outbound traffic to Cloudflare works, and the Published application targets `http://web:8080`.
+- Tunnel down: confirm `web` is healthy, `cloudflared` logs show a connection, outbound TCP traffic to Cloudflare on port 7844 works, and the Published application targets `http://web:8080`.
 - 502 at the edge: check the tunnel route/service URL and `web` health; the connector and Web must share this Compose network.
 - 400 Host: verify exact `ALLOWED_HOSTS` and the published hostname. Keep CORS empty for the same-origin Web/API path.
 - `/ready` fails: inspect API, PostgreSQL, Redis, and LocalFileStorage readiness; migration and seed must complete.

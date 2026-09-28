@@ -147,6 +147,7 @@ jobs:
           for name in ("db", "redis", "api", "web"):
               assert all(port["host_ip"] == "127.0.0.1" for port in services[name]["ports"])
           assert not services["cloudflared"].get("ports")
+          assert services["cloudflared"]["command"] == ["tunnel", "--no-autoupdate", "--protocol", "http2", "run"]
           assert services["cloudflared"]["depends_on"]["web"]["condition"] == "service_healthy"
           assert {"pgdata", "redisdata", "uploads"} == set(model["volumes"])
           assert all(volume["name"].startswith("iterflow-preview_") for volume in model["volumes"].values())

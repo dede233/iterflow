@@ -1,6 +1,8 @@
 # IterFlow Initial Online Preview
 
-This runbook deploys the V1.5 baseline on the independent `phase/cloudflare-preview` branch. It is an online trial, not the production release. The branch starts at `f6a20b82b432543de4cadb2309813f376a77eaa6`; do not merge the V1.6 planning branch into it.
+This runbook operates the independent `phase/cloudflare-preview` branch for online demonstration, trial use, and public acceptance at `https://iterflow.luqingyao.cc.cd`. The Preview branch includes the V1.6 Phase 0 Baseline & Scope Freeze documents, but V1.6 Phase 1 functionality has not begun. This is a trial deployment, not the production release.
+
+The current common master is `5c44ab849ff798ac19fdfafce558b7dbcc4452a0`, synchronized into Preview by commit `6e800d8028f1827cc3ca35c4695a91de489a15ee`. To bring later master changes into Preview, merge master into `phase/cloudflare-preview` and verify the result before deployment. Develop V1.6 business features on their own branches, not directly on the Preview branch.
 
 ## Architecture and prerequisites
 

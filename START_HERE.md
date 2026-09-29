@@ -2,7 +2,7 @@
 
 # 开发 Agent 从这里开始
 
-这是迭程 IterFlow 当前 V1.6 开发规划入口。正式稳定版本 `v1.5.0` 保持不变；当前 master `f43f76145961b54d279cf3c85dd4afeb3e0e2d3f` 是 Post-V1.5 开发基线。
+这是迭程 IterFlow 当前 V1.6 开发规划入口。正式稳定版本 `v1.5.0` 保持不变；V1.6 Phase 1 从已合入主线的 Phase 0 基线 `5c44ab849ff798ac19fdfafce558b7dbcc4452a0` 开始开发。
 
 
 ## 项目命名
@@ -12,7 +12,7 @@
 - **中文名：迭程**
 - **英文名：IterFlow**
 - **完整名称：迭程 IterFlow · 需求与版本协作管理系统**
-- **核心含义：迭代 + 流程，覆盖 Feedback → Requirement → Version → Release 的完整协作链路。**
+- **核心含义：迭代 + 流程，覆盖 Feedback → Requirement → Version → Publish → Release 的完整协作链路。**
 
 建议统一使用以下工程命名：
 

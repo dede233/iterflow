@@ -28,8 +28,23 @@ describe('409 interceptor separates revision and business conflicts', () => {
     expect(messages.warning).toHaveBeenCalledExactlyOnceWith('业务条件不满足')
   })
 
-  it('preserves skipConflictAlert for publish pre-checks', async () => {
-    await expect(api.get('/probe', { params: { code: 40923 }, skipConflictAlert: true })).rejects.toMatchObject({ response: { status: 409 } })
+  it('suppresses only the revision warning when a local dialog handles 40910', async () => {
+    await expect(api.get('/probe', { params: { code: 40910 }, skipRevisionConflictAlert: true })).rejects.toMatchObject({ response: { status: 409 } })
+    expect(messages.warning).not.toHaveBeenCalled()
+  })
+
+  it.each([40911, 40913, 40923, 40930, 40931, 40932, 40933])('keeps the business message for %i with revision alerts disabled', async (code) => {
+    await expect(api.get('/probe', { params: { code }, skipRevisionConflictAlert: true })).rejects.toMatchObject({ response: { status: 409 } })
+    expect(messages.warning).toHaveBeenCalledExactlyOnceWith('业务条件不满足')
+  })
+
+  it.each([
+    { code: 40910 },
+    { code: 40923 },
+    { code: 40910, skipRevisionConflictAlert: true },
+    { code: 40923, skipRevisionConflictAlert: true },
+  ])('preserves skipConflictAlert for all conflicts: %j', async ({ code, skipRevisionConflictAlert }) => {
+    await expect(api.get('/probe', { params: { code }, skipConflictAlert: true, skipRevisionConflictAlert })).rejects.toMatchObject({ response: { status: 409 } })
     expect(messages.warning).not.toHaveBeenCalled()
   })
 })

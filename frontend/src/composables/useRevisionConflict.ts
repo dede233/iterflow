@@ -45,8 +45,7 @@ export function useRevisionConflict() {
       const latest = await options.getLatest()
       if (current === sequence) {
         await options.apply(latest)
-        visible.value = false
-        sequence++
+        if (current === sequence) close()
       }
     }
     await readPreview()

@@ -11,8 +11,10 @@ declare module 'axios' {
     skipAuth?: boolean
     // Do not attempt a silent refresh + replay when the response is 401.
     skipAuthRefresh?: boolean
-    // Caller handles this 409 itself (revision conflict UX or publish pre-check).
+    // Caller handles all HTTP 409 alerts (for example, publish pre-check).
     skipConflictAlert?: boolean
+    // Caller handles 40910 with a dedicated dialog; business conflicts still alert.
+    skipRevisionConflictAlert?: boolean
   }
 }
 
@@ -80,7 +82,9 @@ api.interceptors.response.use(
     }
     if (error.response?.status === 409 && !originalRequest?.skipConflictAlert) {
       if (isRevisionConflict(error)) {
-        ElMessage.warning('服务器版本已变化，请查看冲突详情')
+        if (!originalRequest?.skipRevisionConflictAlert) {
+          ElMessage.warning('服务器版本已变化，请查看冲突详情')
+        }
       } else {
         ElMessage.warning(error.response.data?.message ?? '当前操作存在业务冲突')
       }

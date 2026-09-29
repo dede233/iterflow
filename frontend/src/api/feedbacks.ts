@@ -22,13 +22,13 @@ export const createFeedback = (payload: FeedbackCreatePayload) =>
   api.post<Feedback>('/feedbacks', payload).then((r) => r.data)
 
 export const updateFeedback = (id: number, payload: FeedbackUpdatePayload) =>
-  api.patch<Feedback>(`/feedbacks/${id}`, payload).then((r) => r.data)
+  api.patch<Feedback>(`/feedbacks/${id}`, payload, { skipRevisionConflictAlert: true }).then((r) => r.data)
 
 export const changeFeedbackStatus = (id: number, payload: FeedbackStatusChangePayload) =>
-  api.patch<Feedback>(`/feedbacks/${id}/status`, payload).then((r) => r.data)
+  api.patch<Feedback>(`/feedbacks/${id}/status`, payload, { skipRevisionConflictAlert: true }).then((r) => r.data)
 
 export const convertFeedback = (id: number, payload: ConvertFeedbackPayload) =>
-  api.post<Requirement>(`/feedbacks/${id}/convert`, payload).then((r) => r.data)
+  api.post<Requirement>(`/feedbacks/${id}/convert`, payload, { skipRevisionConflictAlert: true }).then((r) => r.data)
 
 // --- attachments (business relation stores file_id only) ---
 export const listFeedbackAttachments = (id: number) =>

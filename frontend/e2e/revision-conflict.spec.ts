@@ -80,6 +80,7 @@ test('two editors keep the stale draft until B explicitly reloads the server ver
     await pageB.getByRole('dialog', { name: '编辑反馈' }).getByRole('button', { name: '保存' }).click()
     const conflict = pageB.getByRole('dialog', { name: '数据已被其他用户修改' })
     await expect(conflict).toBeVisible()
+    await expect(pageB.getByText('服务器版本已变化，请查看冲突详情')).toHaveCount(0)
     await expect(conflict).toContainText('A 保存的标题')
     await expect(conflict).toContainText('用户 #1')
     await expect(editTitle(pageB)).toHaveValue('B 的本地输入')

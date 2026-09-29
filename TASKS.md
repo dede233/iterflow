@@ -22,9 +22,9 @@
 
 ## Phase 1 — Editing Presence（P0）
 
-- [ ] 梳理 Feedback/Requirement/Version 的实际编辑入口与退出边界；修正需求详情当前“仅打开详情就 start”的行为。
-- [ ] 编辑开始时 start，编辑期间 heartbeat，关闭 Dialog/离页时 end；展示已有编辑者的姓名与提示。
-- [ ] 验证双用户、刷新/网络失败、TTL 到期、无权限与 DataScope；Presence 不阻断写入。
+- [x] 梳理 Feedback/Requirement/Version 的实际编辑入口与退出边界；修正需求详情当前“仅打开详情就 start”的行为。
+- [x] 编辑开始时 start，编辑期间 heartbeat，关闭 Dialog/离页时 end；展示已有编辑者的姓名与提示。
+- [x] 验证双用户、刷新/网络失败、TTL 到期、无权限与 DataScope；Presence 不阻断写入。
 
 ## Phase 2 — Revision Conflict UX（P0）
 

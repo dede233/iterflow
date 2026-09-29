@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, type UploadRequestOptions } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
 import {
@@ -15,6 +15,7 @@ import {
 } from '@/api/feedbacks'
 import { listSystems } from '@/api/systems'
 import { usePermission } from '@/composables/usePermission'
+import { useEditingPresence } from '@/composables/useEditingPresence'
 import {
   canLinkExistingRequirement as canLinkExistingRequirementFor,
   finishFeedbackConversion,
@@ -52,6 +53,7 @@ const router = useRouter()
 const { can } = usePermission()
 const { isMobile } = useResponsive()
 const feedbackId = Number(route.params.id)
+const { start: startPresence, stop: stopPresence, existingEditor } = useEditingPresence('FEEDBACK', feedbackId)
 
 const item = ref<Feedback | null>(null)
 const loading = ref(false)
@@ -204,7 +206,7 @@ const editModuleOptions = computed(() =>
 )
 
 function openEdit(): void {
-  if (!item.value) return
+  if (!item.value || !canEdit.value) return
   Object.assign(editForm, {
     title: item.value.title,
     feedback_type: item.value.feedback_type,
@@ -217,7 +219,12 @@ function openEdit(): void {
     reproduce_steps: item.value.reproduce_steps ?? '',
   })
   editDialog.value = true
+  void startPresence()
 }
+
+watch(editDialog, (open) => {
+  if (!open) void stopPresence()
+})
 
 function onEditSystemChange(): void {
   editForm.module_id = null
@@ -446,6 +453,10 @@ onMounted(async () => {
 
     <!-- edit dialog -->
     <el-dialog v-model="editDialog" title="编辑反馈" width="min(560px, 92vw)" destroy-on-close>
+      <el-alert v-if="existingEditor" type="warning" :closable="false" show-icon class="presence-alert">
+        <template #title>{{ existingEditor.display_name }} 正在编辑此反馈</template>
+        你仍可继续编辑；如数据已变化，保存时会通过 revision 冲突保护避免静默覆盖。
+      </el-alert>
       <el-form label-position="top" @submit.prevent="submitEdit">
         <el-form-item label="反馈类型">
           <el-select v-model="editForm.feedback_type" style="width: 100%">
@@ -563,6 +574,8 @@ onMounted(async () => {
 .comment-meta { color: var(--if-text-3); font-size: 12px; margin-bottom: 4px; }
 .comment-form { display: flex; gap: 8px; align-items: flex-start; margin-top: 16px; }
 .comment-form .el-button { flex-shrink: 0; }
+.presence-alert { min-width: 0; margin-bottom: var(--if-space-4); overflow-wrap: anywhere; }
+.presence-alert :deep(.el-alert__content), .presence-alert :deep(.el-alert__title) { min-width: 0; overflow-wrap: anywhere; }
 @media (max-width: 1199px) { .detail-grid { grid-template-columns: 1fr; } }
 @media (max-width: 767px) { .comment-form { flex-direction: column; } .comment-form .el-button { align-self: flex-end; } }
 </style>

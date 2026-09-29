@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
 import {
@@ -16,6 +16,7 @@ import {
 import { listReleases } from '@/api/releases'
 import { getRequirement } from '@/api/requirements'
 import { usePermission } from '@/composables/usePermission'
+import { useEditingPresence } from '@/composables/useEditingPresence'
 import { loadVersionDetailSections } from '@/security/detailAuthorization'
 import StatusTag from '@/components/StatusTag.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
@@ -45,6 +46,7 @@ const router = useRouter()
 const { can } = usePermission()
 const { isMobile } = useResponsive()
 const id = Number(route.params.id)
+const { start: startPresence, stop: stopPresence, existingEditor } = useEditingPresence('VERSION', id)
 
 const item = ref<VersionItem | null>(null)
 const requirements = ref<Requirement[]>([])
@@ -157,14 +159,19 @@ const editSubmitting = ref(false)
 const editForm = reactive({ name: '', planned_release_date: null as string | null, description: '' })
 
 function openEdit(): void {
-  if (!item.value) return
+  if (!item.value || !canEdit.value) return
   Object.assign(editForm, {
     name: item.value.name,
     planned_release_date: item.value.planned_release_date ?? null,
     description: item.value.description ?? '',
   })
   editDialog.value = true
+  void startPresence()
 }
+
+watch(editDialog, (open) => {
+  if (!open) void stopPresence()
+})
 
 async function submitEdit(): Promise<void> {
   if (!item.value) return
@@ -431,6 +438,10 @@ onMounted(load)
 
     <!-- edit dialog -->
     <el-dialog v-model="editDialog" title="编辑版本" width="min(520px, 92vw)" destroy-on-close>
+      <el-alert v-if="existingEditor" type="warning" :closable="false" show-icon class="presence-alert">
+        <template #title>{{ existingEditor.display_name }} 正在编辑此版本</template>
+        你仍可继续编辑；如数据已变化，保存时会通过 revision 冲突保护避免静默覆盖。
+      </el-alert>
       <el-form label-position="top" @submit.prevent="submitEdit">
         <el-form-item label="版本名称">
           <el-input v-model="editForm.name" maxlength="100" show-word-limit />
@@ -505,5 +516,7 @@ onMounted(load)
 .releases li:last-child { border-bottom: 0; }
 .release-time { color: var(--if-text-3); font-size: 12px; white-space: nowrap; }
 .release-notes { color: var(--if-text-2); font-size: 13px; overflow-wrap: anywhere; }
+.presence-alert { min-width: 0; margin-bottom: var(--if-space-4); overflow-wrap: anywhere; }
+.presence-alert :deep(.el-alert__content), .presence-alert :deep(.el-alert__title) { min-width: 0; overflow-wrap: anywhere; }
 @media (max-width: 767px) { .progress { flex-wrap: wrap; } .progress .el-progress { min-width: 100%; } }
 </style>

@@ -18,6 +18,8 @@ const mocks = vi.hoisted(() => ({
   listFeedbackComments: vi.fn(),
   convertFeedback: vi.fn(),
   updateFeedback: vi.fn(),
+  updateRequirement: vi.fn(),
+  updateVersion: vi.fn(),
   changeFeedbackStatus: vi.fn(),
   createFeedbackComment: vi.fn(),
   downloadFeedbackAttachment: vi.fn(),
@@ -45,7 +47,7 @@ vi.mock('@/api/versions', () => ({
   moveVersionRequirement: vi.fn(),
   publishVersion: vi.fn(),
   removeVersionRequirement: vi.fn(),
-  updateVersion: vi.fn(),
+  updateVersion: mocks.updateVersion,
 }))
 vi.mock('@/api/releases', () => ({ listReleases: mocks.listReleases }))
 vi.mock('@/api/requirements', () => ({
@@ -53,7 +55,7 @@ vi.mock('@/api/requirements', () => ({
   createRequirement: mocks.createRequirement,
   getRequirement: mocks.getRequirement,
   listRequirementFeedbacks: mocks.listRequirementFeedbacks,
-  updateRequirement: vi.fn(),
+  updateRequirement: mocks.updateRequirement,
 }))
 vi.mock('@/api/editing', () => ({
   editingHeartbeat: mocks.editingHeartbeat,
@@ -135,13 +137,15 @@ const feedback: Feedback = {
 
 const elementStub = { template: '<div><slot /><slot name="footer" /></div>' }
 const stubs = {
-  'el-alert': elementStub,
+  'el-alert': { template: '<div class="alert"><slot name="title" /><slot /></div>' },
   'el-button': {
     template: '<button v-bind="$attrs" @click="$emit(\'click\', $event)"><slot /></button>',
     emits: ['click'],
   },
   'el-dialog': {
+    name: 'ElDialog',
     props: { modelValue: Boolean },
+    emits: ['update:modelValue'],
     template: '<div v-if="modelValue" class="dialog"><slot /><slot name="footer" /></div>',
   },
   'el-card': { template: '<div class="card"><slot /></div>' },
@@ -199,7 +203,9 @@ beforeEach(() => {
   mocks.listReleases.mockResolvedValue({ items: [], page: 1, page_size: 20, total: 0 })
   mocks.getRequirement.mockResolvedValue(requirement)
   mocks.listRequirementFeedbacks.mockResolvedValue([])
-  mocks.startEditing.mockResolvedValue({})
+  mocks.startEditing.mockResolvedValue({ existing_editor: null })
+  mocks.endEditing.mockResolvedValue({ ok: true })
+  mocks.editingHeartbeat.mockResolvedValue({ ok: true, existing_editor: null })
   mocks.getFeedback.mockResolvedValue(feedback)
   mocks.listFeedbackAttachments.mockResolvedValue([])
   mocks.listFeedbackComments.mockResolvedValue([])
@@ -251,6 +257,108 @@ describe('detail views enforce permission-aware loading in mounted components', 
     expect(mocks.editingHeartbeat).not.toHaveBeenCalled()
     expect(wrapper.text()).toContain('需求标题')
     expect(wrapper.text()).not.toContain('来源反馈')
+    wrapper.unmount()
+    expect(mocks.endEditing).not.toHaveBeenCalled()
+  })
+
+  it('does not start Requirement presence on detail mount, even with edit or status permission', async () => {
+    permissionSet('rd.requirement.view', 'rd.requirement.edit', 'rd.requirement.status')
+    const wrapper = mount(RequirementDetailView, { global: { stubs, directives: { loading: {} } } })
+    await flushPromises()
+    expect(mocks.startEditing).not.toHaveBeenCalled()
+    wrapper.unmount()
+    expect(mocks.endEditing).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    { name: 'Feedback', component: FeedbackDetailView, permission: 'rd.feedback.edit', entity: 'FEEDBACK' },
+    { name: 'Requirement', component: RequirementDetailView, permission: 'rd.requirement.edit', entity: 'REQUIREMENT' },
+    { name: 'Version', component: VersionDetailView, permission: 'rd.version.edit', entity: 'VERSION' },
+  ])('$name begins presence on Edit and ends it when the dialog closes', async ({ component, permission, entity }) => {
+    permissionSet(permission)
+    const wrapper = mount(component, { global: { stubs, directives: { loading: {} } } })
+    await flushPromises()
+    expect(mocks.startEditing).not.toHaveBeenCalled()
+
+    const editButton = wrapper.findAll('button').find((button) => button.text() === '编辑')
+    expect(editButton).toBeDefined()
+    await editButton!.trigger('click')
+    await flushPromises()
+    expect(mocks.startEditing).toHaveBeenCalledExactlyOnceWith(entity, 7)
+
+    const cancelButton = wrapper.findAll('button').find((button) => button.text() === '取消')
+    expect(cancelButton).toBeDefined()
+    await cancelButton!.trigger('click')
+    await flushPromises()
+    expect(mocks.endEditing).toHaveBeenCalledExactlyOnceWith(entity, 7)
+    wrapper.unmount()
+    expect(mocks.endEditing).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([
+    { component: FeedbackDetailView, permission: 'rd.feedback.edit', update: mocks.updateFeedback },
+    { component: RequirementDetailView, permission: 'rd.requirement.edit', update: mocks.updateRequirement },
+    { component: VersionDetailView, permission: 'rd.version.edit', update: mocks.updateVersion },
+  ])('keeps the field editor and presence open when saving fails', async ({ component, permission, update }) => {
+    permissionSet(permission)
+    update.mockRejectedValueOnce(new Error('save failed'))
+    const wrapper = mount(component, { global: { stubs, directives: { loading: {} } } })
+    await flushPromises()
+    await wrapper.findAll('button').find((button) => button.text() === '编辑')!.trigger('click')
+    await flushPromises()
+    await wrapper.findAll('button').find((button) => button.text() === '保存')!.trigger('click')
+    await flushPromises()
+    expect(wrapper.find('.dialog').exists()).toBe(true)
+    expect(mocks.endEditing).not.toHaveBeenCalled()
+    wrapper.unmount()
+    await flushPromises()
+    expect(mocks.endEditing).toHaveBeenCalledOnce()
+  })
+
+  it('ends Requirement presence when the dialog closes through model update', async () => {
+    permissionSet('rd.requirement.edit')
+    const wrapper = mount(RequirementDetailView, { global: { stubs, directives: { loading: {} } } })
+    await flushPromises()
+    await wrapper.findAll('button').find((button) => button.text() === '编辑')!.trigger('click')
+    await flushPromises()
+    const editDialog = wrapper.findAllComponents({ name: 'ElDialog' }).find((dialog) => dialog.props('modelValue'))
+    expect(editDialog).toBeDefined()
+    editDialog!.vm.$emit('update:modelValue', false)
+    await flushPromises()
+    expect(mocks.endEditing).toHaveBeenCalledOnce()
+  })
+
+  it.each([
+    { component: FeedbackDetailView, permission: 'rd.feedback.edit' },
+    { component: RequirementDetailView, permission: 'rd.requirement.edit' },
+    { component: VersionDetailView, permission: 'rd.version.edit' },
+  ])('warns about another editor while keeping Save enabled', async ({ component, permission }) => {
+    permissionSet(permission)
+    mocks.startEditing.mockResolvedValueOnce({
+      existing_editor: { user_id: 18, display_name: '测试用户B', active_at: '2026-09-29T00:00:00Z' },
+    })
+    const wrapper = mount(component, { global: { stubs, directives: { loading: {} } } })
+    await flushPromises()
+    await wrapper.findAll('button').find((button) => button.text() === '编辑')!.trigger('click')
+    await flushPromises()
+    expect(wrapper.find('.alert').text()).toContain('测试用户B 正在编辑')
+    expect(wrapper.find('.alert').text()).toContain('仍可继续编辑')
+    const saveButton = wrapper.findAll('button').find((button) => button.text() === '保存')
+    expect(saveButton?.attributes('disabled')).toBeUndefined()
+    wrapper.unmount()
+    await flushPromises()
+  })
+
+  it.each([
+    { component: FeedbackDetailView, permission: 'rd.feedback.view' },
+    { component: RequirementDetailView, permission: 'rd.requirement.status' },
+    { component: VersionDetailView, permission: 'rd.version.status' },
+  ])('does not offer field editing or presence without its edit permission', async ({ component, permission }) => {
+    permissionSet(permission)
+    const wrapper = mount(component, { global: { stubs, directives: { loading: {} } } })
+    await flushPromises()
+    expect(wrapper.findAll('button').some((button) => button.text() === '编辑')).toBe(false)
+    expect(mocks.startEditing).not.toHaveBeenCalled()
     wrapper.unmount()
     expect(mocks.endEditing).not.toHaveBeenCalled()
   })

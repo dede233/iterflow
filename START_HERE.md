@@ -2,7 +2,7 @@
 
 # 开发 Agent 从这里开始
 
-这是迭程 IterFlow 当前 V1.6 开发规划入口。正式稳定版本 `v1.5.0` 保持不变；当前 master `f43f76145961b54d279cf3c85dd4afeb3e0e2d3f` 是 Post-V1.5 开发基线。
+这是迭程 IterFlow 当前 V1.6 开发规划入口。正式稳定版本 `v1.5.0` 保持不变；V1.6 Phase 1 从已合入主线的 Phase 0 基线 `5c44ab849ff798ac19fdfafce558b7dbcc4452a0` 开始开发。
 
 
 ## 项目命名
@@ -12,7 +12,7 @@
 - **中文名：迭程**
 - **英文名：IterFlow**
 - **完整名称：迭程 IterFlow · 需求与版本协作管理系统**
-- **核心含义：迭代 + 流程，覆盖 Feedback → Requirement → Version → Release 的完整协作链路。**
+- **核心含义：迭代 + 流程，覆盖 Feedback → Requirement → Version → Publish → Release 的完整协作链路。**
 
 建议统一使用以下工程命名：
 
@@ -44,11 +44,11 @@ Redis 服务：iterflow-redis
 
 ## 第一条指令
 
-先读基线审计，不要把旧 V1.5 `TASKS.md` 的勾选当成事实。V1.6 Phase 0 只冻结文档与范围；后续每个阶段按 `TASKS.md` 小步实现、测试、报告。未经独立终审及后续授权，不合并当前规划分支，也不提前启动 Phase 1。
+先读基线审计，不要把旧 V1.5 `TASKS.md` 的勾选当成事实。V1.6 Phase 0 已完成并进入开发主线；后续每个阶段按 `TASKS.md` 小步实现、测试、报告，完成独立终审后再决定是否合并。
 
 ## 唯一核心链路
 
-`Feedback -> Requirement -> Version -> Release`
+`Feedback -> Requirement -> Version -> Publish -> Release`
 
 ## 三条绝对规则
 
@@ -58,4 +58,4 @@ Redis 服务：iterflow-redis
 
 ## 可直接复制给开发 Agent
 
-`DEVELOPMENT_AGENT_PROMPT.md` 是 V1.5 历史开工提示，不作为当前 V1.6 的执行清单。
+`DEVELOPMENT_AGENT_PROMPT.md` 是当前 V1.6 开发 Agent 入口；具体阶段范围与验收以 `docs/v1.6-plan.md` 和 `TASKS.md` 为准。

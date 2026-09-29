@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   canLinkExistingRequirement,
-  canStartRequirementEditing,
   finishFeedbackConversion,
   loadRequirementFeedbackSection,
   loadVersionDetailSections,
@@ -60,13 +59,6 @@ describe('detail cross-domain authorization', () => {
     expect(result).toEqual([])
     expect(fetchFeedbacks).not.toHaveBeenCalled()
     expect(requirementViewSource).toContain('v-if="canViewFeedbacks"')
-  })
-
-  it('starts Requirement editing presence only for mutation-capable viewers', () => {
-    expect(canStartRequirementEditing(permissionSet('rd.requirement.view'))).toBe(false)
-    expect(canStartRequirementEditing(permissionSet('rd.requirement.edit'))).toBe(true)
-    expect(canStartRequirementEditing(permissionSet('rd.requirement.status'))).toBe(true)
-    expect(requirementViewSource).toContain('canStartRequirementEditing(can)')
   })
 
   it('allows CREATE_NEW but suppresses LINK_EXISTING for converters without requirement.view', async () => {

@@ -18,6 +18,7 @@ from app.schemas.requirement import (
     RequirementUpdate,
 )
 from app.services.audit_service import AuditService
+from app.services.revision_conflict import revision_conflict_data
 
 ALLOWED_TRANSITIONS: dict[RequirementStatus, set[ManualRequirementStatus]] = {
     RequirementStatus.DRAFT: {
@@ -119,14 +120,11 @@ class RequirementService:
         before_values = {key: getattr(current, key) for key in changed_fields}
         after_values = {key: values[key] for key in changed_fields}
         if not self.repo.update_with_revision(requirement_id, payload.revision, values):
+            self.db.expire_all()
             latest = self.repo.get(requirement_id)
             raise ConflictError(
                 "该需求已被其他用户修改，请刷新后重试",  # noqa: RUF001
-                {
-                    "current_revision": latest.revision if latest else None,
-                    "current_updated_at": latest.updated_at.isoformat() if latest else None,
-                    "current_updated_by": latest.updated_by if latest else None,
-                },
+                revision_conflict_data(latest),
             )
         self.audit.log(
             "REQUIREMENT",
@@ -146,6 +144,8 @@ class RequirementService:
         current = self.repo.get(requirement_id)
         if not current:
             raise NotFoundError("需求不存在")
+        if current.revision != payload.revision:
+            raise ConflictError("需求状态已被其他用户修改", revision_conflict_data(current))
         current_status = RequirementStatus(current.status)
         # Capture before the atomic UPDATE mutates the in-session object.
         previous_status = current.status
@@ -173,7 +173,11 @@ class RequirementService:
                 "updated_by": operator_id,
             },
         ):
-            raise ConflictError("需求状态已被其他用户修改")
+            self.db.expire_all()
+            raise ConflictError(
+                "需求状态已被其他用户修改",
+                revision_conflict_data(self.repo.get(requirement_id)),
+            )
         self.audit.log(
             "REQUIREMENT",
             requirement_id,

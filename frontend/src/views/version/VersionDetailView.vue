@@ -17,14 +17,17 @@ import { listReleases } from '@/api/releases'
 import { getRequirement } from '@/api/requirements'
 import { usePermission } from '@/composables/usePermission'
 import { useEditingPresence } from '@/composables/useEditingPresence'
+import { useRevisionConflict } from '@/composables/useRevisionConflict'
 import { loadVersionDetailSections } from '@/security/detailAuthorization'
 import StatusTag from '@/components/StatusTag.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
+import RevisionConflictDialog from '@/components/RevisionConflictDialog.vue'
 import { useResponsive } from '@/composables/useResponsive'
 import { formatLocalDateTime } from '@/utils/dates'
+import { requirementConflictSummary, versionConflictSummary } from '@/utils/revisionSummaries'
 import {
   availableVersionStatusActions,
   versionRequirementSetFrozen,
@@ -47,6 +50,51 @@ const { can } = usePermission()
 const { isMobile } = useResponsive()
 const id = Number(route.params.id)
 const { start: startPresence, stop: stopPresence, existingEditor } = useEditingPresence('VERSION', id)
+const conflict = useRevisionConflict()
+
+async function showVersionConflict(error: unknown, revision: number, onReload?: (latest: VersionItem) => void | Promise<void>): Promise<void> {
+  await conflict.show(error, revision, {
+    entityLabel: '版本',
+    getLatest: () => getVersion(id),
+    summarize: versionConflictSummary,
+    apply: async (latest) => {
+      item.value = latest
+      await onReload?.(latest)
+    },
+  })
+}
+
+async function showRelationConflict(
+  error: unknown,
+  versionRevision: number,
+  requirementRevision: number,
+  requirementId: number,
+  versionId: number,
+): Promise<void> {
+  await conflict.show(error, `版本 ${versionRevision} / 需求 ${requirementRevision}`, {
+    entityLabel: '版本与需求关联',
+    getLatest: async () => {
+      const [version, requirement, currentVersion, section] = await Promise.all([
+        getVersion(versionId),
+        getRequirement(requirementId),
+        getVersion(id),
+        listVersionRequirements(id),
+      ])
+      return { version, requirement, currentVersion, section }
+    },
+    summarize: ({ version, requirement }) => [
+      { label: '版本当前 revision', value: String(version.revision) },
+      ...versionConflictSummary(version).map((row) => ({ label: `版本 · ${row.label}`, value: row.value })),
+      { label: '需求当前 revision', value: String(requirement.revision) },
+      ...requirementConflictSummary(requirement).map((row) => ({ label: `需求 · ${row.label}`, value: row.value })),
+    ],
+    apply: ({ currentVersion, section }) => {
+      item.value = currentVersion
+      requirements.value = section.items
+      stats.value = section.stats
+    },
+  })
+}
 
 const item = ref<VersionItem | null>(null)
 const requirements = ref<Requirement[]>([])
@@ -96,11 +144,11 @@ async function submitStatus(): Promise<void> {
     await changeVersionStatus(item.value.id, action.target, item.value.revision, statusReason.value.trim() || null)
     ElMessage.success('状态已更新')
     statusDialog.value = false
-  } catch {
-    // surfaced globally
+    await load()
+  } catch (error) {
+    await showVersionConflict(error, item.value.revision, () => { statusDialog.value = false })
   } finally {
     statusSubmitting.value = false
-    await load()
   }
 }
 
@@ -145,11 +193,11 @@ async function submitPublish(): Promise<void> {
     await publishVersion(item.value.id, releaseNotes.value.trim(), item.value.revision)
     ElMessage.success('版本已发布')
     publishDialog.value = false
-  } catch {
-    // 409 (未就绪/未完成需求/并发) surfaced globally; reload to refresh state.
+    await load()
+  } catch (error) {
+    await showVersionConflict(error, item.value.revision, () => { publishDialog.value = false })
   } finally {
     publishSubmitting.value = false
-    await load()
   }
 }
 
@@ -160,13 +208,17 @@ const editForm = reactive({ name: '', planned_release_date: null as string | nul
 
 function openEdit(): void {
   if (!item.value || !canEdit.value) return
-  Object.assign(editForm, {
-    name: item.value.name,
-    planned_release_date: item.value.planned_release_date ?? null,
-    description: item.value.description ?? '',
-  })
+  fillEditForm(item.value)
   editDialog.value = true
   void startPresence()
+}
+
+function fillEditForm(latest: VersionItem): void {
+  Object.assign(editForm, {
+    name: latest.name,
+    planned_release_date: latest.planned_release_date ?? null,
+    description: latest.description ?? '',
+  })
 }
 
 watch(editDialog, (open) => {
@@ -185,11 +237,11 @@ async function submitEdit(): Promise<void> {
     })
     ElMessage.success('版本已更新')
     editDialog.value = false
-  } catch {
-    // surfaced globally
+    await load()
+  } catch (error) {
+    await showVersionConflict(error, item.value.revision, fillEditForm)
   } finally {
     editSubmitting.value = false
-    await load()
   }
 }
 
@@ -204,18 +256,22 @@ async function submitAdd(): Promise<void> {
     return
   }
   addSubmitting.value = true
+  let requirementRevision = 0
   try {
     // Fetch the requirement's current revision for the optimistic lock.
     const req = await getRequirement(addRequirementId.value)
+    requirementRevision = req.revision
     await addVersionRequirement(item.value.id, req.id, req.revision, item.value.revision)
     ElMessage.success('需求已加入版本')
     addDialog.value = false
     addRequirementId.value = null
-  } catch {
-    // 404 / 409 surfaced globally
+    await load()
+  } catch (error) {
+    if (addRequirementId.value && item.value) {
+      await showRelationConflict(error, item.value.revision, requirementRevision, addRequirementId.value, item.value.id)
+    }
   } finally {
     addSubmitting.value = false
-    await load()
   }
 }
 
@@ -241,8 +297,10 @@ async function submitMove(): Promise<void> {
     return
   }
   moveSubmitting.value = true
+  let targetRevision = 0
   try {
     const targetVersion = await getVersion(moveTarget.target_version_id)
+    targetRevision = targetVersion.revision
     await moveVersionRequirement(
       moveTarget.target_version_id,
       moveTarget.requirement.id,
@@ -252,19 +310,25 @@ async function submitMove(): Promise<void> {
     )
     ElMessage.success('需求已迁移')
     moveDialog.value = false
-  } catch {
-    // surfaced globally
+    await load()
+  } catch (error) {
+    if (moveTarget.requirement && moveTarget.target_version_id) {
+      await showRelationConflict(error, targetRevision, moveTarget.requirement.revision, moveTarget.requirement.id, moveTarget.target_version_id)
+    }
   } finally {
     moveSubmitting.value = false
-    await load()
   }
 }
 
 async function removeReq(req: Requirement): Promise<void> {
   if (!item.value) return
-  await removeVersionRequirement(item.value.id, req.id, req.revision, item.value.revision, null)
-  ElMessage.success('需求已移出')
-  await load()
+  try {
+    await removeVersionRequirement(item.value.id, req.id, req.revision, item.value.revision, null)
+    ElMessage.success('需求已移出')
+    await load()
+  } catch (error) {
+    await showRelationConflict(error, item.value.revision, req.revision, req.id, item.value.id)
+  }
 }
 
 async function load(): Promise<void> {
@@ -422,6 +486,18 @@ onMounted(load)
         </el-button>
       </template>
     </el-dialog>
+
+    <RevisionConflictDialog
+      :visible="conflict.visible"
+      :loading="conflict.loading"
+      :entity-label="conflict.entityLabel"
+      :submitted-revision="conflict.submittedRevision"
+      :metadata="conflict.metadata"
+      :summary="conflict.summary"
+      :read-error="conflict.readError"
+      @close="conflict.close"
+      @reload="conflict.reload"
+    />
 
     <!-- status dialog -->
     <el-dialog v-model="statusDialog" :title="currentAction?.label ?? '状态变更'" width="min(480px, 92vw)" destroy-on-close>

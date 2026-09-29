@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 import yaml
-from conftest import resolve_openapi_ref
+from conftest import assert_revision_conflict, resolve_openapi_ref
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event, select
 from sqlalchemy.exc import IntegrityError
@@ -201,6 +201,38 @@ def test_requirement_crud_and_optimistic_lock(req_api):
     assert stale.json()["data"]["current_revision"] == 2
 
 
+def test_two_users_requirement_update_and_status_revision_contract(req_api):
+    client, _session, headers, ids = req_api
+    created = _create_req(client, headers["alice"])
+    path = f"/api/v1/requirements/{created['id']}"
+    assert client.get(path, headers=headers["alice"]).json()["revision"] == 1
+    assert client.get(path, headers=headers["boss"]).json()["revision"] == 1
+    assert (
+        client.patch(
+            path, headers=headers["alice"], json={"title": "A 保存", "revision": 1}
+        ).status_code
+        == 200
+    )
+    assert_revision_conflict(
+        client.patch(path, headers=headers["boss"], json={"title": "B 保存", "revision": 1}),
+        revision=2,
+        updated_by=ids["alice"],
+    )
+    assert_revision_conflict(
+        client.patch(
+            f"{path}/status",
+            headers=headers["boss"],
+            json={"status": "CONFIRMED", "revision": 1},
+        ),
+        revision=2,
+        updated_by=ids["alice"],
+    )
+    illegal = client.patch(
+        f"{path}/status", headers=headers["boss"], json={"status": "DONE", "revision": 2}
+    )
+    assert illegal.status_code == 409 and illegal.json()["code"] != 40910
+
+
 def test_requirement_status_machine(req_api):
     client, _session, headers, _ids = req_api
     req = _create_req(client, headers["alice"])
@@ -310,6 +342,22 @@ def test_convert_create_new(req_api):
         },
     )
     assert again.status_code == 409
+    assert again.json()["code"] != 40910
+    assert_revision_conflict(
+        client.post(
+            f"/api/v1/feedbacks/{fb['id']}/convert",
+            headers=headers["alice"],
+            json={
+                "type": "CREATE_NEW",
+                "revision": 1,
+                "requirement_title": "旧版本再次转换",
+                "requirement_type": "FEATURE",
+                "description": "描述",
+            },
+        ),
+        revision=detail["revision"],
+        updated_by=_ids["alice"],
+    )
 
     # Audit chain.
     fb_actions = set(

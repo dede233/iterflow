@@ -1913,6 +1913,28 @@ export interface components {
             /** Revision */
             revision: number;
         };
+        /** RevisionConflictData */
+        RevisionConflictData: {
+            /** Current Revision */
+            current_revision: number | null;
+            /** Current Updated At */
+            current_updated_at: string | null;
+            /** Current Updated By */
+            current_updated_by: number | null;
+        };
+        /** RevisionConflictResponse */
+        RevisionConflictResponse: {
+            /**
+             * Code
+             * @constant
+             */
+            code: 40910;
+            /** Message */
+            message: string;
+            data: components["schemas"]["RevisionConflictData"];
+            /** Request Id */
+            request_id: string | null;
+        };
         /** RoleCreate */
         RoleCreate: {
             /** Code */
@@ -2756,13 +2778,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description 业务状态或 revision 冲突 */
+            /** @description revision CAS 冲突 (40910) 或该操作的业务冲突 */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Validation Error */
@@ -2827,13 +2849,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description 业务状态或 revision 冲突 */
+            /** @description revision CAS 冲突 (40910) 或该操作的业务冲突 */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3161,13 +3183,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description 业务状态或 revision 冲突 */
+            /** @description revision CAS 冲突 (40910) 或该操作的业务冲突 */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3269,6 +3291,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description revision CAS 冲突 (40910) 或该操作的业务冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3382,13 +3413,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description 业务状态或 revision 冲突 */
+            /** @description revision CAS 冲突 (40910) 或该操作的业务冲突 */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3502,13 +3533,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description 业务状态或 revision 冲突 */
+            /** @description revision CAS 冲突 (40910) 或该操作的业务冲突 */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3723,13 +3754,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description 业务状态或 revision 冲突 */
+            /** @description revision CAS 冲突 (40910) 或该操作的业务冲突 */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3794,13 +3825,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description 业务状态或 revision 冲突 */
+            /** @description revision CAS 冲突 (40910) 或该操作的业务冲突 */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3914,13 +3945,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description 业务状态或 revision 冲突 */
+            /** @description revision CAS 冲突 (40910) 或该操作的业务冲突 */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3985,13 +4016,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description 业务状态或 revision 冲突 */
+            /** @description revision CAS 冲突 (40910) 或该操作的业务冲突 */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Validation Error */
@@ -4057,13 +4088,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description 业务状态或 revision 冲突 */
+            /** @description revision CAS 冲突 (40910) 或该操作的业务冲突 */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Validation Error */
@@ -4195,13 +4226,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description 业务状态或 revision 冲突 */
+            /** @description revision CAS 冲突 (40910) 或该操作的业务冲突 */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Validation Error */

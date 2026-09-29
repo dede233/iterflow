@@ -1,7 +1,7 @@
 from collections.abc import Mapping
 from typing import Any
 
-from app.schemas.common import ErrorResponse
+from app.schemas.common import ErrorResponse, RevisionConflictResponse
 
 _ERROR_DESCRIPTIONS = {
     401: "未登录或登录凭证不可用",
@@ -25,3 +25,12 @@ def api_error_responses(
         }
         for status_code in status_codes
     }
+
+
+def api_revision_conflict_responses(*status_codes: int) -> dict[int | str, dict[str, Any]]:
+    responses = api_error_responses(*status_codes)
+    responses[409] = {
+        "model": RevisionConflictResponse | ErrorResponse,
+        "description": "revision CAS 冲突 (40910) 或该操作的业务冲突",
+    }
+    return responses

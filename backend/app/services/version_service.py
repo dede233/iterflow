@@ -37,6 +37,7 @@ from app.schemas.version import (
 )
 from app.services.audit_service import AuditService
 from app.services.publish_check_service import PublishCheckService
+from app.services.revision_conflict import revision_conflict_data
 
 # Version states in which the requirement set is frozen (V1.5 §freeze).
 FROZEN_VERSION_STATES = {VersionStatus.READY, VersionStatus.RELEASED, VersionStatus.CANCELED}
@@ -99,16 +100,13 @@ class VersionService:
         before_values = {key: _jsonable(getattr(current, key)) for key in changed_fields}
         after_values = {key: _jsonable(values[key]) for key in changed_fields}
         if not self.repo.update_with_revision(version_id, payload.revision, values):
+            self.db.expire_all()
             latest = self.repo.get(version_id)
             if not latest:
                 raise NotFoundError("版本不存在")
             raise ConflictError(
                 "版本已被其他用户修改",
-                {
-                    "current_revision": latest.revision,
-                    "current_updated_at": latest.updated_at.isoformat(),
-                    "current_updated_by": latest.updated_by,
-                },
+                revision_conflict_data(latest),
             )
         self.audit.log("VERSION", version_id, "UPDATE", before=before_values, after=after_values)
         self.db.commit()
@@ -122,6 +120,8 @@ class VersionService:
         current = self.repo.get(version_id)
         if not current:
             raise NotFoundError("版本不存在")
+        if current.revision != payload.revision:
+            raise self._version_conflict(version_id)
         current_status = VersionStatus(current.status)
         previous_status = current.status  # capture before the atomic UPDATE mutates it
         if payload.status not in VERSION_TRANSITIONS[current_status]:
@@ -137,7 +137,7 @@ class VersionService:
             payload.revision,
             {"status": VersionStatus(payload.status.value), "updated_by": operator_id},
         ):
-            raise ConflictError("版本状态已发生变化")
+            raise self._version_conflict(version_id)
         self.audit.log(
             "VERSION",
             version_id,
@@ -195,14 +195,11 @@ class VersionService:
     def _requirement_conflict(
         self, req_repo: RequirementRepository, requirement_id: int
     ) -> ConflictError:
+        self.db.expire_all()
         latest = req_repo.get(requirement_id)
         return ConflictError(
             "需求已被其他用户修改",
-            {
-                "current_revision": latest.revision if latest else None,
-                "current_updated_at": latest.updated_at.isoformat() if latest else None,
-                "current_updated_by": latest.updated_by if latest else None,
-            },
+            revision_conflict_data(latest),
         )
 
     def _version_conflict(self, version_id: int) -> ConflictError:
@@ -213,11 +210,7 @@ class VersionService:
         )
         return ConflictError(
             "版本已被其他用户修改",
-            {
-                "current_revision": latest.revision if latest else None,
-                "current_updated_at": latest.updated_at.isoformat() if latest else None,
-                "current_updated_by": latest.updated_by if latest else None,
-            },
+            revision_conflict_data(latest),
         )
 
     def _lock_versions(self, version_ids: set[int]) -> dict[int, Version]:
@@ -298,8 +291,8 @@ class VersionService:
             raise AppError(42241, "关联版本时必须提供 version_revision", 422)
         version = self._lock_version(version_id, message="目标版本不存在")
         self._ensure_version_scope(version, operator_id, viewer_scope)
-        self._ensure_mutable(version)
         self._ensure_version_revision(version, version_revision)
+        self._ensure_mutable(version)
 
         previous_current_version_id = requirement.current_version_id
         requirement.current_version_id = version_id
@@ -329,12 +322,14 @@ class VersionService:
     ) -> Version:
         version = self._lock_version(version_id)
         self._ensure_version_scope(version, viewer_id, viewer_scope)
-        self._ensure_mutable(version)
         self._ensure_version_revision(version, payload.version_revision)
+        self._ensure_mutable(version)
         req_repo = RequirementRepository(self.db)
         requirement = req_repo.get_scoped(payload.requirement_id, viewer_id, viewer_scope)
         if requirement is None:
             raise NotFoundError("需求不存在")
+        if requirement.revision != payload.revision:
+            raise self._requirement_conflict(req_repo, requirement.id)
         existing = self.repo.active_relation_of_requirement(requirement.id)
         if existing is not None:
             if existing.version_id == version_id:
@@ -385,12 +380,14 @@ class VersionService:
     ) -> Version:
         version = self._lock_version(version_id)
         self._ensure_version_scope(version, viewer_id, viewer_scope)
-        self._ensure_mutable(version)
         self._ensure_version_revision(version, payload.version_revision)
+        self._ensure_mutable(version)
         req_repo = RequirementRepository(self.db)
         requirement = req_repo.get_scoped(requirement_id, viewer_id, viewer_scope)
         if requirement is None:
             raise NotFoundError("需求不存在")
+        if requirement.revision != payload.revision:
+            raise self._requirement_conflict(req_repo, requirement.id)
         relation = self.repo.active_relation(version_id, requirement_id)
         if relation is None:
             raise NotFoundError("该需求不在此版本中")
@@ -464,8 +461,10 @@ class VersionService:
                 raise NotFoundError("原版本不存在")
             self._ensure_version_scope(old_version, viewer_id, viewer_scope)
 
-        self._ensure_mutable(target)
         self._ensure_version_revision(target, payload.version_revision)
+        self._ensure_mutable(target)
+        if requirement.revision != payload.revision:
+            raise self._requirement_conflict(req_repo, requirement.id)
         if old is not None and old_version is not None:
             if old.version_id == target_version_id:
                 raise AppError(40933, "需求已在目标版本中", 409)
@@ -533,6 +532,8 @@ class VersionService:
         version = self.db.scalar(select(Version).where(Version.id == version_id).with_for_update())
         if not version:
             raise NotFoundError("版本不存在")
+        if version.revision != payload.revision:
+            raise self._version_conflict(version_id)
 
         # Centralized pre-publish checks (same checks as POST /publish/check).
         check = PublishCheckService(self.db).evaluate(version)
@@ -572,7 +573,7 @@ class VersionService:
             latest = self.repo.get(version_id)
             raise ConflictError(
                 "版本已被其他用户修改",
-                {"current_revision": latest.revision if latest else None},
+                revision_conflict_data(latest),
             )
 
         release = Release(

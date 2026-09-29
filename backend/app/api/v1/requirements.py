@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.api.deps import ensure_all_permissions, require_all_permissions, require_permission
-from app.api.openapi import api_error_responses
+from app.api.openapi import api_revision_conflict_responses
 from app.core.database import get_db
 from app.core.exceptions import NotFoundError
 from app.models.entities import Requirement, User
@@ -54,6 +54,7 @@ def list_requirements(
 @router.post(
     "",
     response_model=RequirementOut,
+    responses=api_revision_conflict_responses(409),
     description=(
         "普通创建需要 rd.requirement.create。指定 version_id 与 version_revision 时还需要 "
         "rd.version.edit 和 rd.requirement.view。目标版本同时受 Version DataScope 限制。"
@@ -105,7 +106,7 @@ def list_requirement_feedbacks(
 @router.patch(
     "/{requirement_id}",
     response_model=RequirementOut,
-    responses=api_error_responses(404, 409),
+    responses=api_revision_conflict_responses(404, 409),
 )
 def update_requirement(
     requirement_id: int,
@@ -120,7 +121,7 @@ def update_requirement(
 @router.patch(
     "/{requirement_id}/status",
     response_model=RequirementOut,
-    responses=api_error_responses(404, 409),
+    responses=api_revision_conflict_responses(404, 409),
 )
 def change_status(
     requirement_id: int,

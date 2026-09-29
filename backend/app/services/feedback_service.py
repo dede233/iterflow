@@ -29,6 +29,7 @@ from app.schemas.feedback import (
     FeedbackUpdate,
 )
 from app.services.audit_service import AuditService
+from app.services.revision_conflict import revision_conflict_data
 
 # Frozen Feedback state machine (V1.5). Keys are the current status; values are
 # the human-settable target statuses. Feedback is an external-input record, not
@@ -178,16 +179,13 @@ class FeedbackService:
         after_values = {key: values[key] for key in changed_fields}
         values["updated_by"] = operator_id
         if not self.repo.update_with_revision(feedback_id, payload.revision, values):
+            self.db.expire_all()
             latest = self.repo.get(feedback_id)
             if not latest:
                 raise NotFoundError("反馈不存在")
             raise ConflictError(
                 "该反馈已被其他用户修改",
-                {
-                    "current_revision": latest.revision,
-                    "current_updated_at": latest.updated_at.isoformat(),
-                    "current_updated_by": latest.updated_by,
-                },
+                revision_conflict_data(latest),
             )
         self.audit.log(
             "FEEDBACK",
@@ -212,6 +210,8 @@ class FeedbackService:
         current = self.repo.get(feedback_id)
         if not current:
             raise NotFoundError("反馈不存在")
+        if current.revision != payload.revision:
+            raise ConflictError("反馈状态已被其他用户修改", revision_conflict_data(current))
         current_status = FeedbackStatus(current.status)
         # Capture the pre-update values now: the atomic UPDATE below runs with
         # synchronize_session, which mutates this in-session object's attributes,
@@ -250,14 +250,11 @@ class FeedbackService:
             "updated_by": operator_id,
         }
         if not self.repo.update_with_revision(feedback_id, payload.revision, values):
+            self.db.expire_all()
             latest = self.repo.get(feedback_id)
             raise ConflictError(
                 "反馈状态已被其他用户修改",
-                {
-                    "current_revision": latest.revision if latest else None,
-                    "current_updated_at": (latest.updated_at.isoformat() if latest else None),
-                    "current_updated_by": latest.updated_by if latest else None,
-                },
+                revision_conflict_data(latest),
             )
         self.audit.log(
             "FEEDBACK",
@@ -296,17 +293,13 @@ class FeedbackService:
         feedback = self.repo.get(feedback_id)
         if not feedback:
             raise NotFoundError("反馈不存在")
-        if feedback.main_requirement_id is not None:
-            raise ConflictError("该反馈已经关联正式需求")
         if feedback.revision != payload.revision:
             raise ConflictError(
                 "反馈已被其他用户修改",
-                {
-                    "current_revision": feedback.revision,
-                    "current_updated_at": feedback.updated_at.isoformat(),
-                    "current_updated_by": feedback.updated_by,
-                },
+                revision_conflict_data(feedback),
             )
+        if feedback.main_requirement_id is not None:
+            raise ConflictError("该反馈已经关联正式需求", code=40913)
         previous_status = feedback.status
 
         if payload.type is FeedbackConvertType.CREATE_NEW:
@@ -354,7 +347,7 @@ class FeedbackService:
             latest = self.repo.get(feedback_id)
             raise ConflictError(
                 "反馈已被其他用户修改",
-                {"current_revision": latest.revision if latest else None},
+                revision_conflict_data(latest),
             )
         self.db.add(
             RequirementFeedback(requirement_id=target.id, feedback_id=feedback.id, is_primary=True)

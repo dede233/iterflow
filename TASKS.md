@@ -1,6 +1,6 @@
 # IterFlow V1.6 Development Tasks
 
-> 当前开发基线：master `f43f76145961b54d279cf3c85dd4afeb3e0e2d3f`。已发布稳定版 `v1.5.0` 不变。事实盘点见 `docs/v1.6-baseline-audit.md`，产品边界与验收见 `docs/v1.6-plan.md`。本清单只记录 V1.6 增量，不能替代代码与 CI 证据。
+> Phase 2 开发基线：master `e3de25d6ccd9222d0415031036d0f6dd18ec84d4`。已发布稳定版 `v1.5.0` 不变。事实盘点见 `docs/v1.6-baseline-audit.md`，产品边界与验收见 `docs/v1.6-plan.md`。本清单只记录 V1.6 增量，不能替代代码与 CI 证据。
 
 ## V1.6 Baseline — Already Completed
 

@@ -10,14 +10,17 @@ import {
 } from '@/api/requirements'
 import { usePermission } from '@/composables/usePermission'
 import { useEditingPresence } from '@/composables/useEditingPresence'
+import { useRevisionConflict } from '@/composables/useRevisionConflict'
 import { loadRequirementFeedbackSection } from '@/security/detailAuthorization'
 import StatusTag from '@/components/StatusTag.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
+import RevisionConflictDialog from '@/components/RevisionConflictDialog.vue'
 import { useResponsive } from '@/composables/useResponsive'
 import { formatLocalDateTime } from '@/utils/dates'
+import { requirementConflictSummary } from '@/utils/revisionSummaries'
 import {
   REQUIREMENT_PRIORITIES,
   REQUIREMENT_TYPES,
@@ -36,6 +39,19 @@ const { can } = usePermission()
 const { isMobile } = useResponsive()
 const id = Number(route.params.id)
 const { start: startPresence, stop: stopPresence, existingEditor } = useEditingPresence('REQUIREMENT', id)
+const conflict = useRevisionConflict()
+
+async function showConflict(error: unknown, revision: number, onReload?: (latest: Requirement) => void): Promise<void> {
+  await conflict.show(error, revision, {
+    entityLabel: '需求',
+    getLatest: () => getRequirement(id),
+    summarize: requirementConflictSummary,
+    apply: (latest) => {
+      item.value = latest
+      onReload?.(latest)
+    },
+  })
+}
 
 const item = ref<Requirement | null>(null)
 const feedbacks = ref<LinkedFeedback[]>([])
@@ -77,11 +93,11 @@ async function submitStatus(): Promise<void> {
     )
     ElMessage.success('状态已更新')
     statusDialog.value = false
-  } catch {
-    // 409 / 422 surfaced globally; reload to refresh revision.
+    await load()
+  } catch (error) {
+    await showConflict(error, item.value.revision, () => { statusDialog.value = false })
   } finally {
     statusSubmitting.value = false
-    await load()
   }
 }
 
@@ -98,15 +114,19 @@ const editForm = reactive({
 
 function openEdit(): void {
   if (!item.value || !canEdit.value) return
-  Object.assign(editForm, {
-    title: item.value.title,
-    requirement_type: item.value.requirement_type,
-    priority: item.value.priority,
-    description: item.value.description,
-    acceptance_criteria: item.value.acceptance_criteria ?? '',
-  })
+  fillEditForm(item.value)
   editDialog.value = true
   void startPresence()
+}
+
+function fillEditForm(latest: Requirement): void {
+  Object.assign(editForm, {
+    title: latest.title,
+    requirement_type: latest.requirement_type,
+    priority: latest.priority,
+    description: latest.description,
+    acceptance_criteria: latest.acceptance_criteria ?? '',
+  })
 }
 
 watch(editDialog, (open) => {
@@ -127,11 +147,11 @@ async function submitEdit(): Promise<void> {
     })
     ElMessage.success('需求已更新')
     editDialog.value = false
-  } catch {
-    // Conflict / validation surfaced globally.
+    await load()
+  } catch (error) {
+    await showConflict(error, item.value.revision, fillEditForm)
   } finally {
     editSubmitting.value = false
-    await load()
   }
 }
 
@@ -229,6 +249,18 @@ onMounted(load)
         <el-button type="primary" :loading="statusSubmitting" @click="submitStatus">确定</el-button>
       </template>
     </el-dialog>
+
+    <RevisionConflictDialog
+      :visible="conflict.visible"
+      :loading="conflict.loading"
+      :entity-label="conflict.entityLabel"
+      :submitted-revision="conflict.submittedRevision"
+      :metadata="conflict.metadata"
+      :summary="conflict.summary"
+      :read-error="conflict.readError"
+      @close="conflict.close"
+      @reload="conflict.reload"
+    />
 
     <!-- edit dialog -->
     <el-dialog v-model="editDialog" title="编辑需求" width="min(560px, 92vw)" destroy-on-close>

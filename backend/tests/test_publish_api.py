@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 import pytest
 import yaml
+from conftest import assert_revision_conflict
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event, select
 from sqlalchemy.orm import Session
@@ -232,6 +233,27 @@ def test_publish_success_syncs_version_requirement_feedback_and_release(pub_api)
         session.scalar(select(Notification).where(Notification.entity_id == seeded["feedback"]))
         is not None
     )
+    assert_revision_conflict(
+        client.post(
+            f"/api/v1/versions/{seeded['version']}/publish",
+            headers=headers["boss"],
+            json=_publish_body(revision=1),
+        ),
+        revision=2,
+        updated_by=ids["boss"],
+    )
+
+
+def test_publish_stale_revision_contract(pub_api):
+    client, session, headers, ids = pub_api
+    seeded = _seed_ready_version(session, ids["boss"])
+    stale = client.post(
+        f"/api/v1/versions/{seeded['version']}/publish",
+        headers=headers["boss"],
+        json=_publish_body(revision=999),
+    )
+    assert_revision_conflict(stale, revision=1, updated_by=ids["boss"])
+    assert session.scalar(select(Release).where(Release.version_id == seeded["version"])) is None
 
 
 def test_publish_blocked_by_unfinished_requirement(pub_api):

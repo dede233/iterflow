@@ -21,7 +21,7 @@ export const createRequirement = (payload: RequirementCreatePayload) =>
   api.post<Requirement>('/requirements', payload).then((r) => r.data)
 
 export const updateRequirement = (id: number, payload: RequirementUpdatePayload) =>
-  api.patch<Requirement>(`/requirements/${id}`, payload).then((r) => r.data)
+  api.patch<Requirement>(`/requirements/${id}`, payload, { skipRevisionConflictAlert: true }).then((r) => r.data)
 
 export const changeRequirementStatus = (
   id: number,
@@ -30,5 +30,5 @@ export const changeRequirementStatus = (
   reason?: string | null,
 ) =>
   api
-    .patch<Requirement>(`/requirements/${id}/status`, { status, revision, reason: reason ?? null })
+    .patch<Requirement>(`/requirements/${id}/status`, { status, revision, reason: reason ?? null }, { skipRevisionConflictAlert: true })
     .then((r) => r.data)

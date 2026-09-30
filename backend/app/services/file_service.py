@@ -206,7 +206,7 @@ class FileService:
         if item is None:
             raise NotFoundError("文件不存在")
         if self.repository.has_attachments(item.id):
-            raise ConflictError("文件已被业务对象引用。不能删除")
+            raise ConflictError("文件已被业务对象引用。不能删除", code=40901)
         storage = self._storage(item.storage_driver)
         storage_key = item.storage_key
 

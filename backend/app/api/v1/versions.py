@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_all_permissions, require_permission
-from app.api.openapi import api_error_responses
+from app.api.openapi import api_error_responses, api_revision_conflict_responses
 from app.core.database import get_db
 from app.core.exceptions import AppError, NotFoundError
 from app.models.entities import User, Version
@@ -65,7 +65,9 @@ def get_version(
     return _scoped_version_or_404(db, user, version_id)
 
 
-@router.patch("/{version_id}", response_model=VersionOut, responses=api_error_responses(404, 409))
+@router.patch(
+    "/{version_id}", response_model=VersionOut, responses=api_revision_conflict_responses(404, 409)
+)
 def update_version(
     version_id: int,
     payload: VersionUpdate,
@@ -77,7 +79,9 @@ def update_version(
 
 
 @router.patch(
-    "/{version_id}/status", response_model=VersionOut, responses=api_error_responses(404, 409)
+    "/{version_id}/status",
+    response_model=VersionOut,
+    responses=api_revision_conflict_responses(404, 409),
 )
 def change_version_status(
     version_id: int,
@@ -107,7 +111,7 @@ def list_version_requirements(
 @router.post(
     "/{version_id}/requirements",
     response_model=VersionOut,
-    responses=api_error_responses(404, 409),
+    responses=api_revision_conflict_responses(404, 409),
 )
 def add_version_requirement(
     version_id: int,
@@ -125,7 +129,7 @@ def add_version_requirement(
 @router.post(
     "/{version_id}/requirements/move",
     response_model=VersionOut,
-    responses=api_error_responses(404, 409),
+    responses=api_revision_conflict_responses(404, 409),
 )
 def move_version_requirement(
     version_id: int,
@@ -143,7 +147,7 @@ def move_version_requirement(
 @router.delete(
     "/{version_id}/requirements/{requirement_id}",
     response_model=VersionOut,
-    responses=api_error_responses(404, 409),
+    responses=api_revision_conflict_responses(404, 409),
 )
 def remove_version_requirement(
     version_id: int,
@@ -192,7 +196,7 @@ def check_version_publish(
 @router.post(
     "/{version_id}/publish",
     response_model=PublishResult,
-    responses=api_error_responses(404, 409),
+    responses=api_revision_conflict_responses(404, 409),
 )
 def publish_version(
     version_id: int,

@@ -164,7 +164,12 @@ const stubs = {
   },
   'el-form': elementStub,
   'el-form-item': elementStub,
-  'el-input': elementStub,
+  'el-input': {
+    name: 'ElInput',
+    props: ['modelValue', 'type'],
+    emits: ['update:modelValue'],
+    template: '<textarea v-if="type === \'textarea\'" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" /><input v-else :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
+  },
   'el-input-number': elementStub,
   'el-link': elementStub,
   'el-option': elementStub,
@@ -313,6 +318,51 @@ describe('detail views enforce permission-aware loading in mounted components', 
     wrapper.unmount()
     await flushPromises()
     expect(mocks.endEditing).toHaveBeenCalledOnce()
+  })
+
+  it.each([
+    { name: 'Feedback', component: FeedbackDetailView, permission: 'rd.feedback.edit', update: mocks.updateFeedback, get: mocks.getFeedback, initial: feedback, field: '反馈标题', server: '服务器反馈' },
+    { name: 'Requirement', component: RequirementDetailView, permission: 'rd.requirement.edit', update: mocks.updateRequirement, get: mocks.getRequirement, initial: requirement, field: '需求标题', server: '服务器需求' },
+    { name: 'Version', component: VersionDetailView, permission: 'rd.version.edit', update: mocks.updateVersion, get: mocks.getVersion, initial: version, field: '1.5.0', server: '服务器版本' },
+  ])('$name preserves local input and presence through revision conflict until explicit reload', async ({ name, component, permission, update, get, initial, field, server }) => {
+    permissionSet(permission)
+    const latest = { ...initial, ...(name === 'Version' ? { name: server } : { title: server }), revision: 2, updated_by: 8, updated_at: '2026-09-29T01:00:00Z' }
+    get.mockResolvedValueOnce(initial).mockResolvedValue(latest)
+    const stale = { response: { status: 409, data: { code: 40910, message: '已修改', data: { current_revision: 2, current_updated_at: latest.updated_at, current_updated_by: 8 } } } }
+    update.mockRejectedValue(stale)
+    const wrapper = mount(component, { global: { stubs, directives: { loading: {} } } })
+    await flushPromises()
+    await wrapper.findAll('button').find((button) => button.text() === '编辑')!.trigger('click')
+    await flushPromises()
+    const input = wrapper.findAllComponents({ name: 'ElInput' }).find((entry) => entry.props('modelValue') === field)
+    expect(input).toBeDefined()
+    input!.vm.$emit('update:modelValue', '我的本地输入')
+    await flushPromises()
+    await wrapper.findAll('button').find((button) => button.text() === '保存')!.trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('你的输入仍保留在原表单中')
+    expect(wrapper.text()).toContain(server)
+    expect(wrapper.text()).toContain('用户 #8')
+    expect(input!.props('modelValue')).toBe('我的本地输入')
+    expect(mocks.endEditing).not.toHaveBeenCalled()
+    expect(wrapper.findAll('button').find((button) => button.text() === '保存')?.attributes('disabled')).toBeUndefined()
+    await wrapper.findAll('button').find((button) => button.text() === '关闭并人工处理')!.trigger('click')
+    await flushPromises()
+    expect(input!.props('modelValue')).toBe('我的本地输入')
+    await wrapper.findAll('button').find((button) => button.text() === '保存')!.trigger('click')
+    await flushPromises()
+    expect(update).toHaveBeenLastCalledWith(initial.id, expect.objectContaining({ revision: 1 }))
+    await wrapper.findAll('button').find((button) => button.text() === '重新加载服务器版本')!.trigger('click')
+    await flushPromises()
+    expect(input!.props('modelValue')).toBe(server)
+    expect(wrapper.text()).not.toContain('你的输入仍保留在原表单中')
+    expect(mocks.endEditing).not.toHaveBeenCalled()
+    update.mockResolvedValueOnce(latest)
+    await wrapper.findAll('button').find((button) => button.text() === '保存')!.trigger('click')
+    await flushPromises()
+    expect(update).toHaveBeenLastCalledWith(initial.id, expect.objectContaining({ revision: 2 }))
+    expect(mocks.endEditing).toHaveBeenCalledOnce()
+    wrapper.unmount()
   })
 
   it('ends Requirement presence when the dialog closes through model update', async () => {

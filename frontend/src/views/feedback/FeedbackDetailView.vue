@@ -16,6 +16,7 @@ import {
 import { listSystems } from '@/api/systems'
 import { usePermission } from '@/composables/usePermission'
 import { useEditingPresence } from '@/composables/useEditingPresence'
+import { useRevisionConflict } from '@/composables/useRevisionConflict'
 import {
   canLinkExistingRequirement as canLinkExistingRequirementFor,
   finishFeedbackConversion,
@@ -25,6 +26,7 @@ import PageHeader from '@/components/ui/PageHeader.vue'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
+import RevisionConflictDialog from '@/components/RevisionConflictDialog.vue'
 import { useResponsive } from '@/composables/useResponsive'
 import { REQUIREMENT_PRIORITIES, REQUIREMENT_TYPES } from '@/constants/requirement'
 import {
@@ -47,6 +49,7 @@ import type {
   PriorityValue,
 } from '@/types/domain'
 import { formatLocalDateTime } from '@/utils/dates'
+import { feedbackConflictSummary } from '@/utils/revisionSummaries'
 
 const route = useRoute()
 const router = useRouter()
@@ -54,6 +57,7 @@ const { can } = usePermission()
 const { isMobile } = useResponsive()
 const feedbackId = Number(route.params.id)
 const { start: startPresence, stop: stopPresence, existingEditor } = useEditingPresence('FEEDBACK', feedbackId)
+const conflict = useRevisionConflict()
 
 const item = ref<Feedback | null>(null)
 const loading = ref(false)
@@ -70,6 +74,18 @@ const canLinkExisting = computed(() => canLinkExistingRequirementFor(can))
 const canConvert = computed(
   () => can('rd.feedback.convert') && !!item.value && item.value.main_requirement_id == null,
 )
+
+async function showConflict(error: unknown, revision: number, onReload?: (latest: Feedback) => void): Promise<void> {
+  await conflict.show(error, revision, {
+    entityLabel: '反馈',
+    getLatest: () => getFeedback(feedbackId),
+    summarize: feedbackConflictSummary,
+    apply: (latest) => {
+      item.value = latest
+      onReload?.(latest)
+    },
+  })
+}
 
 const statusActions = computed<StatusAction[]>(() =>
   item.value ? availableStatusActions(item.value.status, canEdit.value) : [],
@@ -137,9 +153,8 @@ async function submitConvert(): Promise<void> {
       (path) => router.push(path),
       load,
     )
-  } catch {
-    // 409 / 404 / 422 surfaced globally; reload to refresh state.
-    await load()
+  } catch (error) {
+    await showConflict(error, item.value.revision)
   } finally {
     convertSubmitting.value = false
   }
@@ -179,11 +194,11 @@ async function submitStatus(): Promise<void> {
     })
     ElMessage.success('状态已更新')
     statusDialog.value = false
-  } catch {
-    // 409 / 422 surfaced by the global interceptor; reload to refresh revision.
+    await load()
+  } catch (error) {
+    await showConflict(error, item.value.revision, () => { statusDialog.value = false })
   } finally {
     statusSubmitting.value = false
-    await load()
   }
 }
 
@@ -207,19 +222,23 @@ const editModuleOptions = computed(() =>
 
 function openEdit(): void {
   if (!item.value || !canEdit.value) return
-  Object.assign(editForm, {
-    title: item.value.title,
-    feedback_type: item.value.feedback_type,
-    urgency: item.value.urgency,
-    system_id: item.value.system_id ?? null,
-    module_id: item.value.module_id ?? null,
-    description: item.value.description,
-    expected_result: item.value.expected_result ?? '',
-    actual_result: item.value.actual_result ?? '',
-    reproduce_steps: item.value.reproduce_steps ?? '',
-  })
+  fillEditForm(item.value)
   editDialog.value = true
   void startPresence()
+}
+
+function fillEditForm(latest: Feedback): void {
+  Object.assign(editForm, {
+    title: latest.title,
+    feedback_type: latest.feedback_type,
+    urgency: latest.urgency,
+    system_id: latest.system_id ?? null,
+    module_id: latest.module_id ?? null,
+    description: latest.description,
+    expected_result: latest.expected_result ?? '',
+    actual_result: latest.actual_result ?? '',
+    reproduce_steps: latest.reproduce_steps ?? '',
+  })
 }
 
 watch(editDialog, (open) => {
@@ -248,11 +267,11 @@ async function submitEdit(): Promise<void> {
     })
     ElMessage.success('反馈已更新')
     editDialog.value = false
-  } catch {
-    // Conflict / validation surfaced globally; reload to show latest revision.
+    await load()
+  } catch (error) {
+    await showConflict(error, item.value.revision, fillEditForm)
   } finally {
     editSubmitting.value = false
-    await load()
   }
 }
 
@@ -450,6 +469,18 @@ onMounted(async () => {
         <el-button type="primary" :loading="statusSubmitting" @click="submitStatus">确定</el-button>
       </template>
     </el-dialog>
+
+    <RevisionConflictDialog
+      :visible="conflict.visible"
+      :loading="conflict.loading"
+      :entity-label="conflict.entityLabel"
+      :submitted-revision="conflict.submittedRevision"
+      :metadata="conflict.metadata"
+      :summary="conflict.summary"
+      :read-error="conflict.readError"
+      @close="conflict.close"
+      @reload="conflict.reload"
+    />
 
     <!-- edit dialog -->
     <el-dialog v-model="editDialog" title="编辑反馈" width="min(560px, 92vw)" destroy-on-close>

@@ -256,7 +256,7 @@ class AuthService:
         )
         if not result.rowcount:
             self.db.rollback()
-            raise ConflictError("密码已被其他操作修改; 请重新登录")
+            raise ConflictError("密码已被其他操作修改; 请重新登录", code=40901)
 
         self.revoke_user_sessions(user.id, "PASSWORD_CHANGED")
         refresh_session = self._new_refresh_session(user.id)

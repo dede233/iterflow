@@ -8,8 +8,7 @@ import yaml
 from app.main import app
 
 ROOT = Path(__file__).resolve().parents[2]
-CANONICAL_SPEC = ROOT / "spec" / "openapi-v1.5.yaml"
-SECONDARY_SPEC = ROOT / "spec" / "需求与版本管理系统_V1.5_OpenAPI.yaml"
+CANONICAL_SPEC = ROOT / "spec" / "openapi-v1.6.yaml"
 DOC_FIELDS = {
     "description",
     "externalDocs",
@@ -81,7 +80,6 @@ def main() -> None:
         width=100,
     )
     CANONICAL_SPEC.write_text(serialized, encoding="utf-8")
-    SECONDARY_SPEC.write_text(serialized, encoding="utf-8")
 
 
 if __name__ == "__main__":

@@ -34,7 +34,7 @@ class UserAdministrationService:
     def _lock_super_admin_role(self) -> Role:
         role = self.users.get_super_admin_role_for_update()
         if role is None:
-            raise ConflictError("SUPER_ADMIN 系统角色不存在或配置异常")
+            raise ConflictError("SUPER_ADMIN 系统角色不存在或配置异常", code=40901)
         return role
 
     def _user_or_404(self, user_id: int) -> User:
@@ -63,7 +63,7 @@ class UserAdministrationService:
     def _effective_super_admin_count(self, super_admin_role: Role) -> int:
         count = self.users.effective_super_admin_count(super_admin_role.id)
         if count < 1:
-            raise ConflictError(self.LAST_SUPER_ADMIN_MESSAGE)
+            raise ConflictError(self.LAST_SUPER_ADMIN_MESSAGE, code=40901)
         return count
 
     def _user_conflict(self, user_id: int, message: str) -> ConflictError:
@@ -85,7 +85,7 @@ class UserAdministrationService:
         if super_admin_role.id in payload.role_ids:
             self._ensure_operator_is_effective_super_admin(operator_id, super_admin_role)
         if self.users.by_username(payload.username) is not None:
-            raise ConflictError("用户名已存在")
+            raise ConflictError("用户名已存在", code=40901)
 
         user = User(
             username=payload.username,
@@ -151,7 +151,7 @@ class UserAdministrationService:
             and super_admin_role.enabled
         )
         if removes_effective_super_admin and effective_count <= 1:
-            raise ConflictError(self.LAST_SUPER_ADMIN_MESSAGE)
+            raise ConflictError(self.LAST_SUPER_ADMIN_MESSAGE, code=40901)
 
         if not self.users.update_with_revision(
             user_id,
@@ -192,7 +192,7 @@ class UserAdministrationService:
             and super_admin_role.enabled
         )
         if removes_effective_super_admin and effective_count <= 1:
-            raise ConflictError(self.LAST_SUPER_ADMIN_MESSAGE)
+            raise ConflictError(self.LAST_SUPER_ADMIN_MESSAGE, code=40901)
 
         previous_status = user.status
         if not self.users.update_with_revision(

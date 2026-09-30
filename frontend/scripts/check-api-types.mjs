@@ -13,7 +13,7 @@ const tempFile = join(tempDir, 'openapi.generated.ts')
 try {
   execFileSync(
     process.execPath,
-    [openapiCli, '../spec/openapi-v1.5.yaml', '-o', tempFile],
+    [openapiCli, '../spec/openapi-v1.6.yaml', '-o', tempFile],
     { cwd: frontendDir, stdio: 'inherit' },
   )
   const [committed, current] = await Promise.all([

@@ -104,6 +104,7 @@ test('all 19 authenticated screens render at every release viewport', async ({ p
   })
   await page.route('**/api/v1/**', (route) => {
     const { pathname } = new URL(route.request().url())
+    if (pathname === '/api/v1/notifications/unread-count') return route.fulfill({ status: 200, json: { unread_count: 0 } })
     if (pathname.startsWith('/api/v1/editing/')) return route.fulfill({ status: 200, json: {} })
     if (!(pathname in responses)) {
       unexpectedRequests.push(`${route.request().method()} ${pathname}`)
@@ -152,6 +153,7 @@ test('core detail dialogs stay operable on a 375px screen', async ({ page }) => 
   })
   await page.route('**/api/v1/**', (route) => {
     const { pathname } = new URL(route.request().url())
+    if (pathname === '/api/v1/notifications/unread-count') return route.fulfill({ status: 200, json: { unread_count: 0 } })
     if (pathname.startsWith('/api/v1/editing/')) return route.fulfill({ status: 200, json: {} })
     if (pathname === '/api/v1/versions/3/publish/check') {
       return route.fulfill({ status: 200, json: { passed: true, checks: [] } })

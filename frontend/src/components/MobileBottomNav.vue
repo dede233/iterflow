@@ -2,8 +2,10 @@
 import { computed } from 'vue'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import { useAuthStore } from '@/stores/auth'
+import { useNotificationsStore } from '@/stores/notifications'
 
 const auth = useAuthStore()
+const notifications = useNotificationsStore()
 const items = computed(() => [
   { to: '/', label: '首页', icon: 'home', permission: 'dashboard.view' },
   { to: '/feedbacks', label: '反馈', icon: 'feedback', permission: 'rd.feedback.view' },
@@ -17,12 +19,14 @@ const items = computed(() => [
 <template>
   <nav class="bottom mobile-only" aria-label="主导航">
     <router-link v-for="item in items" :key="item.to" :to="item.to" :class="{ home: item.to === '/' }">
-      <AppIcon :name="item.icon" :size="20" />
+      <span class="nav-icon"><AppIcon :name="item.icon" :size="20" /><span v-if="item.to === '/notifications' && notifications.unreadCount > 0" class="notification-badge" :aria-label="`${notifications.unreadCount} 条未读通知`">{{ notifications.badgeText }}</span></span>
       <span>{{ item.label }}</span>
     </router-link>
   </nav>
 </template>
 <style scoped>
+.nav-icon { position: relative; display: inline-flex; }
+.notification-badge { position: absolute; top: -7px; left: 12px; min-width: 16px; padding: 0 4px; border-radius: 999px; background: var(--if-brand-500); color: #fff; font-size: 10px; line-height: 16px; text-align: center; white-space: nowrap; }
 .bottom {
   position: fixed;
   right: 0;

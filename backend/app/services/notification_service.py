@@ -1,6 +1,7 @@
 from datetime import UTC, datetime
+from typing import Any, cast
 
-from sqlalchemy import select
+from sqlalchemy import CursorResult, func, select, update
 from sqlalchemy.orm import Session
 
 from app.models.entities import Notification
@@ -19,6 +20,25 @@ class NotificationService:
         if unread_only:
             statement = statement.where(Notification.read_at.is_(None))
         return list(self.db.scalars(statement.limit(100)).all())
+
+    def unread_count(self, user_id: int) -> int:
+        return (
+            self.db.scalar(
+                select(func.count())
+                .select_from(Notification)
+                .where(Notification.user_id == user_id, Notification.read_at.is_(None))
+            )
+            or 0
+        )
+
+    def read_all(self, user_id: int) -> int:
+        result = self.db.execute(
+            update(Notification)
+            .where(Notification.user_id == user_id, Notification.read_at.is_(None))
+            .values(read_at=datetime.now(UTC))
+        )
+        self.db.commit()
+        return int(cast(CursorResult[Any], result).rowcount or 0)
 
     def mark_read(self, notification_id: int, user_id: int) -> dict[str, bool]:
         item = self.db.get(Notification, notification_id)

@@ -574,6 +574,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/notifications/unread-count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 当前用户真实未读总数
+         * @description 仅当前登录用户自己的通知; 不依赖业务权限或 DataScope。
+         */
+        get: operations["unread_count_api_v1_notifications_unread_count_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notifications/read-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 当前用户全部通知已读
+         * @description 仅当前登录用户自己的通知; 不依赖业务权限或 DataScope。
+         */
+        post: operations["read_all_api_v1_notifications_read_all_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/notifications/{notification_id}/read": {
         parameters: {
             query?: never;
@@ -1666,11 +1706,21 @@ export interface components {
              */
             created_at: string;
         };
+        /** NotificationReadAllResult */
+        NotificationReadAllResult: {
+            /** Updated Count */
+            updated_count: number;
+        };
         /**
          * NotificationType
          * @enum {string}
          */
         NotificationType: "SYSTEM" | "FEEDBACK" | "REQUIREMENT" | "VERSION" | "RELEASE";
+        /** NotificationUnreadCount */
+        NotificationUnreadCount: {
+            /** Unread Count */
+            unread_count: number;
+        };
         /** PermissionOut */
         PermissionOut: {
             /** Id */
@@ -4391,6 +4441,64 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unread_count_api_v1_notifications_unread_count_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationUnreadCount"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    read_all_api_v1_notifications_read_all_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationReadAllResult"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

@@ -21,6 +21,7 @@ test.beforeEach(async ({ page }) => {
       sessionStorage.setItem('profile-test-initialized', '1')
     }
   })
+  await page.route('**/api/v1/notifications/unread-count', (route) => route.fulfill({ status: 200, json: { unread_count: 0 } }))
   await page.route('**/api/v1/auth/me', (route) => route.fulfill({ status: 200, json: member }))
   await page.route('**/api/v1/auth/logout', (route) => route.fulfill({ status: 200, json: {} }))
 })

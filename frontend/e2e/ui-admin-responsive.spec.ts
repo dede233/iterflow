@@ -32,6 +32,7 @@ test.beforeEach(async ({ page }) => {
   })
   await page.route('**/api/v1/**', (route) => {
     const { pathname } = new URL(route.request().url())
+    if (pathname === '/api/v1/notifications/unread-count') return route.fulfill({ status: 200, json: { unread_count: 0 } })
     const responses: Record<string, unknown> = {
       '/api/v1/auth/me': admin,
       '/api/v1/audits': { items: [audit], page: 1, size: 20, total: 1 },

@@ -5,6 +5,7 @@ import { renderToString } from '@vue/server-renderer'
 import { createPinia } from 'pinia'
 import { describe, expect, it, vi } from 'vitest'
 import { useAuthStore } from '@/stores/auth'
+import { useNotificationsStore } from '@/stores/notifications'
 import type { DataScope } from '@/types/auth'
 
 vi.mock('vue-router', () => ({
@@ -24,7 +25,7 @@ const RouterLinkStub = defineComponent({
   },
 })
 
-async function renderLayout(permissionCodes: string[], dataScope: DataScope): Promise<string> {
+async function renderLayout(permissionCodes: string[], dataScope: DataScope, unreadCount = 0): Promise<string> {
   const pinia = createPinia()
   const auth = useAuthStore(pinia)
   auth.$patch({
@@ -44,6 +45,7 @@ async function renderLayout(permissionCodes: string[], dataScope: DataScope): Pr
     },
   })
 
+  useNotificationsStore(pinia).unreadCount = unreadCount
   const app = createSSRApp(AppLayout)
   app.use(pinia)
   app.component('router-link', RouterLinkStub)
@@ -84,5 +86,18 @@ describe('application navigation permissions', () => {
     const html = await renderLayout([], 'SELF')
     expect(html).toContain('href="/profile"')
     expect(html).toContain('个人中心')
+  })
+})
+
+
+describe('notification badge', () => {
+  it.each([[0, null], [7, '7'], [100, '99+']])('shows count %s without requiring business permissions', async (count, text) => {
+    const html = await renderLayout([], 'SELF', count)
+    expect(html).toContain('href="/notifications"')
+    if (text === null) expect(html).not.toContain('class="notification-badge"')
+    else {
+      expect(html).toContain(`>${text}</span>`)
+      expect(html).toContain(`${count} 条未读通知`)
+    }
   })
 })

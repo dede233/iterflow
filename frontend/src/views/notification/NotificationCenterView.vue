@@ -23,7 +23,9 @@ function notificationIcon(entityType: string | null): string {
 }
 
 function notificationTarget(notification: NotificationItem): string | null {
-  if (notification.entity_type === 'RELEASE') return '/releases'
+  if (notification.entity_type === 'RELEASE') {
+    return notification.entity_id == null ? '/releases' : `/releases/${notification.entity_id}`
+  }
   if (notification.entity_id == null) return null
 
   switch (notification.entity_type) {

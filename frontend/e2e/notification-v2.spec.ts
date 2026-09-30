@@ -14,7 +14,7 @@ async function notifications(page: Page, count: number, permissions = ['rd.relea
       state.countRequests++
       return json({ unread_count: state.count })
     }
-    if (path === '/api/v1/notifications') return json([{ id: 1, type: 'RELEASE', title: '版本发布通知'.repeat(12), content: '长通知内容用于响应式验收'.repeat(25), entity_type: 'RELEASE', entity_id: 99, read_at: state.readAt, created_at: '2026-10-01T00:00:00Z' }])
+    if (path === '/api/v1/notifications') return json([{ id: 1, type: 'RELEASE', title: '版本发布通知'.repeat(12), content: '长通知内容用于响应式验收'.repeat(25), entity_type: 'RELEASE', entity_id: null, read_at: state.readAt, created_at: '2026-10-01T00:00:00Z' }])
     if (path === '/api/v1/notifications/1/read') {
       state.reads++
       if (!state.readAt) state.count--

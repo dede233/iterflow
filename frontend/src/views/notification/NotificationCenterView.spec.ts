@@ -43,6 +43,7 @@ async function view(item: NotificationItem) {
   const wrapper = mount(NotificationCenterView, {
     global: {
       plugins: [createPinia()],
+      directives: { loading: () => {} },
       stubs: { 'el-button': { template: '<button><slot /></button>' } },
     },
   })
@@ -63,6 +64,7 @@ describe('notification business navigation', () => {
     ['FEEDBACK', 123, '/feedbacks/123'],
     ['REQUIREMENT', 456, '/requirements/456'],
     ['VERSION', 789, '/versions/789'],
+    ['RELEASE', 123, '/releases/123'],
     ['RELEASE', null, '/releases'],
   ])('marks %s notification (id %s) read before navigating to %s', async (entityType, entityId, target) => {
     const wrapper = await view(notification({ entity_type: entityType, entity_id: entityId }))

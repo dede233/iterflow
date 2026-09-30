@@ -27,7 +27,7 @@ def list_notifications(
     response_model=NotificationUnreadCount,
     responses=api_error_responses(401),
     summary="当前用户真实未读总数",
-    description="仅当前登录用户自己的通知；不依赖业务权限或 DataScope。",
+    description="仅当前登录用户自己的通知; 不依赖业务权限或 DataScope。",
 )
 def unread_count(db: Session = Depends(get_db), user: User = Depends(current_user)):
     return {"unread_count": NotificationService(db).unread_count(user.id)}
@@ -38,7 +38,7 @@ def unread_count(db: Session = Depends(get_db), user: User = Depends(current_use
     response_model=NotificationReadAllResult,
     responses=api_error_responses(401),
     summary="当前用户全部通知已读",
-    description="仅当前登录用户自己的通知；不依赖业务权限或 DataScope。",
+    description="仅当前登录用户自己的通知; 不依赖业务权限或 DataScope。",
 )
 def read_all(db: Session = Depends(get_db), user: User = Depends(current_user)):
     return {"updated_count": NotificationService(db).read_all(user.id)}

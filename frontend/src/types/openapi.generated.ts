@@ -583,7 +583,7 @@ export interface paths {
         };
         /**
          * 当前用户真实未读总数
-         * @description 仅当前登录用户自己的通知；不依赖业务权限或 DataScope。
+         * @description 仅当前登录用户自己的通知; 不依赖业务权限或 DataScope。
          */
         get: operations["unread_count_api_v1_notifications_unread_count_get"];
         put?: never;
@@ -605,7 +605,7 @@ export interface paths {
         put?: never;
         /**
          * 当前用户全部通知已读
-         * @description 仅当前登录用户自己的通知；不依赖业务权限或 DataScope。
+         * @description 仅当前登录用户自己的通知; 不依赖业务权限或 DataScope。
          */
         post: operations["read_all_api_v1_notifications_read_all_post"];
         delete?: never;

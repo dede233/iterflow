@@ -2023,7 +2023,7 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
       security:
       - bearerAuth: []
-      description: 仅当前登录用户自己的通知；不依赖业务权限或 DataScope。
+      description: 仅当前登录用户自己的通知; 不依赖业务权限或 DataScope。
   /notifications/read-all:
     post:
       tags:
@@ -2045,7 +2045,7 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
       security:
       - bearerAuth: []
-      description: 仅当前登录用户自己的通知；不依赖业务权限或 DataScope。
+      description: 仅当前登录用户自己的通知; 不依赖业务权限或 DataScope。
   /notifications/{notification_id}/read:
     post:
       tags:

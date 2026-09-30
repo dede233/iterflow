@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.enums import NotificationType
 
@@ -15,3 +15,11 @@ class NotificationOut(BaseModel):
     entity_id: int | None
     read_at: datetime | None
     created_at: datetime
+
+
+class NotificationUnreadCount(BaseModel):
+    unread_count: int = Field(ge=0)
+
+
+class NotificationReadAllResult(BaseModel):
+    updated_count: int = Field(ge=0)

@@ -56,6 +56,7 @@ for (const width of [375, 390, 768, 1280, 1440]) {
       await page.setViewportSize({ width, height: 900 })
       await page.route('**/api/v1/**', (route) => {
         const { pathname } = new URL(route.request().url())
+        if (pathname === '/api/v1/notifications/unread-count') return route.fulfill({ status: 200, json: { unread_count: 0 } })
         if (pathname.startsWith('/api/v1/editing/')) {
           const operation = pathname.split('/').at(-1)!
           const body = route.request().postDataJSON() as { entity_type: string; entity_id: number }

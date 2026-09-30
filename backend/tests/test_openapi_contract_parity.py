@@ -158,3 +158,19 @@ def test_v16_revision_conflict_contract_covers_all_core_cas_routes() -> None:
         "409"
     ]["content"]["application/json"]["schema"]
     assert check_schema == {"$ref": "#/components/schemas/ErrorResponse"}
+
+
+def test_notification_v2_contract_is_personal_and_nonnegative() -> None:
+    static = yaml.safe_load(CANONICAL.read_text(encoding="utf-8"))
+    for path, method, schema, field in (
+        ("/notifications/unread-count", "get", "NotificationUnreadCount", "unread_count"),
+        ("/notifications/read-all", "post", "NotificationReadAllResult", "updated_count"),
+    ):
+        operation = static["paths"][path][method]
+        assert operation["security"] == [{"bearerAuth": []}]
+        assert "DataScope" in operation["description"]
+        assert operation["responses"]["200"]["content"]["application/json"]["schema"] == {
+            "$ref": f"#/components/schemas/{schema}"
+        }
+        assert static["components"]["schemas"][schema]["required"] == [field]
+        assert static["components"]["schemas"][schema]["properties"][field]["minimum"] == 0

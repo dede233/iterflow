@@ -4,6 +4,7 @@ import { createPinia } from 'pinia'
 import { describe, expect, it } from 'vitest'
 import MobileBottomNav from '@/components/MobileBottomNav.vue'
 import { useAuthStore } from '@/stores/auth'
+import { useNotificationsStore } from '@/stores/notifications'
 
 const RouterLinkStub = defineComponent({
   props: { to: { type: String, required: true } },
@@ -12,7 +13,7 @@ const RouterLinkStub = defineComponent({
   },
 })
 
-async function renderNav(permissionCodes: string[]): Promise<string> {
+async function renderNav(permissionCodes: string[], unreadCount = 0): Promise<string> {
   const pinia = createPinia()
   useAuthStore(pinia).$patch({
     accessToken: 'test-token',
@@ -30,6 +31,7 @@ async function renderNav(permissionCodes: string[]): Promise<string> {
       must_change_password: false,
     },
   })
+  useNotificationsStore(pinia).unreadCount = unreadCount
   const app = createSSRApp(MobileBottomNav)
   app.use(pinia)
   app.component('router-link', RouterLinkStub)
@@ -51,5 +53,18 @@ describe('mobile navigation', () => {
     expect(html).toContain('href="/profile"')
     expect(html).toContain('href="/notifications"')
     expect(html).not.toContain('href="/feedbacks"')
+  })
+})
+
+
+describe('notification badge', () => {
+  it.each([[0, null], [7, '7'], [100, '99+']])('shows count %s without requiring business permissions', async (count, text) => {
+    const html = await renderNav([], count)
+    expect(html).toContain('href="/notifications"')
+    if (text === null) expect(html).not.toContain('class="notification-badge"')
+    else {
+      expect(html).toContain(`>${text}</span>`)
+      expect(html).toContain(`${count} 条未读通知`)
+    }
   })
 })

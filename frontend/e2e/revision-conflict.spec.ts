@@ -24,6 +24,7 @@ async function mockApi(context: BrowserContext, actorId: number, state: { feedba
   })
   await context.route('**/api/v1/**', async (route) => {
     const path = new URL(route.request().url()).pathname
+    if (path === '/api/v1/notifications/unread-count') return route.fulfill({ status: 200, json: { unread_count: 0 } })
     const method = route.request().method()
     if (path === '/api/v1/auth/me') return route.fulfill({ status: 200, json: actor(actorId) })
     if (path === '/api/v1/feedbacks/1' && method === 'GET') return route.fulfill({ status: 200, json: state.feedback })

@@ -2002,6 +2002,50 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /notifications/unread-count:
+    get:
+      tags:
+      - Notification
+      summary: 当前用户真实未读总数
+      operationId: unread_count_api_v1_notifications_unread_count_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationUnreadCount'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearerAuth: []
+      description: 仅当前登录用户自己的通知；不依赖业务权限或 DataScope。
+  /notifications/read-all:
+    post:
+      tags:
+      - Notification
+      summary: 当前用户全部通知已读
+      operationId: read_all_api_v1_notifications_read_all_post
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationReadAllResult'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearerAuth: []
+      description: 仅当前登录用户自己的通知；不依赖业务权限或 DataScope。
   /notifications/{notification_id}/read:
     post:
       tags:
@@ -4606,6 +4650,16 @@ components:
       - read_at
       - created_at
       title: NotificationOut
+    NotificationReadAllResult:
+      properties:
+        updated_count:
+          type: integer
+          minimum: 0.0
+          title: Updated Count
+      type: object
+      required:
+      - updated_count
+      title: NotificationReadAllResult
     NotificationType:
       type: string
       enum:
@@ -4615,6 +4669,16 @@ components:
       - VERSION
       - RELEASE
       title: NotificationType
+    NotificationUnreadCount:
+      properties:
+        unread_count:
+          type: integer
+          minimum: 0.0
+          title: Unread Count
+      type: object
+      required:
+      - unread_count
+      title: NotificationUnreadCount
     PermissionOut:
       properties:
         id:

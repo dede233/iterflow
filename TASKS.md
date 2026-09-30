@@ -1,6 +1,6 @@
 # IterFlow V1.6 Development Tasks
 
-> Phase 2 开发基线：master `e3de25d6ccd9222d0415031036d0f6dd18ec84d4`。已发布稳定版 `v1.5.0` 不变。事实盘点见 `docs/v1.6-baseline-audit.md`，产品边界与验收见 `docs/v1.6-plan.md`。本清单只记录 V1.6 增量，不能替代代码与 CI 证据。
+> Phase 3 开发基线：master `e914629a051a045085d30cccafa2b6d36b1d46d5`。已发布稳定版 `v1.5.0` 不变。事实盘点见 `docs/v1.6-baseline-audit.md`，产品边界与验收见 `docs/v1.6-plan.md`。本清单只记录 V1.6 增量，不能替代代码与 CI 证据。
 
 ## V1.6 Baseline — Already Completed
 
@@ -34,9 +34,9 @@
 
 ## Phase 3 — Notification V2（P1）
 
-- [ ] 先确定 OpenAPI，再实现当前用户的未读计数与全部已读接口，并测试所有权隔离。
-- [ ] 桌面导航、移动底部导航添加 badge，通知中心显示总数与全部已读。
-- [ ] 保留先 mark read 后 navigation，处理历史通知与权限拦截。
+- [x] 先确定 OpenAPI，再实现当前用户的未读计数与全部已读接口，并测试所有权隔离。
+- [x] 桌面导航、移动底部导航添加 badge，通知中心显示总数与全部已读。
+- [x] 保留先 mark read 后 navigation，处理历史通知与权限拦截。
 
 ## Phase 4 — Release Detail（P1）
 

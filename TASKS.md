@@ -1,6 +1,6 @@
 # IterFlow V1.6 Development Tasks
 
-> Phase 3 开发基线：master `e914629a051a045085d30cccafa2b6d36b1d46d5`。已发布稳定版 `v1.5.0` 不变。事实盘点见 `docs/v1.6-baseline-audit.md`，产品边界与验收见 `docs/v1.6-plan.md`。本清单只记录 V1.6 增量，不能替代代码与 CI 证据。
+> Phase 4 开发基线：master `f80e1aab9f0212f84fd18687157cc3a435d94913`。已发布稳定版 `v1.5.0` 不变。事实盘点见 `docs/v1.6-baseline-audit.md`，产品边界与验收见 `docs/v1.6-plan.md`。本清单只记录 V1.6 增量，不能替代代码与 CI 证据。
 
 ## V1.6 Baseline — Already Completed
 
@@ -40,9 +40,9 @@
 
 ## Phase 4 — Release Detail（P1）
 
-- [ ] 实现只读 `/releases/:id`，以 `rd.release.view` 及现有数据范围校验为门禁，显示发布元数据与备注。
-- [ ] 只有 `rd.version.view` 时提供版本链接；有 Release ID 的通知进入详情，无 ID 的进入列表。
-- [ ] 不增加 Release 编辑、删除或状态迁移。
+- [x] 实现只读 `/releases/:id`，以 `rd.release.view` 及现有数据范围校验为门禁，显示发布元数据与备注。
+- [x] 只有 `rd.version.view` 时提供版本链接；有 Release ID 的通知进入详情，无 ID 的进入列表。
+- [x] 不增加 Release 编辑、删除或状态迁移。
 
 ## Phase 5 — List Productivity（P1）
 

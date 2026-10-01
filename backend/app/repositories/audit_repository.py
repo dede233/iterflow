@@ -122,6 +122,28 @@ class AuditRepository:
             criteria.append(OperationLog.created_at <= time_to)
         return criteria
 
+    def list_recent_scoped(
+        self,
+        *,
+        user_id: int,
+        data_scope: DataScope,
+        entity_types: set[str],
+        limit: int = 15,
+    ) -> list[OperationLog]:
+        """Read recent visible records without joining or exposing an operator."""
+        return list(
+            self.db.scalars(
+                select(OperationLog)
+                .where(
+                    self._visibility_criteria(
+                        user_id=user_id, data_scope=data_scope, entity_types=entity_types
+                    )
+                )
+                .order_by(OperationLog.created_at.desc(), OperationLog.id.desc())
+                .limit(limit)
+            ).all()
+        )
+
     def list_scoped(
         self,
         *,

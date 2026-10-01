@@ -3,10 +3,13 @@ from typing import cast
 from sqlalchemy.orm import Session
 
 from app.models.enums import DataScope, FeedbackStatus, RequirementStatus, VersionStatus
+from app.repositories.audit_repository import AuditRepository
 from app.repositories.dashboard_repository import DashboardRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.dashboard import (
     DashboardActiveVersionStatus,
+    DashboardActivityEntityType,
+    DashboardActivityItem,
     DashboardDataScope,
     DashboardFeedbackOverview,
     DashboardOverviewOut,
@@ -25,6 +28,7 @@ class DashboardService:
     def __init__(self, db: Session):
         self.users = UserRepository(db)
         self.dashboard = DashboardRepository(db)
+        self.audit = AuditRepository(db)
 
     @staticmethod
     def _can_view(permissions: set[str], code: str) -> bool:
@@ -105,10 +109,33 @@ class DashboardService:
                 ],
             )
 
+        activity_types = {
+            entity_type
+            for entity_type, permission in (
+                ("FEEDBACK", "rd.feedback.view"),
+                ("REQUIREMENT", "rd.requirement.view"),
+                ("VERSION", "rd.version.view"),
+                ("RELEASE", "rd.release.view"),
+            )
+            if self._can_view(permissions, permission)
+        }
+        activities = [
+            DashboardActivityItem(
+                entity_type=cast(DashboardActivityEntityType, item.entity_type),
+                entity_id=cast(int, item.entity_id),
+                action=item.action,
+                created_at=item.created_at,
+            )
+            for item in self.audit.list_recent_scoped(
+                user_id=user_id, data_scope=data_scope, entity_types=activity_types, limit=15
+            )
+        ]
+
         return DashboardOverviewOut(
             data_scope=cast(DashboardDataScope, data_scope),
             feedback=feedback,
             requirements=requirements,
             versions=versions,
             releases=releases,
+            activities=activities,
         )

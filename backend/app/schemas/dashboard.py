@@ -17,6 +17,14 @@ type DashboardActiveVersionStatus = Literal[
     VersionStatus.READY,
 ]
 type DashboardReleaseResult = Literal[ReleaseResult.SUCCESS]
+type DashboardActivityEntityType = Literal["FEEDBACK", "REQUIREMENT", "VERSION", "RELEASE"]
+
+
+class DashboardActivityItem(BaseModel):
+    entity_type: DashboardActivityEntityType
+    entity_id: int
+    action: str
+    created_at: datetime
 
 
 class DashboardFeedbackOverview(BaseModel):
@@ -67,3 +75,4 @@ class DashboardOverviewOut(BaseModel):
     requirements: DashboardRequirementOverview | None
     versions: DashboardVersionOverview | None
     releases: DashboardReleaseOverview | None
+    activities: list[DashboardActivityItem] = Field(max_length=15)

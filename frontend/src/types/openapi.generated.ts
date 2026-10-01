@@ -1331,6 +1331,21 @@ export interface components {
         DashboardActiveVersionStatus: "PLANNING" | "DEVELOPING" | "TESTING" | "READY";
         /** @enum {string} */
         DashboardDataScope: "SELF" | "ALL";
+        /** @enum {string} */
+        DashboardActivityEntityType: "FEEDBACK" | "REQUIREMENT" | "VERSION" | "RELEASE";
+        /** DashboardActivityItem */
+        DashboardActivityItem: {
+            entity_type: components["schemas"]["DashboardActivityEntityType"];
+            /** Entity Id */
+            entity_id: number;
+            /** Action */
+            action: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         /** DashboardFeedbackOverview */
         DashboardFeedbackOverview: {
             /** Pending Count */
@@ -1349,6 +1364,8 @@ export interface components {
             requirements: components["schemas"]["DashboardRequirementOverview"] | null;
             versions: components["schemas"]["DashboardVersionOverview"] | null;
             releases: components["schemas"]["DashboardReleaseOverview"] | null;
+            /** Activities */
+            activities: components["schemas"]["DashboardActivityItem"][];
         };
         /** DashboardReleaseItem */
         DashboardReleaseItem: {

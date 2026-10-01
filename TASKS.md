@@ -58,12 +58,12 @@
 
 实际结论：**SAFE TO IMPLEMENT**。固定最多 15 条，复用 OperationLog / AuditRepository 对象级可见性；无新权限、无 Migration。可见性证明见 `docs/v1.6-phase6-activity-visibility.md`。
 
-## Phase 7 — Regression & Release Readiness
+## Phase 7 — Regression & Release Readiness（完成）
 
-- [ ] 回归完整主链、事务与状态机、revision 冲突、权限/数据范围及通知隔离。
-- [ ] 通过后端全量与 PostgreSQL-only、Ruff/format/Mypy/compileall、Alembic check、OpenAPI parity。
-- [ ] 通过前端 Vitest/API 类型/build/bundle、现有 Hash Router Playwright 与五视口验收。
-- [ ] 通过六项 CI，检查首次运行结果及 flake；独立终审后再规划 1.6.0 版本号与发布标签。
+- [x] 回归完整主链、事务与状态机、revision 冲突、权限/数据范围及通知隔离。
+- [x] 通过后端全量与 PostgreSQL-only、Ruff/format/Mypy/compileall、Alembic check、OpenAPI parity。
+- [x] 通过前端 Vitest/API 类型/build/bundle、现有 Hash Router Playwright 与五视口验收。
+- [x] 通过六项 CI，检查首次运行结果及 flake；独立终审后再规划 1.6.0 版本号与发布标签。
 
 ## 冻结的非范围
 

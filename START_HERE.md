@@ -2,7 +2,7 @@
 
 # 开发 Agent 从这里开始
 
-这是迭程 IterFlow 当前 V1.6 开发与验收入口。正式稳定版本 `v1.5.0` 保持不变；V1.6 Phase 1 从已合入主线的 Phase 0 基线 `5c44ab849ff798ac19fdfafce558b7dbcc4452a0` 开始开发。后续阶段状态以 `docs/v1.6-plan.md` 和 `TASKS.md` 为准。
+这是迭程 IterFlow 当前 V1.6 开发与验收入口。当前正式稳定版本为 `v1.6.0`，发布事实以 annotated tag 与 GitHub Release 为准；`v1.5.0` 保留为不可变历史发布版本。V1.6 Phase 1 从已合入主线的 Phase 0 基线 `5c44ab849ff798ac19fdfafce558b7dbcc4452a0` 开始开发。后续阶段状态以 `docs/v1.6-plan.md` 和 `TASKS.md` 为准。
 
 
 ## 项目命名

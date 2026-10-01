@@ -6,11 +6,18 @@ import StatusTag from '@/components/StatusTag.vue'
 import { FEEDBACK_STATUSES } from '@/constants/feedback'
 import { REQUIREMENT_STATUSES } from '@/constants/requirement'
 import { VERSION_STATUSES, versionStatusLabel } from '@/constants/version'
-import type { DashboardOverview } from '@/types/dashboard'
+import { auditActionLabel, auditEntityLabel } from '@/utils/auditLabels'
+import type { DashboardActivityEntityType, DashboardOverview } from '@/types/dashboard'
 
 const props = defineProps<{ overview: DashboardOverview }>()
 
 const scopeLabel = computed(() => (props.overview.data_scope === 'ALL' ? '全部数据' : '我的数据'))
+const activityRoutes: Record<DashboardActivityEntityType, string> = {
+  FEEDBACK: '/feedbacks',
+  REQUIREMENT: '/requirements',
+  VERSION: '/versions',
+  RELEASE: '/releases',
+}
 const allSectionsUnavailable = computed(
   () =>
     props.overview.feedback === null &&
@@ -188,6 +195,25 @@ function formatDateTime(value: string): string {
         </el-col>
       </el-row>
     </template>
+
+    <el-card class="section-card activity-card" shadow="never">
+      <template #header><strong>最近活动</strong></template>
+      <EmptyState v-if="overview.activities.length === 0" description="暂无最近活动" compact />
+      <div v-else class="recent-list">
+        <router-link
+          v-for="(activity, index) in overview.activities"
+          :key="index"
+          :to="`${activityRoutes[activity.entity_type]}/${activity.entity_id}`"
+          class="recent-row activity-row"
+        >
+          <div class="activity-description">
+            <span class="recent-title">{{ auditEntityLabel(activity.entity_type) }} #{{ activity.entity_id }}</span>
+            <span class="activity-action">{{ auditActionLabel(activity.action) }}</span>
+          </div>
+          <time class="recent-meta" :datetime="activity.created_at">{{ formatDateTime(activity.created_at) }}</time>
+        </router-link>
+      </div>
+    </el-card>
   </div>
 </template>
 
@@ -217,5 +243,13 @@ function formatDateTime(value: string): string {
 .recent-row > div { min-width: 0; }
 a.recent-row:hover .recent-title { color: var(--if-brand-600); }
 .recent-title { margin-bottom: 4px; font-size: 13px; font-weight: 650; overflow-wrap: anywhere; }
+.activity-card { margin-top: var(--if-space-4); }
+.activity-description { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.activity-description .recent-title { margin-bottom: 0; }
+.activity-action { color: var(--if-text-2); font-size: 13px; overflow-wrap: anywhere; }
+.activity-row { text-decoration: none; border-radius: var(--if-radius-sm); padding: 12px 8px; }
+.activity-row:hover, .activity-row:focus-visible { background: var(--if-bg-subtle); }
+.activity-row time { flex-shrink: 0; }
 @media (max-width: 767px) { .status-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .metric-card { min-height: 140px; } }
+@media (max-width: 767px) { .activity-row { flex-direction: column; align-items: flex-start; gap: 6px; } }
 </style>

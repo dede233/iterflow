@@ -51,6 +51,7 @@ function pageOf(item: unknown) {
 const responses: Record<string, unknown> = {
   '/api/v1/auth/me': admin,
   '/api/v1/dashboard/overview': {
+    activities: [],
     data_scope: 'ALL', feedback: { pending_count: 1, total_count: 1, by_status: { ACCEPTED: 1 } },
     requirements: { active_count: 0, total_count: 1, by_status: { DONE: 1 } },
     versions: { active_count: 1, total_count: 1, by_status: { READY: 1 },

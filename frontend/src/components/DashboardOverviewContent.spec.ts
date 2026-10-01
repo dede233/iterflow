@@ -20,6 +20,7 @@ const RouterLinkStub = defineComponent({
 function completeOverview(): DashboardOverview {
   return {
     data_scope: 'ALL',
+    activities: [],
     feedback: {
       pending_count: 3,
       total_count: 7,
@@ -102,6 +103,7 @@ describe('dashboard overview content', () => {
   it('labels SELF scope and explains when every domain section is unavailable', async () => {
     const html = await renderOverview({
       data_scope: 'SELF',
+      activities: [],
       feedback: null,
       requirements: null,
       versions: null,
@@ -119,5 +121,39 @@ describe('dashboard overview content', () => {
     const html = await renderOverview(overview)
     expect(html).toContain('暂无活跃版本')
     expect(html).toContain('暂无发布记录')
+    expect(html).toContain('暂无最近活动')
+    expect(html).toContain('待处理反馈')
+  })
+
+  it('renders safe activity fields with Chinese labels, local time and all four entity links', async () => {
+    const overview = completeOverview()
+    const createdAt = '2026-10-01T06:30:00Z'
+    overview.activities = [
+      { entity_type: 'FEEDBACK', entity_id: 101, action: 'CREATE', created_at: createdAt },
+      { entity_type: 'REQUIREMENT', entity_id: 102, action: 'STATUS_CHANGE', created_at: createdAt },
+      { entity_type: 'VERSION', entity_id: 103, action: 'VERSION_PUBLISH', created_at: createdAt },
+      { entity_type: 'RELEASE', entity_id: 104, action: 'RELEASE_CREATE', created_at: createdAt },
+    ]
+    // Extra wire data is deliberately ignored by the rendering layer.
+    Object.assign(overview.activities[0]!, {
+      operator: { username: 'PRIVATE_USER', display_name: 'PRIVATE_DISPLAY' },
+      before: { title: 'PRIVATE_BEFORE' }, after: { title: 'PRIVATE_AFTER' },
+    })
+    const html = await renderOverview(overview)
+    for (const text of ['最近活动', '反馈 #101', '需求 #102', '版本 #103', '发布记录 #104', '创建', '变更状态', '发布版本', '创建发布记录']) expect(html).toContain(text)
+    for (const path of ['/feedbacks/101', '/requirements/102', '/versions/103', '/releases/104']) expect(html).toContain(`href="${path}"`)
+    expect(html).toContain(`datetime="${createdAt}"`)
+    expect(html).toContain(new Intl.DateTimeFormat('zh-CN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(createdAt)))
+    for (const text of ['操作人', '用户名', 'PRIVATE_USER', 'PRIVATE_DISPLAY', 'PRIVATE_BEFORE', 'PRIVATE_AFTER']) expect(html).not.toContain(text)
+    expect(html).toContain('近期活跃版本')
+    expect(html).toContain('近期发布')
+  })
+
+  it('keeps the existing fallback for unknown audit actions', async () => {
+    const overview = completeOverview()
+    overview.activities = [{ entity_type: 'REQUIREMENT', entity_id: 102, action: 'FUTURE_ACTION', created_at: '2026-10-01T06:30:00Z' }]
+    const html = await renderOverview(overview)
+    expect(html).toContain('未知操作（FUTURE_ACTION）')
+    expect(html).toContain('href="/requirements/102"')
   })
 })

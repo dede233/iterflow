@@ -3965,6 +3965,34 @@ components:
       enum:
       - SELF
       - ALL
+    DashboardActivityEntityType:
+      type: string
+      enum:
+      - FEEDBACK
+      - REQUIREMENT
+      - VERSION
+      - RELEASE
+    DashboardActivityItem:
+      properties:
+        entity_type:
+          $ref: '#/components/schemas/DashboardActivityEntityType'
+        entity_id:
+          type: integer
+          title: Entity Id
+        action:
+          type: string
+          title: Action
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+      type: object
+      required:
+      - entity_type
+      - entity_id
+      - action
+      - created_at
+      title: DashboardActivityItem
     DashboardFeedbackOverview:
       properties:
         pending_count:
@@ -4006,6 +4034,12 @@ components:
           anyOf:
           - $ref: '#/components/schemas/DashboardReleaseOverview'
           - type: 'null'
+        activities:
+          items:
+            $ref: '#/components/schemas/DashboardActivityItem'
+          type: array
+          maxItems: 15
+          title: Activities
       type: object
       required:
       - data_scope
@@ -4013,6 +4047,7 @@ components:
       - requirements
       - versions
       - releases
+      - activities
       title: DashboardOverviewOut
     DashboardReleaseItem:
       properties:

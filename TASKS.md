@@ -1,6 +1,6 @@
 # IterFlow V1.6 Development Tasks
 
-> Phase 5 开发基线：master `4a986c8a7ccad1bbb6d7aace79e9c67da01f5d4d`。已发布稳定版 `v1.5.0` 不变。事实盘点见 `docs/v1.6-baseline-audit.md`，产品边界与验收见 `docs/v1.6-plan.md`。本清单只记录 V1.6 增量，不能替代代码与 CI 证据。
+> Phase 6 开发基线：master `b2b2dbe804231f946e54c0af596e3465290b83c3`。已发布稳定版 `v1.5.0` 不变。事实盘点见 `docs/v1.6-baseline-audit.md`，产品边界与验收见 `docs/v1.6-plan.md`。本清单只记录 V1.6 增量，不能替代代码与 CI 证据。
 
 ## V1.6 Baseline — Already Completed
 
@@ -51,10 +51,12 @@
 - [x] Release 前端接入已有 `version_id` 筛选；日期范围成本评估结论为 **DEFERRED**。Phase 5 仅接入现有 `version_id`；日期范围不是必需增量，本阶段不扩大 Release API。
 - [x] 新查询后端强制 DataScope；桌面筛选栏与移动筛选抽屉均覆盖测试。
 
-## Phase 6 — Dashboard Activity（P2，可延期）
+## Phase 6 — Dashboard Activity（P2，完成）
 
-- [ ] 评估复用 OperationLog/Audit 的权限与对象级 DataScope，明确可见性证明。
-- [ ] 若可安全实现，最多呈现 10–20 条相关活动；否则延期且不得绕过权限。
+- [x] 评估复用 OperationLog/Audit 的权限与对象级 DataScope，明确可见性证明。
+- [x] 若可安全实现，最多呈现 10–20 条相关活动；否则延期且不得绕过权限。
+
+实际结论：**SAFE TO IMPLEMENT**。固定最多 15 条，复用 OperationLog / AuditRepository 对象级可见性；无新权限、无 Migration。可见性证明见 `docs/v1.6-phase6-activity-visibility.md`。
 
 ## Phase 7 — Regression & Release Readiness
 

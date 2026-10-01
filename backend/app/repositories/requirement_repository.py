@@ -1,8 +1,8 @@
-from sqlalchemy import func, or_, select
+from sqlalchemy import ColumnElement, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.models.entities import Requirement
-from app.models.enums import DataScope
+from app.models.enums import DataScope, Priority, RequirementSource, RequirementStatus
 from app.repositories.base import BaseRepository
 
 
@@ -26,8 +26,35 @@ class RequirementRepository(BaseRepository[Requirement]):
         data_scope: DataScope,
         page: int = 1,
         page_size: int = 20,
+        *,
+        keyword: str | None = None,
+        status: RequirementStatus | None = None,
+        priority: Priority | None = None,
+        source: RequirementSource | None = None,
+        current_version_id: int | None = None,
+        owner_id: int | None = None,
     ) -> tuple[list[Requirement], int]:
-        criteria = [] if data_scope is DataScope.ALL else [self.self_criterion(user_id)]
+        criteria: list[ColumnElement[bool]] = []
+        if data_scope is not DataScope.ALL:
+            criteria.append(self.self_criterion(user_id))
+        if keyword and keyword.strip():
+            literal = keyword.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            pattern = f"%{literal}%"
+            criteria.append(
+                or_(
+                    Requirement.requirement_no.ilike(pattern, escape="\\"),
+                    Requirement.title.ilike(pattern, escape="\\"),
+                )
+            )
+        for column, value in (
+            (Requirement.status, status),
+            (Requirement.priority, priority),
+            (Requirement.source, source),
+            (Requirement.current_version_id, current_version_id),
+            (Requirement.owner_id, owner_id),
+        ):
+            if value is not None:
+                criteria.append(column == value)
         total = self.db.scalar(select(func.count()).select_from(Requirement).where(*criteria)) or 0
         items = list(
             self.db.scalars(

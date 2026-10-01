@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 import { listVersions } from '@/api/versions'
 import VersionCreateView from './VersionCreateView.vue'
@@ -12,8 +13,9 @@ import SectionCard from '@/components/ui/SectionCard.vue'
 import ListCard from '@/components/ui/ListCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
-import { versionStatusLabel, versionStatusTagType } from '@/constants/version'
-import type { VersionItem } from '@/types/domain'
+import ListFilterPanel from '@/components/ui/ListFilterPanel.vue'
+import { VERSION_STATUSES, versionStatusLabel, versionStatusTagType } from '@/constants/version'
+import type { VersionItem, VersionListParams } from '@/types/domain'
 
 const router = useRouter()
 const { isMobile } = useResponsive()
@@ -24,21 +26,51 @@ const total = ref(0)
 const loading = ref(false)
 const failed = ref(false)
 const createDialog = ref(false)
-const paging = reactive({ page: 1, page_size: 20 })
+const filterDrawer = ref(false)
+const filters = reactive({ page: 1, page_size: 20, keyword: '', status: '' as VersionListParams['status'], owner_id: null as number | null })
+const dateRange = ref<[string, string] | null>(null)
+let requestSequence = 0
+const positiveId = (value: number | null) => value != null && Number.isSafeInteger(value) && value >= 1 ? value : undefined
 
 async function load(): Promise<void> {
+  const [from, to] = dateRange.value ?? []
+  if (from && to && from > to) {
+    ElMessage.warning('计划上线结束日期不能早于开始日期')
+    return
+  }
+  const sequence = ++requestSequence
   loading.value = true
   failed.value = false
   try {
-    const page = await listVersions({ page: paging.page, page_size: paging.page_size })
+    const page = await listVersions({
+      page: filters.page, page_size: filters.page_size,
+      keyword: filters.keyword.trim() || undefined, status: filters.status || undefined,
+      planned_release_from: from || undefined, planned_release_to: to || undefined,
+      owner_id: positiveId(filters.owner_id),
+    })
+    if (sequence !== requestSequence) return
     rows.value = page.items
     total.value = page.total
   } catch {
-    failed.value = true
+    if (sequence === requestSequence) failed.value = true
   } finally {
-    loading.value = false
+    if (sequence === requestSequence) loading.value = false
   }
 }
+
+function applyFilters(): void {
+  filters.page = 1
+  filterDrawer.value = false
+  void load()
+}
+
+function resetFilters(): void {
+  Object.assign(filters, { keyword: '', status: '', owner_id: null })
+  dateRange.value = null
+  applyFilters()
+}
+
+onBeforeUnmount(() => { requestSequence++ })
 
 async function onVersionCreated(id: number): Promise<void> {
   createDialog.value = false
@@ -53,6 +85,7 @@ onMounted(load)
   <section class="page">
     <PageHeader title="版本管理" description="规划版本范围、跟踪进度并准备发布。" eyebrow="研发协作">
       <template #actions>
+      <el-button v-if="isMobile" @click="filterDrawer = true"><AppIcon name="filter" :size="16" />筛选</el-button>
       <el-button
         v-if="can('rd.version.create')"
         type="primary"
@@ -62,6 +95,13 @@ onMounted(load)
       </el-button>
       </template>
     </PageHeader>
+
+    <ListFilterPanel v-model="filterDrawer" :mobile="isMobile" title="筛选版本" @search="applyFilters" @reset="resetFilters">
+      <el-form-item label="关键词"><el-input v-model="filters.keyword" placeholder="版本号 / 名称" :maxlength="200" clearable @keyup.enter="applyFilters" /></el-form-item>
+      <el-form-item label="状态"><el-select v-model="filters.status" clearable placeholder="全部"><el-option v-for="s in VERSION_STATUSES" :key="s.value" :label="s.label" :value="s.value" /></el-select></el-form-item>
+      <el-form-item label="计划上线日期"><el-date-picker v-model="dateRange" type="daterange" value-format="YYYY-MM-DD" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" popper-class="version-filter-date-popper" /></el-form-item>
+      <el-form-item label="负责人 ID"><el-input-number v-model="filters.owner_id" :min="1" :precision="0" step-strictly controls-position="right" /></el-form-item>
+    </ListFilterPanel>
 
     <ErrorState v-if="failed" title="版本加载失败" description="请检查网络后重试。" retry-label="重新加载" @retry="load" />
     <SectionCard v-else title="版本列表" :description="`共 ${total} 个版本`" :padded="false">
@@ -107,12 +147,12 @@ onMounted(load)
       class="pager"
       layout="prev, pager, next, total"
       :total="total"
-      :current-page="paging.page"
-      :page-size="paging.page_size"
+      :current-page="filters.page"
+      :page-size="filters.page_size"
       background
       @current-change="
         (p: number) => {
-          paging.page = p
+          filters.page = p
           load()
         }
       "
@@ -128,4 +168,13 @@ onMounted(load)
 .cards { display: grid; gap: 8px; padding: var(--if-space-3); }
 .pager { margin-top: var(--if-space-4); justify-content: flex-end; }
 @media (max-width: 767px) { .pager { justify-content: center; } }
+</style>
+
+<style>
+@media (max-width: 767px) {
+  .version-filter-date-popper .el-date-range-picker { width: min(340px, calc(100vw - 24px)); }
+  .version-filter-date-popper .el-date-range-picker__content { width: 100%; float: none; }
+  .version-filter-date-popper .el-date-range-picker__content.is-right { border-left: 0; border-top: 1px solid var(--if-border); }
+  .version-filter-date-popper { max-height: calc(100vh - 24px); overflow-y: auto; }
+}
 </style>

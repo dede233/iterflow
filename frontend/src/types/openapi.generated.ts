@@ -294,7 +294,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 需求列表 */
+        /**
+         * 需求列表
+         * @description 所有筛选条件与 Requirement DataScope 使用 AND 组合。列表与 total 使用相同条件。keyword trim 后按编号/标题做大小写不敏感的部分匹配。空白视为无筛选。current_version_id 与 owner_id 只按需求字段过滤。不要求额外权限或验证关联对象存在。
+         */
         get: operations["list_requirements_api_v1_requirements_get"];
         put?: never;
         /**
@@ -370,7 +373,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 版本列表 */
+        /**
+         * 版本列表
+         * @description 所有筛选条件与 Version DataScope 使用 AND 组合。列表与 total 使用相同条件。keyword trim 后按版本号/名称做大小写不敏感的部分匹配。空白视为无筛选。计划发布日期范围包含两端。可只指定一端。from 晚于 to 返回 validation 422。owner_id 只按版本字段过滤。不要求额外 User 权限。
+         */
         get: operations["list_versions_api_v1_versions_get"];
         put?: never;
         /** 创建版本 */
@@ -3258,6 +3264,12 @@ export interface operations {
             query?: {
                 page?: number;
                 page_size?: number;
+                keyword?: string | null;
+                status?: components["schemas"]["RequirementStatus"] | null;
+                priority?: components["schemas"]["Priority"] | null;
+                source?: components["schemas"]["RequirementSource"] | null;
+                current_version_id?: number | null;
+                owner_id?: number | null;
             };
             header?: never;
             path?: never;
@@ -3608,6 +3620,11 @@ export interface operations {
             query?: {
                 page?: number;
                 page_size?: number;
+                keyword?: string | null;
+                status?: components["schemas"]["VersionStatus"] | null;
+                planned_release_from?: string | null;
+                planned_release_to?: string | null;
+                owner_id?: number | null;
             };
             header?: never;
             path?: never;

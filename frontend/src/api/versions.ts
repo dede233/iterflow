@@ -5,12 +5,13 @@ import type {
   VersionCreatePayload,
   VersionItem,
   VersionPage,
+  VersionListParams,
   VersionRequirementsResult,
   VersionStatusChangePayload,
   VersionUpdatePayload,
 } from '@/types/domain'
 
-export const listVersions = (params: { page?: number; page_size?: number } = {}) =>
+export const listVersions = (params: VersionListParams = {}) =>
   api.get<VersionPage>('/versions', { params }).then((r) => r.data)
 
 export const getVersion = (id: number) =>

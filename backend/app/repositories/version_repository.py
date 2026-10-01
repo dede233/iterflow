@@ -1,8 +1,10 @@
-from sqlalchemy import func, or_, select
+from datetime import date
+
+from sqlalchemy import ColumnElement, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.models.entities import Requirement, Version, VersionRequirement
-from app.models.enums import DataScope
+from app.models.enums import DataScope, VersionStatus
 from app.repositories.base import BaseRepository
 from app.repositories.requirement_repository import RequirementRepository
 
@@ -27,8 +29,33 @@ class VersionRepository(BaseRepository[Version]):
         data_scope: DataScope,
         page: int = 1,
         page_size: int = 20,
+        *,
+        keyword: str | None = None,
+        status: VersionStatus | None = None,
+        planned_release_from: date | None = None,
+        planned_release_to: date | None = None,
+        owner_id: int | None = None,
     ) -> tuple[list[Version], int]:
-        criteria = [] if data_scope is DataScope.ALL else [self.self_criterion(user_id)]
+        criteria: list[ColumnElement[bool]] = []
+        if data_scope is not DataScope.ALL:
+            criteria.append(self.self_criterion(user_id))
+        if keyword and keyword.strip():
+            literal = keyword.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            pattern = f"%{literal}%"
+            criteria.append(
+                or_(
+                    Version.version_no.ilike(pattern, escape="\\"),
+                    Version.name.ilike(pattern, escape="\\"),
+                )
+            )
+        if status is not None:
+            criteria.append(Version.status == status)
+        if owner_id is not None:
+            criteria.append(Version.owner_id == owner_id)
+        if planned_release_from is not None:
+            criteria.append(Version.planned_release_date >= planned_release_from)
+        if planned_release_to is not None:
+            criteria.append(Version.planned_release_date <= planned_release_to)
         total = self.db.scalar(select(func.count()).select_from(Version).where(*criteria)) or 0
         items = list(
             self.db.scalars(

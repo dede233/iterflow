@@ -1,6 +1,6 @@
 # IterFlow V1.6 Development Tasks
 
-> Phase 4 开发基线：master `f80e1aab9f0212f84fd18687157cc3a435d94913`。已发布稳定版 `v1.5.0` 不变。事实盘点见 `docs/v1.6-baseline-audit.md`，产品边界与验收见 `docs/v1.6-plan.md`。本清单只记录 V1.6 增量，不能替代代码与 CI 证据。
+> Phase 5 开发基线：master `4a986c8a7ccad1bbb6d7aace79e9c67da01f5d4d`。已发布稳定版 `v1.5.0` 不变。事实盘点见 `docs/v1.6-baseline-audit.md`，产品边界与验收见 `docs/v1.6-plan.md`。本清单只记录 V1.6 增量，不能替代代码与 CI 证据。
 
 ## V1.6 Baseline — Already Completed
 
@@ -46,10 +46,10 @@
 
 ## Phase 5 — List Productivity（P1）
 
-- [ ] Requirement 按编号/标题、status、priority、source、current_version_id、owner_id 筛选。
-- [ ] Version 按版本号/名称、status、计划发布日期范围、owner_id 筛选。
-- [ ] Release 前端先接入已有 `version_id` 筛选；评估日期范围成本。
-- [ ] 新查询后端强制 DataScope；桌面筛选栏与移动筛选抽屉均覆盖测试。
+- [x] Requirement 按编号/标题、status、priority、source、current_version_id、owner_id 筛选。
+- [x] Version 按版本号/名称、status、计划发布日期范围、owner_id 筛选。
+- [x] Release 前端接入已有 `version_id` 筛选；日期范围成本评估结论为 **DEFERRED**。Phase 5 仅接入现有 `version_id`；日期范围不是必需增量，本阶段不扩大 Release API。
+- [x] 新查询后端强制 DataScope；桌面筛选栏与移动筛选抽屉均覆盖测试。
 
 ## Phase 6 — Dashboard Activity（P2，可延期）
 

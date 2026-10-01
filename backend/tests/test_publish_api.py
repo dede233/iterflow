@@ -462,6 +462,12 @@ def test_release_detail_uses_version_scope_and_matches_list(pub_api, visibility_
     assert client.get("/api/v1/releases", headers=headers["boss"]).json()["total"] == 1
     assert client.get(f"/api/v1/releases/{release_id}", headers=headers["boss"]).status_code == 200
     assert client.get("/api/v1/releases", headers=headers["member"]).json()["total"] == 0
+    assert (
+        client.get(
+            "/api/v1/releases", params={"version_id": seeded["version"]}, headers=headers["member"]
+        ).json()["total"]
+        == 0
+    )
     hidden = client.get(f"/api/v1/releases/{release_id}", headers=headers["member"])
     missing = client.get("/api/v1/releases/999999", headers=headers["member"])
     assert hidden.status_code == missing.status_code == 404
@@ -476,6 +482,17 @@ def test_release_detail_uses_version_scope_and_matches_list(pub_api, visibility_
     assert visible.status_code == 200
     assert listed["total"] == 1
     assert listed["items"][0] == visible.json()
+    filtered = client.get(
+        "/api/v1/releases", params={"version_id": seeded["version"]}, headers=headers["member"]
+    ).json()
+    assert filtered["items"] == listed["items"]
+    assert filtered["total"] == 1
+    assert (
+        client.get(
+            "/api/v1/releases", params={"version_id": 999999}, headers=headers["member"]
+        ).json()["total"]
+        == 0
+    )
 
 
 @pytest.mark.parametrize("spec_name", ["openapi-v1.5.yaml", "需求与版本管理系统_V1.5_OpenAPI.yaml"])

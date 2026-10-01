@@ -6,6 +6,7 @@ from app.api.openapi import api_revision_conflict_responses
 from app.core.database import get_db
 from app.core.exceptions import NotFoundError
 from app.models.entities import Requirement, User
+from app.models.enums import Priority, RequirementSource, RequirementStatus
 from app.repositories.requirement_repository import RequirementRepository
 from app.repositories.user_repository import UserRepository
 from app.repositories.version_repository import VersionRepository
@@ -39,15 +40,40 @@ def _ensure_scoped_version(db: Session, user: User, version_id: int | None) -> N
         raise NotFoundError("版本不存在")
 
 
-@router.get("", response_model=RequirementPage)
+@router.get(
+    "",
+    response_model=RequirementPage,
+    description=(
+        "所有筛选条件与 Requirement DataScope 使用 AND 组合。列表与 total 使用相同条件。"
+        "keyword trim 后按编号/标题做大小写不敏感的部分匹配。空白视为无筛选。"
+        "current_version_id 与 owner_id 只按需求字段过滤。不要求额外权限或验证关联对象存在。"
+    ),
+)
 def list_requirements(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    keyword: str | None = Query(None, max_length=200),
+    status: RequirementStatus | None = Query(None),
+    priority: Priority | None = Query(None),
+    source: RequirementSource | None = Query(None),
+    current_version_id: int | None = Query(None, ge=1),
+    owner_id: int | None = Query(None, ge=1),
     db: Session = Depends(get_db),
     user: User = Depends(require_permission("rd.requirement.view")),
 ):
     scope = UserRepository(db).data_scope(user.id)
-    items, total = RequirementRepository(db).list_scoped(user.id, scope, page, page_size)
+    items, total = RequirementRepository(db).list_scoped(
+        user.id,
+        scope,
+        page,
+        page_size,
+        keyword=keyword,
+        status=status,
+        priority=priority,
+        source=source,
+        current_version_id=current_version_id,
+        owner_id=owner_id,
+    )
     return {"items": items, "page": page, "page_size": page_size, "total": total}
 
 

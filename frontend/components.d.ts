@@ -51,6 +51,7 @@ declare module 'vue' {
     ErrorState: typeof import('./src/components/ui/ErrorState.vue')['default']
     InfoGrid: typeof import('./src/components/ui/InfoGrid.vue')['default']
     ListCard: typeof import('./src/components/ui/ListCard.vue')['default']
+    ListFilterPanel: typeof import('./src/components/ui/ListFilterPanel.vue')['default']
     MobileBottomNav: typeof import('./src/components/MobileBottomNav.vue')['default']
     PageHeader: typeof import('./src/components/ui/PageHeader.vue')['default']
     PermissionAssignmentDrawer: typeof import('./src/components/PermissionAssignmentDrawer.vue')['default']

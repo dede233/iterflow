@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { listRequirements } from '@/api/requirements'
 import RequirementCreateView from './RequirementCreateView.vue'
@@ -12,8 +12,9 @@ import SectionCard from '@/components/ui/SectionCard.vue'
 import ListCard from '@/components/ui/ListCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
-import { requirementStatusLabel, requirementStatusTagType } from '@/constants/requirement'
-import type { Requirement } from '@/types/domain'
+import ListFilterPanel from '@/components/ui/ListFilterPanel.vue'
+import { REQUIREMENT_PRIORITIES, REQUIREMENT_STATUSES, requirementStatusLabel, requirementStatusTagType } from '@/constants/requirement'
+import type { Requirement, RequirementListParams } from '@/types/domain'
 
 const router = useRouter()
 const { isMobile } = useResponsive()
@@ -24,21 +25,44 @@ const total = ref(0)
 const loading = ref(false)
 const failed = ref(false)
 const createDialog = ref(false)
-const paging = reactive({ page: 1, page_size: 20 })
+const filterDrawer = ref(false)
+const filters = reactive({ page: 1, page_size: 20, keyword: '', status: '' as RequirementListParams['status'], priority: '' as RequirementListParams['priority'], source: '' as RequirementListParams['source'], current_version_id: null as number | null, owner_id: null as number | null })
+let requestSequence = 0
+const positiveId = (value: number | null) => value != null && Number.isSafeInteger(value) && value >= 1 ? value : undefined
 
 async function load(): Promise<void> {
+  const sequence = ++requestSequence
   loading.value = true
   failed.value = false
   try {
-    const page = await listRequirements({ page: paging.page, page_size: paging.page_size })
+    const page = await listRequirements({
+      page: filters.page, page_size: filters.page_size,
+      keyword: filters.keyword.trim() || undefined, status: filters.status || undefined,
+      priority: filters.priority || undefined, source: filters.source || undefined,
+      current_version_id: positiveId(filters.current_version_id), owner_id: positiveId(filters.owner_id),
+    })
+    if (sequence !== requestSequence) return
     rows.value = page.items
     total.value = page.total
   } catch {
-    failed.value = true
+    if (sequence === requestSequence) failed.value = true
   } finally {
-    loading.value = false
+    if (sequence === requestSequence) loading.value = false
   }
 }
+
+function applyFilters(): void {
+  filters.page = 1
+  filterDrawer.value = false
+  void load()
+}
+
+function resetFilters(): void {
+  Object.assign(filters, { keyword: '', status: '', priority: '', source: '', current_version_id: null, owner_id: null })
+  applyFilters()
+}
+
+onBeforeUnmount(() => { requestSequence++ })
 
 async function onRequirementCreated(id: number): Promise<void> {
   createDialog.value = false
@@ -53,6 +77,7 @@ onMounted(load)
   <section class="page">
     <PageHeader title="需求管理" description="从确认、排期到交付，清晰跟进每项研发需求。" eyebrow="研发协作">
       <template #actions>
+      <el-button v-if="isMobile" @click="filterDrawer = true"><AppIcon name="filter" :size="16" />筛选</el-button>
       <el-button
         v-if="can('rd.requirement.create')"
         type="primary"
@@ -62,6 +87,15 @@ onMounted(load)
       </el-button>
       </template>
     </PageHeader>
+
+    <ListFilterPanel v-model="filterDrawer" :mobile="isMobile" title="筛选需求" @search="applyFilters" @reset="resetFilters">
+      <el-form-item label="关键词"><el-input v-model="filters.keyword" placeholder="编号 / 标题" :maxlength="200" clearable @keyup.enter="applyFilters" /></el-form-item>
+      <el-form-item label="状态"><el-select v-model="filters.status" clearable placeholder="全部"><el-option v-for="s in REQUIREMENT_STATUSES" :key="s.value" :label="s.label" :value="s.value" /></el-select></el-form-item>
+      <el-form-item label="优先级"><el-select v-model="filters.priority" clearable placeholder="全部"><el-option v-for="p in REQUIREMENT_PRIORITIES" :key="p.value" :label="p.label" :value="p.value" /></el-select></el-form-item>
+      <el-form-item label="来源"><el-select v-model="filters.source" clearable placeholder="全部"><el-option label="直接创建" value="DIRECT" /><el-option label="反馈转化" value="FEEDBACK" /></el-select></el-form-item>
+      <el-form-item label="版本 ID"><el-input-number v-model="filters.current_version_id" :min="1" :precision="0" step-strictly controls-position="right" /></el-form-item>
+      <el-form-item label="负责人 ID"><el-input-number v-model="filters.owner_id" :min="1" :precision="0" step-strictly controls-position="right" /></el-form-item>
+    </ListFilterPanel>
 
     <ErrorState v-if="failed" title="需求加载失败" description="请检查网络后重试。" retry-label="重新加载" @retry="load" />
     <SectionCard v-else title="需求列表" :description="`共 ${total} 条需求`" :padded="false">
@@ -117,12 +151,12 @@ onMounted(load)
       class="pager"
       layout="prev, pager, next, total"
       :total="total"
-      :current-page="paging.page"
-      :page-size="paging.page_size"
+      :current-page="filters.page"
+      :page-size="filters.page_size"
       background
       @current-change="
         (p: number) => {
-          paging.page = p
+          filters.page = p
           load()
         }
       "

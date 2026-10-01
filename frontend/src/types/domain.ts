@@ -22,6 +22,7 @@ export type CommentItem = Schema<'CommentOut'>
 
 export type Requirement = Schema<'RequirementOut'>
 export type RequirementPage = Schema<'RequirementPage'>
+export type RequirementListParams = NonNullable<paths['/requirements']['get']['parameters']['query']>
 export type RequirementCreatePayload = Schema<'RequirementCreate'>
 export type RequirementUpdatePayload = Schema<'RequirementUpdate'>
 export type RequirementStatusChangePayload = Schema<'RequirementStatusChange'>
@@ -29,6 +30,7 @@ export type LinkedFeedback = Schema<'LinkedFeedbackOut'>
 
 export type VersionItem = Schema<'VersionOut'>
 export type VersionPage = Schema<'VersionPage'>
+export type VersionListParams = NonNullable<paths['/versions']['get']['parameters']['query']>
 export type VersionCreatePayload = Schema<'VersionCreate'>
 export type VersionUpdatePayload = Schema<'VersionUpdate'>
 export type VersionStatusChangePayload = Schema<'VersionStatusChange'>
@@ -43,6 +45,7 @@ export type PublishResult = Schema<'PublishResult'>
 
 export type ReleaseItem = Schema<'ReleaseOut'>
 export type ReleasePage = Schema<'ReleasePage'>
+export type ReleaseListParams = NonNullable<paths['/releases']['get']['parameters']['query']>
 export type AuditOperator = Schema<'AuditOperatorOut'>
 export type AuditItem = Schema<'AuditOut'>
 export type AuditListParams = NonNullable<paths['/audits']['get']['parameters']['query']>

@@ -4,11 +4,12 @@ import type {
   Requirement,
   RequirementCreatePayload,
   RequirementPage,
+  RequirementListParams,
   RequirementStatusChangePayload,
   RequirementUpdatePayload,
 } from '@/types/domain'
 
-export const listRequirements = (params: { page?: number; page_size?: number } = {}) =>
+export const listRequirements = (params: RequirementListParams = {}) =>
   api.get<RequirementPage>('/requirements', { params }).then((r) => r.data)
 
 export const getRequirement = (id: number) =>

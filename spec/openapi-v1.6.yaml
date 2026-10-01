@@ -952,6 +952,8 @@ paths:
       tags:
       - Requirement
       summary: 需求列表
+      description: 所有筛选条件与 Requirement DataScope 使用 AND 组合。列表与 total 使用相同条件。keyword trim 后按编号/标题做大小写不敏感的部分匹配。空白视为无筛选。current_version_id
+        与 owner_id 只按需求字段过滤。不要求额外权限或验证关联对象存在。
       operationId: list_requirements_api_v1_requirements_get
       security:
       - bearerAuth: []
@@ -973,6 +975,57 @@ paths:
           minimum: 1
           default: 20
           title: Page Size
+      - name: keyword
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 200
+          - type: 'null'
+          title: Keyword
+      - name: status
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/RequirementStatus'
+          - type: 'null'
+          title: Status
+      - name: priority
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/Priority'
+          - type: 'null'
+          title: Priority
+      - name: source
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/RequirementSource'
+          - type: 'null'
+          title: Source
+      - name: current_version_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+            minimum: 1
+          - type: 'null'
+          title: Current Version Id
+      - name: owner_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+            minimum: 1
+          - type: 'null'
+          title: Owner Id
       responses:
         '200':
           description: Successful Response
@@ -1259,6 +1312,8 @@ paths:
       tags:
       - Version
       summary: 版本列表
+      description: 所有筛选条件与 Version DataScope 使用 AND 组合。列表与 total 使用相同条件。keyword trim 后按版本号/名称做大小写不敏感的部分匹配。空白视为无筛选。计划发布日期范围包含两端。可只指定一端。from
+        晚于 to 返回 validation 422。owner_id 只按版本字段过滤。不要求额外 User 权限。
       operationId: list_versions_api_v1_versions_get
       security:
       - bearerAuth: []
@@ -1280,6 +1335,50 @@ paths:
           minimum: 1
           default: 20
           title: Page Size
+      - name: keyword
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 200
+          - type: 'null'
+          title: Keyword
+      - name: status
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/VersionStatus'
+          - type: 'null'
+          title: Status
+      - name: planned_release_from
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Planned Release From
+      - name: planned_release_to
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Planned Release To
+      - name: owner_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+            minimum: 1
+          - type: 'null'
+          title: Owner Id
       responses:
         '200':
           description: Successful Response

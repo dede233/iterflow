@@ -1,4 +1,7 @@
+from datetime import date
+
 from fastapi import APIRouter, Depends, Query
+from fastapi.exceptions import RequestValidationError
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_all_permissions, require_permission
@@ -6,6 +9,7 @@ from app.api.openapi import api_error_responses, api_revision_conflict_responses
 from app.core.database import get_db
 from app.core.exceptions import AppError, NotFoundError
 from app.models.entities import User, Version
+from app.models.enums import VersionStatus
 from app.repositories.user_repository import UserRepository
 from app.repositories.version_repository import VersionRepository
 from app.schemas.release import PublishCheckResult, PublishResult
@@ -35,15 +39,50 @@ def _scoped_version_or_404(db: Session, user: User, version_id: int) -> Version:
     return item
 
 
-@router.get("", response_model=VersionPage)
+@router.get(
+    "",
+    response_model=VersionPage,
+    description=(
+        "所有筛选条件与 Version DataScope 使用 AND 组合。列表与 total 使用相同条件。"
+        "keyword trim 后按版本号/名称做大小写不敏感的部分匹配。空白视为无筛选。"
+        "计划发布日期范围包含两端。可只指定一端。from 晚于 to 返回 validation 422。"
+        "owner_id 只按版本字段过滤。不要求额外 User 权限。"
+    ),
+)
 def list_versions(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    keyword: str | None = Query(None, max_length=200),
+    status: VersionStatus | None = Query(None),
+    planned_release_from: date | None = Query(None),
+    planned_release_to: date | None = Query(None),
+    owner_id: int | None = Query(None, ge=1),
     db: Session = Depends(get_db),
     user: User = Depends(require_permission("rd.version.view")),
 ):
+    if planned_release_from and planned_release_to and planned_release_from > planned_release_to:
+        raise RequestValidationError(
+            [
+                {
+                    "type": "value_error",
+                    "loc": ("query", "planned_release_to"),
+                    "msg": "计划上线结束日期不能早于开始日期",
+                    "input": planned_release_to.isoformat(),
+                }
+            ]
+        )
     scope = UserRepository(db).data_scope(user.id)
-    items, total = VersionRepository(db).list_scoped(user.id, scope, page, page_size)
+    items, total = VersionRepository(db).list_scoped(
+        user.id,
+        scope,
+        page,
+        page_size,
+        keyword=keyword,
+        status=status,
+        planned_release_from=planned_release_from,
+        planned_release_to=planned_release_to,
+        owner_id=owner_id,
+    )
     return {"items": items, "page": page, "page_size": page_size, "total": total}
 
 

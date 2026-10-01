@@ -426,6 +426,58 @@ def test_release_history_list_detail_and_filter(pub_api):
     assert client.get("/api/v1/releases/999999", headers=headers["boss"]).status_code == 404
 
 
+def test_release_detail_and_list_require_release_permission(pub_api):
+    client, session, headers, ids = pub_api
+    seeded = _seed_ready_version(session, ids["boss"])
+    published = client.post(
+        f"/api/v1/versions/{seeded['version']}/publish",
+        headers=headers["boss"],
+        json=_publish_body(),
+    )
+    assert published.status_code == 200
+    release_id = session.scalar(select(Release.id))
+    assert client.get("/api/v1/releases", headers=headers["member"]).status_code == 403
+    assert (
+        client.get(f"/api/v1/releases/{release_id}", headers=headers["member"]).status_code == 403
+    )
+
+
+@pytest.mark.parametrize("visibility_field", ["owner_id", "created_by"])
+def test_release_detail_uses_version_scope_and_matches_list(pub_api, visibility_field):
+    client, session, headers, ids = pub_api
+    seeded = _seed_ready_version(session, ids["boss"])
+    published = client.post(
+        f"/api/v1/versions/{seeded['version']}/publish",
+        headers=headers["boss"],
+        json=_publish_body(),
+    )
+    assert published.status_code == 200
+    release_id = session.scalar(select(Release.id))
+    role = session.scalar(select(Role).where(Role.code == "MEMBERROLE"))
+    permission = session.scalar(select(Permission).where(Permission.code == "rd.release.view"))
+    session.add(RolePermission(role_id=role.id, permission_id=permission.id))
+    session.commit()
+
+    # ALL sees the record, while SELF cannot infer whether an invisible record exists.
+    assert client.get("/api/v1/releases", headers=headers["boss"]).json()["total"] == 1
+    assert client.get(f"/api/v1/releases/{release_id}", headers=headers["boss"]).status_code == 200
+    assert client.get("/api/v1/releases", headers=headers["member"]).json()["total"] == 0
+    hidden = client.get(f"/api/v1/releases/{release_id}", headers=headers["member"])
+    missing = client.get("/api/v1/releases/999999", headers=headers["member"])
+    assert hidden.status_code == missing.status_code == 404
+    for field in ("code", "message", "data"):
+        assert hidden.json()[field] == missing.json()[field]
+
+    version = session.get(Version, seeded["version"])
+    setattr(version, visibility_field, ids["member"])
+    session.commit()
+    visible = client.get(f"/api/v1/releases/{release_id}", headers=headers["member"])
+    listed = client.get("/api/v1/releases", headers=headers["member"]).json()
+    assert visible.status_code == 200
+    assert listed["total"] == 1
+    assert listed["items"][0] == visible.json()
+
+
 @pytest.mark.parametrize("spec_name", ["openapi-v1.5.yaml", "需求与版本管理系统_V1.5_OpenAPI.yaml"])
 def test_openapi_declares_publish_contract(spec_name):
     spec = yaml.safe_load((SPEC_DIR / spec_name).read_text(encoding="utf-8"))

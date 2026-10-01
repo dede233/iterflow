@@ -52,8 +52,11 @@ onMounted(load)
           <template #default="s"><StatusTag :status="s.row.result" label="成功" /></template>
         </el-table-column>
         <el-table-column prop="release_notes" label="发布说明" min-width="260" show-overflow-tooltip />
-        <el-table-column v-if="can('rd.version.view')" label="操作" width="100" fixed="right">
-          <template #default="s"><el-button link type="primary" @click="router.push('/versions/' + s.row.version_id)">查看版本</el-button></template>
+        <el-table-column label="操作" :width="can('rd.version.view') ? 190 : 100" fixed="right">
+          <template #default="s">
+            <el-button link type="primary" @click="router.push('/releases/' + s.row.id)">查看详情</el-button>
+            <el-button v-if="can('rd.version.view')" link type="primary" @click="router.push('/versions/' + s.row.version_id)">查看版本</el-button>
+          </template>
         </el-table-column>
         <template #empty><EmptyState description="暂无发布记录" compact /></template>
       </el-table>
@@ -62,7 +65,10 @@ onMounted(load)
           <div class="release-card-top"><span class="mono">版本 #{{ release.version_id }}</span><StatusTag :status="release.result" label="成功" size="sm" /></div>
           <div class="release-time">{{ formatLocalDateTime(release.released_at) }}</div>
           <p>{{ release.release_notes }}</p>
-          <el-button v-if="can('rd.version.view')" link type="primary" @click="router.push('/versions/' + release.version_id)">查看版本</el-button>
+          <div class="release-actions">
+            <el-button link type="primary" @click="router.push('/releases/' + release.id)">查看详情</el-button>
+            <el-button v-if="can('rd.version.view')" link type="primary" @click="router.push('/versions/' + release.version_id)">查看版本</el-button>
+          </div>
         </article>
         <EmptyState v-if="!loading && !rows.length" description="暂无发布记录" compact />
       </div>
@@ -77,6 +83,8 @@ onMounted(load)
 .release-card-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .release-time { margin-top: 8px; color: var(--if-text-2); font-size: 12px; }
 .release-card p { margin: 10px 0; font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.release-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.release-actions :deep(.el-button + .el-button) { margin-left: 0; }
 .pager { margin-top: var(--if-space-4); justify-content: flex-end; }
 @media (max-width: 767px) { .pager { justify-content: center; } }
 </style>

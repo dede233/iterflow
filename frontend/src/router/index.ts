@@ -38,6 +38,7 @@ export const router = createRouter({
         { path: 'versions/new', name: 'version-create', component: () => import('@/views/version/VersionCreateView.vue'), meta: { permission: 'rd.version.create' } },
         { path: 'versions/:id', name: 'version-detail', component: () => import('@/views/version/VersionDetailView.vue'), meta: { permission: 'rd.version.view' } },
         { path: 'releases', name: 'release-list', component: () => import('@/views/release/ReleaseListView.vue'), meta: { permission: 'rd.release.view' } },
+        { path: 'releases/:id', name: 'release-detail', component: () => import('@/views/release/ReleaseDetailView.vue'), meta: { permission: 'rd.release.view' } },
         { path: 'notifications', name: 'notifications', component: () => import('@/views/notification/NotificationCenterView.vue') },
         { path: 'profile', name: 'profile', component: () => import('@/views/profile/ProfileView.vue') },
         { path: 'admin/audits', name: 'audit-center', component: () => import('@/views/audit/AuditCenterView.vue'), meta: { permission: 'sys.audit.view' } },

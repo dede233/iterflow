@@ -2,7 +2,7 @@
 
 # 开发 Agent 从这里开始
 
-这是迭程 IterFlow 当前 V1.6 开发规划入口。正式稳定版本 `v1.5.0` 保持不变；V1.6 Phase 1 从已合入主线的 Phase 0 基线 `5c44ab849ff798ac19fdfafce558b7dbcc4452a0` 开始开发。
+这是迭程 IterFlow 当前 V1.6 开发与验收入口。正式稳定版本 `v1.5.0` 保持不变；V1.6 Phase 1 从已合入主线的 Phase 0 基线 `5c44ab849ff798ac19fdfafce558b7dbcc4452a0` 开始开发。后续阶段状态以 `docs/v1.6-plan.md` 和 `TASKS.md` 为准。
 
 
 ## 项目命名
@@ -39,7 +39,7 @@ Redis 服务：iterflow-redis
 4. `docs/v1.6-plan.md`
 5. `TASKS.md` 与 `DEVELOPMENT.md`
 6. `docs/需求与版本管理系统_独立部署版_V1.5_完整开发基线.pdf`
-7. `spec/status-machines.md` 与当前 `spec/openapi-v1.5.yaml`（历史发布快照以 `v1.5.0` 标签为准）
+7. `spec/status-machines.md` 与当前 V1.6 契约 `spec/openapi-v1.6.yaml`（历史发布快照以 `v1.5.0` 标签为准）
 8. 现有代码和测试
 
 ## 第一条指令

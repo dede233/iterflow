@@ -1,6 +1,6 @@
 # 迭程 IterFlow · 需求与版本协作管理系统
 
-已发布稳定版本是不可变的 `v1.5.0`（`a7e60e39893f162dd49b03d40f5ca975abd5d42d`）。当前 master `f43f76145961b54d279cf3c85dd4afeb3e0e2d3f` 是 Post-V1.5 / V1.6 开发基线，不是新的正式发布版。V1.6 现阶段仅冻结规划，见 [基线审计](docs/v1.6-baseline-audit.md)、[V1.6 计划](docs/v1.6-plan.md) 和 [执行清单](TASKS.md)。
+已发布稳定版本是不可变的 `v1.5.0`（`a7e60e39893f162dd49b03d40f5ca975abd5d42d`）。V1.6 开发与验收状态以计划和执行清单为准，开发提交不代表新的正式发布版。Phase 0 历史盘点与当前阶段入口见 [基线审计](docs/v1.6-baseline-audit.md)、[V1.6 计划](docs/v1.6-plan.md) 和 [执行清单](TASKS.md)。
 
 独立部署的研发协作系统，主链路为：
 

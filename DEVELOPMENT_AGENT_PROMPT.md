@@ -1,6 +1,6 @@
 # IterFlow V1.6 开发 Agent 入口
 
-产品：**迭程 IterFlow · 需求与版本协作管理系统**。已发布稳定版为不可变的 `v1.5.0`；当前 V1.6 开发 master 为 `f43f76145961b54d279cf3c85dd4afeb3e0e2d3f`。V1.6 的定位是协作体验与信息可见性增强，核心领域规则继续冻结。
+产品：**迭程 IterFlow · 需求与版本协作管理系统**。已发布稳定版为不可变的 `v1.5.0`；V1.6 当前阶段、开发基线与验收状态以 `docs/v1.6-plan.md` 和 `TASKS.md` 为准。V1.6 的定位是协作体验与信息可见性增强，核心领域规则继续冻结。
 
 ## 进入开发前的阅读顺序
 
@@ -11,7 +11,7 @@
 5. `TASKS.md`
 6. `DEVELOPMENT.md`
 7. `spec/status-machines.md`
-8. 当前 V1.6 开发契约：Phase 0 读取工作树中的 `spec/openapi-v1.5.yaml`；首次 V1.6 API 修改时创建并改用 `spec/openapi-v1.6.yaml`。正式 V1.5 历史契约以 `v1.5.0` 标签为准。
+8. 当前 V1.6 开发契约：`spec/openapi-v1.6.yaml` 已在 Phase 2 建立并接入类型生成与 parity；Phase 0 历史阶段使用 `spec/openapi-v1.5.yaml`。正式 V1.5 历史契约以 `v1.5.0` 标签为准。
 9. 当前代码和测试
 
 不要重新执行 V1.5 Phase 0，也不要把旧 `TASKS.md` 的 checkbox 当作实现事实。以当前代码、接口、测试和 CI 为准。当前 master 已有 UI Redesign、System Catalog、System Permission closeout、Responsive 适配和 Playwright stability 修复；不要重新实现这些基线能力。

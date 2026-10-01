@@ -29,7 +29,7 @@ Redis 服务：iterflow-redis
 
 ## 1. 开发目标
 
-已发布 `v1.5.0` 是不可变的稳定历史。V1.6 当前阶段、开发基线、目标与验收状态以 `docs/v1.6-plan.md` 和 `TASKS.md` 为准；`docs/v1.6-baseline-audit.md` 保留 Phase 0 历史盘点，不代表后续阶段现状。
+当前正式稳定版本为 `v1.6.0`，发布事实以 annotated tag 与 GitHub Release 为准；已发布 `v1.5.0` 保留为不可变历史发布版本。V1.6 当前阶段、开发基线、目标与验收状态以 `docs/v1.6-plan.md` 和 `TASKS.md` 为准；`docs/v1.6-baseline-audit.md` 保留 Phase 0 历史盘点，不代表后续阶段现状。
 
 完成标准不是“代码已生成”，而是：
 

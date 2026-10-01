@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
   title: IterFlow API
-  version: 1.5.0
-  description: V1.6 开发契约：Phase 2 统一核心写接口的 revision 冲突响应。运行时产品版本仍为 1.5.0，正式版本标签保持不变。
+  version: 1.6.0
+  description: V1.6.0 正式发布契约：包含已验收的 V1.6 增量，核心业务模型与 V1.5 冻结规则保持不变。
 servers:
 - url: /api/v1
 tags:

@@ -45,6 +45,9 @@ jobs:
       - name: Install backend and audit tools
         working-directory: backend
         run: python -m pip install -e '.[dev]'
+      - name: Development Python dependency audit
+        working-directory: backend
+        run: python -m pip_audit
       - name: Full backend tests with warnings as errors
         working-directory: backend
         run: python -m pytest -W error::DeprecationWarning -q

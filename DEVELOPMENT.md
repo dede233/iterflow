@@ -8,7 +8,7 @@
 - **中文名：迭程**
 - **英文名：IterFlow**
 - **完整名称：迭程 IterFlow · 需求与版本协作管理系统**
-- **核心含义：迭代 + 流程，覆盖 Feedback → Requirement → Version → Release 的完整协作链路。**
+- **核心含义：迭代 + 流程，覆盖 Feedback → Requirement → Version → Publish → Release 的完整协作链路。**
 
 建议统一使用以下工程命名：
 
@@ -29,7 +29,7 @@ Redis 服务：iterflow-redis
 
 ## 1. 开发目标
 
-当前正式稳定版本为 `v1.6.0`，发布事实以 annotated tag 与 GitHub Release 为准；已发布 `v1.5.0` 保留为不可变历史发布版本。V1.6 当前阶段、开发基线、目标与验收状态以 `docs/v1.6-plan.md` 和 `TASKS.md` 为准；`docs/v1.6-baseline-audit.md` 保留 Phase 0 历史盘点，不代表后续阶段现状。
+当前正式稳定版本为 `v1.6.0`，发布事实以 annotated tag 与 GitHub Release 为准；已发布 `v1.5.0` 保留为不可变历史发布版本。V1.7 当前阶段、开发基线、目标与验收状态以 `docs/v1.7-plan.md` 和 `TASKS.md` 为准；V1.6 audit/plan/readiness 保留为历史发布证据。执行流程与停止条件见 AGENTS 第16节。
 
 完成标准不是“代码已生成”，而是：
 
@@ -57,8 +57,8 @@ Redis 服务：iterflow-redis
 ```
 
 ### 规格
-- `docs/`：V1.5 已发布主文档 PDF/Word、V1.6 规划和基线审计
-- `spec/openapi-v1.6.yaml`：当前 V1.6 静态 API 契约；正式 V1.5 快照应从 `v1.5.0` 标签读取
+- `docs/`：V1.5 已发布主文档 PDF/Word、V1.6 历史证据、V1.7 规划和基线审计
+- `spec/openapi-v1.6.yaml`：Phase 0 使用的发布契约；Phase 1 建立 V1.7 契约后冻结本文件；正式历史快照从对应标签读取
 - `spec/status-machines.md`：状态机
 
 ## 3. 本地环境
@@ -287,11 +287,11 @@ alembic upgrade head
 
 ## 11. OpenAPI 变更
 
-V1.6 API 契约已在 Phase 2 建立为 `spec/openapi-v1.6.yaml`。`spec/openapi-v1.5.yaml` 当前已有发布后补充，不继续将其当作 V1.6 增量文件；历史正式契约以 `v1.5.0` 标签为准。API 修改流程：
+V1.7 Phase 1 从 `spec/openapi-v1.6.yaml` 建立 `spec/openapi-v1.7.yaml`，切换 runtime 描述、生成类型与 parity；Phase 0 仍使用 V1.6 文件。`spec/openapi-v1.5.yaml` 当前已有发布后补充，不继续将其当作增量文件；历史正式契约以 `v1.5.0` 标签为准。API 修改流程：
 
-1. 先提出并评审 V1.6 静态契约，明确字段与错误行为。
-2. 更新 Backend schema/router/service，并校验运行时 OpenAPI 与 V1.6 静态契约一致；`backend/scripts/sync_openapi.py` 已指向 V1.6 契约，避免覆盖 V1.5 历史文件。
-3. 使用 `frontend/package.json` 中已指向 V1.6 契约的 `generate:api-types` 生成 TypeScript DTO。
+1. 先提出并评审当前开发契约，明确字段与错误行为。
+2. 更新 Backend schema/router/service，并校验运行时 OpenAPI 与当前开发契约一致；`backend/scripts/sync_openapi.py` 在 Phase 1 同步切换 V1.7 契约，避免覆盖历史文件。
+3. 使用 `frontend/package.json` 中与当前开发契约一致的 `generate:api-types` 生成 TypeScript DTO。
 4. 增加/更新测试，并执行 OpenAPI parity、`npm run check:api-types` 和构建门禁。
 
 核心契约变化需要用户确认。

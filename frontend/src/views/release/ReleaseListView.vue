@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { listReleases } from '@/api/releases'
 import { useResponsive } from '@/composables/useResponsive'
 import { usePermission } from '@/composables/usePermission'
@@ -12,6 +13,7 @@ import StatusTag from '@/components/StatusTag.vue'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import ListFilterPanel from '@/components/ui/ListFilterPanel.vue'
 import { formatLocalDateTime } from '@/utils/dates'
+import { releaseDateBounds } from '@/utils/releaseDateRange'
 import type { ReleaseItem } from '@/types/domain'
 
 const router = useRouter()
@@ -23,15 +25,20 @@ const loading = ref(false)
 const failed = ref(false)
 const filterDrawer = ref(false)
 const filters = reactive({ page: 1, page_size: 20, version_id: null as number | null })
+const dateRange = ref<[string, string] | null>(null)
 let requestSequence = 0
 
 async function load(): Promise<void> {
+  let dates: ReturnType<typeof releaseDateBounds>
+  try { dates = releaseDateBounds(dateRange.value) }
+  catch (error) { ElMessage.warning((error as Error).message); return }
   const sequence = ++requestSequence
   loading.value = true
   failed.value = false
   try {
     const result = await listReleases({
       page: filters.page, page_size: filters.page_size,
+      ...dates,
       version_id: filters.version_id != null && Number.isSafeInteger(filters.version_id) && filters.version_id >= 1 ? filters.version_id : undefined,
     })
     if (sequence !== requestSequence) return
@@ -52,6 +59,7 @@ function applyFilters(): void {
 
 function resetFilters(): void {
   filters.version_id = null
+  dateRange.value = null
   applyFilters()
 }
 
@@ -67,6 +75,7 @@ onMounted(load)
     </PageHeader>
     <ListFilterPanel v-model="filterDrawer" :mobile="isMobile" title="筛选发布记录" @search="applyFilters" @reset="resetFilters">
       <el-form-item label="版本 ID"><el-input-number v-model="filters.version_id" :min="1" :precision="0" step-strictly controls-position="right" /></el-form-item>
+      <el-form-item label="发布日期"><el-date-picker v-model="dateRange" type="daterange" value-format="YYYY-MM-DD" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" popper-class="release-filter-date-popper" /></el-form-item>
     </ListFilterPanel>
     <ErrorState v-if="failed" title="发布记录加载失败" description="请检查网络后重试。" retry-label="重新加载" @retry="load" />
     <SectionCard v-else title="发布历史" :description="`共 ${total} 次发布`" :padded="false">
@@ -114,4 +123,13 @@ onMounted(load)
 .release-actions :deep(.el-button + .el-button) { margin-left: 0; }
 .pager { margin-top: var(--if-space-4); justify-content: flex-end; }
 @media (max-width: 767px) { .pager { justify-content: center; } }
+</style>
+
+<style>
+@media (max-width: 767px) {
+  .release-filter-date-popper .el-date-range-picker { width: min(340px, calc(100vw - 24px)); }
+  .release-filter-date-popper .el-date-range-picker__content { width: 100%; float: none; }
+  .release-filter-date-popper .el-date-range-picker__content.is-right { border-left: 0; border-top: 1px solid var(--if-border); }
+  .release-filter-date-popper { max-height: calc(100vh - 24px); overflow-y: auto; }
+}
 </style>

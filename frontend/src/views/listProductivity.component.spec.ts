@@ -18,7 +18,7 @@ import ListFilterPanel from '@/components/ui/ListFilterPanel.vue'
 const configs = [
   { name: 'Requirement', component: RequirementListView, api: mocks.requirements, keyword: '编号 / 标题', labels: ['关键词', '状态', '优先级', '来源', '版本 ID', '负责人 ID'], row: { id: 1, title: 'latest result', requirement_no: 'REQ-1', status: 'DRAFT', priority: 'P1', source: 'DIRECT' }, params: { keyword: 'Search', status: 'CONFIRMED', priority: 'P1', source: 'FEEDBACK', current_version_id: 42, owner_id: 8 } },
   { name: 'Version', component: VersionListView, api: mocks.versions, keyword: '版本号 / 名称', labels: ['关键词', '状态', '计划上线日期', '负责人 ID'], row: { id: 1, name: 'latest result', version_no: 'V1', status: 'RELEASED' }, params: { keyword: 'Search', status: 'RELEASED', planned_release_from: '2026-10-01', planned_release_to: '2026-10-03', owner_id: 8 } },
-  { name: 'Release', component: ReleaseListView, api: mocks.releases, keyword: null, labels: ['版本 ID'], row: { id: 1, version_id: 42, result: 'SUCCESS', release_notes: 'latest result' }, params: { version_id: 42 } },
+  { name: 'Release', component: ReleaseListView, api: mocks.releases, keyword: null, labels: ['版本 ID', '发布日期'], row: { id: 1, version_id: 42, result: 'SUCCESS', release_notes: 'latest result' }, params: { version_id: 42, released_from: new Date(2026, 9, 1).toISOString(), released_before: new Date(2026, 9, 4).toISOString() } },
 ] as const
 
 beforeEach(() => {
@@ -61,7 +61,10 @@ async function fill(wrapper: VueWrapper, config: typeof configs[number]) {
     selects[0]!.vm.$emit('update:modelValue', 'RELEASED')
     wrapper.findComponent(ElDatePicker).vm.$emit('update:modelValue', ['2026-10-01', '2026-10-03'])
     wrapper.findComponent(ElInputNumber).vm.$emit('update:modelValue', 8)
-  } else wrapper.findComponent(ElInputNumber).vm.$emit('update:modelValue', 42)
+  } else {
+    wrapper.findComponent(ElInputNumber).vm.$emit('update:modelValue', 42)
+    wrapper.findComponent(ElDatePicker).vm.$emit('update:modelValue', ['2026-10-01', '2026-10-03'])
+  }
   await flushPromises()
 }
 
@@ -181,4 +184,14 @@ it.each([configs[0], configs[1]])('keeps $name creation refresh before detail na
   expect(mocks.push).toHaveBeenCalledWith(config.name === 'Requirement' ? '/requirements/7' : '/versions/7')
   expect(config.api.mock.invocationCallOrder[1]).toBeLessThan(mocks.push.mock.invocationCallOrder[0]!)
   wrapper.unmount()
+})
+
+it('prevents an inverted Release date range from reaching the API', async () => {
+  const warning = vi.spyOn(ElMessage, 'warning')
+  const wrapper = await view(configs[2])
+  wrapper.findComponent(ElDatePicker).vm.$emit('update:modelValue', ['2026-10-03', '2026-10-01'])
+  await flushPromises(); search(wrapper); await flushPromises()
+  expect(mocks.releases).toHaveBeenCalledTimes(1)
+  expect(warning).toHaveBeenCalledWith('发布结束日期不能早于开始日期')
+  wrapper.unmount(); warning.mockRestore(); ElMessage.closeAll()
 })

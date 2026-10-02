@@ -1994,6 +1994,24 @@ paths:
           - type: integer
           - type: 'null'
           title: Version Id
+      - name: released_from
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Released From
+      - name: released_before
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Released Before
       responses:
         '200':
           description: Successful Response
@@ -2019,6 +2037,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+      description: '日期条件只读查询: released_from <= released_at < released_before。两参数只接受带时区的 ISO datetime,
+        允许单边; from >= before 或无时区输入返回422。日期与 version_id、rd.release.view 和 Version DataScope 使用 AND, items/total
+        一致。'
   /releases/{release_id}:
     get:
       tags:

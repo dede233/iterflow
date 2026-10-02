@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -21,11 +23,17 @@ class ReleaseQueryService:
         page: int,
         page_size: int,
         version_id: int | None,
+        released_from: datetime | None = None,
+        released_before: datetime | None = None,
     ) -> dict[str, object]:
         scope = UserRepository(self.db).data_scope(actor.id)
         criteria = [] if scope is DataScope.ALL else [VersionRepository.self_criterion(actor.id)]
         if version_id is not None:
             criteria.append(Release.version_id == version_id)
+        if released_from is not None:
+            criteria.append(Release.released_at >= released_from.astimezone(UTC))
+        if released_before is not None:
+            criteria.append(Release.released_at < released_before.astimezone(UTC))
         total = (
             self.db.scalar(
                 select(func.count())

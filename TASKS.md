@@ -8,7 +8,7 @@
 - [x] 冻结 C0/C1/C2/C3/C6/C8/C9；C4删除/C5/C7延期；日期右开、通知focus/visibility方案确定。
 - [x] 主链补齐Publish、修正DUPLICATE文字、切换入口文档与清单，保留V1.6历史证据。
 - [x] Fresh Self-Review与branch CI通过，no-ff merge/parents核验及docs closeout完成。
-- [ ] Final master CI通过（通过后才允许进入Phase1，实际run记录在执行日志）。
+- [x] Final master CI通过（37002731061，attempt1六项success，实际HEAD见执行日志）。
 
 ## Phase 1 — Product Consistency & Correctness
 

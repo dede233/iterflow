@@ -44,12 +44,13 @@ class FeedbackRepository(BaseRepository[Feedback]):
         if module_id is not None:
             criteria.append(Feedback.module_id == module_id)
         if keyword:
-            like = f"%{keyword}%"
+            escaped = keyword.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            like = f"%{escaped}%"
             criteria.append(
                 or_(
-                    Feedback.feedback_no.ilike(like),
-                    Feedback.title.ilike(like),
-                    Feedback.description.ilike(like),
+                    Feedback.feedback_no.ilike(like, escape="\\"),
+                    Feedback.title.ilike(like, escape="\\"),
+                    Feedback.description.ilike(like, escape="\\"),
                 )
             )
         return criteria

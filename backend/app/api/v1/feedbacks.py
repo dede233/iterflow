@@ -43,7 +43,16 @@ def _content_disposition(original_name: str) -> str:
     return f"attachment; filename*=UTF-8''{quote(cleaned, safe='')}"
 
 
-@router.get("", response_model=FeedbackPage)
+@router.get(
+    "",
+    response_model=FeedbackPage,
+    description=(
+        "keyword trim 后按 feedback_no/title/description 大小写不敏感的字面子串匹配;"
+        "反斜杠、百分号和下划线不作通配符。空白视为无筛选。"
+        "V1.7 相对 V1.6 的 wildcard 行为发生兼容性变化。"
+        "所有条件与 DataScope 使用 AND, items/total 一致。"
+    ),
+)
 def list_feedbacks(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),

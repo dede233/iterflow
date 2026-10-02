@@ -1094,3 +1094,46 @@ def _ids_of(session: Session, username: str) -> int:
     user = session.scalar(select(User).where(User.username == username))
     assert user is not None
     return user.id
+
+
+@pytest.mark.parametrize("keyword", ["%", "_", "\\", "  aLpHa  ", "description-token"])
+def test_keyword_is_literal_trimmed_case_insensitive_and_scoped(feedback_api, keyword):
+    client, _session, headers, _ids = feedback_api
+    own = _create(
+        client,
+        headers["alice"],
+        title="Alpha % literal_one",
+        description=r"path\description-token",
+        urgency="URGENT",
+    )
+    other = _create(
+        client,
+        headers["bob"],
+        title="Alpha % literal_two",
+        description=r"path\description-token",
+        urgency="URGENT",
+    )
+    _create(
+        client,
+        headers["alice"],
+        title="Ordinary no wildcard",
+        description="plain",
+        urgency="URGENT",
+    )
+    params = {"keyword": keyword, "urgency": "URGENT", "page_size": 1}
+    first = client.get("/api/v1/feedbacks", params=params, headers=headers["cs"])
+    assert first.status_code == 200
+    assert first.json()["total"] == 2
+    second = client.get("/api/v1/feedbacks", params={**params, "page": 2}, headers=headers["cs"])
+    assert {first.json()["items"][0]["id"], second.json()["items"][0]["id"]} == {
+        own["id"],
+        other["id"],
+    }
+    own_page = client.get("/api/v1/feedbacks", params=params, headers=headers["alice"])
+    assert own_page.json()["total"] == 1
+    assert own_page.json()["items"][0]["id"] == own["id"]
+    by_number = client.get(
+        "/api/v1/feedbacks", params={"keyword": own["feedback_no"]}, headers=headers["alice"]
+    )
+    assert by_number.json()["total"] == 1
+    assert by_number.json()["items"][0]["id"] == own["id"]

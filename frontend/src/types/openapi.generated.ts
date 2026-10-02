@@ -156,7 +156,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 反馈列表 */
+        /**
+         * 反馈列表
+         * @description keyword trim 后按 feedback_no/title/description 大小写不敏感的字面子串匹配;反斜杠、百分号和下划线不作通配符。空白视为无筛选。V1.7 相对 V1.6 的 wildcard 行为发生兼容性变化。所有条件与 DataScope 使用 AND, items/total 一致。
+         */
         get: operations["list_feedbacks_api_v1_feedbacks_get"];
         put?: never;
         /** 提交反馈 */

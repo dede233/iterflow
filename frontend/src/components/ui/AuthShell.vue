@@ -1,4 +1,5 @@
 <script setup lang="ts">
+const appVersion = __APP_VERSION__
 const steps = ['反馈', '需求', '版本', '发布']
 </script>
 
@@ -14,7 +15,7 @@ const steps = ['反馈', '需求', '版本', '发布']
           <li v-for="(step, index) in steps" :key="step"><span>{{ String(index + 1).padStart(2, '0') }}</span>{{ step }}</li>
         </ol>
       </div>
-      <div class="auth-foot">ITERFLOW / V1.5</div>
+      <div class="auth-foot">ITERFLOW / V{{ appVersion }}</div>
     </aside>
     <div class="auth-form-pane"><div class="auth-form-inner"><slot /></div></div>
   </main>

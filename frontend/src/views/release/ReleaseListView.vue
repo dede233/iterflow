@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { listReleases } from '@/api/releases'
 import { useResponsive } from '@/composables/useResponsive'
@@ -9,6 +9,8 @@ import SectionCard from '@/components/ui/SectionCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
 import StatusTag from '@/components/StatusTag.vue'
+import AppIcon from '@/components/ui/AppIcon.vue'
+import ListFilterPanel from '@/components/ui/ListFilterPanel.vue'
 import { formatLocalDateTime } from '@/utils/dates'
 import type { ReleaseItem } from '@/types/domain'
 
@@ -19,28 +21,53 @@ const rows = ref<ReleaseItem[]>([])
 const total = ref(0)
 const loading = ref(false)
 const failed = ref(false)
-const paging = reactive({ page: 1, page_size: 20 })
+const filterDrawer = ref(false)
+const filters = reactive({ page: 1, page_size: 20, version_id: null as number | null })
+let requestSequence = 0
 
 async function load(): Promise<void> {
+  const sequence = ++requestSequence
   loading.value = true
   failed.value = false
   try {
-    const result = await listReleases({ page: paging.page, page_size: paging.page_size })
+    const result = await listReleases({
+      page: filters.page, page_size: filters.page_size,
+      version_id: filters.version_id != null && Number.isSafeInteger(filters.version_id) && filters.version_id >= 1 ? filters.version_id : undefined,
+    })
+    if (sequence !== requestSequence) return
     rows.value = result.items
     total.value = result.total
   } catch {
-    failed.value = true
+    if (sequence === requestSequence) failed.value = true
   } finally {
-    loading.value = false
+    if (sequence === requestSequence) loading.value = false
   }
 }
+
+function applyFilters(): void {
+  filters.page = 1
+  filterDrawer.value = false
+  void load()
+}
+
+function resetFilters(): void {
+  filters.version_id = null
+  applyFilters()
+}
+
+onBeforeUnmount(() => { requestSequence++ })
 
 onMounted(load)
 </script>
 
 <template>
   <section class="page">
-    <PageHeader title="发布记录" description="查看版本的实际发布历史与发布说明。" eyebrow="发布" />
+    <PageHeader title="发布记录" description="查看版本的实际发布历史与发布说明。" eyebrow="发布">
+      <template #actions><el-button v-if="isMobile" @click="filterDrawer = true"><AppIcon name="filter" :size="16" />筛选</el-button></template>
+    </PageHeader>
+    <ListFilterPanel v-model="filterDrawer" :mobile="isMobile" title="筛选发布记录" @search="applyFilters" @reset="resetFilters">
+      <el-form-item label="版本 ID"><el-input-number v-model="filters.version_id" :min="1" :precision="0" step-strictly controls-position="right" /></el-form-item>
+    </ListFilterPanel>
     <ErrorState v-if="failed" title="发布记录加载失败" description="请检查网络后重试。" retry-label="重新加载" @retry="load" />
     <SectionCard v-else title="发布历史" :description="`共 ${total} 次发布`" :padded="false">
       <el-table v-if="!isMobile" v-loading="loading" :data="rows" row-key="id">
@@ -52,8 +79,11 @@ onMounted(load)
           <template #default="s"><StatusTag :status="s.row.result" label="成功" /></template>
         </el-table-column>
         <el-table-column prop="release_notes" label="发布说明" min-width="260" show-overflow-tooltip />
-        <el-table-column v-if="can('rd.version.view')" label="操作" width="100" fixed="right">
-          <template #default="s"><el-button link type="primary" @click="router.push('/versions/' + s.row.version_id)">查看版本</el-button></template>
+        <el-table-column label="操作" :width="can('rd.version.view') ? 190 : 100" fixed="right">
+          <template #default="s">
+            <el-button link type="primary" @click="router.push('/releases/' + s.row.id)">查看详情</el-button>
+            <el-button v-if="can('rd.version.view')" link type="primary" @click="router.push('/versions/' + s.row.version_id)">查看版本</el-button>
+          </template>
         </el-table-column>
         <template #empty><EmptyState description="暂无发布记录" compact /></template>
       </el-table>
@@ -62,12 +92,15 @@ onMounted(load)
           <div class="release-card-top"><span class="mono">版本 #{{ release.version_id }}</span><StatusTag :status="release.result" label="成功" size="sm" /></div>
           <div class="release-time">{{ formatLocalDateTime(release.released_at) }}</div>
           <p>{{ release.release_notes }}</p>
-          <el-button v-if="can('rd.version.view')" link type="primary" @click="router.push('/versions/' + release.version_id)">查看版本</el-button>
+          <div class="release-actions">
+            <el-button link type="primary" @click="router.push('/releases/' + release.id)">查看详情</el-button>
+            <el-button v-if="can('rd.version.view')" link type="primary" @click="router.push('/versions/' + release.version_id)">查看版本</el-button>
+          </div>
         </article>
         <EmptyState v-if="!loading && !rows.length" description="暂无发布记录" compact />
       </div>
     </SectionCard>
-    <el-pagination class="pager" layout="prev, pager, next, total" :total="total" :current-page="paging.page" :page-size="paging.page_size" background @current-change="(page: number) => { paging.page = page; void load() }" />
+    <el-pagination class="pager" layout="prev, pager, next, total" :total="total" :current-page="filters.page" :page-size="filters.page_size" background @current-change="(page: number) => { filters.page = page; void load() }" />
   </section>
 </template>
 
@@ -77,6 +110,8 @@ onMounted(load)
 .release-card-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .release-time { margin-top: 8px; color: var(--if-text-2); font-size: 12px; }
 .release-card p { margin: 10px 0; font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.release-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.release-actions :deep(.el-button + .el-button) { margin-left: 0; }
 .pager { margin-top: var(--if-space-4); justify-content: flex-end; }
 @media (max-width: 767px) { .pager { justify-content: center; } }
 </style>

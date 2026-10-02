@@ -24,6 +24,7 @@ test('administrator configures a system and module for the feedback form', async
   })
   await page.route('**/api/v1/**', async (route) => {
     const { pathname } = new URL(route.request().url())
+    if (pathname === '/api/v1/notifications/unread-count') return route.fulfill({ status: 200, json: { unread_count: 0 } })
     const method = route.request().method()
     if (pathname === '/api/v1/auth/me') {
       return route.fulfill({ status: 200, json: {

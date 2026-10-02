@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 import pytest
 import yaml
+from conftest import assert_revision_conflict
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event, select
 from sqlalchemy.orm import Session
@@ -232,6 +233,27 @@ def test_publish_success_syncs_version_requirement_feedback_and_release(pub_api)
         session.scalar(select(Notification).where(Notification.entity_id == seeded["feedback"]))
         is not None
     )
+    assert_revision_conflict(
+        client.post(
+            f"/api/v1/versions/{seeded['version']}/publish",
+            headers=headers["boss"],
+            json=_publish_body(revision=1),
+        ),
+        revision=2,
+        updated_by=ids["boss"],
+    )
+
+
+def test_publish_stale_revision_contract(pub_api):
+    client, session, headers, ids = pub_api
+    seeded = _seed_ready_version(session, ids["boss"])
+    stale = client.post(
+        f"/api/v1/versions/{seeded['version']}/publish",
+        headers=headers["boss"],
+        json=_publish_body(revision=999),
+    )
+    assert_revision_conflict(stale, revision=1, updated_by=ids["boss"])
+    assert session.scalar(select(Release).where(Release.version_id == seeded["version"])) is None
 
 
 def test_publish_blocked_by_unfinished_requirement(pub_api):
@@ -402,6 +424,75 @@ def test_release_history_list_detail_and_filter(pub_api):
     assert detail.status_code == 200
     assert detail.json()["version_id"] == seeded["version"]
     assert client.get("/api/v1/releases/999999", headers=headers["boss"]).status_code == 404
+
+
+def test_release_detail_and_list_require_release_permission(pub_api):
+    client, session, headers, ids = pub_api
+    seeded = _seed_ready_version(session, ids["boss"])
+    published = client.post(
+        f"/api/v1/versions/{seeded['version']}/publish",
+        headers=headers["boss"],
+        json=_publish_body(),
+    )
+    assert published.status_code == 200
+    release_id = session.scalar(select(Release.id))
+    assert client.get("/api/v1/releases", headers=headers["member"]).status_code == 403
+    assert (
+        client.get(f"/api/v1/releases/{release_id}", headers=headers["member"]).status_code == 403
+    )
+
+
+@pytest.mark.parametrize("visibility_field", ["owner_id", "created_by"])
+def test_release_detail_uses_version_scope_and_matches_list(pub_api, visibility_field):
+    client, session, headers, ids = pub_api
+    seeded = _seed_ready_version(session, ids["boss"])
+    published = client.post(
+        f"/api/v1/versions/{seeded['version']}/publish",
+        headers=headers["boss"],
+        json=_publish_body(),
+    )
+    assert published.status_code == 200
+    release_id = session.scalar(select(Release.id))
+    role = session.scalar(select(Role).where(Role.code == "MEMBERROLE"))
+    permission = session.scalar(select(Permission).where(Permission.code == "rd.release.view"))
+    session.add(RolePermission(role_id=role.id, permission_id=permission.id))
+    session.commit()
+
+    # ALL sees the record, while SELF cannot infer whether an invisible record exists.
+    assert client.get("/api/v1/releases", headers=headers["boss"]).json()["total"] == 1
+    assert client.get(f"/api/v1/releases/{release_id}", headers=headers["boss"]).status_code == 200
+    assert client.get("/api/v1/releases", headers=headers["member"]).json()["total"] == 0
+    assert (
+        client.get(
+            "/api/v1/releases", params={"version_id": seeded["version"]}, headers=headers["member"]
+        ).json()["total"]
+        == 0
+    )
+    hidden = client.get(f"/api/v1/releases/{release_id}", headers=headers["member"])
+    missing = client.get("/api/v1/releases/999999", headers=headers["member"])
+    assert hidden.status_code == missing.status_code == 404
+    for field in ("code", "message", "data"):
+        assert hidden.json()[field] == missing.json()[field]
+
+    version = session.get(Version, seeded["version"])
+    setattr(version, visibility_field, ids["member"])
+    session.commit()
+    visible = client.get(f"/api/v1/releases/{release_id}", headers=headers["member"])
+    listed = client.get("/api/v1/releases", headers=headers["member"]).json()
+    assert visible.status_code == 200
+    assert listed["total"] == 1
+    assert listed["items"][0] == visible.json()
+    filtered = client.get(
+        "/api/v1/releases", params={"version_id": seeded["version"]}, headers=headers["member"]
+    ).json()
+    assert filtered["items"] == listed["items"]
+    assert filtered["total"] == 1
+    assert (
+        client.get(
+            "/api/v1/releases", params={"version_id": 999999}, headers=headers["member"]
+        ).json()["total"]
+        == 0
+    )
 
 
 @pytest.mark.parametrize("spec_name", ["openapi-v1.5.yaml", "需求与版本管理系统_V1.5_OpenAPI.yaml"])

@@ -9,8 +9,7 @@ from app.main import app
 from scripts.sync_openapi import generated_spec
 
 ROOT = Path(__file__).resolve().parents[2]
-CANONICAL = ROOT / "spec" / "openapi-v1.5.yaml"
-SECONDARY = ROOT / "spec" / "需求与版本管理系统_V1.5_OpenAPI.yaml"
+CANONICAL = ROOT / "spec" / "openapi-v1.6.yaml"
 IGNORED_DOCUMENTATION_FIELDS = {
     "description",
     "summary",
@@ -75,15 +74,15 @@ def _operation_contract(operation: dict[str, Any], spec: dict[str, Any]) -> dict
     )
 
 
-def test_static_openapi_copies_are_identical() -> None:
-    canonical = yaml.safe_load(CANONICAL.read_text(encoding="utf-8"))
-    secondary = yaml.safe_load(SECONDARY.read_text(encoding="utf-8"))
-    assert secondary == canonical
+def test_v15_openapi_remains_available() -> None:
+    assert (ROOT / "spec" / "openapi-v1.5.yaml").is_file()
+    assert (ROOT / "spec" / "需求与版本管理系统_V1.5_OpenAPI.yaml").is_file()
 
 
 def test_runtime_openapi_matches_static_contract() -> None:
     static = yaml.safe_load(CANONICAL.read_text(encoding="utf-8"))
     runtime = app.openapi()
+    assert static["info"]["version"] == runtime["info"]["version"]
     runtime_paths = _api_paths(runtime, runtime=True)
     static_paths = _api_paths(static, runtime=False)
 
@@ -122,3 +121,56 @@ def test_requirement_create_conditional_authorization_is_documented() -> None:
         "Version DataScope",
     ):
         assert term in static_description
+
+
+def test_v16_revision_conflict_contract_covers_all_core_cas_routes() -> None:
+    static = yaml.safe_load(CANONICAL.read_text(encoding="utf-8"))
+    schemas = static["components"]["schemas"]
+    assert schemas["RevisionConflictResponse"]["properties"]["code"]["const"] == 40910
+    assert set(schemas["RevisionConflictData"]["required"]) == {
+        "current_revision",
+        "current_updated_at",
+        "current_updated_by",
+    }
+    routes = {
+        ("/feedbacks/{feedback_id}", "patch"),
+        ("/feedbacks/{feedback_id}/status", "patch"),
+        ("/feedbacks/{feedback_id}/convert", "post"),
+        ("/requirements", "post"),
+        ("/requirements/{requirement_id}", "patch"),
+        ("/requirements/{requirement_id}/status", "patch"),
+        ("/versions/{version_id}", "patch"),
+        ("/versions/{version_id}/status", "patch"),
+        ("/versions/{version_id}/requirements", "post"),
+        ("/versions/{version_id}/requirements/{requirement_id}", "delete"),
+        ("/versions/{version_id}/requirements/move", "post"),
+        ("/versions/{version_id}/publish", "post"),
+    }
+    for path, method in routes:
+        schema = static["paths"][path][method]["responses"]["409"]["content"]["application/json"][
+            "schema"
+        ]
+        assert {part["$ref"] for part in schema["anyOf"]} == {
+            "#/components/schemas/RevisionConflictResponse",
+            "#/components/schemas/ErrorResponse",
+        }
+    check_schema = static["paths"]["/versions/{version_id}/publish/check"]["post"]["responses"][
+        "409"
+    ]["content"]["application/json"]["schema"]
+    assert check_schema == {"$ref": "#/components/schemas/ErrorResponse"}
+
+
+def test_notification_v2_contract_is_personal_and_nonnegative() -> None:
+    static = yaml.safe_load(CANONICAL.read_text(encoding="utf-8"))
+    for path, method, schema, field in (
+        ("/notifications/unread-count", "get", "NotificationUnreadCount", "unread_count"),
+        ("/notifications/read-all", "post", "NotificationReadAllResult", "updated_count"),
+    ):
+        operation = static["paths"][path][method]
+        assert operation["security"] == [{"bearerAuth": []}]
+        assert "DataScope" in operation["description"]
+        assert operation["responses"]["200"]["content"]["application/json"]["schema"] == {
+            "$ref": f"#/components/schemas/{schema}"
+        }
+        assert static["components"]["schemas"][schema]["required"] == [field]
+        assert static["components"]["schemas"][schema]["properties"][field]["minimum"] == 0

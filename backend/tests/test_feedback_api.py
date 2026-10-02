@@ -6,7 +6,7 @@ from unittest.mock import Mock
 
 import pytest
 import yaml
-from conftest import resolve_openapi_ref
+from conftest import assert_revision_conflict, resolve_openapi_ref
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event, select
 from sqlalchemy.orm import Session
@@ -245,6 +245,52 @@ def test_create_list_detail_and_optimistic_update(feedback_api):
     )
     assert stale.status_code == 409
     assert stale.json()["data"]["current_revision"] == 2
+
+
+def test_two_users_feedback_revision_contract_across_update_status_and_convert(feedback_api):
+    client, _session, headers, ids = feedback_api
+    created = _create(client, headers["cs"])
+    path = f"/api/v1/feedbacks/{created['id']}"
+    assert client.get(path, headers=headers["cs"]).json()["revision"] == 1
+    assert client.get(path, headers=headers["pm"]).json()["revision"] == 1
+    saved = client.patch(path, headers=headers["cs"], json={"title": "A 保存", "revision": 1})
+    assert saved.status_code == 200
+    assert_revision_conflict(
+        client.patch(path, headers=headers["pm"], json={"title": "B 保存", "revision": 1}),
+        revision=2,
+        updated_by=ids["cs"],
+    )
+    assert_revision_conflict(
+        client.patch(
+            f"{path}/status",
+            headers=headers["pm"],
+            json={"status": "ACCEPTED", "revision": 1},
+        ),
+        revision=2,
+        updated_by=ids["cs"],
+    )
+    assert_revision_conflict(
+        client.post(
+            f"{path}/convert",
+            headers=headers["pm"],
+            json={
+                "type": "CREATE_NEW",
+                "revision": 1,
+                "requirement_title": "正式需求",
+                "requirement_type": "FEATURE",
+                "priority": "P2",
+                "description": "正式描述",
+            },
+        ),
+        revision=2,
+        updated_by=ids["cs"],
+    )
+    invalid_transition = client.patch(
+        f"{path}/status",
+        headers=headers["pm"],
+        json={"status": "ONLINE", "revision": 2},
+    )
+    assert invalid_transition.status_code == 422
 
 
 def test_invalid_feedback_type_is_rejected(feedback_api):

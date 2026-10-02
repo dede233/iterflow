@@ -29,7 +29,7 @@ Redis 服务：iterflow-redis
 
 ## 1. 开发目标
 
-本仓库当前以已发布 `v1.5.0` 为稳定历史，以 master `f43f76145961b54d279cf3c85dd4afeb3e0e2d3f` 为 V1.6 开发基线。V1.6 目标与增量范围见 `docs/v1.6-plan.md`；现有能力见 `docs/v1.6-baseline-audit.md`。Phase 0 仅编辑文档。
+当前正式稳定版本为 `v1.6.0`，发布事实以 annotated tag 与 GitHub Release 为准；已发布 `v1.5.0` 保留为不可变历史发布版本。V1.6 当前阶段、开发基线、目标与验收状态以 `docs/v1.6-plan.md` 和 `TASKS.md` 为准；`docs/v1.6-baseline-audit.md` 保留 Phase 0 历史盘点，不代表后续阶段现状。
 
 完成标准不是“代码已生成”，而是：
 
@@ -58,7 +58,7 @@ Redis 服务：iterflow-redis
 
 ### 规格
 - `docs/`：V1.5 已发布主文档 PDF/Word、V1.6 规划和基线审计
-- `spec/openapi-v1.5.yaml`：当前工作树的静态 API 契约；正式 V1.5 快照应从 `v1.5.0` 标签读取，首次 V1.6 API 变更时另建 `spec/openapi-v1.6.yaml`
+- `spec/openapi-v1.6.yaml`：当前 V1.6 静态 API 契约；正式 V1.5 快照应从 `v1.5.0` 标签读取
 - `spec/status-machines.md`：状态机
 
 ## 3. 本地环境
@@ -287,11 +287,11 @@ alembic upgrade head
 
 ## 11. OpenAPI 变更
 
-V1.6 首次 API 修改时先建立 `spec/openapi-v1.6.yaml`。`spec/openapi-v1.5.yaml` 当前已有发布后补充，不继续将其当作 V1.6 增量文件；历史正式契约以 `v1.5.0` 标签为准。API 修改流程：
+V1.6 API 契约已在 Phase 2 建立为 `spec/openapi-v1.6.yaml`。`spec/openapi-v1.5.yaml` 当前已有发布后补充，不继续将其当作 V1.6 增量文件；历史正式契约以 `v1.5.0` 标签为准。API 修改流程：
 
 1. 先提出并评审 V1.6 静态契约，明确字段与错误行为。
-2. 更新 Backend schema/router/service，并校验运行时 OpenAPI 与 V1.6 静态契约一致；`backend/scripts/sync_openapi.py` 在首次变更时需要适配目标文件，避免覆盖 V1.5 历史文件。
-3. 将 `frontend/package.json` 的 `generate:api-types` 来源切换到 V1.6 契约，再生成 TypeScript DTO。
+2. 更新 Backend schema/router/service，并校验运行时 OpenAPI 与 V1.6 静态契约一致；`backend/scripts/sync_openapi.py` 已指向 V1.6 契约，避免覆盖 V1.5 历史文件。
+3. 使用 `frontend/package.json` 中已指向 V1.6 契约的 `generate:api-types` 生成 TypeScript DTO。
 4. 增加/更新测试，并执行 OpenAPI parity、`npm run check:api-types` 和构建门禁。
 
 核心契约变化需要用户确认。
@@ -341,7 +341,7 @@ edit_lock:{entity_type}:{id}
 - `display_name`
 - `active_at`（开始或最近一次 heartbeat 时刷新）
 
-实体类型为 FEEDBACK、REQUIREMENT、VERSION；当前实现 TTL 为 600 秒，接口见 `backend/app/api/v1/editing.py`。需求详情前端已有部分调用，但尚未对齐真正开始/结束编辑的时机，见 V1.6 Phase 1。
+实体类型为 FEEDBACK、REQUIREMENT、VERSION；当前实现 TTL 为 600 秒，接口见 `backend/app/api/v1/editing.py`。Phase 1 已在 Feedback/Requirement/Version 实际打开编辑时 start、编辑期间每 120 秒 heartbeat、关闭/保存/离页时 end；只浏览详情不 start，提示他人编辑但不强制排他。
 
 仅用于协作提示，不影响业务写入权限。
 

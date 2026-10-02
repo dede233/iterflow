@@ -47,7 +47,7 @@ class RoleManagementService:
     @staticmethod
     def _ensure_custom_role(role: Role) -> None:
         if role.is_system:
-            raise ConflictError("系统角色为只读基线, 禁止修改")
+            raise ConflictError("系统角色为只读基线, 禁止修改", code=40901)
 
     def _validate_permission_ids(self, permission_ids: list[int]) -> None:
         existing_ids = self.repo.existing_permission_ids(permission_ids)
@@ -67,7 +67,7 @@ class RoleManagementService:
     def create(self, payload: RoleCreate, operator_id: int) -> RoleOut:
         self._validate_permission_ids(payload.permission_ids)
         if self.repo.by_code(payload.code) is not None:
-            raise ConflictError("角色编码已存在")
+            raise ConflictError("角色编码已存在", code=40901)
         role = Role(
             code=payload.code,
             name=payload.name,
@@ -94,7 +94,7 @@ class RoleManagementService:
         if "code" in values:
             same_code_role = self.repo.by_code(values["code"])
             if same_code_role is not None and same_code_role.id != role_id:
-                raise ConflictError("角色编码已存在")
+                raise ConflictError("角色编码已存在", code=40901)
         values["updated_by"] = operator_id
         result = cast(
             CursorResult[Any],
@@ -152,7 +152,9 @@ class RoleManagementService:
         self._ensure_custom_role(role)
         user_count = self.repo.user_count(role_id)
         if user_count:
-            raise ConflictError("角色已分配给用户, 无法删除", {"user_count": user_count})
+            raise ConflictError(
+                "角色已分配给用户, 无法删除", {"user_count": user_count}, code=40901
+            )
         before = self._snapshot(role)
         self.db.execute(delete(RolePermission).where(RolePermission.role_id == role_id))
         self.db.delete(role)

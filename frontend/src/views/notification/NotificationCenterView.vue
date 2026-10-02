@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
-import { listNotifications, markNotificationRead } from '@/api/notifications'
+import { listNotifications } from '@/api/notifications'
 import type { NotificationItem } from '@/types/domain'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
 import AppIcon from '@/components/ui/AppIcon.vue'
+import { useNotificationsStore } from '@/stores/notifications'
 import { formatLocalDateTime } from '@/utils/dates'
 
 const router = useRouter()
@@ -15,14 +16,16 @@ const rows = ref<NotificationItem[]>([])
 const pendingId = ref<number | null>(null)
 const loading = ref(false)
 const failed = ref(false)
-const unreadCount = computed(() => rows.value.filter((item) => !item.read_at).length)
+const notifications = useNotificationsStore()
 
 function notificationIcon(entityType: string | null): string {
   return ({ FEEDBACK: 'feedback', REQUIREMENT: 'requirement', VERSION: 'version', RELEASE: 'release' } as Record<string, string>)[entityType ?? ''] ?? 'bell'
 }
 
 function notificationTarget(notification: NotificationItem): string | null {
-  if (notification.entity_type === 'RELEASE') return '/releases'
+  if (notification.entity_type === 'RELEASE') {
+    return notification.entity_id == null ? '/releases' : `/releases/${notification.entity_id}`
+  }
   if (notification.entity_id == null) return null
 
   switch (notification.entity_type) {
@@ -41,7 +44,8 @@ async function load(): Promise<void> {
   loading.value = true
   failed.value = false
   try {
-    rows.value = await listNotifications()
+    const [items] = await Promise.all([listNotifications(), notifications.refreshUnreadCount().catch(() => {})])
+    rows.value = items
   } catch {
     failed.value = true
   } finally {
@@ -50,10 +54,10 @@ async function load(): Promise<void> {
 }
 
 async function openNotification(notification: NotificationItem): Promise<void> {
-  if (pendingId.value !== null) return
+  if (pendingId.value !== null || notifications.markingAllRead) return
   pendingId.value = notification.id
   try {
-    await markNotificationRead(notification.id)
+    await notifications.markRead(notification.id, !notification.read_at)
     notification.read_at = new Date().toISOString()
     const target = notificationTarget(notification)
     if (target) {
@@ -68,6 +72,17 @@ async function openNotification(notification: NotificationItem): Promise<void> {
   }
 }
 
+async function readAll(): Promise<void> {
+  if (pendingId.value !== null || notifications.markingAllRead) return
+  try {
+    await notifications.markAllRead()
+    const readAt = new Date().toISOString()
+    for (const item of rows.value) if (!item.read_at) item.read_at = readAt
+  } catch {
+    ElMessage.error('通知操作失败，请重试')
+  }
+}
+
 onMounted(() => {
   void load()
 })
@@ -76,7 +91,10 @@ onMounted(() => {
 <template>
   <section class="page">
     <PageHeader title="通知中心" description="查看与你有关的反馈、需求和版本动态。" eyebrow="工作台">
-      <template #actions><span class="unread-count">{{ unreadCount }} 条未读</span></template>
+      <template #actions>
+        <span class="unread-count">{{ notifications.unreadCount }} 条未读</span>
+        <el-button v-if="notifications.unreadCount > 0" :loading="notifications.markingAllRead" :disabled="pendingId !== null || notifications.loading" @click="readAll">全部已读</el-button>
+      </template>
     </PageHeader>
     <ErrorState v-if="failed" title="通知加载失败" description="请检查网络后重试。" retry-label="重新加载" @retry="load" />
     <div v-else v-loading="loading" class="cards">
@@ -86,7 +104,7 @@ onMounted(() => {
           class="notification-card"
           :class="{ unread: !notification.read_at, navigable: notificationTarget(notification) !== null }"
           type="button"
-          :disabled="pendingId !== null"
+          :disabled="pendingId !== null || notifications.markingAllRead || notifications.loading"
           :aria-busy="pendingId === notification.id"
           @click="openNotification(notification)"
         >

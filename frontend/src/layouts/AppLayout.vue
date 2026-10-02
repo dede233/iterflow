@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import MobileBottomNav from '@/components/MobileBottomNav.vue'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import { useAuthStore } from '@/stores/auth'
+import { useNotificationsStore } from '@/stores/notifications'
 
+const notifications = useNotificationsStore()
+onMounted(() => { void notifications.refreshUnreadCount().catch(() => {}) })
 const auth = useAuthStore()
 const router = useRouter()
 interface NavigationItem {
@@ -80,6 +83,7 @@ async function logout(): Promise<void> {
           <router-link v-for="item in group.items" :key="item.to" :to="item.to" class="nav-link" :class="{ home: item.to === '/' }">
             <AppIcon :name="item.icon" />
             <span>{{ item.label }}</span>
+            <span v-if="item.to === '/notifications' && notifications.unreadCount > 0" class="notification-badge" :aria-label="`${notifications.unreadCount} 条未读通知`">{{ notifications.badgeText }}</span>
           </router-link>
         </div>
       </nav>
@@ -115,6 +119,7 @@ async function logout(): Promise<void> {
 .nav-group + .nav-group { margin-top: 14px; }
 .group { padding: 0 10px 6px; color: #64748b; font-size: 11px; font-weight: 600; letter-spacing: .06em; }
 .nav-link { display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 10px; border-radius: 8px; color: #cbd5e1; font-size: 14px; transition: background .15s, color .15s; }
+.notification-badge { margin-left: auto; flex-shrink: 0; min-width: 20px; padding: 1px 6px; border-radius: 999px; background: var(--if-brand-500); color: #fff; font-size: 11px; line-height: 18px; text-align: center; }
 .nav-link:hover { background: rgba(255, 255, 255, .06); color: #fff; }
 .nav-link.router-link-exact-active,
 .nav-link.router-link-active:not(.home) { background: rgba(91, 140, 255, .18); color: #fff; box-shadow: inset 3px 0 0 #5b8cff; }

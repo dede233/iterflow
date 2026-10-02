@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 import pytest
 import yaml
+from conftest import assert_revision_conflict
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event, func, select
 from sqlalchemy.exc import IntegrityError
@@ -233,6 +234,38 @@ def test_version_crud_and_optimistic_lock(ver_api):
     )
     assert stale.status_code == 409
     assert stale.json()["data"]["current_revision"] == 2
+
+
+def test_two_users_version_update_and_status_revision_contract(ver_api):
+    client, _session, headers, ids = ver_api
+    created = _version(client, headers["alice"])
+    path = f"/api/v1/versions/{created['id']}"
+    assert client.get(path, headers=headers["alice"]).json()["revision"] == 1
+    assert client.get(path, headers=headers["boss"]).json()["revision"] == 1
+    assert (
+        client.patch(
+            path, headers=headers["alice"], json={"name": "A 保存", "revision": 1}
+        ).status_code
+        == 200
+    )
+    assert_revision_conflict(
+        client.patch(path, headers=headers["boss"], json={"name": "B 保存", "revision": 1}),
+        revision=2,
+        updated_by=ids["alice"],
+    )
+    assert_revision_conflict(
+        client.patch(
+            f"{path}/status",
+            headers=headers["boss"],
+            json={"status": "DEVELOPING", "revision": 1},
+        ),
+        revision=2,
+        updated_by=ids["alice"],
+    )
+    illegal = client.patch(
+        f"{path}/status", headers=headers["boss"], json={"status": "READY", "revision": 2}
+    )
+    assert illegal.status_code == 409 and illegal.json()["code"] != 40910
 
 
 def test_version_status_machine(ver_api):
@@ -600,7 +633,7 @@ def test_released_version_is_frozen_for_relationship_changes(ver_api):
 
 
 def test_relationship_changes_use_version_revision_lock(ver_api):
-    client, session, headers, _ids = ver_api
+    client, session, headers, ids = ver_api
     v = _version(client, headers["alice"])
     first_requirement = _requirement(client, headers["alice"], title="并发需求一")
     second_requirement = _requirement(client, headers["alice"], title="并发需求二")
@@ -624,8 +657,7 @@ def test_relationship_changes_use_version_revision_lock(ver_api):
             "version_revision": v["revision"],
         },
     )
-    assert stale.status_code == 409
-    assert stale.json()["data"]["current_revision"] == first.json()["revision"]
+    assert_revision_conflict(stale, revision=first.json()["revision"], updated_by=ids["alice"])
     assert session.get(Version, v["id"]).revision == first.json()["revision"]
     active_ids = set(
         session.scalars(
@@ -635,6 +667,41 @@ def test_relationship_changes_use_version_revision_lock(ver_api):
         ).all()
     )
     assert active_ids == {first_requirement["id"]}
+
+
+def test_relation_remove_and_move_stale_requirement_metadata(ver_api):
+    client, _session, headers, ids = ver_api
+    source = _version(client, headers["alice"], version_no="V1.0.0")
+    target = _version(client, headers["alice"], version_no="V1.1.0")
+    requirement = _requirement(client, headers["alice"])
+    added = client.post(
+        f"/api/v1/versions/{source['id']}/requirements",
+        headers=headers["alice"],
+        json={
+            "requirement_id": requirement["id"],
+            "revision": 1,
+            "version_revision": 1,
+        },
+    )
+    assert added.status_code == 200
+    stale_remove = client.request(
+        "DELETE",
+        f"/api/v1/versions/{source['id']}/requirements/{requirement['id']}",
+        headers=headers["alice"],
+        json={"revision": 1, "version_revision": added.json()["revision"]},
+    )
+    assert_revision_conflict(stale_remove, revision=2, updated_by=ids["alice"])
+    stale_move = client.post(
+        f"/api/v1/versions/{target['id']}/requirements/move",
+        headers=headers["alice"],
+        json={
+            "requirement_id": requirement["id"],
+            "revision": 1,
+            "version_revision": target["revision"],
+            "reason": "转入下一版本",
+        },
+    )
+    assert_revision_conflict(stale_move, revision=2, updated_by=ids["alice"])
 
 
 def test_create_requirement_with_version_uses_version_service_rules(ver_api):

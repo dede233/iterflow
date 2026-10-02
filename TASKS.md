@@ -1,6 +1,6 @@
 # IterFlow V1.6 Development Tasks
 
-> 当前开发基线：master `f43f76145961b54d279cf3c85dd4afeb3e0e2d3f`。已发布稳定版 `v1.5.0` 不变。事实盘点见 `docs/v1.6-baseline-audit.md`，产品边界与验收见 `docs/v1.6-plan.md`。本清单只记录 V1.6 增量，不能替代代码与 CI 证据。
+> Phase 6 开发基线：master `b2b2dbe804231f946e54c0af596e3465290b83c3`。已发布稳定版 `v1.5.0` 不变。事实盘点见 `docs/v1.6-baseline-audit.md`，产品边界与验收见 `docs/v1.6-plan.md`。本清单只记录 V1.6 增量，不能替代代码与 CI 证据。
 
 ## V1.6 Baseline — Already Completed
 
@@ -22,46 +22,48 @@
 
 ## Phase 1 — Editing Presence（P0）
 
-- [ ] 梳理 Feedback/Requirement/Version 的实际编辑入口与退出边界；修正需求详情当前“仅打开详情就 start”的行为。
-- [ ] 编辑开始时 start，编辑期间 heartbeat，关闭 Dialog/离页时 end；展示已有编辑者的姓名与提示。
-- [ ] 验证双用户、刷新/网络失败、TTL 到期、无权限与 DataScope；Presence 不阻断写入。
+- [x] 梳理 Feedback/Requirement/Version 的实际编辑入口与退出边界；修正需求详情当前“仅打开详情就 start”的行为。
+- [x] 编辑开始时 start，编辑期间 heartbeat，关闭 Dialog/离页时 end；展示已有编辑者的姓名与提示。
+- [x] 验证双用户、刷新/网络失败、TTL 到期、无权限与 DataScope；Presence 不阻断写入。
 
 ## Phase 2 — Revision Conflict UX（P0）
 
-- [ ] 逐个写接口核对 409 的 `current_revision`、更新时间/更新人及可安全展示的最新摘要；契约先行。
-- [ ] 冲突界面展示服务器版本，提供重新加载与关闭后人工处理；必要时保留本地输入供复制。
-- [ ] 验证双用户旧 revision 返回 409；不自动重试覆盖，不提供强制覆盖。
+- [x] 逐个写接口核对 409 的 `current_revision`、更新时间/更新人及可安全展示的最新摘要；契约先行。
+- [x] 冲突界面展示服务器版本，提供重新加载与关闭后人工处理；必要时保留本地输入供复制。
+- [x] 验证双用户旧 revision 返回 409；不自动重试覆盖，不提供强制覆盖。
 
 ## Phase 3 — Notification V2（P1）
 
-- [ ] 先确定 OpenAPI，再实现当前用户的未读计数与全部已读接口，并测试所有权隔离。
-- [ ] 桌面导航、移动底部导航添加 badge，通知中心显示总数与全部已读。
-- [ ] 保留先 mark read 后 navigation，处理历史通知与权限拦截。
+- [x] 先确定 OpenAPI，再实现当前用户的未读计数与全部已读接口，并测试所有权隔离。
+- [x] 桌面导航、移动底部导航添加 badge，通知中心显示总数与全部已读。
+- [x] 保留先 mark read 后 navigation，处理历史通知与权限拦截。
 
 ## Phase 4 — Release Detail（P1）
 
-- [ ] 实现只读 `/releases/:id`，以 `rd.release.view` 及现有数据范围校验为门禁，显示发布元数据与备注。
-- [ ] 只有 `rd.version.view` 时提供版本链接；有 Release ID 的通知进入详情，无 ID 的进入列表。
-- [ ] 不增加 Release 编辑、删除或状态迁移。
+- [x] 实现只读 `/releases/:id`，以 `rd.release.view` 及现有数据范围校验为门禁，显示发布元数据与备注。
+- [x] 只有 `rd.version.view` 时提供版本链接；有 Release ID 的通知进入详情，无 ID 的进入列表。
+- [x] 不增加 Release 编辑、删除或状态迁移。
 
 ## Phase 5 — List Productivity（P1）
 
-- [ ] Requirement 按编号/标题、status、priority、source、current_version_id、owner_id 筛选。
-- [ ] Version 按版本号/名称、status、计划发布日期范围、owner_id 筛选。
-- [ ] Release 前端先接入已有 `version_id` 筛选；评估日期范围成本。
-- [ ] 新查询后端强制 DataScope；桌面筛选栏与移动筛选抽屉均覆盖测试。
+- [x] Requirement 按编号/标题、status、priority、source、current_version_id、owner_id 筛选。
+- [x] Version 按版本号/名称、status、计划发布日期范围、owner_id 筛选。
+- [x] Release 前端接入已有 `version_id` 筛选；日期范围成本评估结论为 **DEFERRED**。Phase 5 仅接入现有 `version_id`；日期范围不是必需增量，本阶段不扩大 Release API。
+- [x] 新查询后端强制 DataScope；桌面筛选栏与移动筛选抽屉均覆盖测试。
 
-## Phase 6 — Dashboard Activity（P2，可延期）
+## Phase 6 — Dashboard Activity（P2，完成）
 
-- [ ] 评估复用 OperationLog/Audit 的权限与对象级 DataScope，明确可见性证明。
-- [ ] 若可安全实现，最多呈现 10–20 条相关活动；否则延期且不得绕过权限。
+- [x] 评估复用 OperationLog/Audit 的权限与对象级 DataScope，明确可见性证明。
+- [x] 若可安全实现，最多呈现 10–20 条相关活动；否则延期且不得绕过权限。
 
-## Phase 7 — Regression & Release Readiness
+实际结论：**SAFE TO IMPLEMENT**。固定最多 15 条，复用 OperationLog / AuditRepository 对象级可见性；无新权限、无 Migration。可见性证明见 `docs/v1.6-phase6-activity-visibility.md`。
 
-- [ ] 回归完整主链、事务与状态机、revision 冲突、权限/数据范围及通知隔离。
-- [ ] 通过后端全量与 PostgreSQL-only、Ruff/format/Mypy/compileall、Alembic check、OpenAPI parity。
-- [ ] 通过前端 Vitest/API 类型/build/bundle、现有 Hash Router Playwright 与五视口验收。
-- [ ] 通过六项 CI，检查首次运行结果及 flake；独立终审后再规划 1.6.0 版本号与发布标签。
+## Phase 7 — Regression & Release Readiness（完成）
+
+- [x] 回归完整主链、事务与状态机、revision 冲突、权限/数据范围及通知隔离。
+- [x] 通过后端全量与 PostgreSQL-only、Ruff/format/Mypy/compileall、Alembic check、OpenAPI parity。
+- [x] 通过前端 Vitest/API 类型/build/bundle、现有 Hash Router Playwright 与五视口验收。
+- [x] 通过六项 CI，检查首次运行结果及 flake；独立终审后再规划 1.6.0 版本号与发布标签。
 
 ## 冻结的非范围
 

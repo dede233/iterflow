@@ -57,7 +57,7 @@ class SystemCatalogService:
 
     def create_system(self, payload: BusinessSystemCreate, operator_id: int) -> BusinessSystemOut:
         if self.repo.system_by_code(payload.code):
-            raise ConflictError("系统编码已存在")
+            raise ConflictError("系统编码已存在", code=40901)
         item = BusinessSystem(
             **payload.model_dump(), created_by=operator_id, updated_by=operator_id
         )
@@ -71,7 +71,7 @@ class SystemCatalogService:
             self.db.commit()
         except IntegrityError as exc:
             self.db.rollback()
-            raise ConflictError("系统编码已存在") from exc
+            raise ConflictError("系统编码已存在", code=40901) from exc
         self.db.refresh(item)
         return self._system_out(item)
 
@@ -86,7 +86,7 @@ class SystemCatalogService:
         if "code" in changes:
             existing = self.repo.system_by_code(changes["code"])
             if existing is not None and existing.id != system_id:
-                raise ConflictError("系统编码已存在")
+                raise ConflictError("系统编码已存在", code=40901)
         try:
             changed = self.repo.update_system(
                 system_id, payload.revision, changes | {"updated_by": operator_id}
@@ -107,7 +107,7 @@ class SystemCatalogService:
             self.db.commit()
         except IntegrityError as exc:
             self.db.rollback()
-            raise ConflictError("系统编码已存在") from exc
+            raise ConflictError("系统编码已存在", code=40901) from exc
         self.db.refresh(item)
         return self._system_out(item)
 
@@ -117,7 +117,7 @@ class SystemCatalogService:
         if self.db.get(BusinessSystem, system_id) is None:
             raise NotFoundError("所属系统不存在")
         if self.repo.module_by_code(system_id, payload.code):
-            raise ConflictError("该系统下的模块编码已存在")
+            raise ConflictError("该系统下的模块编码已存在", code=40901)
         item = BusinessModule(
             system_id=system_id,
             **payload.model_dump(),
@@ -134,7 +134,7 @@ class SystemCatalogService:
             self.db.commit()
         except IntegrityError as exc:
             self.db.rollback()
-            raise ConflictError("该系统下的模块编码已存在") from exc
+            raise ConflictError("该系统下的模块编码已存在", code=40901) from exc
         self.db.refresh(item)
         return self._module_out(item)
 
@@ -149,7 +149,7 @@ class SystemCatalogService:
         if "code" in changes:
             existing = self.repo.module_by_code(item.system_id, changes["code"])
             if existing is not None and existing.id != module_id:
-                raise ConflictError("该系统下的模块编码已存在")
+                raise ConflictError("该系统下的模块编码已存在", code=40901)
         try:
             changed = self.repo.update_module(
                 module_id, payload.revision, changes | {"updated_by": operator_id}
@@ -170,6 +170,6 @@ class SystemCatalogService:
             self.db.commit()
         except IntegrityError as exc:
             self.db.rollback()
-            raise ConflictError("该系统下的模块编码已存在") from exc
+            raise ConflictError("该系统下的模块编码已存在", code=40901) from exc
         self.db.refresh(item)
         return self._module_out(item)

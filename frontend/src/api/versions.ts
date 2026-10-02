@@ -5,12 +5,13 @@ import type {
   VersionCreatePayload,
   VersionItem,
   VersionPage,
+  VersionListParams,
   VersionRequirementsResult,
   VersionStatusChangePayload,
   VersionUpdatePayload,
 } from '@/types/domain'
 
-export const listVersions = (params: { page?: number; page_size?: number } = {}) =>
+export const listVersions = (params: VersionListParams = {}) =>
   api.get<VersionPage>('/versions', { params }).then((r) => r.data)
 
 export const getVersion = (id: number) =>
@@ -20,7 +21,7 @@ export const createVersion = (payload: VersionCreatePayload) =>
   api.post<VersionItem>('/versions', payload).then((r) => r.data)
 
 export const updateVersion = (id: number, payload: VersionUpdatePayload) =>
-  api.patch<VersionItem>(`/versions/${id}`, payload).then((r) => r.data)
+  api.patch<VersionItem>(`/versions/${id}`, payload, { skipRevisionConflictAlert: true }).then((r) => r.data)
 
 export const changeVersionStatus = (
   id: number,
@@ -29,7 +30,7 @@ export const changeVersionStatus = (
   reason?: string | null,
 ) =>
   api
-    .patch<VersionItem>(`/versions/${id}/status`, { status, revision, reason: reason ?? null })
+    .patch<VersionItem>(`/versions/${id}/status`, { status, revision, reason: reason ?? null }, { skipRevisionConflictAlert: true })
     .then((r) => r.data)
 
 // --- version <-> requirement relationship ---
@@ -47,7 +48,7 @@ export const addVersionRequirement = (
       requirement_id: requirementId,
       revision,
       version_revision: versionRevision,
-    })
+    }, { skipRevisionConflictAlert: true })
     .then((r) => r.data)
 
 export const moveVersionRequirement = (
@@ -63,7 +64,7 @@ export const moveVersionRequirement = (
       revision,
       version_revision: versionRevision,
       reason,
-    })
+    }, { skipRevisionConflictAlert: true })
     .then((r) => r.data)
 
 export const removeVersionRequirement = (
@@ -76,6 +77,7 @@ export const removeVersionRequirement = (
   api
     .delete<VersionItem>(`/versions/${id}/requirements/${requirementId}`, {
       data: { revision, version_revision: versionRevision, reason: reason ?? null },
+      skipRevisionConflictAlert: true,
     })
     .then((r) => r.data)
 
@@ -95,5 +97,5 @@ export const publishVersion = (id: number, releaseNotes: string, revision: numbe
       released_at: new Date().toISOString(),
       release_notes: releaseNotes,
       revision,
-    })
+    }, { skipRevisionConflictAlert: true })
     .then((r) => r.data)

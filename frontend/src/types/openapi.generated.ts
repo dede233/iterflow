@@ -294,7 +294,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 需求列表 */
+        /**
+         * 需求列表
+         * @description 所有筛选条件与 Requirement DataScope 使用 AND 组合。列表与 total 使用相同条件。keyword trim 后按编号/标题做大小写不敏感的部分匹配。空白视为无筛选。current_version_id 与 owner_id 只按需求字段过滤。不要求额外权限或验证关联对象存在。
+         */
         get: operations["list_requirements_api_v1_requirements_get"];
         put?: never;
         /**
@@ -370,7 +373,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 版本列表 */
+        /**
+         * 版本列表
+         * @description 所有筛选条件与 Version DataScope 使用 AND 组合。列表与 total 使用相同条件。keyword trim 后按版本号/名称做大小写不敏感的部分匹配。空白视为无筛选。计划发布日期范围包含两端。可只指定一端。from 晚于 to 返回 validation 422。owner_id 只按版本字段过滤。不要求额外 User 权限。
+         */
         get: operations["list_versions_api_v1_versions_get"];
         put?: never;
         /** 创建版本 */
@@ -568,6 +574,46 @@ export interface paths {
         get: operations["list_notifications_api_v1_notifications_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notifications/unread-count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 当前用户真实未读总数
+         * @description 仅当前登录用户自己的通知; 不依赖业务权限或 DataScope。
+         */
+        get: operations["unread_count_api_v1_notifications_unread_count_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notifications/read-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 当前用户全部通知已读
+         * @description 仅当前登录用户自己的通知; 不依赖业务权限或 DataScope。
+         */
+        post: operations["read_all_api_v1_notifications_read_all_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1285,6 +1331,21 @@ export interface components {
         DashboardActiveVersionStatus: "PLANNING" | "DEVELOPING" | "TESTING" | "READY";
         /** @enum {string} */
         DashboardDataScope: "SELF" | "ALL";
+        /** @enum {string} */
+        DashboardActivityEntityType: "FEEDBACK" | "REQUIREMENT" | "VERSION" | "RELEASE";
+        /** DashboardActivityItem */
+        DashboardActivityItem: {
+            entity_type: components["schemas"]["DashboardActivityEntityType"];
+            /** Entity Id */
+            entity_id: number;
+            /** Action */
+            action: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         /** DashboardFeedbackOverview */
         DashboardFeedbackOverview: {
             /** Pending Count */
@@ -1303,6 +1364,8 @@ export interface components {
             requirements: components["schemas"]["DashboardRequirementOverview"] | null;
             versions: components["schemas"]["DashboardVersionOverview"] | null;
             releases: components["schemas"]["DashboardReleaseOverview"] | null;
+            /** Activities */
+            activities: components["schemas"]["DashboardActivityItem"][];
         };
         /** DashboardReleaseItem */
         DashboardReleaseItem: {
@@ -1666,11 +1729,21 @@ export interface components {
              */
             created_at: string;
         };
+        /** NotificationReadAllResult */
+        NotificationReadAllResult: {
+            /** Updated Count */
+            updated_count: number;
+        };
         /**
          * NotificationType
          * @enum {string}
          */
         NotificationType: "SYSTEM" | "FEEDBACK" | "REQUIREMENT" | "VERSION" | "RELEASE";
+        /** NotificationUnreadCount */
+        NotificationUnreadCount: {
+            /** Unread Count */
+            unread_count: number;
+        };
         /** PermissionOut */
         PermissionOut: {
             /** Id */
@@ -1912,6 +1985,28 @@ export interface components {
             acceptance_criteria?: string | null;
             /** Revision */
             revision: number;
+        };
+        /** RevisionConflictData */
+        RevisionConflictData: {
+            /** Current Revision */
+            current_revision: number | null;
+            /** Current Updated At */
+            current_updated_at: string | null;
+            /** Current Updated By */
+            current_updated_by: number | null;
+        };
+        /** RevisionConflictResponse */
+        RevisionConflictResponse: {
+            /**
+             * Code
+             * @constant
+             */
+            code: 40910;
+            /** Message */
+            message: string;
+            data: components["schemas"]["RevisionConflictData"];
+            /** Request Id */
+            request_id: string | null;
         };
         /** RoleCreate */
         RoleCreate: {
@@ -2756,13 +2851,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description 业务状态或 revision 冲突 */
+            /** @description revision CAS 冲突 (40910) 或该操作的业务冲突 */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Validation Error */
@@ -2827,13 +2922,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description 业务状态或 revision 冲突 */
+            /** @description revision CAS 冲突 (40910) 或该操作的业务冲突 */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3161,13 +3256,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description 业务状态或 revision 冲突 */
+            /** @description revision CAS 冲突 (40910) 或该操作的业务冲突 */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3186,6 +3281,12 @@ export interface operations {
             query?: {
                 page?: number;
                 page_size?: number;
+                keyword?: string | null;
+                status?: components["schemas"]["RequirementStatus"] | null;
+                priority?: components["schemas"]["Priority"] | null;
+                source?: components["schemas"]["RequirementSource"] | null;
+                current_version_id?: number | null;
+                owner_id?: number | null;
             };
             header?: never;
             path?: never;
@@ -3269,6 +3370,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description revision CAS 冲突 (40910) 或该操作的业务冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3382,13 +3492,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description 业务状态或 revision 冲突 */
+            /** @description revision CAS 冲突 (40910) 或该操作的业务冲突 */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3502,13 +3612,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description 业务状态或 revision 冲突 */
+            /** @description revision CAS 冲突 (40910) 或该操作的业务冲突 */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3527,6 +3637,11 @@ export interface operations {
             query?: {
                 page?: number;
                 page_size?: number;
+                keyword?: string | null;
+                status?: components["schemas"]["VersionStatus"] | null;
+                planned_release_from?: string | null;
+                planned_release_to?: string | null;
+                owner_id?: number | null;
             };
             header?: never;
             path?: never;
@@ -3723,13 +3838,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description 业务状态或 revision 冲突 */
+            /** @description revision CAS 冲突 (40910) 或该操作的业务冲突 */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3794,13 +3909,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description 业务状态或 revision 冲突 */
+            /** @description revision CAS 冲突 (40910) 或该操作的业务冲突 */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3914,13 +4029,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description 业务状态或 revision 冲突 */
+            /** @description revision CAS 冲突 (40910) 或该操作的业务冲突 */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3985,13 +4100,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description 业务状态或 revision 冲突 */
+            /** @description revision CAS 冲突 (40910) 或该操作的业务冲突 */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Validation Error */
@@ -4057,13 +4172,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description 业务状态或 revision 冲突 */
+            /** @description revision CAS 冲突 (40910) 或该操作的业务冲突 */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Validation Error */
@@ -4195,13 +4310,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description 业务状态或 revision 冲突 */
+            /** @description revision CAS 冲突 (40910) 或该操作的业务冲突 */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Validation Error */
@@ -4360,6 +4475,64 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unread_count_api_v1_notifications_unread_count_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationUnreadCount"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    read_all_api_v1_notifications_read_all_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationReadAllResult"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

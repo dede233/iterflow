@@ -2,10 +2,11 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.api.deps import ensure_all_permissions, require_all_permissions, require_permission
-from app.api.openapi import api_error_responses
+from app.api.openapi import api_revision_conflict_responses
 from app.core.database import get_db
 from app.core.exceptions import NotFoundError
 from app.models.entities import Requirement, User
+from app.models.enums import Priority, RequirementSource, RequirementStatus
 from app.repositories.requirement_repository import RequirementRepository
 from app.repositories.user_repository import UserRepository
 from app.repositories.version_repository import VersionRepository
@@ -39,21 +40,47 @@ def _ensure_scoped_version(db: Session, user: User, version_id: int | None) -> N
         raise NotFoundError("版本不存在")
 
 
-@router.get("", response_model=RequirementPage)
+@router.get(
+    "",
+    response_model=RequirementPage,
+    description=(
+        "所有筛选条件与 Requirement DataScope 使用 AND 组合。列表与 total 使用相同条件。"
+        "keyword trim 后按编号/标题做大小写不敏感的部分匹配。空白视为无筛选。"
+        "current_version_id 与 owner_id 只按需求字段过滤。不要求额外权限或验证关联对象存在。"
+    ),
+)
 def list_requirements(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    keyword: str | None = Query(None, max_length=200),
+    status: RequirementStatus | None = Query(None),
+    priority: Priority | None = Query(None),
+    source: RequirementSource | None = Query(None),
+    current_version_id: int | None = Query(None, ge=1),
+    owner_id: int | None = Query(None, ge=1),
     db: Session = Depends(get_db),
     user: User = Depends(require_permission("rd.requirement.view")),
 ):
     scope = UserRepository(db).data_scope(user.id)
-    items, total = RequirementRepository(db).list_scoped(user.id, scope, page, page_size)
+    items, total = RequirementRepository(db).list_scoped(
+        user.id,
+        scope,
+        page,
+        page_size,
+        keyword=keyword,
+        status=status,
+        priority=priority,
+        source=source,
+        current_version_id=current_version_id,
+        owner_id=owner_id,
+    )
     return {"items": items, "page": page, "page_size": page_size, "total": total}
 
 
 @router.post(
     "",
     response_model=RequirementOut,
+    responses=api_revision_conflict_responses(409),
     description=(
         "普通创建需要 rd.requirement.create。指定 version_id 与 version_revision 时还需要 "
         "rd.version.edit 和 rd.requirement.view。目标版本同时受 Version DataScope 限制。"
@@ -105,7 +132,7 @@ def list_requirement_feedbacks(
 @router.patch(
     "/{requirement_id}",
     response_model=RequirementOut,
-    responses=api_error_responses(404, 409),
+    responses=api_revision_conflict_responses(404, 409),
 )
 def update_requirement(
     requirement_id: int,
@@ -120,7 +147,7 @@ def update_requirement(
 @router.patch(
     "/{requirement_id}/status",
     response_model=RequirementOut,
-    responses=api_error_responses(404, 409),
+    responses=api_revision_conflict_responses(404, 409),
 )
 def change_status(
     requirement_id: int,

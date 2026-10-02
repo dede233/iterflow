@@ -1,7 +1,8 @@
 import axios from 'axios'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { clearStoredTokens, getStoredTokens, setStoredTokens } from '@/auth/session'
 import type { TokenPair } from '@/types/auth'
+import { isRevisionConflict } from '@/types/revisionConflict'
 
 declare module 'axios' {
   export interface AxiosRequestConfig {
@@ -10,9 +11,10 @@ declare module 'axios' {
     skipAuth?: boolean
     // Do not attempt a silent refresh + replay when the response is 401.
     skipAuthRefresh?: boolean
-    // Do not pop the global edit-conflict dialog on 409 (the caller renders the
-    // conflict/checks inline instead, e.g. the publish pre-check preview).
+    // Caller handles all HTTP 409 alerts (for example, publish pre-check).
     skipConflictAlert?: boolean
+    // Caller handles 40910 with a dedicated dialog; business conflicts still alert.
+    skipRevisionConflictAlert?: boolean
   }
 }
 
@@ -79,7 +81,13 @@ api.interceptors.response.use(
       }
     }
     if (error.response?.status === 409 && !originalRequest?.skipConflictAlert) {
-      await ElMessageBox.alert(error.response.data?.message ?? '数据已被其他用户修改，请刷新后重试', '编辑冲突', { type: 'warning' })
+      if (isRevisionConflict(error)) {
+        if (!originalRequest?.skipRevisionConflictAlert) {
+          ElMessage.warning('服务器版本已变化，请查看冲突详情')
+        }
+      } else {
+        ElMessage.warning(error.response.data?.message ?? '当前操作存在业务冲突')
+      }
     } else if (error.response?.status === 403) {
       ElMessage.error('你没有权限执行该操作')
     }

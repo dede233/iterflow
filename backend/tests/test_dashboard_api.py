@@ -14,6 +14,7 @@ from app.core.security import create_access_token
 from app.main import app
 from app.models.entities import (
     Feedback,
+    OperationLog,
     Permission,
     Release,
     Requirement,
@@ -52,6 +53,7 @@ def dashboard_api(tmp_path: Path) -> Iterator[DashboardFixture]:
         Requirement.__table__,
         Version.__table__,
         Release.__table__,
+        OperationLog.__table__,
     ):
         table.create(engine)
 
@@ -65,6 +67,12 @@ def dashboard_api(tmp_path: Path) -> Iterator[DashboardFixture]:
         "release_self": (7, DataScope.SELF, {"dashboard.view", "rd.release.view"}),
         "wildcard": (8, DataScope.ALL, {"*"}),
         "other": (9, DataScope.SELF, set()),
+        "audit_only": (10, DataScope.ALL, {"dashboard.view", "sys.audit.view"}),
+        "feedback_audit": (
+            11,
+            DataScope.ALL,
+            {"dashboard.view", "rd.feedback.view", "sys.audit.view"},
+        ),
     }
     permission_codes = sorted(
         {code for _id, _scope, codes in user_definitions.values() for code in codes}
@@ -246,7 +254,8 @@ def dashboard_api(tmp_path: Path) -> Iterator[DashboardFixture]:
                     version_no=f"V-{version_id}",
                     name=f"Released {version_id}",
                     status=VersionStatus.RELEASED,
-                    owner_id=users["release_self"].id,
+                    owner_id=users["release_self"].id if offset % 2 == 0 else users["other"].id,
+                    created_by=users["release_self"].id if offset % 2 else users["other"].id,
                     created_at=base_time,
                     updated_at=base_time,
                 )
@@ -280,9 +289,53 @@ def dashboard_api(tmp_path: Path) -> Iterator[DashboardFixture]:
                     released_at=base_time + timedelta(days=10),
                     result=ReleaseResult.SUCCESS,
                     release_notes="other released",
+                    created_by=users["release_self"].id,
                 ),
             ]
         )
+        log_id = 1
+        for entity_type, entity_ids in (
+            ("FEEDBACK", range(1, 6)),
+            ("REQUIREMENT", range(10, 15)),
+            ("VERSION", [*range(20, 30), *range(40, 47)]),
+            ("RELEASE", range(50, 57)),
+            ("USER", [9]),
+            ("AUTH", [9]),
+            ("ROLE", [101]),
+            ("SYSTEM", [1]),
+            ("DICTIONARY", [1]),
+            ("BUSINESS_SYSTEM", [1]),
+            ("BUSINESS_MODULE", [1]),
+        ):
+            for entity_id in entity_ids:
+                session.add(
+                    OperationLog(
+                        id=log_id,
+                        entity_type=entity_type,
+                        entity_id=entity_id,
+                        action="UPDATE",
+                        created_at=base_time,
+                        operator_id=users["other"].id,
+                        before_data={"secret_marker": "sensitive-before"},
+                        after_data={"secret_marker": "sensitive-after"},
+                        request_id="private-request",
+                        ip_address="192.0.2.1",
+                        user_agent="private-agent",
+                    )
+                )
+                log_id += 1
+        for entity_type in ("FEEDBACK", "REQUIREMENT", "VERSION", "RELEASE"):
+            for entity_id in (None, 999999):
+                session.add(
+                    OperationLog(
+                        id=log_id,
+                        entity_type=entity_type,
+                        entity_id=entity_id,
+                        action="CREATE",
+                        created_at=base_time + timedelta(days=1),
+                    )
+                )
+                log_id += 1
         session.commit()
 
         headers = {
@@ -314,6 +367,7 @@ def test_dashboard_permission_does_not_replace_domain_permissions(
         "requirements": None,
         "versions": None,
         "releases": None,
+        "activities": [],
     }
 
 
@@ -401,6 +455,7 @@ def test_dashboard_openapi_contract_is_synchronized():
         "requirements",
         "versions",
         "releases",
+        "activities",
     ]
 
     spec_dir = Path(__file__).resolve().parents[2] / "spec"
@@ -418,3 +473,196 @@ def test_dashboard_openapi_contract_is_synchronized():
             "versions",
             "releases",
         ]
+        assert "activities" not in schema["properties"]
+
+    v16 = yaml.safe_load((spec_dir / "openapi-v1.6.yaml").read_text(encoding="utf-8"))
+    schema = v16["components"]["schemas"]["DashboardOverviewOut"]
+    assert schema == dynamic_schema
+    assert schema["properties"]["activities"]["maxItems"] == 15
+    activity = v16["components"]["schemas"]["DashboardActivityItem"]
+    assert set(activity["properties"]) == {"entity_type", "entity_id", "action", "created_at"}
+    assert v16["components"]["schemas"]["DashboardActivityEntityType"]["enum"] == [
+        "FEEDBACK",
+        "REQUIREMENT",
+        "VERSION",
+        "RELEASE",
+    ]
+
+
+@pytest.mark.parametrize(
+    ("user", "entity_type", "visible_ids"),
+    [
+        ("feedback_all", "FEEDBACK", {1, 2, 3, 4, 5}),
+        ("feedback_self", "FEEDBACK", {1, 2, 3}),
+        ("requirement_self", "REQUIREMENT", {10, 11, 13, 14}),
+        ("version_self", "VERSION", set(range(20, 29))),
+        ("release_self", "RELEASE", set(range(50, 56))),
+    ],
+)
+def test_activity_domain_permission_and_object_scope(dashboard_api, user, entity_type, visible_ids):
+    client, headers = dashboard_api
+    response = client.get("/api/v1/dashboard/overview", headers=headers[user])
+    assert response.status_code == 200
+    items = response.json()["activities"]
+    assert {item["entity_type"] for item in items} == {entity_type}
+    assert {item["entity_id"] for item in items} == visible_ids
+    assert [item["entity_id"] for item in items] == sorted(visible_ids, reverse=True)
+
+
+def test_activity_business_permission_is_required_even_when_objects_are_self_visible(dashboard_api):
+    client, headers = dashboard_api
+    session = app.dependency_overrides[get_db]()
+    session.get(Feedback, 1).submitter_id = 5
+    session.get(Version, 20).owner_id = 5
+    session.get(Version, 40).owner_id = 5
+    session.commit()
+    items = client.get("/api/v1/dashboard/overview", headers=headers["requirement_self"]).json()[
+        "activities"
+    ]
+    assert items
+    assert {item["entity_type"] for item in items} == {"REQUIREMENT"}
+
+
+@pytest.mark.parametrize(
+    ("user", "role_id", "entity_type", "visible_ids"),
+    [
+        ("requirement_self", 105, "REQUIREMENT", set(range(10, 15))),
+        ("version_self", 106, "VERSION", {*range(22, 30), *range(40, 47)}),
+        ("release_self", 107, "RELEASE", set(range(50, 57))),
+    ],
+)
+def test_activity_all_scope_in_each_business_domain(
+    dashboard_api, user, role_id, entity_type, visible_ids
+):
+    client, headers = dashboard_api
+    session = app.dependency_overrides[get_db]()
+    session.get(Role, role_id).data_scope = DataScope.ALL
+    session.commit()
+    response = client.get("/api/v1/dashboard/overview", headers=headers[user])
+    assert response.status_code == 200
+    items = response.json()["activities"]
+    assert {item["entity_type"] for item in items} == {entity_type}
+    assert [item["entity_id"] for item in items] == sorted(visible_ids, reverse=True)
+
+
+def test_activity_has_no_audit_or_user_permission_dependency_and_never_returns_sensitive_fields(
+    dashboard_api,
+):
+    client, headers = dashboard_api
+    without_audit = client.get(
+        "/api/v1/dashboard/overview", headers=headers["feedback_all"]
+    ).json()["activities"]
+    with_audit = client.get("/api/v1/dashboard/overview", headers=headers["feedback_audit"]).json()[
+        "activities"
+    ]
+    assert without_audit == with_audit
+    assert without_audit
+    for item in without_audit:
+        assert set(item) == {"entity_type", "entity_id", "action", "created_at"}
+        assert isinstance(item["entity_id"], int)
+        assert item["action"] == "UPDATE"
+    assert (
+        client.get("/api/v1/dashboard/overview", headers=headers["audit_only"]).json()["activities"]
+        == []
+    )
+
+
+def test_wildcard_activity_excludes_system_null_and_missing_business_entities(dashboard_api):
+    client, headers = dashboard_api
+    session = app.dependency_overrides[get_db]()
+    for index, (entity_type, entity_id) in enumerate(
+        (("FEEDBACK", 1), ("REQUIREMENT", 10), ("VERSION", 20), ("RELEASE", 50))
+    ):
+        session.add(
+            OperationLog(
+                id=2000 + index,
+                entity_type=entity_type,
+                entity_id=entity_id,
+                action="CREATE",
+                created_at=datetime(2026, 10, 1, tzinfo=UTC),
+            )
+        )
+    session.commit()
+    items = client.get("/api/v1/dashboard/overview", headers=headers["wildcard"]).json()[
+        "activities"
+    ]
+    assert {item["entity_type"] for item in items} == {
+        "FEEDBACK",
+        "REQUIREMENT",
+        "VERSION",
+        "RELEASE",
+    }
+    assert all(item["entity_id"] is not None and item["entity_id"] != 999999 for item in items)
+
+
+def test_activity_returns_latest_fifteen_with_stable_tie_order(dashboard_api):
+    client, headers = dashboard_api
+    session = app.dependency_overrides[get_db]()
+    base_time = datetime(2026, 10, 1, tzinfo=UTC)
+    for index in range(20):
+        session.add(
+            OperationLog(
+                id=1000 + index,
+                entity_type="FEEDBACK",
+                entity_id=index % 5 + 1,
+                action=f"FUTURE_ACTION_{index}",
+                created_at=base_time + timedelta(minutes=index // 2),
+            )
+        )
+    session.commit()
+    items = client.get("/api/v1/dashboard/overview", headers=headers["feedback_all"]).json()[
+        "activities"
+    ]
+    assert len(items) == 15
+    assert [item["action"] for item in items] == [f"FUTURE_ACTION_{i}" for i in range(19, 4, -1)]
+
+
+def test_empty_activity_preserves_authorized_overview_sections(dashboard_api):
+    client, headers = dashboard_api
+    session = app.dependency_overrides[get_db]()
+    session.query(OperationLog).delete()
+    session.commit()
+    overview = client.get("/api/v1/dashboard/overview", headers=headers["wildcard"]).json()
+    assert overview["activities"] == []
+    assert all(
+        overview[name] is not None for name in ("feedback", "requirements", "versions", "releases")
+    )
+
+
+def test_audit_endpoints_still_require_audit_permission_and_retain_details(dashboard_api):
+    client, headers = dashboard_api
+    for path in ("/api/v1/audits", "/api/v1/audits/1"):
+        assert client.get(path, headers=headers["feedback_all"]).status_code == 403
+    audit = client.get("/api/v1/audits/1", headers=headers["feedback_audit"])
+    assert audit.status_code == 200
+    assert audit.json()["operator"]["username"] == "other"
+    assert audit.json()["before"] == {"secret_marker": "sensitive-before"}
+    assert audit.json()["after"] == {"secret_marker": "sensitive-after"}
+    listed = client.get("/api/v1/audits", headers=headers["feedback_audit"])
+    assert listed.status_code == 200
+    assert listed.json()["items"][0]["operator"] is not None
+
+
+def test_activity_query_error_is_not_silently_replaced_with_empty_results(
+    dashboard_api, monkeypatch
+):
+    from app.repositories.audit_repository import AuditRepository
+
+    def fail_query(*args, **kwargs):
+        raise RuntimeError("activity query failed")
+
+    monkeypatch.setattr(AuditRepository, "list_recent_scoped", fail_query)
+    client, headers = dashboard_api
+    response = client.get("/api/v1/dashboard/overview", headers=headers["feedback_all"])
+    assert response.status_code == 500
+    assert "activities" not in response.json()
+
+
+def test_dashboard_team_scope_remains_reserved(dashboard_api, monkeypatch):
+    from app.repositories.user_repository import UserRepository
+
+    monkeypatch.setattr(UserRepository, "data_scope", lambda self, user_id: DataScope.TEAM)
+    client, headers = dashboard_api
+    response = client.get("/api/v1/dashboard/overview", headers=headers["wildcard"])
+    assert response.status_code == 500
+    assert "activities" not in response.json()

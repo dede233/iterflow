@@ -51,6 +51,7 @@ function pageOf(item: unknown) {
 const responses: Record<string, unknown> = {
   '/api/v1/auth/me': admin,
   '/api/v1/dashboard/overview': {
+    activities: [],
     data_scope: 'ALL', feedback: { pending_count: 1, total_count: 1, by_status: { ACCEPTED: 1 } },
     requirements: { active_count: 0, total_count: 1, by_status: { DONE: 1 } },
     versions: { active_count: 1, total_count: 1, by_status: { READY: 1 },
@@ -104,6 +105,7 @@ test('all 19 authenticated screens render at every release viewport', async ({ p
   })
   await page.route('**/api/v1/**', (route) => {
     const { pathname } = new URL(route.request().url())
+    if (pathname === '/api/v1/notifications/unread-count') return route.fulfill({ status: 200, json: { unread_count: 0 } })
     if (pathname.startsWith('/api/v1/editing/')) return route.fulfill({ status: 200, json: {} })
     if (!(pathname in responses)) {
       unexpectedRequests.push(`${route.request().method()} ${pathname}`)
@@ -152,6 +154,7 @@ test('core detail dialogs stay operable on a 375px screen', async ({ page }) => 
   })
   await page.route('**/api/v1/**', (route) => {
     const { pathname } = new URL(route.request().url())
+    if (pathname === '/api/v1/notifications/unread-count') return route.fulfill({ status: 200, json: { unread_count: 0 } })
     if (pathname.startsWith('/api/v1/editing/')) return route.fulfill({ status: 200, json: {} })
     if (pathname === '/api/v1/versions/3/publish/check') {
       return route.fulfill({ status: 200, json: { passed: true, checks: [] } })

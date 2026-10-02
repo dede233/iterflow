@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 
 os.environ.setdefault("DATABASE_URL", "postgresql+psycopg://iterflow@localhost/iterflow_test")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/15")
@@ -20,3 +21,17 @@ def resolve_openapi_ref(document: dict, value: dict) -> dict:
     for part in reference.removeprefix("#/").split("/"):
         resolved = resolved[part.replace("~1", "/").replace("~0", "~")]
     return resolved
+
+
+def assert_revision_conflict(response, *, revision: int, updated_by: int) -> None:
+    assert response.status_code == 409, response.text
+    body = response.json()
+    assert body["code"] == 40910
+    assert set(body["data"]) == {
+        "current_revision",
+        "current_updated_at",
+        "current_updated_by",
+    }
+    assert body["data"]["current_revision"] == revision
+    assert body["data"]["current_updated_by"] == updated_by
+    assert datetime.fromisoformat(body["data"]["current_updated_at"])

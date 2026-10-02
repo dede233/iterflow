@@ -74,3 +74,22 @@ describe('profile route', () => {
     expect(router.currentRoute.value.query.redirect).toBe('/profile')
   })
 })
+
+describe('release detail hash route', () => {
+  it.each([true, false])('enforces rd.release.view (allowed=%s)', async allowed => {
+    const auth = useAuthStore(pinia)
+    auth.$patch({
+      accessToken: 'release-viewer-token', initialized: true,
+      user: {
+        id: 3, username: 'release-viewer', display_name: '发布记录查看者', email: null,
+        status: 'ACTIVE', revision: 1, role_ids: [], data_scope: 'SELF', must_change_password: false,
+        permission_codes: allowed ? ['rd.release.view'] : [],
+      },
+    })
+    await router.push('/notifications')
+    await router.push('/releases/123')
+    expect(router.currentRoute.value.name).toBe(allowed ? 'release-detail' : 'forbidden')
+    expect(window.location.hash).toBe(allowed ? '#/releases/123' : '#/forbidden')
+    if (allowed) expect(router.currentRoute.value.meta.permission).toBe('rd.release.view')
+  })
+})

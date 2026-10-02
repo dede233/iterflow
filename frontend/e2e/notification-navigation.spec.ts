@@ -12,6 +12,7 @@ test('a MEMBER opens the published feedback from its notification after marking 
 
   await page.route('**/api/v1/**', async (route) => {
     const { pathname } = new URL(route.request().url())
+    if (pathname === '/api/v1/notifications/unread-count') return route.fulfill({ status: 200, json: { unread_count: 1 } })
     const method = route.request().method()
     const json = (body: unknown) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) })
 

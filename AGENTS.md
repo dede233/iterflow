@@ -32,7 +32,7 @@ Redis 服务：iterflow-redis
 本文件是“需求与版本管理系统”仓库内所有开发 Agent、代码生成工具和人工开发者的最高优先级工程说明之一。
 进入仓库后应先阅读本文件，再阅读 `DEVELOPMENT.md`、`TASKS.md`、`docs/` 与 `spec/`。
 
-版本状态：当前正式稳定版本为 `v1.6.0`，发布事实以 annotated tag、GitHub Release 与最终 master commit 为准；`v1.5.0`（解引用 commit `a7e60e39893f162dd49b03d40f5ca975abd5d42d`）保留为不可变历史发布版本；V1.7 从正式 v1.6.0 基线 `f0aa8475ff081fc963cdd08045d23e383a3c594e` 开始；当前范围与阶段以 `docs/v1.7-plan.md` 和 `TASKS.md` 为准，事实盘点见 `docs/v1.7-baseline-audit.md`。V1.6 三份阶段文档保留为历史发布证据。V1.7 计划不能推翻本文件的非协商规则和 V1.5 核心领域规则。
+版本状态：本次正式发布版本为 `v1.7.0`，发布事实以 annotated tag、GitHub Release 与最终 master commit 为准；`v1.6.0`（解引用commit `f0aa8475ff081fc963cdd08045d23e383a3c594e`）保留为不可变历史发布版本；`v1.5.0`（解引用 commit `a7e60e39893f162dd49b03d40f5ca975abd5d42d`）保留为不可变历史发布版本；V1.7 从正式 v1.6.0 基线 `f0aa8475ff081fc963cdd08045d23e383a3c594e` 开始；当前范围与阶段以 `docs/v1.7-plan.md` 和 `TASKS.md` 为准，事实盘点见 `docs/v1.7-baseline-audit.md`。V1.6 三份阶段文档保留为历史发布证据。V1.7 计划不能推翻本文件的非协商规则和 V1.5 核心领域规则。
 
 ## 1. 规格优先级
 
@@ -220,7 +220,7 @@ Redis 的“正在编辑”标记只用于提示，不是强制排他锁。建�
 
 ## 9. OpenAPI 契约
 
-V1.7 Phase 0 继续使用 `spec/openapi-v1.6.yaml`；Phase 1 从正式 V1.6 契约复制建立 `spec/openapi-v1.7.yaml`，同步 runtime 文档、生成类型与 parity 后，V1.6 契约冻结为历史发布依据。开发阶段所有包和运行时版本仍为 1.6.0；契约文件的 V1.7 名称不代表提前发布。后续接口变更继续 contract-first 演进。`spec/openapi-v1.5.yaml` 包含 V1.5 发布后的扩展，正式 V1.5 历史契约以不可变标签为准，不继续覆盖其历史。核心业务变更仍按上文规格优先级处理。
+V1.7 Phase 0 继续使用 `spec/openapi-v1.6.yaml`；Phase 1 从正式 V1.6 契约复制建立 `spec/openapi-v1.7.yaml`，同步 runtime 文档、生成类型与 parity 后，V1.6 契约冻结为历史发布依据。Phase 0–4开发阶段所有包和运行时版本为1.6.0；本次已获正式发布授权，包、运行时与V1.7契约元数据同步为1.7.0。后续接口变更继续 contract-first 演进。`spec/openapi-v1.5.yaml` 包含 V1.5 发布后的扩展，正式 V1.5 历史契约以不可变标签为准，不继续覆盖其历史。核心业务变更仍按上文规格优先级处理。
 
 开发要求：
 - 不要前后端分别创造字段名
@@ -333,4 +333,4 @@ Frontend：
 
 每阶段最多三轮 Fix Loop。明确外部基础设施失败可在 HEAD 不变且保留首次失败证据时只重跑失败 job 一次；再次失败停止。真实测试失败必须修复，不降低门禁。需要新 migration、新 permission、新核心实体、TEAM、状态机/Publish 改变、无法在授权范围小修的安全问题，或 master 外部漂移时立即停止。
 
-最终停在 Phase 4 RELEASE READY，等待用户发布授权；不得升级包版本、创建 v1.7.0 tag/GitHub Release、正式部署或更新 Cloudflare Preview，不操作生产恢复/volume/数据库。
+Phase 0–4已完成RELEASE READY，外部独立终审PASS。本次用户已授权v1.7.0 Final Release：仅版本元数据/当前发布文档、本地及六项CI门禁、no-ff merge、annotated tag与正式GitHub Release；完成后停止。Cloudflare Preview升级和正式部署另行授权，不操作生产恢复/volume/数据库。

@@ -29,7 +29,7 @@ Redis 服务：iterflow-redis
 
 ## 1. 开发目标
 
-当前正式稳定版本为 `v1.6.0`，发布事实以 annotated tag 与 GitHub Release 为准；已发布 `v1.5.0` 保留为不可变历史发布版本。V1.7 当前阶段、开发基线、目标与验收状态以 `docs/v1.7-plan.md` 和 `TASKS.md` 为准；V1.6 audit/plan/readiness 保留为历史发布证据。执行流程与停止条件见 AGENTS 第16节。
+本次正式发布版本为`v1.7.0`，发布事实以最终master commit、annotated tag与GitHub Release为准；`v1.6.0`保留为不可变历史发布版本；已发布 `v1.5.0` 保留为不可变历史发布版本。V1.7 当前阶段、开发基线、目标与验收状态以 `docs/v1.7-plan.md` 和 `TASKS.md` 为准；V1.6 audit/plan/readiness 保留为历史发布证据。执行流程与停止条件见 AGENTS 第16节。
 
 完成标准不是“代码已生成”，而是：
 
@@ -58,7 +58,7 @@ Redis 服务：iterflow-redis
 
 ### 规格
 - `docs/`：V1.5 已发布主文档 PDF/Word、V1.6 历史证据、V1.7 规划和基线审计
-- `spec/openapi-v1.6.yaml`：Phase 0 使用的发布契约；Phase 1 建立 V1.7 契约后冻结本文件；正式历史快照从对应标签读取
+- `spec/openapi-v1.7.yaml`：当前V1.7发布契约；V1.6/V1.5契约冻结，正式历史快照从对应标签读取
 - `spec/status-machines.md`：状态机
 
 ## 3. 本地环境

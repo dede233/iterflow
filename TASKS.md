@@ -36,10 +36,11 @@
 
 ## Phase 4 — Regression & Release Readiness
 
-- [ ] 完整主链、Publish原子回滚、CAS/40910、RBAC/SELF/ALL、附件、通知、Presence/Conflict/Release/Dashboard与批准候选回归。
-- [ ] Backend full/PG-only/Ruff/format/Mypy/compileall/Alembic/parity/dev-prod audit/production lock。
-- [ ] Frontend Vitest/types/build/bundle/npm audits/Playwright与375/390/768/1280/1440。
-- [ ] 验收文档、Fresh Self-Review、branch/master六项CI、FINAL CLOSED / RELEASE READY后停止。
+- [x] 完整主链、Publish原子回滚、CAS/40910、RBAC/SELF/ALL、附件、通知、Presence/Conflict/Release/Dashboard与批准候选回归。
+- [x] Backend full/PG-only/Ruff/format/Mypy/compileall/Alembic/parity/dev-prod audit/production lock。
+- [x] Frontend Vitest/types/build/bundle/npm audits/Playwright与375/390/768/1280/1440。
+- [x] 验收文档、Fresh Self-Review、branch六项CI、合并与docs closeout。
+- [ ] Final master六项CI、FINAL CLOSED / RELEASE READY后停止。
 
 ## 冻结非范围
 

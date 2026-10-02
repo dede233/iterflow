@@ -1,6 +1,7 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import { clearStoredTokens, getStoredTokens, setStoredTokens } from '@/auth/session'
+import { hashLoginRedirect } from '@/auth/redirect'
 import type { TokenPair } from '@/types/auth'
 import { isRevisionConflict } from '@/types/revisionConflict'
 
@@ -28,6 +29,7 @@ export const api = axios.create({ baseURL: '/api/v1', timeout: 15000 })
 
 const refreshClient = axios.create({ baseURL: '/api/v1', timeout: 15000 })
 let refreshPromise: Promise<string> | null = null
+let redirectingToLogin = false
 
 async function refreshAccessToken(): Promise<string> {
   const tokens = getStoredTokens()
@@ -75,8 +77,10 @@ api.interceptors.response.use(
         return api(originalRequest)
       } catch {
         clearStoredTokens()
-        if (window.location.pathname !== '/login') {
-          window.location.assign(`/login?redirect=${encodeURIComponent(window.location.pathname)}`)
+        const loginUrl = hashLoginRedirect(window.location.hash)
+        if (loginUrl && !redirectingToLogin) {
+          redirectingToLogin = true
+          window.location.assign(loginUrl)
         }
       }
     }

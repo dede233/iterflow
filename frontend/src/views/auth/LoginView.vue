@@ -3,6 +3,7 @@ import { reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { safeInternalRedirect } from '@/auth/redirect'
 import AuthShell from '@/components/ui/AuthShell.vue'
 
 const form = reactive({ username: '', password: '' })
@@ -16,7 +17,7 @@ async function submit(): Promise<void> {
   try {
     const user = await auth.login(form.username, form.password)
     ElMessage.success(`欢迎回来，${user.display_name}`)
-    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/'
+    const redirect = safeInternalRedirect(route.query.redirect)
     await router.replace(user.must_change_password ? '/change-password' : redirect)
   } catch {
     ElMessage.error('用户名或密码错误，或账号已被停用')

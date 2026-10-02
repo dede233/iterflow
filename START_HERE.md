@@ -2,7 +2,7 @@
 
 # 开发 Agent 从这里开始
 
-这是迭程 IterFlow 当前 V1.6 开发与验收入口。当前正式稳定版本为 `v1.6.0`，发布事实以 annotated tag 与 GitHub Release 为准；`v1.5.0` 保留为不可变历史发布版本。V1.6 Phase 1 从已合入主线的 Phase 0 基线 `5c44ab849ff798ac19fdfafce558b7dbcc4452a0` 开始开发。后续阶段状态以 `docs/v1.6-plan.md` 和 `TASKS.md` 为准。
+这是迭程 IterFlow 当前 V1.7 入口。本次正式发布版本为`v1.7.0`，发布事实以最终master commit、annotated tag与GitHub Release为准；V1.7从正式v1.6.0解引用基线`f0aa8475ff081fc963cdd08045d23e383a3c594e`开始。`v1.5.0`与`v1.6.0`均不可变；正式发布包与运行时版本为1.7.0。当前范围/阶段见 `docs/v1.7-plan.md`、`TASKS.md`，自主执行证据见 `docs/v1.7-autonomous-execution-log.md`。
 
 
 ## 项目命名
@@ -35,16 +35,16 @@ Redis 服务：iterflow-redis
 
 1. `AGENTS.md`
 2. `README.md`
-3. `docs/v1.6-baseline-audit.md`
-4. `docs/v1.6-plan.md`
+3. `docs/v1.7-baseline-audit.md`
+4. `docs/v1.7-plan.md`
 5. `TASKS.md` 与 `DEVELOPMENT.md`
 6. `docs/需求与版本管理系统_独立部署版_V1.5_完整开发基线.pdf`
-7. `spec/status-machines.md` 与当前 V1.6 契约 `spec/openapi-v1.6.yaml`（历史发布快照以 `v1.5.0` 标签为准）
+7. `spec/status-machines.md` 与当前 `spec/openapi-v1.7.yaml`；V1.6/V1.5契约冻结，历史发布快照以对应标签为准
 8. 现有代码和测试
 
 ## 第一条指令
 
-先读基线审计，不要把旧 V1.5 `TASKS.md` 的勾选当成事实。V1.6 Phase 0 已完成并进入开发主线；后续每个阶段按 `TASKS.md` 小步实现、测试、报告，完成独立终审后再决定是否合并。
+先核对 Git 冻结事实、基线审计和已批准范围。用户已授权 V1.7 Phase 0–4 自主实施、Fresh Self-Review、六项 CI、no-ff merge 与 docs closeout；每阶段 final master CI 通过后才进入下一阶段。硬停止条件见 AGENTS 第16节。Phase 0–4已完成，外部独立终审PASS，用户已授权v1.7.0 Final Release；完成后停止，Preview升级另行授权。
 
 ## 唯一核心链路
 
@@ -58,4 +58,4 @@ Redis 服务：iterflow-redis
 
 ## 可直接复制给开发 Agent
 
-`DEVELOPMENT_AGENT_PROMPT.md` 是当前 V1.6 开发 Agent 入口；具体阶段范围与验收以 `docs/v1.6-plan.md` 和 `TASKS.md` 为准。
+`DEVELOPMENT_AGENT_PROMPT.md` 是当前 V1.7 开发 Agent 入口；具体阶段范围与验收以 `docs/v1.7-plan.md` 和 `TASKS.md` 为准。

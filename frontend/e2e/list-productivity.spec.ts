@@ -73,6 +73,9 @@ for (const width of [375, 390, 768, 1280, 1440]) {
       } else {
         await form.locator('.el-input-number input').fill('42')
         await form.locator('.el-input-number input').press('Tab')
+        // Tab now focuses the date field; dismiss its Popper before querying by ID only.
+        await page.keyboard.press('Escape')
+        await expect(page.locator('.el-picker__popper:visible')).toHaveCount(0)
       }
       await form.getByRole('button', { name: '查询', exact: true }).click()
       await expect.poll(() => state.requests.at(-1)).toEqual({ page: '1', page_size: '20', ...config.params })
@@ -90,6 +93,8 @@ for (const width of [375, 390, 768, 1280, 1440]) {
         const again = await filterForm(page, width, config)
         await again.locator('.el-input-number input').fill('42')
         await again.locator('.el-input-number input').press('Tab')
+        await page.keyboard.press('Escape')
+        await expect(page.locator('.el-picker__popper:visible')).toHaveCount(0)
         await again.getByRole('button', { name: '查询', exact: true }).click()
         await expect(page.getByRole('button', { name: '查看详情', exact: true })).toBeVisible()
         await expect(page.getByRole('button', { name: '查看版本', exact: true })).toHaveCount(0)

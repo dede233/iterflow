@@ -1,25 +1,21 @@
-# IterFlow V1.6 开发 Agent 入口
+# IterFlow V1.7 开发 Agent 入口
 
-产品：**迭程 IterFlow · 需求与版本协作管理系统**。当前正式稳定版本为 `v1.6.0`，发布事实以 annotated tag 与 GitHub Release 为准；`v1.5.0` 保留为不可变历史发布版本；V1.6 当前阶段、开发基线与验收状态以 `docs/v1.6-plan.md` 和 `TASKS.md` 为准。V1.6 的定位是协作体验与信息可见性增强，核心领域规则继续冻结。
+本次正式发布版本为v1.7.0，发布事实以最终master commit、annotated tag与GitHub Release为准。V1.7开发基线为`f0aa8475ff081fc963cdd08045d23e383a3c594e`；Phase 0–4开发期间版本为1.6.0，本次正式发布元数据同步为1.7.0。V1.6文档和标签保留为不可变历史发布证据。
 
-## 进入开发前的阅读顺序
+## 阅读顺序
 
-1. `AGENTS.md`
-2. `START_HERE.md`
-3. `docs/v1.6-baseline-audit.md`
-4. `docs/v1.6-plan.md`
-5. `TASKS.md`
-6. `DEVELOPMENT.md`
-7. `spec/status-machines.md`
-8. 当前 V1.6 开发契约：`spec/openapi-v1.6.yaml` 已在 Phase 2 建立并接入类型生成与 parity；Phase 0 历史阶段使用 `spec/openapi-v1.5.yaml`。正式 V1.5 历史契约以 `v1.5.0` 标签为准。
-9. 当前代码和测试
+1. AGENTS.md 与 START_HERE.md
+2. docs/v1.7-baseline-audit.md、docs/v1.7-plan.md
+3. TASKS.md、DEVELOPMENT.md、docs/v1.7-autonomous-execution-log.md
+4. spec/status-machines.md 与当前spec/openapi-v1.7.yaml（V1.6/V1.5契约冻结）
+5. 代码、测试和当前 Git/CI 事实
 
-不要重新执行 V1.5 Phase 0，也不要把旧 `TASKS.md` 的 checkbox 当作实现事实。以当前代码、接口、测试和 CI 为准。当前 master 已有 UI Redesign、System Catalog、System Permission closeout、Responsive 适配和 Playwright stability 修复；不要重新实现这些基线能力。
+## 授权范围
 
-## 阶段执行规则
+仅五个正式阶段：Phase 0 Scope Freeze；Phase 1 C1/C3/C8/C9 evidence-first；Phase 2 C2 Release 右开日期查询；Phase 3 C6 focus/visibility 刷新（30s cooldown，无 polling）；Phase 4 Regression & Release Readiness。C4 删除、C5 TEAM、C7 trusted IP 延期。
 
-只执行用户当前明确授权的 V1.6 Phase。若没有明确授权，先阅读当前 `TASKS.md` 和最近阶段报告，核对现状，不自行跨 Phase 或自动开始 Phase 1。
+用户已授权逐阶段自主推进；每阶段使用独立分支，Implementation Pass → 本地门禁 → Fresh Self-Review → branch 六项 CI → 核验 master 基线 → no-ff merge/parents 验证 → docs-only closeout → final master 六项 CI。全通过才继续，不伪称外部独立终审。Fresh Review 重新读取完整 diff、源码、契约、权限、DataScope、测试与 CI，最多三轮 Fix Loop，不降低门禁。
 
-每个 Phase 使用独立分支，按“实现 → 运行 → 测试 → 修复 → 阶段报告 → 独立终审”的顺序推进；终审后再决定是否合并。禁止自动 merge master。报告应列出修改文件、接口与 migration 变化、测试结果、未解决问题和下一步建议。
+主链 Feedback → Requirement → Version → Publish → Release、集中状态机、原子 Publish、record-only Release、revision CAS、RBAC/DataScope、Hash Router 继续冻结。迁移、新权限/核心实体、TEAM、状态机/Publish 变化、超范围安全问题或 master 外部漂移立即停止。明确外部基础设施错误允许同 HEAD 只重跑失败 job 一次，保留首次失败证据，再失败停止。
 
-继续遵守 `AGENTS.md`：Feedback → Requirement → Version → Publish → Release 主链、集中状态机、Publish 事务、Release 记录语义、revision CAS、RBAC/DataScope 和 Hash Router 均不得因阶段计划擅自改变。新增 API 先确定契约，再同步实现、类型与 parity 测试。
+Phase 0–4已完成RELEASE READY，外部独立终审PASS。本次已授权v1.7.0 Final Release：只同步版本/当前发布文档，完整门禁后no-ff merge、annotated tag和正式GitHub Release；完成后停止。部署、Preview升级与生产破坏性操作不在本次授权。

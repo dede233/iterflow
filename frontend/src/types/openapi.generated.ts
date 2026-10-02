@@ -156,7 +156,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 反馈列表 */
+        /**
+         * 反馈列表
+         * @description keyword trim 后按 feedback_no/title/description 大小写不敏感的字面子串匹配;反斜杠、百分号和下划线不作通配符。空白视为无筛选。V1.7 相对 V1.6 的 wildcard 行为发生兼容性变化。所有条件与 DataScope 使用 AND, items/total 一致。
+         */
         get: operations["list_feedbacks_api_v1_feedbacks_get"];
         put?: never;
         /** 提交反馈 */
@@ -536,7 +539,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 发布记录 */
+        /**
+         * 发布记录
+         * @description 日期条件只读查询: released_from <= released_at < released_before。两参数只接受带时区的 ISO datetime, 允许单边; from >= before 或无时区输入返回422。日期与 version_id、rd.release.view 和 Version DataScope 使用 AND, items/total 一致。
+         */
         get: operations["list_releases_api_v1_releases_get"];
         put?: never;
         post?: never;
@@ -4336,6 +4342,8 @@ export interface operations {
                 page?: number;
                 page_size?: number;
                 version_id?: number | null;
+                released_from?: string | null;
+                released_before?: string | null;
             };
             header?: never;
             path?: never;

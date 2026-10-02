@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { listFeedbacks } from '@/api/feedbacks'
 import FeedbackCreateView from './FeedbackCreateView.vue'
@@ -58,7 +58,13 @@ const moduleOptions = computed(() =>
   filters.system_id ? modules.value.filter((m) => m.system_id === filters.system_id) : [],
 )
 
+let requestSequence = 0
+let disposed = false
+onBeforeUnmount(() => { disposed = true; requestSequence++ })
+
 async function load(): Promise<void> {
+  if (disposed) return
+  const sequence = ++requestSequence
   loading.value = true
   failed.value = false
   try {
@@ -72,12 +78,13 @@ async function load(): Promise<void> {
       system_id: filters.system_id ?? undefined,
       module_id: filters.module_id ?? undefined,
     })
+    if (sequence !== requestSequence) return
     rows.value = page.items
     total.value = page.total
   } catch {
-    failed.value = true
+    if (sequence === requestSequence) failed.value = true
   } finally {
-    loading.value = false
+    if (sequence === requestSequence) loading.value = false
   }
 }
 
@@ -119,6 +126,7 @@ onMounted(async () => {
   if (canReadSystems.value) {
     try {
       const data = await listSystems()
+      if (disposed) return
       systems.value = data.systems
       modules.value = data.modules
     } catch {

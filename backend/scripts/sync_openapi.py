@@ -8,7 +8,7 @@ import yaml
 from app.main import app
 
 ROOT = Path(__file__).resolve().parents[2]
-CANONICAL_SPEC = ROOT / "spec" / "openapi-v1.6.yaml"
+CANONICAL_SPEC = ROOT / "spec" / "openapi-v1.7.yaml"
 DOC_FIELDS = {
     "description",
     "externalDocs",

@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import MobileBottomNav from '@/components/MobileBottomNav.vue'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationsStore } from '@/stores/notifications'
+import { useNotificationFreshness } from '@/composables/useNotificationFreshness'
 
 const notifications = useNotificationsStore()
-onMounted(() => { void notifications.refreshUnreadCount().catch(() => {}) })
+useNotificationFreshness()
 const auth = useAuthStore()
 const router = useRouter()
 interface NavigationItem {

@@ -1,9 +1,22 @@
 from datetime import datetime
+from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, BeforeValidator, ConfigDict
 
 from app.models.enums import ReleaseResult
 from app.schemas.common import PageResult
+
+
+def validate_offset_iso_datetime(value: object) -> object:
+    if not isinstance(value, str) or "T" not in value:
+        raise ValueError("Use an offset-aware ISO datetime")
+    parsed = datetime.fromisoformat(value)
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise ValueError("Timezone offset is required")
+    return value
+
+
+OffsetISODatetime = Annotated[datetime, BeforeValidator(validate_offset_iso_datetime)]
 
 
 class ReleaseOut(BaseModel):

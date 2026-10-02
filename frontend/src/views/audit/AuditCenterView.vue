@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getAudit, listAudits } from '@/api/audits'
 import { useResponsive } from '@/composables/useResponsive'
@@ -43,19 +43,28 @@ function buildParams(): AuditListParams {
   }
 }
 
+let listSequence = 0
+let detailSequence = 0
+onBeforeUnmount(() => { listSequence++; detailSequence++ })
+watch(drawerVisible, visible => {
+  if (!visible) { detailSequence++; selected.value = null; detailLoading.value = false }
+}, { flush: 'sync' })
+
 async function load(): Promise<void> {
+  const sequence = ++listSequence
   loading.value = true
   failed.value = false
   try {
     const result = await listAudits(buildParams())
+    if (sequence !== listSequence) return
     rows.value = result.items
     total.value = result.total
     paging.page = result.page
     paging.size = result.size
   } catch {
-    failed.value = true
+    if (sequence === listSequence) failed.value = true
   } finally {
-    loading.value = false
+    if (sequence === listSequence) loading.value = false
   }
 }
 
@@ -72,16 +81,19 @@ function reset(): void {
 }
 
 async function showDetail(row: AuditItem): Promise<void> {
+  const sequence = ++detailSequence
   detailLoading.value = true
   drawerVisible.value = true
   selected.value = null
   try {
-    selected.value = await getAudit(row.id)
+    const result = await getAudit(row.id)
+    if (sequence === detailSequence) selected.value = result
   } catch {
+    if (sequence !== detailSequence) return
     drawerVisible.value = false
     ElMessage.error('审计记录不可访问或已不存在')
   } finally {
-    detailLoading.value = false
+    if (sequence === detailSequence) detailLoading.value = false
   }
 }
 

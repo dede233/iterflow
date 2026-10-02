@@ -25,7 +25,7 @@
 - [x] version_id/rd.release.view/Version DataScope继续AND，契约、types、分页total一致。
 - [x] 本地日期整天→下一日00:00 exclusive，五视口DatePicker/Popper回归。
 - [x] 本地门禁、Fresh Self-Review（Fix Loop 1）、branch六项CI与合并/文档收口。
-- [ ] Final master六项CI（通过后自动进入Phase3）。
+- [x] Final master六项CI（37007834004，attempt1六项success）。
 
 ## Phase 3 — Notification Freshness
 

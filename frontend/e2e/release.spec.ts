@@ -116,19 +116,25 @@ test('Phase 7 real restricted users: presence, conflict, publish, notification a
     await status(pageA, '受理', `/feedbacks/${feedback.id}`)
     await pageA.getByRole('button', { name: '转需求', exact: true }).click()
     const converted = pageA.waitForResponse(r => r.url().endsWith(`/feedbacks/${feedback.id}/convert`) && r.request().method() === 'POST')
+    // Finish the conversion navigation's first detail read before assignment/reload.
+    // URL changes alone do not mean that the detail response body is available.
+    const initialDetail = pageA.waitForResponse(r => /\/api\/v1\/requirements\/\d+$/.test(r.url()) && r.request().method() === 'GET').then(r => r.json())
     await pageA.getByRole('dialog', { name: '转为需求' }).getByRole('button', { name: '确定', exact: true }).click()
     const requirement = await (await converted).json()
     await expect(pageA).toHaveURL(new RegExp(`#/requirements/${requirement.id}$`))
+    const initialRequirement = await initialDetail
+    expect(initialRequirement.id).toBe(requirement.id)
+    expect(initialRequirement.revision).toBe(requirement.revision)
     // Assignment is API setup; the subsequent title/priority editing and statuses are real UI.
     const assigned = await api(request, a.token, 'PATCH', `/requirements/${requirement.id}`, { owner_id: a.id, priority: 'P1', revision: requirement.revision })
     // A same-hash navigation does not remount the detail view. Reload after API setup
     // and verify both editors have actually fetched the assigned revision.
-    const loadedA = pageA.waitForResponse(r => r.url().endsWith(`/requirements/${requirement.id}`) && r.request().method() === 'GET')
+    const loadedA = pageA.waitForResponse(r => r.url().endsWith(`/requirements/${requirement.id}`) && r.request().method() === 'GET').then(r => r.json())
     await pageA.reload()
-    expect((await (await loadedA).json()).revision).toBe(assigned.revision)
-    const loadedB = pageB.waitForResponse(r => r.url().endsWith(`/requirements/${requirement.id}`) && r.request().method() === 'GET')
+    expect((await loadedA).revision).toBe(assigned.revision)
+    const loadedB = pageB.waitForResponse(r => r.url().endsWith(`/requirements/${requirement.id}`) && r.request().method() === 'GET').then(r => r.json())
     await pageB.goto(`/#/requirements/${requirement.id}`)
-    expect((await (await loadedB).json()).revision).toBe(assigned.revision)
+    expect((await loadedB).revision).toBe(assigned.revision)
     const presence: { actor: string; operation: string }[] = []
     for (const [actor, page] of [['A', pageA], ['B', pageB]] as const) {
       page.on('request', r => {

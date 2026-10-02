@@ -21,10 +21,11 @@
 
 ## Phase 2 — Release Query Productivity
 
-- [ ] C2 offset-aware `released_from <= released_at < released_before`，允许单边，反向/空区间422。
-- [ ] version_id/rd.release.view/Version DataScope继续AND，契约、types、分页total一致。
-- [ ] 本地日期整天→下一日00:00 exclusive，五视口DatePicker/Popper回归。
-- [ ] 本地门禁、Fresh Self-Review、branch/master六项CI与收口。
+- [x] C2 offset-aware `released_from <= released_at < released_before`，允许单边，反向/空区间422。
+- [x] version_id/rd.release.view/Version DataScope继续AND，契约、types、分页total一致。
+- [x] 本地日期整天→下一日00:00 exclusive，五视口DatePicker/Popper回归。
+- [x] 本地门禁、Fresh Self-Review（Fix Loop 1）、branch六项CI与合并/文档收口。
+- [ ] Final master六项CI（通过后自动进入Phase3）。
 
 ## Phase 3 — Notification Freshness
 

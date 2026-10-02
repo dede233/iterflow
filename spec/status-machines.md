@@ -25,7 +25,7 @@ CLOSED            -> NEW        (重开; 需 reason)
 - `reason`（trim 后非空）在 `-> CANNOT_REPRODUCE`、`-> CLOSED` 与所有重开（`-> NEW`）时必填；仅保存在 `STATUS_CHANGE` 审计中，不新增数据列。
 - `-> DUPLICATE` 时 `duplicate_of_id` 必填，须为存在、非自身、且操作者数据范围内可见的 Feedback。
 - Feedback 是外部输入记录，不承担研发状态机；不得出现或同步 `PLANNED / DEVELOPING / TESTING`。
-- `DUPLICATE / REQUIREMENT_LINKED / ONLINE` 等非人工状态禁止人工设置；请求体使用 `ManualFeedbackStatus`，因此提交这些值直接 422。
+- `REQUIREMENT_LINKED / ONLINE` 事务产出状态禁止人工设置；请求体使用 `ManualFeedbackStatus`，因此提交这些值直接 422。
 - `REQUIREMENT_LINKED` 仅由 Feedback→Requirement 转换事务产生（Phase 4）。
 - `ONLINE` 只能由 Version 成功发布事务自动产生，普通状态接口任何情况下都不能设置。
 - 所有写操作提交 `revision`，旧 `revision` 返回 409（乐观锁，禁止静默覆盖）。

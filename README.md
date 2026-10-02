@@ -1,10 +1,10 @@
 # 迭程 IterFlow · 需求与版本协作管理系统
 
-当前正式稳定版本为 `v1.6.0`，发布事实以 annotated tag、GitHub Release 与最终 master commit 为准。`v1.5.0`（`a7e60e39893f162dd49b03d40f5ca975abd5d42d`）保留为不可变历史发布版本。V1.6 Phase 0–7 已完成，Release readiness PASS。Phase 0 历史盘点与当前阶段入口见 [基线审计](docs/v1.6-baseline-audit.md)、[V1.6 计划](docs/v1.6-plan.md) 和 [执行清单](TASKS.md)。
+当前正式稳定版本为 `v1.6.0`，发布事实以 annotated tag、GitHub Release 与最终 master commit 为准。`v1.5.0`（`a7e60e39893f162dd49b03d40f5ca975abd5d42d`）保留为不可变历史发布版本。V1.6 Phase 0–7 已完成，Release readiness PASS。V1.6 阶段文档保留为历史证据。当前 V1.7 开发从正式 v1.6.0 开始，见 [基线审计](docs/v1.7-baseline-audit.md)、[V1.7 计划](docs/v1.7-plan.md) 和 [执行清单](TASKS.md)。
 
 独立部署的研发协作系统，主链路为：
 
-`Feedback -> Requirement -> Version -> Release`
+`Feedback -> Requirement -> Version -> Publish -> Release`
 
 
 ## 项目命名
@@ -14,7 +14,7 @@
 - **中文名：迭程**
 - **英文名：IterFlow**
 - **完整名称：迭程 IterFlow · 需求与版本协作管理系统**
-- **核心含义：迭代 + 流程，覆盖 Feedback → Requirement → Version → Release 的完整协作链路。**
+- **核心含义：迭代 + 流程，覆盖 Feedback → Requirement → Version → Publish → Release 的完整协作链路。**
 
 建议统一使用以下工程命名：
 
@@ -76,7 +76,7 @@ Web 默认仅绑定 `127.0.0.1:8080`。**不得将纯 HTTP 端口直接暴露公
 
 1. `AGENTS.md`
 2. `START_HERE.md`
-3. `docs/v1.6-baseline-audit.md` 与 `docs/v1.6-plan.md`
+3. `docs/v1.7-baseline-audit.md` 与 `docs/v1.7-plan.md`
 4. `TASKS.md` 与 `DEVELOPMENT.md`
 
-V1.5 主文档和标签是正式版本的历史依据；V1.0–V1.4 仅为更早历史方案。当前开发任务按 V1.6 规划推进，核心业务规则仍受 `AGENTS.md` 和 V1.5 规格约束。
+V1.5 主文档和标签是正式版本的历史依据；V1.0–V1.4 仅为更早历史方案。当前开发任务按已批准的 V1.7 规划推进，核心业务规则仍受 `AGENTS.md` 和 V1.5 规格约束。

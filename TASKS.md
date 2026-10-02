@@ -32,7 +32,7 @@
 - [x] focus + hidden→visible刷新未读数；30秒cooldown，无polling。
 - [x] logout/account switch/旧响应/focus storm/read-all race回归。
 - [x] 本地门禁、Fresh Self-Review（Fix Loop 1）、branch六项CI与合并/文档收口。
-- [ ] Final master六项CI（通过后自动进入Phase4）。
+- [x] Final master六项CI（37010208267，attempt1六项success）。
 
 ## Phase 4 — Regression & Release Readiness
 

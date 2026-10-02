@@ -1,8 +1,17 @@
-# IterFlow Initial Online Preview
+# IterFlow V1.6.0 Cloudflare Preview
 
-This runbook operates the independent `phase/cloudflare-preview` branch for online demonstration, trial use, and public acceptance at `https://iterflow.luqingyao.cc.cd`. The Preview branch includes the V1.6 Phase 0 Baseline & Scope Freeze documents, but V1.6 Phase 1 functionality has not begun. This is a trial deployment, not the production release.
+This runbook operates the independent `phase/cloudflare-preview` branch for online demonstration, trial use, and public acceptance at `https://iterflow.luqingyao.cc.cd`.
 
-The current common master is `5c44ab849ff798ac19fdfafce558b7dbcc4452a0`, synchronized into Preview by commit `6e800d8028f1827cc3ca35c4695a91de489a15ee`. To bring later master changes into Preview, merge master into `phase/cloudflare-preview` and verify the result before deployment. Develop V1.6 business features on their own branches, not directly on the Preview branch.
+- Preview application version: **v1.6.0**.
+- Released commit: `f0aa8475ff081fc963cdd08045d23e383a3c594e` (annotated tag `v1.6.0`).
+- Preview branch: `phase/cloudflare-preview`.
+- Preview branch includes additional deployment-only commits: **v1.6.0 + Preview-only deployment configuration**. It is not the formal product release branch.
+
+The Preview now includes the completed V1.6 functionality from the released tag. For later upgrades, merge the reviewed release tag (or separately authorized master baseline) into `phase/cloudflare-preview`, retain the deployment configuration, verify CI, and then deploy. Develop product features on their own branches, not directly on the Preview branch. Do not merge Preview deployment configuration back into master.
+
+## Historical initial deployment
+
+The Preview was originally created from historical base `f6a20b82b432543de4cadb2309813f376a77eaa6`. It initially included only V1.6 Phase 0 planning, synchronized from the then-common master `5c44ab849ff798ac19fdfafce558b7dbcc4452a0` by commit `6e800d8028f1827cc3ca35c4695a91de489a15ee`. At that time Phase 1 had not begun. The initial online Preview HEAD before the v1.6.0 upgrade was `fa999d91b3271535b46ec681408ce7f64cda8bac`. These are historical deployment facts, not the current application baseline.
 
 ## Architecture and prerequisites
 
@@ -83,7 +92,7 @@ curl --fail --silent --show-error https://iterflow.luqingyao.cc.cd/health
 curl --fail --silent --show-error https://iterflow.luqingyao.cc.cd/ready
 ```
 
-From a device outside the Docker host, confirm valid HTTPS, the login page, Hash Router navigation, and same-origin `/api/` calls. Log in as the preview administrator, change the first-use password, then inspect Home, Feedback, Requirement, Version, Notification, and Profile. Submit a trial Feedback; upload/download an allowed file; compare its downloaded SHA256 with the uploaded file; verify an unauthorized account cannot download it. Repeat key pages at 375px and 1440px. Verify that host public interfaces do not expose 5432, 6379, 8000, 8080, or the four diagnostic ports; the only public entry must be Cloudflare HTTPS 443. Restart the Compose services and check both public health endpoints and retained trial data.
+From a device outside the Docker host, confirm valid HTTPS, the login page, Hash Router navigation, and same-origin `/api/` calls. On initial installation only, change the administrator first-use password. During upgrades, retain the existing password and verify administrator login, Home, Feedback, Requirement, Version, Release Detail, Notification, Profile, and authorized Audit pages. Verify Editing Presence, Revision Conflict UX, notification badge/read-all, list filters, and Dashboard Activity. Submit a trial Feedback; upload/download an allowed file; compare its downloaded SHA256 with the uploaded file; verify an unauthorized account cannot download it. Repeat key pages at 375px and 1440px. Verify that host public interfaces do not expose 5432, 6379, 8000, 8080, or the four diagnostic ports; the only public entry must be Cloudflare HTTPS 443. Restart the Compose services and check both public health endpoints and retained trial data.
 
 ## Backup and restore
 

@@ -12,11 +12,12 @@
 
 ## Phase 1 — Product Consistency & Correctness
 
-- [ ] C1 package.json → Vite define → UI，开发版本仍1.6.0。
-- [ ] C3 Feedback literal substring/case-insensitive/trim；建立V1.7契约并切换types/parity，冻结V1.6。
-- [ ] C8 refresh失败Hash安全回跳，不改变Router mode。
-- [ ] C9先写Feedback list/Audit list/detail deterministic race tests，仅修已复现页面。
-- [ ] 本地门禁、Fresh Self-Review、branch/master六项CI与收口。
+- [x] C1 package.json → Vite define → UI，开发版本仍1.6.0。
+- [x] C3 Feedback literal substring/case-insensitive/trim；建立V1.7契约并切换types/parity，冻结V1.6。
+- [x] C8 refresh失败Hash安全回跳，不改变Router mode。
+- [x] C9先写Feedback list/Audit list/detail deterministic race tests，仅修已复现页面。
+- [x] 本地门禁、Fresh Self-Review、branch六项CI与合并/文档收口完成。
+- [ ] Final master六项CI（通过后自动进入Phase2）。
 
 ## Phase 2 — Release Query Productivity
 

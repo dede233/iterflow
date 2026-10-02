@@ -2,7 +2,7 @@
 
 # 开发 Agent 从这里开始
 
-这是迭程 IterFlow 当前 V1.7 开发与验收入口。正式稳定版本仍为 `v1.6.0`；V1.7 从其解引用基线 `f0aa8475ff081fc963cdd08045d23e383a3c594e` 开始。`v1.5.0` 与 `v1.6.0` 均不可变；包版本保持 1.6.0。当前范围/阶段见 `docs/v1.7-plan.md`、`TASKS.md`，自主执行证据见 `docs/v1.7-autonomous-execution-log.md`。
+这是迭程 IterFlow 当前 V1.7 入口。本次正式发布版本为`v1.7.0`，发布事实以最终master commit、annotated tag与GitHub Release为准；V1.7从正式v1.6.0解引用基线`f0aa8475ff081fc963cdd08045d23e383a3c594e`开始。`v1.5.0`与`v1.6.0`均不可变；正式发布包与运行时版本为1.7.0。当前范围/阶段见 `docs/v1.7-plan.md`、`TASKS.md`，自主执行证据见 `docs/v1.7-autonomous-execution-log.md`。
 
 
 ## 项目命名
@@ -39,12 +39,12 @@ Redis 服务：iterflow-redis
 4. `docs/v1.7-plan.md`
 5. `TASKS.md` 与 `DEVELOPMENT.md`
 6. `docs/需求与版本管理系统_独立部署版_V1.5_完整开发基线.pdf`
-7. `spec/status-machines.md` 与 Phase 0 的 `spec/openapi-v1.6.yaml`；Phase 1 建立 V1.7 契约后切换，历史发布快照以对应标签为准
+7. `spec/status-machines.md` 与当前 `spec/openapi-v1.7.yaml`；V1.6/V1.5契约冻结，历史发布快照以对应标签为准
 8. 现有代码和测试
 
 ## 第一条指令
 
-先核对 Git 冻结事实、基线审计和已批准范围。用户已授权 V1.7 Phase 0–4 自主实施、Fresh Self-Review、六项 CI、no-ff merge 与 docs closeout；每阶段 final master CI 通过后才进入下一阶段。硬停止条件见 AGENTS 第16节。最终 release-ready 后等待用户发布授权。
+先核对 Git 冻结事实、基线审计和已批准范围。用户已授权 V1.7 Phase 0–4 自主实施、Fresh Self-Review、六项 CI、no-ff merge 与 docs closeout；每阶段 final master CI 通过后才进入下一阶段。硬停止条件见 AGENTS 第16节。Phase 0–4已完成，外部独立终审PASS，用户已授权v1.7.0 Final Release；完成后停止，Preview升级另行授权。
 
 ## 唯一核心链路
 

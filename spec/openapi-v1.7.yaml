@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
   title: IterFlow API
-  version: 1.6.0
-  description: V1.7 开发契约;运行时与包版本仍为 1.6.0, 尚未发布 V1.7。核心领域规则保持冻结。
+  version: 1.7.0
+  description: IterFlow V1.7.0 正式发布契约。核心领域规则保持冻结。
 servers:
 - url: /api/v1
 tags:

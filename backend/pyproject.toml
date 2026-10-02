@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "iterflow-api"
-version = "1.6.0"
+version = "1.7.0"
 description = "Standalone requirements and version management system"
 requires-python = ">=3.12"
 dependencies = [

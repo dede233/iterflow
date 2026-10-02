@@ -1,4 +1,9 @@
 import { expect, test, type Page } from '@playwright/test'
+import { readFileSync } from 'node:fs'
+
+const appVersion = JSON.parse(
+  readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
+).version as string
 
 async function fixture(page: Page, expired: boolean) {
   let refreshCalls = 0
@@ -43,7 +48,7 @@ for (const width of [375, 390, 768, 1280, 1440]) {
     expect(loginHash.split('?')[0]).toBe('#/login')
     expect(new URLSearchParams(loginHash.slice(loginHash.indexOf('?') + 1)).get('redirect')).toBe(target)
     expect(refreshCalls()).toBe(1)
-    if (width >= 768) await expect(page.locator('.auth-foot')).toHaveText('ITERFLOW / V1.6.0')
+    if (width >= 768) await expect(page.locator('.auth-foot')).toHaveText(`ITERFLOW / V${appVersion}`)
     await login(page)
     await expect(page.getByRole('heading', { name: '需求管理', exact: true })).toBeVisible()
     expect(new URL(page.url()).hash).toBe(`#${target}`)

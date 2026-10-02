@@ -1,17 +1,21 @@
-# IterFlow V1.6.0 Cloudflare Preview
+# IterFlow V1.7.0 Cloudflare Preview
 
 This runbook operates the independent `phase/cloudflare-preview` branch for online demonstration, trial use, and public acceptance at `https://iterflow.luqingyao.cc.cd`.
 
-- Preview application version: **v1.6.0**.
-- Released commit: `f0aa8475ff081fc963cdd08045d23e383a3c594e` (annotated tag `v1.6.0`).
+- Preview application version: **v1.7.0**.
+- Released commit: `e485efea0155c5b4194f563926a531d606c77349` (annotated tag `v1.7.0`).
 - Preview branch: `phase/cloudflare-preview`.
-- Preview branch includes additional deployment-only commits: **v1.6.0 + Preview-only deployment configuration**. It is not the formal product release branch.
+- Preview branch includes additional deployment-only commits: **v1.7.0 + Preview-only deployment configuration**. It is not the formal product release branch.
 
-The Preview now includes the completed V1.6 functionality from the released tag. For later upgrades, merge the reviewed release tag (or separately authorized master baseline) into `phase/cloudflare-preview`, retain the deployment configuration, verify CI, and then deploy. Develop product features on their own branches, not directly on the Preview branch. Do not merge Preview deployment configuration back into master.
+The Preview includes released V1.7 functionality and the existing V1.6 functionality from the reviewed release tag. For later upgrades, merge the reviewed release tag (or separately authorized master baseline) into `phase/cloudflare-preview`, retain the deployment configuration, verify CI, and then deploy. Develop product features on their own branches, not directly on the Preview branch. Do not merge Preview deployment configuration back into master.
 
 ## Historical initial deployment
 
 The Preview was originally created from historical base `f6a20b82b432543de4cadb2309813f376a77eaa6`. It initially included only V1.6 Phase 0 planning, synchronized from the then-common master `5c44ab849ff798ac19fdfafce558b7dbcc4452a0` by commit `6e800d8028f1827cc3ca35c4695a91de489a15ee`. At that time Phase 1 had not begun. The initial online Preview HEAD before the v1.6.0 upgrade was `fa999d91b3271535b46ec681408ce7f64cda8bac`. These are historical deployment facts, not the current application baseline.
+
+## Historical V1.6.0 Preview upgrade
+
+The V1.6.0 upgrade retained the initial Preview deployment configuration and merged released commit `f0aa8475ff081fc963cdd08045d23e383a3c594e` (annotated tag `v1.6.0`). Its final Preview HEAD was `33d36d78ab4bedf48835d124f295f1ca8c352eae`; this is the pre-V1.7 upgrade baseline and rollback code reference, not the current application version. Both the initial deployment history above and the released V1.6/V1.5 tags remain immutable.
 
 ## Architecture and prerequisites
 
@@ -93,6 +97,19 @@ curl --fail --silent --show-error https://iterflow.luqingyao.cc.cd/ready
 ```
 
 From a device outside the Docker host, confirm valid HTTPS, the login page, Hash Router navigation, and same-origin `/api/` calls. On initial installation only, change the administrator first-use password. During upgrades, retain the existing password and verify administrator login, Home, Feedback, Requirement, Version, Release Detail, Notification, Profile, and authorized Audit pages. Verify Editing Presence, Revision Conflict UX, notification badge/read-all, list filters, and Dashboard Activity. Submit a trial Feedback; upload/download an allowed file; compare its downloaded SHA256 with the uploaded file; verify an unauthorized account cannot download it. Repeat key pages at 375px and 1440px. Verify that host public interfaces do not expose 5432, 6379, 8000, 8080, or the four diagnostic ports; the only public entry must be Cloudflare HTTPS 443. Restart the Compose services and check both public health endpoints and retained trial data.
+
+## V1.7 deployment smoke
+
+The released V1.7 CI proves full feature correctness. Public deployment smoke additionally verifies:
+
+- Desktop AuthShell at 768px and 1440px displays `ITERFLOW / V1.7.0`; mobile footer hiding remains expected.
+- Feedback keyword `%`, `_`, and backslash are literal substrings (sample at least two); permissions, DataScope and pagination continue to apply. This is a compatibility change from SQL wildcard semantics.
+- Release local date range is start inclusive and includes the whole selected end day by sending `released_before` as next local day 00:00 exclusive; combines with existing `version_id`.
+- Notification badge refreshes on focus / hidden-to-visible with a shared 30-second attempt cooldown; short repeated focus must not create a request storm. No polling/WebSocket/SSE is introduced. Use two disposable sessions and a real notification-producing business action.
+- Hash authentication failure in a disposable session retains the internal route and query through login; external redirect is rejected. Never alter the real administrator token for smoke.
+- Quickly changing Feedback/Audit filters and opening/closing Audit detail must not restore stale results or reopen a closed dialog. Deterministic races remain covered by released CI.
+
+Before upgrading, verify the existing administrator password, capture existing record IDs and an attachment SHA256, and take a checksummed backup. After CI passes, rebuild with the final Preview short SHA while retaining `iterflow-preview_pgdata`, `iterflow-preview_redisdata`, and `iterflow-preview_uploads`. Verify revision `0004_integrity`, local/public health and readiness, original-password login, old/new attachment hashes, and all V1.6 smoke pages. Restart only api/web/cloudflared, repeat persistence checks and take a separate post-upgrade backup. Do not execute destructive restore against the actual Preview.
 
 ## Backup and restore
 

@@ -40,7 +40,7 @@
 - [x] Backend full/PG-only/Ruff/format/Mypy/compileall/Alembic/parity/dev-prod audit/production lock。
 - [x] Frontend Vitest/types/build/bundle/npm audits/Playwright与375/390/768/1280/1440。
 - [x] 验收文档、Fresh Self-Review、branch六项CI、合并与docs closeout。
-- [ ] Final master六项CI、FINAL CLOSED / RELEASE READY后停止。
+- [x] Final master六项CI（37011793000，attempt1六项success），FINAL CLOSED / RELEASE READY。
 
 ## 冻结非范围
 

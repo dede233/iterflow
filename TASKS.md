@@ -1,6 +1,6 @@
 # IterFlow Tasks
 
-> 当前正式基线：`v1.7.0` / `e485efea0155c5b4194f563926a531d606c77349`。V1.8 C0/C1/C3/C4 IMPLEMENTATION COMPLETE / RELEASE READINESS PASS；其余候选 DEFER，PENDING FINAL RELEASE AUTHORIZATION。产品主线 CI 已通过；最终文档收口以该分支及合并 HEAD 六项 CI 成功为关闭条件，最终 run / HEAD 记录于执行报告。见 `docs/v1.8-baseline-audit.md` 和 `docs/v1.8-plan.md`。Preview 独立部署线为 `79fa39d3611c166c992d5cbdf8d6c3757506ee46`，不是 V1.8 产品基线。
+> 当前正式发布目标：`v1.8.0`，已获 Final Release 授权。正式发布成立条件为 Final Master CI PASS + annotated v1.8.0 tag + 正式 GitHub Release；发布事实以三者和最终 master commit 为准，不提前记录 tag object SHA。发布 base：`d9e107f83a97229ab879987c1abe1c351afcad3b`；上一正式v1.7.0与更早标签均不可变。V1.8 C0/C1/C3/C4实现、内外部审查与readiness PASS，开发final master CI 37095500766 / attempt1六项成功。Preview独立线79fa39d3611c166c992d5cbdf8d6c3757506ee46不变。
 
 ## V1.8 — Version Workspace & Main-Chain Productivity
 
@@ -11,7 +11,7 @@
 - [x] Phase 3 — Version Worklist Productivity：C0可见清单筛选、优先级、统计与安全阻塞导航。
 - [x] Phase 4 — Regression & Release Readiness：本地门禁、Fresh Self-Review、product branch/master CI与docs-only收口/final CI。
 
-C2、C5–C16本版DEFER；scroll持久化/全局缓存不做。无新permission/migration/entity、TEAM、状态机或Publish变化。开发版本保持1.7.0，不创建tag/Release，不更新Preview或生产。正式开发 base：`cf9a2fbcd4f045c8dfbc34030b1a3449faa19e8f`。验收见 `docs/v1.8-release-readiness.md`，执行证据见 `docs/v1.8-autonomous-execution-log.md`；同一Agent复查不称外部独立终审。
+C2、C5–C16本版DEFER；scroll持久化/全局缓存不做。无新permission/migration/entity、TEAM、状态机或Publish变化。开发阶段版本曾保持1.7.0；本次发布授权同步1.8.0，并仅在final master CI后创建annotated tag/Release；不更新Preview或生产。正式开发 base：`cf9a2fbcd4f045c8dfbc34030b1a3449faa19e8f`。验收见 `docs/v1.8-release-readiness.md`，执行证据见 `docs/v1.8-autonomous-execution-log.md`；同一Agent复查不称外部独立终审。
 
 ## V1.7 历史开发清单
 

@@ -32,7 +32,7 @@ Redis 服务：iterflow-redis
 本文件是“需求与版本管理系统”仓库内所有开发 Agent、代码生成工具和人工开发者的最高优先级工程说明之一。
 进入仓库后应先阅读本文件，再阅读 `DEVELOPMENT.md`、`TASKS.md`、`docs/` 与 `spec/`。
 
-版本状态：本次正式发布版本为 `v1.7.0`，发布事实以 annotated tag、GitHub Release 与最终 master commit 为准；`v1.6.0`（解引用commit `f0aa8475ff081fc963cdd08045d23e383a3c594e`）保留为不可变历史发布版本；`v1.5.0`（解引用 commit `a7e60e39893f162dd49b03d40f5ca975abd5d42d`）保留为不可变历史发布版本；V1.7 从正式 v1.6.0 基线 `f0aa8475ff081fc963cdd08045d23e383a3c594e` 开始；当前范围与阶段以 `docs/v1.7-plan.md` 和 `TASKS.md` 为准，事实盘点见 `docs/v1.7-baseline-audit.md`。V1.6 三份阶段文档保留为历史发布证据。V1.7 计划不能推翻本文件的非协商规则和 V1.5 核心领域规则。
+版本状态：本次正式发布目标为 `v1.8.0`，用户已授权 Final Release；正式发布成立条件为 Final Master CI PASS + annotated v1.8.0 tag + 正式 GitHub Release；发布事实以三者和最终 master commit 为准，不提前记录 tag object SHA。`v1.7.0`（解引用 commit `e485efea0155c5b4194f563926a531d606c77349`）、`v1.6.0`（`f0aa8475ff081fc963cdd08045d23e383a3c594e`）、`v1.5.0`（`a7e60e39893f162dd49b03d40f5ca975abd5d42d`）保留为不可变历史发布版本。V1.8 产品起点为正式 v1.7.0，发布 base 为 `d9e107f83a97229ab879987c1abe1c351afcad3b`。当前范围与事实见 `docs/v1.8-plan.md`、`TASKS.md`、`docs/v1.8-baseline-audit.md` 和 `docs/v1.8-release-readiness.md`；V1.6/V1.7 文档保留为历史证据。V1.8 只包含 C0/C1/C3/C4，其他13项 DEFER；不改变非协商规则或 V1.5 核心领域规则。
 
 ## 1. 规格优先级
 
@@ -40,17 +40,17 @@ Redis 服务：iterflow-redis
 
 1. `AGENTS.md` 中的非协商规则
 2. V1.5 核心领域冻结规则及 `docs/需求与版本管理系统_独立部署版_V1.5_完整开发基线.docx`
-3. `docs/v1.7-plan.md`：仅定义已批准的 V1.7 增量范围、非范围和阶段目标
-4. 当前契约：Phase 0 使用 `spec/openapi-v1.6.yaml`；V1.7 Phase 1 建立 `spec/openapi-v1.7.yaml` 后切换生成与 parity，冻结 V1.6 文件；历史发布快照以不可变标签为准
+3. `docs/v1.8-plan.md`：仅定义已批准的 V1.8 增量范围、非范围和阶段目标
+4. 当前契约：`spec/openapi-v1.8.yaml`；V1.5/V1.6/V1.7 文件冻结，历史发布快照以不可变标签为准
 5. `spec/status-machines.md`
-6. `docs/v1.7-baseline-audit.md`：正式 V1.6 基线实现事实盘点，不用于推翻冻结业务规则
+6. `docs/v1.8-baseline-audit.md`：正式 V1.7 基线实现事实盘点，不用于推翻冻结业务规则
 7. `DEVELOPMENT.md`
 8. `TASKS.md`
 9. 当前代码和测试
 
 禁止根据旧版本 V1.0–V1.4 文档推翻 V1.5 规则。
 如 V1.5 文档与 OpenAPI 在核心业务上冲突，暂停相关实现，列出冲突点并询问，不得自行改变核心模型。
-V1.7 Plan 不能改变 Feedback → Requirement → Version → Publish → Release 主链、状态机、Publish 事务、Release 记录语义、revision CAS 或 RBAC/DataScope 基本原则。
+V1.8 Plan 不能改变 Feedback → Requirement → Version → Publish → Release 主链、状态机、Publish 事务、Release 记录语义、revision CAS 或 RBAC/DataScope 基本原则。
 
 ## 2. 核心业务模型：不可擅自修改
 
@@ -220,7 +220,7 @@ Redis 的“正在编辑”标记只用于提示，不是强制排他锁。建�
 
 ## 9. OpenAPI 契约
 
-V1.7 Phase 0 继续使用 `spec/openapi-v1.6.yaml`；Phase 1 从正式 V1.6 契约复制建立 `spec/openapi-v1.7.yaml`，同步 runtime 文档、生成类型与 parity 后，V1.6 契约冻结为历史发布依据。Phase 0–4开发阶段所有包和运行时版本为1.6.0；本次已获正式发布授权，包、运行时与V1.7契约元数据同步为1.7.0。后续接口变更继续 contract-first 演进。`spec/openapi-v1.5.yaml` 包含 V1.5 发布后的扩展，正式 V1.5 历史契约以不可变标签为准，不继续覆盖其历史。核心业务变更仍按上文规格优先级处理。
+当前正式发布目标契约为 `spec/openapi-v1.8.yaml`，由 V1.7 正式契约复制，仅更新 info.version / description，无 API shape 变化；生成类型与 parity 当前入口同步切换。V1.8 开发期间版本保持1.7.0，本次正式发布授权仅将包、runtime/health/FastAPI与V1.8契约元数据同步为1.8.0。V1.5/V1.6/V1.7 契约文件冻结，历史正式快照以不可变标签为准。后续 API 变更继续 contract-first，并遵守核心业务规格优先级。
 
 开发要求：
 - 不要前后端分别创造字段名
@@ -327,10 +327,15 @@ Frontend：
 - 绕开 OpenAPI 契约
 - 为“省事”删除权限、审计或事务规则
 
-## 16. V1.7 自主执行授权与停止条件
+## 16. V1.7 历史自主执行授权与停止条件
 
 用户已授权按 Phase 0–4 自主推进。每阶段必须 Implementation Pass → 本地门禁 → Fresh Self-Review → branch 六项 CI → 验证 master 未漂移 → no-ff merge → docs-only closeout → final master 六项 CI；全部通过才能继续下一阶段。执行证据记录在 `docs/v1.7-autonomous-execution-log.md`，同一个 Agent 的复查不得称为 independent review。
 
 每阶段最多三轮 Fix Loop。明确外部基础设施失败可在 HEAD 不变且保留首次失败证据时只重跑失败 job 一次；再次失败停止。真实测试失败必须修复，不降低门禁。需要新 migration、新 permission、新核心实体、TEAM、状态机/Publish 改变、无法在授权范围小修的安全问题，或 master 外部漂移时立即停止。
 
 Phase 0–4已完成RELEASE READY，外部独立终审PASS。本次用户已授权v1.7.0 Final Release：仅版本元数据/当前发布文档、本地及六项CI门禁、no-ff merge、annotated tag与正式GitHub Release；完成后停止。Cloudflare Preview升级和正式部署另行授权，不操作生产恢复/volume/数据库。
+
+
+## 17. V1.8 Final Release 授权与停止条件
+
+V1.8 C0/C1/C3/C4 Implementation、Fresh Self-Review、Release Readiness 与外部独立终审均 PASS。用户已授权 release/v1.8.0：仅版本元数据、V1.8 契约快照/工具入口、当前发布文档及版本断言；本地门禁 → Release Fresh Self-Review → branch 六项 CI → master 无漂移 → no-ff merge → final master 六项 CI → annotated tag / GitHub Release → 双远端镜像核验。最多三轮 Fix Loop；明确瞬时基础设施错误允许同 HEAD failed jobs 重跑一次并保留首次失败证据。业务改动、新迁移/权限、未知 master 漂移、契约 shape 漂移、历史 tag 漂移或错误 release/tag 目标立即 HARD STOP。发布后停止；Preview 升级、生产部署/migration/restore、volume 或真实数据操作均未授权。

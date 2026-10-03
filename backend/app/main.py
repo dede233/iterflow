@@ -23,8 +23,8 @@ settings = get_settings()
 logger = configure_logging(settings.log_level)
 app = FastAPI(
     title=settings.app_name,
-    version="1.7.0",
-    description="IterFlow V1.7.0 正式发布契约。核心领域规则保持冻结。",
+    version="1.8.0",
+    description="IterFlow V1.8.0 正式发布契约。核心领域规则保持冻结。",
     docs_url="/docs" if settings.enable_api_docs else None,
     redoc_url="/redoc" if settings.enable_api_docs else None,
     openapi_url="/openapi.json" if settings.enable_api_docs else None,
@@ -179,7 +179,7 @@ async def app_error_handler(request: Request, exc: AppError):
 
 @app.get("/health", include_in_schema=False)
 def health():
-    return {"status": "ok", "version": "1.7.0", "build_sha": settings.build_sha}
+    return {"status": "ok", "version": "1.8.0", "build_sha": settings.build_sha}
 
 
 @app.get("/ready", include_in_schema=False)

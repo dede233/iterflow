@@ -1,14 +1,14 @@
 {
   "name": "iterflow-web",
   "private": true,
-  "version": "1.7.0",
+  "version": "1.8.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",
     "test": "vitest run",
     "smoke:browser": "playwright test --config playwright.config.ts",
-    "generate:api-types": "openapi-typescript ../spec/openapi-v1.7.yaml -o src/types/openapi.generated.ts",
+    "generate:api-types": "openapi-typescript ../spec/openapi-v1.8.yaml -o src/types/openapi.generated.ts",
     "check:api-types": "node scripts/check-api-types.mjs",
     "check:bundle": "node scripts/check-bundle-size.mjs"
   },

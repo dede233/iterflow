@@ -1,17 +1,17 @@
 # IterFlow Tasks
 
-> 当前正式基线：`v1.7.0` / `e485efea0155c5b4194f563926a531d606c77349`。V1.8 Phase 0 FINAL CLOSED / PASS，C0/C1/C3/C4 APPROVED，其余候选 DEFER；用户授权自主开发与自审，正式发布另行授权。见 `docs/v1.8-baseline-audit.md` 和 `docs/v1.8-plan.md`。Preview 独立部署线为 `79fa39d3611c166c992d5cbdf8d6c3757506ee46`，不是 V1.8 产品基线。
+> 当前正式基线：`v1.7.0` / `e485efea0155c5b4194f563926a531d606c77349`。V1.8 C0/C1/C3/C4 IMPLEMENTATION COMPLETE / RELEASE READINESS PASS；其余候选 DEFER，PENDING FINAL RELEASE AUTHORIZATION。产品主线 CI 已通过；最终文档收口以该分支及合并 HEAD 六项 CI 成功为关闭条件，最终 run / HEAD 记录于执行报告。见 `docs/v1.8-baseline-audit.md` 和 `docs/v1.8-plan.md`。Preview 独立部署线为 `79fa39d3611c166c992d5cbdf8d6c3757506ee46`，不是 V1.8 产品基线。
 
 ## V1.8 — Version Workspace & Main-Chain Productivity
 
 - [x] Phase 0：正式V1.7基线审计与产品范围冻结；原始分析保留。
-- [ ] Phase 0：Scope branch六项CI、no-ff merge与final master六项CI。
-- [ ] Phase 1 — Query Context & Main-Chain Traceability：C4白名单query/安全return_to与C3授权lookup/关系导航。
-- [ ] Phase 2 — Scoped Relationship Selection：C1分页/搜索/竞态/权限降级/提交前revision。
-- [ ] Phase 3 — Version Worklist Productivity：C0可见清单筛选、优先级、统计与安全阻塞导航。
-- [ ] Phase 4 — Regression & Release Readiness：本地门禁、Fresh Self-Review、product branch/master CI与docs-only收口/final CI。
+- [x] Phase 0：Scope branch六项CI、no-ff merge与final master六项CI。
+- [x] Phase 1 — Query Context & Main-Chain Traceability：C4白名单query/安全return_to与C3授权lookup/关系导航。
+- [x] Phase 2 — Scoped Relationship Selection：C1分页/搜索/竞态/权限降级/提交前revision。
+- [x] Phase 3 — Version Worklist Productivity：C0可见清单筛选、优先级、统计与安全阻塞导航。
+- [x] Phase 4 — Regression & Release Readiness：本地门禁、Fresh Self-Review、product branch/master CI与docs-only收口/final CI。
 
-C2、C5–C16本版DEFER；scroll持久化/全局缓存不做。无新permission/migration/entity、TEAM、状态机或Publish变化。开发版本保持1.7.0，不创建tag/Release，不更新Preview或生产。执行证据见 `docs/v1.8-autonomous-execution-log.md`；同一Agent复查不称外部独立终审。
+C2、C5–C16本版DEFER；scroll持久化/全局缓存不做。无新permission/migration/entity、TEAM、状态机或Publish变化。开发版本保持1.7.0，不创建tag/Release，不更新Preview或生产。正式开发 base：`cf9a2fbcd4f045c8dfbc34030b1a3449faa19e8f`。验收见 `docs/v1.8-release-readiness.md`，执行证据见 `docs/v1.8-autonomous-execution-log.md`；同一Agent复查不称外部独立终审。
 
 ## V1.7 历史开发清单
 

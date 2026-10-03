@@ -1,4 +1,10 @@
-# IterFlow V1.7 Development Tasks
+# IterFlow Tasks
+
+> 当前正式基线：`v1.7.0` / `e485efea0155c5b4194f563926a531d606c77349`。V1.8 Phase 0 文档审计与候选规划完成，候选全部 `PENDING PRODUCT DECISION`，不授权 Phase 1。见 `docs/v1.8-baseline-audit.md` 和 `docs/v1.8-plan.md`。Preview 独立部署线为 `79fa39d3611c166c992d5cbdf8d6c3757506ee46`，不是 V1.8 产品基线。
+
+## V1.7 历史开发清单
+
+以下保留 V1.7 开发、发布准备时的基线与授权记录；其中 Preview SHA 是当时冻结值，不代表当前部署线。V1.7 已正式发布，历史授权不自动延续到 V1.8。
 
 > 正式发布基线：v1.6.0 / `f0aa8475ff081fc963cdd08045d23e383a3c594e`。V1.7 已获用户自主开发授权；正式范围见 `docs/v1.7-plan.md`，事实与执行证据见 baseline audit / autonomous execution log。Phase 0–4开发版本为1.6.0；外部独立终审PASS，现已授权v1.7.0 Final Release并同步包/运行时元数据。Preview保持`33d36d78ab4bedf48835d124f295f1ca8c352eae`，不参与本次发布。V1.6 清单以其正式标签快照为历史依据。
 

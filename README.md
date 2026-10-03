@@ -76,7 +76,7 @@ Web 默认仅绑定 `127.0.0.1:8080`。**不得将纯 HTTP 端口直接暴露公
 
 1. `AGENTS.md`
 2. `START_HERE.md`
-3. `docs/v1.7-baseline-audit.md` 与 `docs/v1.7-plan.md`
+3. `docs/v1.8-baseline-audit.md` 与 `docs/v1.8-plan.md`；V1.7 文档保留为历史证据
 4. `TASKS.md` 与 `DEVELOPMENT.md`
 
-V1.5 主文档和标签是正式版本的历史依据；V1.0–V1.4 仅为更早历史方案。当前开发任务按已批准的 V1.7 规划推进，核心业务规则仍受 `AGENTS.md` 和 V1.5 规格约束。
+V1.5 主文档和标签是正式版本的历史依据；V1.0–V1.4 仅为更早历史方案。V1.7 已正式发布；当前任务仅为 V1.8 docs-only 基线审计与需求规划，所有候选待产品决策，不启动功能开发。核心业务规则仍受 `AGENTS.md` 和 V1.5 规格约束。

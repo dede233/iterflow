@@ -9,7 +9,7 @@ from app.main import app
 from scripts.sync_openapi import generated_spec
 
 ROOT = Path(__file__).resolve().parents[2]
-CANONICAL = ROOT / "spec" / "openapi-v1.7.yaml"
+CANONICAL = ROOT / "spec" / "openapi-v1.8.yaml"
 IGNORED_DOCUMENTATION_FIELDS = {
     "description",
     "summary",
@@ -75,6 +75,7 @@ def _operation_contract(operation: dict[str, Any], spec: dict[str, Any]) -> dict
 
 
 def test_v15_openapi_remains_available() -> None:
+    assert (ROOT / "spec" / "openapi-v1.7.yaml").is_file()
     assert (ROOT / "spec" / "openapi-v1.6.yaml").is_file()
     assert (ROOT / "spec" / "openapi-v1.5.yaml").is_file()
     assert (ROOT / "spec" / "需求与版本管理系统_V1.5_OpenAPI.yaml").is_file()

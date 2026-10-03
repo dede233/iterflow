@@ -1,6 +1,6 @@
 # IterFlow 开发 Agent 接手入口
 
-当前正式版本为 `v1.7.0` / `e485efea0155c5b4194f563926a531d606c77349`。本轮 V1.8 仅授权 docs-only 基线审计与候选规划，见 `docs/v1.8-baseline-audit.md` 与 `docs/v1.8-plan.md`；所有候选 `PENDING PRODUCT DECISION`，不启动 Phase 1。下文为 V1.7 历史开发与发布授权记录，不自动适用于 V1.8。
+当前正式版本为 `v1.7.0` / `e485efea0155c5b4194f563926a531d606c77349`。本轮 V1.8 授权 C0/C1/C3/C4 自主开发、自审、CI与合并收口，见 `docs/v1.8-baseline-audit.md` 与 `docs/v1.8-plan.md`；其他候选本版DEFER，正式发布另行授权。下文为 V1.7 历史开发与发布授权记录，不自动适用于 V1.8。
 
 本次正式发布版本为v1.7.0，发布事实以最终master commit、annotated tag与GitHub Release为准。V1.7开发基线为`f0aa8475ff081fc963cdd08045d23e383a3c594e`；Phase 0–4开发期间版本为1.6.0，本次正式发布元数据同步为1.7.0。V1.6文档和标签保留为不可变历史发布证据。
 

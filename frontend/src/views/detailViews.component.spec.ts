@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   can: vi.fn<(permission: string | string[]) => boolean>(),
   routerPush: vi.fn(),
   getVersion: vi.fn(),
+  checkPublish: vi.fn(),
   listVersionRequirements: vi.fn(),
   listReleases: vi.fn(),
   getRequirement: vi.fn(),
@@ -33,6 +34,7 @@ vi.mock('vue-router', () => ({
   useRoute: () => ({ params: { id: '7' } }),
   useRouter: () => ({ push: mocks.routerPush, replace: vi.fn(), back: vi.fn() }),
 }))
+vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ hasPermission: mocks.can, user: { id: 1 }, accessToken: 'test', permissionCodes: [] }) }))
 vi.mock('@/composables/usePermission', () => ({ usePermission: () => ({ can: mocks.can }) }))
 vi.mock('element-plus', () => ({
   ElMessage: { success: mocks.createMessage, warning: mocks.warningMessage },
@@ -41,7 +43,7 @@ vi.mock('element-plus', () => ({
 vi.mock('@/api/versions', () => ({
   addVersionRequirement: vi.fn(),
   changeVersionStatus: vi.fn(),
-  checkVersionPublish: vi.fn(),
+  checkVersionPublish: mocks.checkPublish,
   getVersion: mocks.getVersion,
   listVersionRequirements: mocks.listVersionRequirements,
   moveVersionRequirement: vi.fn(),
@@ -183,7 +185,7 @@ const stubs = {
   'el-skeleton': elementStub,
   'el-switch': elementStub,
   'el-table': elementStub,
-  'el-table-column': elementStub,
+  'el-table-column': { template: '<div />' },
   'el-tag': elementStub,
   'el-upload': elementStub,
   StatusTag: { props: ['status', 'label', 'type'], template: '<span>{{ label }}</span>' },
@@ -455,4 +457,30 @@ describe('detail views enforce permission-aware loading in mounted components', 
     await flushPromises()
     expect(wrapper.text()).toContain('关联已有需求')
   })
+})
+
+
+it('publish check close/reopen invalidates old success and finally; server check remains authoritative', async () => {
+  permissionSet('rd.version.view', 'rd.version.publish')
+  mocks.getVersion.mockResolvedValue({ ...version, status: 'READY' })
+  let oldFinish!: (value: unknown) => void
+  let currentFinish!: (value: unknown) => void
+  mocks.checkPublish.mockImplementationOnce(() => new Promise(resolve => { oldFinish = resolve }))
+  mocks.checkPublish.mockImplementationOnce(() => new Promise(resolve => { currentFinish = resolve }))
+  const wrapper = mount(VersionDetailView, { global: { stubs, directives: { loading: {} } } })
+  await flushPromises()
+  const button = (text: string) => wrapper.findAll('button').find(node => node.text() === text)!
+  await button('发布').trigger('click')
+  await button('取消').trigger('click')
+  await button('发布').trigger('click')
+  oldFinish({ passed: true, checks: [{ type: 'OLD', passed: true, message: 'stale allowed' }] })
+  await flushPromises()
+  expect(wrapper.text()).not.toContain('stale allowed')
+  expect(button('确认发布').attributes('disabled')).toBeDefined()
+  currentFinish({ passed: false, checks: [{ type: 'CURRENT', passed: false, message: 'current blocked' }] })
+  await flushPromises()
+  expect(wrapper.text()).toContain('current blocked')
+  expect(button('确认发布').attributes('disabled')).toBeDefined()
+  expect(mocks.listVersionRequirements).not.toHaveBeenCalled()
+  wrapper.unmount()
 })

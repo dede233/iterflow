@@ -1,3 +1,4 @@
+import { reactive } from 'vue'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ElementPlus, { ElDatePicker, ElDrawer, ElFormItem, ElInput, ElInputNumber, ElMessage, ElPagination, ElSelect, ElTable } from 'element-plus'
@@ -6,7 +7,8 @@ const mocks = vi.hoisted(() => ({ requirements: vi.fn(), versions: vi.fn(), rele
 vi.mock('@/api/requirements', () => ({ listRequirements: mocks.requirements, createRequirement: vi.fn() }))
 vi.mock('@/api/versions', () => ({ listVersions: mocks.versions, createVersion: vi.fn() }))
 vi.mock('@/api/releases', () => ({ listReleases: mocks.releases }))
-vi.mock('vue-router', () => ({ useRouter: () => ({ push: mocks.push }) }))
+const route = reactive({ query: {} as Record<string, string> })
+vi.mock('vue-router', () => ({ useRoute: () => route, useRouter: () => ({ push: mocks.push }) }))
 vi.mock('@/composables/useResponsive', () => ({ useResponsive: () => ({ isMobile: mocks.mobile }) }))
 vi.mock('@/composables/usePermission', () => ({ usePermission: () => ({ can: (code: string) => mocks.create && code.endsWith('.create') }) }))
 
@@ -23,6 +25,8 @@ const configs = [
 
 beforeEach(() => {
   vi.clearAllMocks()
+  route.query = {}
+  mocks.push.mockImplementation(async (target: { query?: Record<string, string> } | string) => { if (typeof target !== 'string') route.query = target.query ?? {} })
   mocks.mobile = false
   mocks.create = false
   for (const config of configs) config.api.mockReset().mockResolvedValue({ items: [config.row], total: 100 })
@@ -83,6 +87,9 @@ for (const config of configs) {
       expect(labels).toEqual(config.labels)
       for (const number of wrapper.findAllComponents(ElInputNumber)) expect(number.props('min')).toBe(1)
       await fill(wrapper, config)
+      expect(config.api).toHaveBeenCalledTimes(1)
+      search(wrapper)
+      await flushPromises()
       wrapper.findComponent(ElPagination).vm.$emit('current-change', 3)
       await flushPromises()
       const expected = { ...config.params, page: 3, page_size: 20 }
@@ -181,7 +188,7 @@ it.each([configs[0], configs[1]])('keeps $name creation refresh before detail na
   create.vm.$emit('created', 7)
   await flushPromises()
   expect(config.api).toHaveBeenCalledTimes(2)
-  expect(mocks.push).toHaveBeenCalledWith(config.name === 'Requirement' ? '/requirements/7' : '/versions/7')
+  expect(mocks.push).toHaveBeenCalledWith(config.name === 'Requirement' ? '/requirements/7?return_to=%2Frequirements' : '/versions/7?return_to=%2Fversions')
   expect(config.api.mock.invocationCallOrder[1]).toBeLessThan(mocks.push.mock.invocationCallOrder[0]!)
   wrapper.unmount()
 })

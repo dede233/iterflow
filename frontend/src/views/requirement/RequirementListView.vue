@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { onBeforeUnmount, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { listRequirements } from '@/api/requirements'
 import RequirementCreateView from './RequirementCreateView.vue'
+import { useListQuery } from '@/composables/useListQuery'
 import { useResponsive } from '@/composables/useResponsive'
 import { usePermission } from '@/composables/usePermission'
 import StatusTag from '@/components/StatusTag.vue'
@@ -31,15 +32,18 @@ let requestSequence = 0
 const positiveId = (value: number | null) => value != null && Number.isSafeInteger(value) && value >= 1 ? value : undefined
 
 async function load(): Promise<void> {
+  const q = queryState.applied()
+  const current = { page: Number(q.page ?? 1), page_size: Number(q.page_size ?? 20), keyword: q.keyword ?? '', status: q.status as RequirementListParams['status'], priority: q.priority as RequirementListParams['priority'], source: q.source as RequirementListParams['source'], current_version_id: q.current_version_id ? Number(q.current_version_id) : null, owner_id: q.owner_id ? Number(q.owner_id) : null }
+
   const sequence = ++requestSequence
   loading.value = true
   failed.value = false
   try {
     const page = await listRequirements({
-      page: filters.page, page_size: filters.page_size,
-      keyword: filters.keyword.trim() || undefined, status: filters.status || undefined,
-      priority: filters.priority || undefined, source: filters.source || undefined,
-      current_version_id: positiveId(filters.current_version_id), owner_id: positiveId(filters.owner_id),
+      page: current.page, page_size: current.page_size,
+      keyword: current.keyword.trim() || undefined, status: current.status || undefined,
+      priority: current.priority || undefined, source: current.source || undefined,
+      current_version_id: positiveId(current.current_version_id), owner_id: positiveId(current.owner_id),
     })
     if (sequence !== requestSequence) return
     rows.value = page.items
@@ -52,14 +56,13 @@ async function load(): Promise<void> {
 }
 
 function applyFilters(): void {
-  filters.page = 1
   filterDrawer.value = false
-  void load()
+  void queryState.apply()
 }
 
 function resetFilters(): void {
-  Object.assign(filters, { keyword: '', status: '', priority: '', source: '', current_version_id: null, owner_id: null })
-  applyFilters()
+  filterDrawer.value = false
+  void queryState.reset()
 }
 
 onBeforeUnmount(() => { requestSequence++ })
@@ -67,10 +70,25 @@ onBeforeUnmount(() => { requestSequence++ })
 async function onRequirementCreated(id: number): Promise<void> {
   createDialog.value = false
   await load()
-  await router.push(`/requirements/${id}`)
+  await router.push(queryState.detail(`/requirements/${id}`))
 }
 
-onMounted(load)
+
+const queryState = useListQuery({
+  path: '/requirements', readDraft: () => ({ ...filters }),
+  restore: q => {
+    filters.page = Number(q.page ?? 1)
+    filters.page_size = Number(q.page_size ?? 20)
+    filters.keyword = (q.keyword ?? '') as typeof filters.keyword
+    filters.status = (q.status ?? '') as typeof filters.status
+    filters.priority = (q.priority ?? '') as typeof filters.priority
+    filters.source = (q.source ?? '') as typeof filters.source
+    filters.current_version_id = q.current_version_id ? Number(q.current_version_id) : null
+    filters.owner_id = q.owner_id ? Number(q.owner_id) : null
+
+  },
+  load, invalidate: () => { requestSequence++ },
+})
 </script>
 
 <template>
@@ -104,7 +122,7 @@ onMounted(load)
       v-loading="loading"
       :data="rows"
       row-key="id"
-      @row-click="(row: Requirement) => router.push('/requirements/' + row.id)"
+      @row-click="(row: Requirement) => router.push(queryState.detail('/requirements/' + row.id))"
     >
       <el-table-column prop="requirement_no" label="编号" width="180" />
       <el-table-column prop="title" label="标题" min-width="240" show-overflow-tooltip />
@@ -123,7 +141,7 @@ onMounted(load)
       </el-table-column>
       <el-table-column label="操作" width="90" fixed="right">
         <template #default="s">
-          <el-link type="primary" @click.stop="router.push('/requirements/' + s.row.id)">查看</el-link>
+          <el-link type="primary" @click.stop="router.push(queryState.detail('/requirements/' + s.row.id))">查看</el-link>
         </template>
       </el-table-column>
       <template #empty><EmptyState description="暂无需求" compact /></template>
@@ -135,7 +153,7 @@ onMounted(load)
         :key="r.id"
         :code="r.requirement_no"
         :title="r.title"
-        @open="router.push('/requirements/' + r.id)"
+        @open="router.push(queryState.detail('/requirements/' + r.id))"
       >
         <template #status>
           <StatusTag :status="r.status" :label="requirementStatusLabel[r.status]" :type="requirementStatusTagType(r.status)" size="sm" />
@@ -156,8 +174,7 @@ onMounted(load)
       background
       @current-change="
         (p: number) => {
-          filters.page = p
-          load()
+          void queryState.paginate(p)
         }
       "
     />

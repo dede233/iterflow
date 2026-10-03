@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { onBeforeUnmount, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { listReleases } from '@/api/releases'
+import { useListQuery } from '@/composables/useListQuery'
 import { useResponsive } from '@/composables/useResponsive'
 import { usePermission } from '@/composables/usePermission'
 import PageHeader from '@/components/ui/PageHeader.vue'
@@ -29,17 +30,21 @@ const dateRange = ref<[string, string] | null>(null)
 let requestSequence = 0
 
 async function load(): Promise<void> {
+  const q = queryState.applied()
+  const current = { page: Number(q.page ?? 1), page_size: Number(q.page_size ?? 20), version_id: q.version_id ? Number(q.version_id) : null }
+  const currentRange: [string, string] | null = q.date_from && q.date_to ? [q.date_from, q.date_to] : null
+
   let dates: ReturnType<typeof releaseDateBounds>
-  try { dates = releaseDateBounds(dateRange.value) }
+  try { dates = releaseDateBounds(currentRange) }
   catch (error) { ElMessage.warning((error as Error).message); return }
   const sequence = ++requestSequence
   loading.value = true
   failed.value = false
   try {
     const result = await listReleases({
-      page: filters.page, page_size: filters.page_size,
+      page: current.page, page_size: current.page_size,
       ...dates,
-      version_id: filters.version_id != null && Number.isSafeInteger(filters.version_id) && filters.version_id >= 1 ? filters.version_id : undefined,
+      version_id: current.version_id != null && Number.isSafeInteger(current.version_id) && current.version_id >= 1 ? current.version_id : undefined,
     })
     if (sequence !== requestSequence) return
     rows.value = result.items
@@ -52,20 +57,29 @@ async function load(): Promise<void> {
 }
 
 function applyFilters(): void {
-  filters.page = 1
+  try { releaseDateBounds(dateRange.value) } catch (error) { ElMessage.warning((error as Error).message); return }
   filterDrawer.value = false
-  void load()
+  void queryState.apply()
 }
 
 function resetFilters(): void {
-  filters.version_id = null
-  dateRange.value = null
-  applyFilters()
+  filterDrawer.value = false
+  void queryState.reset()
 }
 
 onBeforeUnmount(() => { requestSequence++ })
 
-onMounted(load)
+
+const queryState = useListQuery({
+  path: '/releases', readDraft: () => ({ ...filters, date_from: dateRange.value?.[0], date_to: dateRange.value?.[1] }),
+  restore: q => {
+    filters.page = Number(q.page ?? 1)
+    filters.page_size = Number(q.page_size ?? 20)
+    filters.version_id = q.version_id ? Number(q.version_id) : null
+    dateRange.value = q.date_from && q.date_to ? [q.date_from, q.date_to] : null
+  },
+  load, invalidate: () => { requestSequence++ },
+})
 </script>
 
 <template>
@@ -90,8 +104,8 @@ onMounted(load)
         <el-table-column prop="release_notes" label="发布说明" min-width="260" show-overflow-tooltip />
         <el-table-column label="操作" :width="can('rd.version.view') ? 190 : 100" fixed="right">
           <template #default="s">
-            <el-button link type="primary" @click="router.push('/releases/' + s.row.id)">查看详情</el-button>
-            <el-button v-if="can('rd.version.view')" link type="primary" @click="router.push('/versions/' + s.row.version_id)">查看版本</el-button>
+            <el-button link type="primary" @click="router.push(queryState.detail('/releases/' + s.row.id))">查看详情</el-button>
+            <el-button v-if="can('rd.version.view')" link type="primary" @click="router.push(queryState.detail('/versions/' + s.row.version_id))">查看版本</el-button>
           </template>
         </el-table-column>
         <template #empty><EmptyState description="暂无发布记录" compact /></template>
@@ -102,14 +116,14 @@ onMounted(load)
           <div class="release-time">{{ formatLocalDateTime(release.released_at) }}</div>
           <p>{{ release.release_notes }}</p>
           <div class="release-actions">
-            <el-button link type="primary" @click="router.push('/releases/' + release.id)">查看详情</el-button>
-            <el-button v-if="can('rd.version.view')" link type="primary" @click="router.push('/versions/' + release.version_id)">查看版本</el-button>
+            <el-button link type="primary" @click="router.push(queryState.detail('/releases/' + release.id))">查看详情</el-button>
+            <el-button v-if="can('rd.version.view')" link type="primary" @click="router.push(queryState.detail('/versions/' + release.version_id))">查看版本</el-button>
           </div>
         </article>
         <EmptyState v-if="!loading && !rows.length" description="暂无发布记录" compact />
       </div>
     </SectionCard>
-    <el-pagination class="pager" layout="prev, pager, next, total" :total="total" :current-page="filters.page" :page-size="filters.page_size" background @current-change="(page: number) => { filters.page = page; void load() }" />
+    <el-pagination class="pager" layout="prev, pager, next, total" :total="total" :current-page="filters.page" :page-size="filters.page_size" background @current-change="(page: number) => { void queryState.paginate(page) }" />
   </section>
 </template>
 

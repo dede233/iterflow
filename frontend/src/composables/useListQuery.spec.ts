@@ -23,3 +23,11 @@ it('restores URL, keeps draft out of pagination, persists apply/reset and browse
   router.back(); await flushPromises(); expect(draft.keyword).toBe('next'); expect(snapshots.at(-1)?.keyword).toBe('next')
   const count = snapshots.length; wrapper.unmount(); await router.push('/requirements?keyword=after'); await flushPromises(); expect(snapshots).toHaveLength(count); expect(invalidate).toHaveBeenCalled()
 })
+
+it('reset removes invalid/unknown query fields even when the applied snapshot is already empty', async () => {
+  const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/versions', component: { template: '<div />' } }] })
+  await router.push('/versions?page=0&unknown=bad&planned_release_from=2026-10-01')
+  let state!: ReturnType<typeof useListQuery>
+  const wrapper = mount(defineComponent({ setup() { state = useListQuery({ path: '/versions', readDraft: () => ({}), restore: () => {}, load: async () => {}, invalidate: () => {} }); return () => null } }), { global: { plugins: [router] } })
+  expect(state.applied()).toEqual({}); await state.reset(); await flushPromises(); expect(router.currentRoute.value.fullPath).toBe('/versions'); wrapper.unmount()
+})

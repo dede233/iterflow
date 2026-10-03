@@ -13,7 +13,11 @@ const day: Rule = value => {
   const date = new Date(`${value}T00:00:00Z`)
   return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value ? value : undefined
 }
-const instant: Rule = value => /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$/.test(value) && day(value.slice(0, 10)) && Number.isFinite(Date.parse(value)) ? new Date(value).toISOString() : undefined
+const instant: Rule = value => {
+  const match = /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,6})?(?:Z|[+-](\d{2}):(\d{2}))$/.exec(value)
+  if (!match || !day(match[1]!) || Number(match[2]) > 23 || Number(match[3]) > 59 || Number(match[4]) > 59 || Number(match[5] ?? 0) > 23 || Number(match[6] ?? 0) > 59) return undefined
+  return Number.isFinite(Date.parse(value)) ? new Date(value).toISOString() : undefined
+}
 const size: Rule = value => positive(value) && Number(value) <= 100 && Number(value) !== 20 ? String(Number(value)) : undefined
 const page: Rule = value => positive(value) && Number(value) !== 1 ? String(Number(value)) : undefined
 const schemas: Record<string, Record<string, Rule>> = {
@@ -34,10 +38,9 @@ export function parseListQuery(path: string, query: LocationQuery | Record<strin
     if (valid !== undefined) result[key] = valid
   }
   for (const [from, to] of [['planned_release_from', 'planned_release_to'], ['date_from', 'date_to'], ['time_from', 'time_to']]) {
-    if (result[from!] && result[to!] && result[from!]! > result[to!]!) { delete result[from!]; delete result[to!] }
+    if (!!result[from!] !== !!result[to!] || (result[from!] && result[to!] && result[from!]! > result[to!]!)) { delete result[from!]; delete result[to!] }
   }
-  // Calendar picker ranges require both endpoints, unlike backend date contracts.
-  if (!!result.date_from !== !!result.date_to) { delete result.date_from; delete result.date_to }
+  // UI range pickers require both endpoints; never apply an invisible half-range.
   return result
 }
 export const serializeListQuery = parseListQuery

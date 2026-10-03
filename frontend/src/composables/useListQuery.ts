@@ -26,10 +26,9 @@ export function useListQuery(options: {
   onMounted(reload)
   onBeforeUnmount(() => { disposed = true; stop(); options.invalidate() })
   async function publish(query: Record<string, unknown>) {
-    if (disposed) return
+    if (disposed || (route.path && route.path !== options.path)) return
     const next = parseListQuery(options.path, query)
     // Even applying identical fields must invalidate an older request/retry.
-    if (disposed || (route.path && route.path !== options.path)) return
     options.invalidate()
     applied = next
     options.restore(next)

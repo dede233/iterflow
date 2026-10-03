@@ -28,7 +28,7 @@ async function fixture(page: Page, readRequirement = true, unlinked = false) {
     if (/^\/versions\/[123]$/.test(path)) return json(version(Number(path.at(-1))))
     if (/^\/versions\/[12]\/requirements$/.test(path)) {
       if (route.request().method() === 'POST') return json(version(1))
-      return json({ version_id: Number(path.split('/')[2]), items: [requirement(7), requirement(8, 'DONE', 'P2')], stats: { total: 2, completed: 1, completion_rate: 0.5, by_status: { CONFIRMED: 1, DONE: 1 } } })
+      return json({ version_id: Number(path.split('/')[2]), items: [{ ...requirement(7), revision: 1 }, requirement(8, 'DONE', 'P2')], stats: { total: 2, completed: 1, completion_rate: 0.5, by_status: { CONFIRMED: 1, DONE: 1 } } })
     }
     if (path === '/versions/3/requirements/move') return json(version(3))
     if (path === '/feedbacks/1/convert') return json(requirement(7))
@@ -187,4 +187,26 @@ test('V1.8 selector failure/retry and local worklist filter intersections remain
   await page.keyboard.press('Escape'); await expect(selector).not.toBeVisible(); await expect(parent).toBeVisible()
   await parent.getByRole('button', { name: '取消', exact: true }).click(); await noOverflow(page, 390)
   expect(state.unexpected).toEqual([])
+})
+
+
+test('V1.8 relation conflict reports the freshly submitted revision rather than the old list row', async ({ page }) => {
+  const state = await fixture(page)
+  await page.goto('/#/versions/1')
+  await page.locator('.el-table__row').filter({ hasText: 'REQ-7' }).getByText('迁移', { exact: true }).click()
+  const move = page.getByRole('dialog', { name: '迁移需求到其他版本' })
+  await move.getByRole('button', { name: '选择版本' }).click()
+  await page.getByRole('dialog', { name: '选择版本', exact: true }).locator('.selector-option').click()
+  await move.locator('textarea').fill('CAS 冲突验收')
+  let body: any
+  await page.route('**/api/v1/versions/3/requirements/move', route => {
+    body = route.request().postDataJSON()
+    return route.fulfill({ status: 409, json: { code: 40910, message: '对象已更新', data: { current_revision: 14 } } })
+  })
+  await move.getByRole('button', { name: '确定', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: '数据已被其他用户修改' })
+  await expect(dialog).toContainText('版本 3 / 需求 13')
+  expect(body.revision).toBe(13)
+  await expect(page.getByText('服务器版本已变化，请查看冲突详情')).toHaveCount(0)
+  await expect(move).toBeVisible(); expect(state.unexpected).toEqual([])
 })

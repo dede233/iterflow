@@ -7,7 +7,7 @@ describe('applied list query contract', () => {
     ['/requirements', { priority: 'P1', source: 'DIRECT', owner_id: 7 }, { priority: 'P1', source: 'DIRECT', owner_id: '7' }],
     ['/versions', { status: 'READY', planned_release_from: '2026-10-01', planned_release_to: '2026-10-03' }, { status: 'READY', planned_release_from: '2026-10-01', planned_release_to: '2026-10-03' }],
     ['/releases', { version_id: '8', date_from: '2026-10-01', date_to: '2026-10-03' }, { version_id: '8', date_from: '2026-10-01', date_to: '2026-10-03' }],
-    ['/admin/audits', { entity_type: 'REQUIREMENT', entity_id: '7', operator_id: '9', time_from: '2026-10-01T08:00:00+08:00' }, { entity_type: 'REQUIREMENT', entity_id: '7', operator_id: '9', time_from: '2026-10-01T00:00:00.000Z' }],
+    ['/admin/audits', { entity_type: 'REQUIREMENT', entity_id: '7', operator_id: '9', time_from: '2026-10-01T08:00:00+08:00', time_to: '2026-10-03T08:00:00+08:00' }, { entity_type: 'REQUIREMENT', entity_id: '7', operator_id: '9', time_from: '2026-10-01T00:00:00.000Z', time_to: '2026-10-03T00:00:00.000Z' }],
   ])('%s round trips only approved fields', (path, fields, expected) => {
     const query = { ...fields, page: '2', page_size: '50', keyword: '  query  ', unknown: 'leak', return_to: '//evil' }
     const result = parseListQuery(path, query)
@@ -23,6 +23,9 @@ describe('applied list query contract', () => {
     expect(parseListQuery('/requirements', { page: '02', keyword: '  a  ' })).toEqual({ page: '2', keyword: 'a' })
   })
   it.each([
+    ['/versions', { planned_release_from: '2026-10-01' }],
+    ['/admin/audits', { time_from: '2026-10-01T00:00:00Z' }],
+    ['/admin/audits', { time_from: '2026-10-01T24:00:00Z', time_to: '2026-10-03T00:00:00Z' }],
     ['/versions', { planned_release_from: '2026-02-30', planned_release_to: 'bad' }],
     ['/versions', { planned_release_from: '2026-10-03', planned_release_to: '2026-10-01' }],
     ['/releases', { date_from: '2026-10-01' }],

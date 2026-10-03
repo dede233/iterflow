@@ -313,8 +313,10 @@ async function submitMove(): Promise<void> {
   }
   moveSubmitting.value = true
   let targetRevision = 0
+  let requirementRevision = moveTarget.requirement.revision
   try {
     const latestRequirement = await getRequirement(moveTarget.requirement.id)
+    requirementRevision = latestRequirement.revision
     if (latestRequirement.current_version_id !== id) {
       ElMessage.warning('需求所属版本已变化，请重新加载清单后再迁移')
       moveDialog.value = false
@@ -335,7 +337,7 @@ async function submitMove(): Promise<void> {
     await load()
   } catch (error) {
     if (moveTarget.requirement && moveTarget.target_version_id) {
-      await showRelationConflict(error, targetRevision, moveTarget.requirement.revision, moveTarget.requirement.id, moveTarget.target_version_id)
+      await showRelationConflict(error, targetRevision, requirementRevision, moveTarget.requirement.id, moveTarget.target_version_id)
     }
   } finally {
     moveSubmitting.value = false

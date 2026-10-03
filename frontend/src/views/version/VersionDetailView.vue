@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
 import {
@@ -15,6 +15,10 @@ import {
 } from '@/api/versions'
 import { listReleases } from '@/api/releases'
 import { getRequirement } from '@/api/requirements'
+import ScopedObjectSelector from '@/components/ScopedObjectSelector.vue'
+import ScopedRelationLink from '@/components/ScopedRelationLink.vue'
+import { filterVersionWorklist, visibleWorklistStats } from '@/utils/versionWorklist'
+import { useDetailNavigation } from '@/composables/useDetailNavigation'
 import { usePermission } from '@/composables/usePermission'
 import { useEditingPresence } from '@/composables/useEditingPresence'
 import { useRevisionConflict } from '@/composables/useRevisionConflict'
@@ -35,7 +39,7 @@ import {
   versionStatusTagType,
   type VersionStatusAction,
 } from '@/constants/version'
-import { requirementStatusLabel, requirementStatusTagType } from '@/constants/requirement'
+import { REQUIREMENT_PRIORITIES, REQUIREMENT_STATUSES, requirementStatusLabel, requirementStatusTagType } from '@/constants/requirement'
 import type {
   PublishCheckItem,
   ReleaseItem,
@@ -46,6 +50,7 @@ import type {
 
 const route = useRoute()
 const router = useRouter()
+const { backTo, related } = useDetailNavigation('/versions')
 const { can } = usePermission()
 const { isMobile } = useResponsive()
 const id = Number(route.params.id)
@@ -99,6 +104,10 @@ async function showRelationConflict(
 const item = ref<VersionItem | null>(null)
 const requirements = ref<Requirement[]>([])
 const stats = ref<VersionStats | null>(null)
+const worklistFilters = reactive({ keyword: '', status: '', priority: '' })
+const filteredRequirements = computed(() => filterVersionWorklist(requirements.value, worklistFilters))
+const visibleStats = computed(() => visibleWorklistStats(requirements.value))
+function resetWorklist(): void { worklistFilters.keyword = ''; worklistFilters.status = ''; worklistFilters.priority = '' }
 const releases = ref<ReleaseItem[]>([])
 const loading = ref(false)
 const failed = ref(false)
@@ -159,6 +168,9 @@ const checkLoading = ref(false)
 const releaseNotes = ref('')
 const checkCandidatePassed = ref(false)
 const checks = ref<PublishCheckItem[]>([])
+let checkSequence = 0
+onBeforeUnmount(() => { checkSequence++; conflict.close() })
+watch(publishDialog, open => { if (!open) { checkSequence++; checks.value = []; checkLoading.value = false; checkCandidatePassed.value = false } }, { flush: 'sync' })
 
 async function openPublish(): Promise<void> {
   if (!item.value) return
@@ -167,18 +179,21 @@ async function openPublish(): Promise<void> {
   checkCandidatePassed.value = false
   checkLoading.value = true
   publishDialog.value = true
+  const sequence = ++checkSequence
   // Run the same pre-publish check the server enforces; render it inline.
   try {
     const result = await checkVersionPublish(item.value.id)
+    if (sequence !== checkSequence) return
     checks.value = result.checks
     checkCandidatePassed.value = result.passed
   } catch (e: unknown) {
+    if (sequence !== checkSequence) return
     const data = (e as { response?: { data?: { data?: { checks?: PublishCheckItem[] } } } })
       .response?.data?.data
     checks.value = data?.checks ?? []
     checkCandidatePassed.value = false
   } finally {
-    checkLoading.value = false
+    if (sequence === checkSequence) checkLoading.value = false
   }
 }
 
@@ -299,12 +314,19 @@ async function submitMove(): Promise<void> {
   moveSubmitting.value = true
   let targetRevision = 0
   try {
+    const latestRequirement = await getRequirement(moveTarget.requirement.id)
+    if (latestRequirement.current_version_id !== id) {
+      ElMessage.warning('需求所属版本已变化，请重新加载清单后再迁移')
+      moveDialog.value = false
+      await load()
+      return
+    }
     const targetVersion = await getVersion(moveTarget.target_version_id)
     targetRevision = targetVersion.revision
     await moveVersionRequirement(
       moveTarget.target_version_id,
       moveTarget.requirement.id,
-      moveTarget.requirement.revision,
+      latestRequirement.revision,
       targetVersion.revision,
       moveTarget.reason.trim(),
     )
@@ -362,7 +384,8 @@ onMounted(load)
         <template #status>
           <StatusTag :status="item.status" :label="versionStatusLabel[item.status]" :type="versionStatusTagType(item.status)" />
         </template>
-        <template v-if="canEdit || canPublish || statusActions.length" #actions>
+        <template #actions>
+        <RouterLink class="back-link" :to="backTo">返回列表</RouterLink>
         <el-button v-if="canEdit" @click="openEdit">编辑</el-button>
         <el-button v-if="canPublish" type="primary" @click="openPublish">发布</el-button>
         <el-button
@@ -396,11 +419,24 @@ onMounted(load)
         </template>
         <div v-if="stats" class="progress">
           <el-progress :percentage="completionPct" :stroke-width="14" />
-          <span class="progress-text">完成 {{ stats.completed }} / {{ stats.total }}</span>
+          <span class="progress-text">可见需求进度 {{ stats.completed }} / {{ stats.total }}</span>
         </div>
-        <el-table v-if="requirements.length && !isMobile" :data="requirements" row-key="id">
+        <p class="scope-tip">仅统计当前账号可见需求；发布准备以服务端发布检查为准。</p>
+        <div class="worklist-summary" aria-label="可见需求状态分布">
+          <span>可见待完成 {{ visibleStats.pending }} / {{ visibleStats.total }}</span>
+          <el-button v-for="(count, status) in visibleStats.byStatus" :key="status" size="small" :aria-pressed="worklistFilters.status === status" :type="worklistFilters.status === status ? 'primary' : 'default'" @click="worklistFilters.status = String(status)">{{ requirementStatusLabel[status] || status }} {{ count }}</el-button>
+        </div>
+        <el-form class="worklist-filters" label-position="top" @submit.prevent>
+          <el-form-item label="清单关键词"><el-input v-model="worklistFilters.keyword" placeholder="筛选可见编号或标题" clearable :maxlength="200" /></el-form-item>
+          <el-form-item label="清单状态"><el-select v-model="worklistFilters.status" clearable placeholder="全部可见状态"><el-option v-for="option in REQUIREMENT_STATUSES" :key="option.value" :value="option.value" :label="option.label" /></el-select></el-form-item>
+          <el-form-item label="清单优先级"><el-select v-model="worklistFilters.priority" clearable placeholder="全部优先级"><el-option v-for="option in REQUIREMENT_PRIORITIES" :key="option.value" :value="option.value" :label="option.label" /></el-select></el-form-item>
+          <el-button @click="resetWorklist">重置清单</el-button>
+        </el-form>
+        <p class="scope-tip">当前筛选 {{ filteredRequirements.length }} / {{ visibleStats.total }} 项可见需求</p>
+        <el-table v-if="!isMobile" :data="filteredRequirements" row-key="id">
           <el-table-column prop="requirement_no" label="编号" width="170" />
           <el-table-column prop="title" label="标题" min-width="200" show-overflow-tooltip />
+          <el-table-column prop="priority" label="优先级" width="90" />
           <el-table-column label="状态" width="110">
             <template #default="s">
               <StatusTag
@@ -412,7 +448,7 @@ onMounted(load)
           </el-table-column>
           <el-table-column label="操作" width="180">
             <template #default="s">
-              <el-link type="primary" @click="router.push('/requirements/' + s.row.id)">查看</el-link>
+              <el-link type="primary" @click="router.push(related('/requirements/' + s.row.id))">查看</el-link>
               <template v-if="canManageReqs">
                 <el-link type="warning" style="margin-left: 10px" @click="openMove(s.row)">迁移</el-link>
                 <el-link type="danger" style="margin-left: 10px" @click="removeReq(s.row)">移出</el-link>
@@ -420,12 +456,13 @@ onMounted(load)
             </template>
           </el-table-column>
         </el-table>
-        <div v-else-if="requirements.length" class="req-cards">
-          <article v-for="req in requirements" :key="req.id" class="req-card">
+        <div v-else-if="filteredRequirements.length" class="req-cards">
+          <article v-for="req in filteredRequirements" :key="req.id" class="req-card">
             <div class="req-card-top"><span class="mono">{{ req.requirement_no }}</span><StatusTag :status="req.status" :label="requirementStatusLabel[req.status]" size="sm" /></div>
             <div class="req-card-title">{{ req.title }}</div>
+            <p>优先级 {{ req.priority }}</p>
             <div class="req-card-actions">
-              <el-button link type="primary" @click="router.push('/requirements/' + req.id)">查看</el-button>
+              <el-button link type="primary" @click="router.push(related('/requirements/' + req.id))">查看</el-button>
               <template v-if="canManageReqs">
                 <el-button link type="warning" @click="openMove(req)">迁移</el-button>
                 <el-button link type="danger" @click="removeReq(req)">移出</el-button>
@@ -444,6 +481,7 @@ onMounted(load)
             <span class="release-time">{{ formatLocalDateTime(r.released_at) }}</span>
             <StatusTag :status="r.result" :label="r.result === 'SUCCESS' ? '成功' : r.result" size="sm" />
             <span class="release-notes">{{ r.release_notes }}</span>
+            <RouterLink class="back-link" :to="related(`/releases/${r.id}`)">查看发布详情</RouterLink>
           </li>
         </ul>
         <EmptyState v-else description="尚无发布记录" compact />
@@ -463,7 +501,8 @@ onMounted(load)
             <span class="check-msg">{{ c.message }}</span>
             <ul v-if="c.blocking_requirements && c.blocking_requirements.length" class="blocking">
               <li v-for="b in c.blocking_requirements" :key="b.id">
-                {{ b.requirement_no }}（{{ b.status }}）
+                {{ b.requirement_no }}（{{ requirementStatusLabel[b.status] || b.status }}）
+                <ScopedRelationLink v-if="publishDialog" kind="requirement" :id="b.id" :return-to="backTo" :parent-identity="`${id}:publish:${checkSequence}`" fallback="无法查看详情" link-label="查看需求" />
               </li>
             </ul>
           </li>
@@ -538,8 +577,8 @@ onMounted(load)
     <!-- add requirement dialog -->
     <el-dialog v-model="addDialog" title="添加需求" width="min(420px, 92vw)" destroy-on-close>
       <el-form label-position="top">
-        <el-form-item label="需求 ID" required>
-          <el-input-number v-model="addRequirementId" :min="1" style="width: 100%" />
+        <el-form-item label="需求" required>
+          <ScopedObjectSelector v-model="addRequirementId" kind="requirement" :allowed="canViewRequirements" :active="addDialog" :disabled="addSubmitting" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -551,8 +590,8 @@ onMounted(load)
     <!-- move requirement dialog -->
     <el-dialog v-model="moveDialog" title="迁移需求到其他版本" width="min(480px, 92vw)" destroy-on-close>
       <el-form label-position="top">
-        <el-form-item label="目标版本 ID" required>
-          <el-input-number v-model="moveTarget.target_version_id" :min="1" style="width: 100%" />
+        <el-form-item label="目标版本" required>
+          <ScopedObjectSelector v-model="moveTarget.target_version_id" kind="version" :allowed="can('rd.version.view')" :active="moveDialog" :disabled="moveSubmitting" :exclude-id="id" />
         </el-form-item>
         <el-form-item label="迁移原因" required>
           <el-input v-model="moveTarget.reason" type="textarea" :rows="3" />
@@ -567,6 +606,15 @@ onMounted(load)
 </template>
 
 <style scoped>
+.scope-tip { color: var(--if-text-2); font-size: 13px; }
+.worklist-summary { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.worklist-summary :deep(.el-button + .el-button) { margin-left: 0; }
+.worklist-filters { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) auto; gap: 12px; align-items: center; }
+.worklist-filters :deep(.el-form-item) { min-width: 0; margin-bottom: 0; }
+.worklist-filters :deep(.el-select) { width: 100%; }
+@media (max-width: 767px) { .worklist-filters { grid-template-columns: minmax(0, 1fr); } }
+
+.back-link { color: var(--if-brand-500); align-self: center; }
 .multiline { white-space: pre-wrap; overflow-wrap: anywhere; }
 .section { margin-top: var(--if-space-4); }
 .section :deep(.el-table) { width: 100%; }

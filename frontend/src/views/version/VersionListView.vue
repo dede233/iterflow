@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { onBeforeUnmount, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 import { listVersions } from '@/api/versions'
 import VersionCreateView from './VersionCreateView.vue'
+import { useListQuery } from '@/composables/useListQuery'
 import { useResponsive } from '@/composables/useResponsive'
 import { usePermission } from '@/composables/usePermission'
 import StatusTag from '@/components/StatusTag.vue'
@@ -33,7 +34,11 @@ let requestSequence = 0
 const positiveId = (value: number | null) => value != null && Number.isSafeInteger(value) && value >= 1 ? value : undefined
 
 async function load(): Promise<void> {
-  const [from, to] = dateRange.value ?? []
+  const q = queryState.applied()
+  const current = { page: Number(q.page ?? 1), page_size: Number(q.page_size ?? 20), keyword: q.keyword ?? '', status: q.status as VersionListParams['status'], owner_id: q.owner_id ? Number(q.owner_id) : null }
+  const currentRange = [q.planned_release_from, q.planned_release_to]
+
+  const [from, to] = currentRange
   if (from && to && from > to) {
     ElMessage.warning('计划上线结束日期不能早于开始日期')
     return
@@ -43,10 +48,10 @@ async function load(): Promise<void> {
   failed.value = false
   try {
     const page = await listVersions({
-      page: filters.page, page_size: filters.page_size,
-      keyword: filters.keyword.trim() || undefined, status: filters.status || undefined,
+      page: current.page, page_size: current.page_size,
+      keyword: current.keyword.trim() || undefined, status: current.status || undefined,
       planned_release_from: from || undefined, planned_release_to: to || undefined,
-      owner_id: positiveId(filters.owner_id),
+      owner_id: positiveId(current.owner_id),
     })
     if (sequence !== requestSequence) return
     rows.value = page.items
@@ -59,15 +64,14 @@ async function load(): Promise<void> {
 }
 
 function applyFilters(): void {
-  filters.page = 1
+  if (dateRange.value && dateRange.value[0] > dateRange.value[1]) { ElMessage.warning('计划上线结束日期不能早于开始日期'); return }
   filterDrawer.value = false
-  void load()
+  void queryState.apply()
 }
 
 function resetFilters(): void {
-  Object.assign(filters, { keyword: '', status: '', owner_id: null })
-  dateRange.value = null
-  applyFilters()
+  filterDrawer.value = false
+  void queryState.reset()
 }
 
 onBeforeUnmount(() => { requestSequence++ })
@@ -75,10 +79,22 @@ onBeforeUnmount(() => { requestSequence++ })
 async function onVersionCreated(id: number): Promise<void> {
   createDialog.value = false
   await load()
-  await router.push(`/versions/${id}`)
+  await router.push(queryState.detail(`/versions/${id}`))
 }
 
-onMounted(load)
+
+const queryState = useListQuery({
+  path: '/versions', readDraft: () => ({ ...filters, planned_release_from: dateRange.value?.[0], planned_release_to: dateRange.value?.[1] }),
+  restore: q => {
+    filters.page = Number(q.page ?? 1)
+    filters.page_size = Number(q.page_size ?? 20)
+    filters.keyword = (q.keyword ?? '') as typeof filters.keyword
+    filters.status = (q.status ?? '') as typeof filters.status
+    filters.owner_id = q.owner_id ? Number(q.owner_id) : null
+    dateRange.value = q.planned_release_from && q.planned_release_to ? [q.planned_release_from, q.planned_release_to] : null
+  },
+  load, invalidate: () => { requestSequence++ },
+})
 </script>
 
 <template>
@@ -110,7 +126,7 @@ onMounted(load)
       v-loading="loading"
       :data="rows"
       row-key="id"
-      @row-click="(row: VersionItem) => router.push('/versions/' + row.id)"
+      @row-click="(row: VersionItem) => router.push(queryState.detail('/versions/' + row.id))"
     >
       <el-table-column prop="version_no" label="版本号" width="160" />
       <el-table-column prop="name" label="版本名称" min-width="200" show-overflow-tooltip />
@@ -126,14 +142,14 @@ onMounted(load)
       <el-table-column prop="planned_release_date" label="计划上线" width="140" />
       <el-table-column label="操作" width="90" fixed="right">
         <template #default="s">
-          <el-link type="primary" @click.stop="router.push('/versions/' + s.row.id)">查看</el-link>
+          <el-link type="primary" @click.stop="router.push(queryState.detail('/versions/' + s.row.id))">查看</el-link>
         </template>
       </el-table-column>
       <template #empty><EmptyState description="暂无版本" compact /></template>
     </el-table>
 
     <div v-else v-loading="loading" class="cards">
-      <ListCard v-for="r in rows" :key="r.id" :code="r.version_no" :title="r.name" @open="router.push('/versions/' + r.id)">
+      <ListCard v-for="r in rows" :key="r.id" :code="r.version_no" :title="r.name" @open="router.push(queryState.detail('/versions/' + r.id))">
         <template #status>
           <StatusTag :status="r.status" :label="versionStatusLabel[r.status]" :type="versionStatusTagType(r.status)" size="sm" />
         </template>
@@ -152,8 +168,7 @@ onMounted(load)
       background
       @current-change="
         (p: number) => {
-          filters.page = p
-          load()
+          void queryState.paginate(p)
         }
       "
     />

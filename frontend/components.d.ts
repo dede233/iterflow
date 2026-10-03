@@ -59,6 +59,8 @@ declare module 'vue' {
     RoleActions: typeof import('./src/components/RoleActions.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    ScopedObjectSelector: typeof import('./src/components/ScopedObjectSelector.vue')['default']
+    ScopedRelationLink: typeof import('./src/components/ScopedRelationLink.vue')['default']
     SectionCard: typeof import('./src/components/ui/SectionCard.vue')['default']
     StatusTag: typeof import('./src/components/StatusTag.vue')['default']
     UserRoleAssignmentDrawer: typeof import('./src/components/UserRoleAssignmentDrawer.vue')['default']

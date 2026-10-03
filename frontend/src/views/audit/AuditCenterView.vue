@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getAudit, listAudits } from '@/api/audits'
+import { useListQuery } from '@/composables/useListQuery'
 import { useResponsive } from '@/composables/useResponsive'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
@@ -31,16 +32,8 @@ const filters = reactive({
 })
 
 function buildParams(): AuditListParams {
-  return {
-    page: paging.page,
-    size: paging.size,
-    entity_type: filters.entity_type || undefined,
-    entity_id: filters.entity_id,
-    action: filters.action.trim() || undefined,
-    operator_id: filters.operator_id,
-    time_from: timeRange.value?.[0]?.toISOString(),
-    time_to: timeRange.value?.[1]?.toISOString(),
-  }
+  const q = queryState.applied()
+  return { page: Number(q.page ?? 1), size: Number(q.size ?? 20), entity_type: q.entity_type || undefined, entity_id: q.entity_id ? Number(q.entity_id) : undefined, action: q.action || undefined, operator_id: q.operator_id ? Number(q.operator_id) : undefined, time_from: q.time_from, time_to: q.time_to }
 }
 
 let listSequence = 0
@@ -68,17 +61,8 @@ async function load(): Promise<void> {
   }
 }
 
-function search(): void {
-  paging.page = 1
-  filterDrawer.value = false
-  void load()
-}
-
-function reset(): void {
-  Object.assign(filters, { entity_type: '', entity_id: undefined, action: '', operator_id: undefined })
-  timeRange.value = null
-  search()
-}
+function search(): void { filterDrawer.value = false; void queryState.apply() }
+function reset(): void { filterDrawer.value = false; void queryState.reset() }
 
 async function showDetail(row: AuditItem): Promise<void> {
   const sequence = ++detailSequence
@@ -105,7 +89,17 @@ function operatorName(item: AuditItem): string {
   return item.operator ? `${item.operator.display_name}（${item.operator.username}）` : '系统'
 }
 
-onMounted(() => void load())
+const queryState = useListQuery({
+  path: '/admin/audits',
+  readDraft: () => ({ ...filters, ...paging, time_from: timeRange.value?.[0]?.toISOString(), time_to: timeRange.value?.[1]?.toISOString() }),
+  restore: q => {
+    paging.page = Number(q.page ?? 1); paging.size = Number(q.size ?? 20)
+    filters.entity_type = q.entity_type ?? ''; filters.action = q.action ?? ''
+    filters.entity_id = q.entity_id ? Number(q.entity_id) : undefined
+    filters.operator_id = q.operator_id ? Number(q.operator_id) : undefined
+    timeRange.value = q.time_from && q.time_to ? [new Date(q.time_from), new Date(q.time_to)] : null
+  }, load, invalidate: () => { listSequence++ },
+})
 </script>
 
 <template>
@@ -157,7 +151,7 @@ onMounted(() => void load())
     </div>
     </SectionCard>
 
-    <el-pagination v-if="!failed" class="pager" layout="prev, pager, next, total" :total="total" :current-page="paging.page" :page-size="paging.size" background @current-change="(page: number) => { paging.page = page; void load() }" />
+    <el-pagination v-if="!failed" class="pager" layout="prev, pager, next, total" :total="total" :current-page="paging.page" :page-size="paging.size" background @current-change="(page: number) => { void queryState.paginate(page) }" />
 
     <el-drawer v-model="filterDrawer" title="筛选审计记录" size="min(420px, 100%)" destroy-on-close>
       <el-form class="drawer-filters" label-position="top" @submit.prevent="search">

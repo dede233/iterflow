@@ -8,6 +8,8 @@ import {
   listRequirementFeedbacks,
   updateRequirement,
 } from '@/api/requirements'
+import ScopedRelationLink from '@/components/ScopedRelationLink.vue'
+import { useDetailNavigation } from '@/composables/useDetailNavigation'
 import { usePermission } from '@/composables/usePermission'
 import { useEditingPresence } from '@/composables/useEditingPresence'
 import { useRevisionConflict } from '@/composables/useRevisionConflict'
@@ -35,6 +37,7 @@ import type { LinkedFeedback, Requirement } from '@/types/domain'
 
 const route = useRoute()
 const router = useRouter()
+const { backTo, related } = useDetailNavigation('/requirements')
 const { can } = usePermission()
 const { isMobile } = useResponsive()
 const id = Number(route.params.id)
@@ -180,7 +183,8 @@ onMounted(load)
         <template #status>
           <StatusTag :status="item.status" :label="requirementStatusLabel[item.status]" :type="requirementStatusTagType(item.status)" />
         </template>
-        <template v-if="canEdit || statusActions.length" #actions>
+        <template #actions>
+        <RouterLink class="back-link" :to="backTo">返回列表</RouterLink>
         <el-button v-if="canEdit" @click="openEdit">编辑</el-button>
         <el-button
           v-for="action in statusActions"
@@ -212,7 +216,7 @@ onMounted(load)
       <SectionCard title="流转信息" description="来源与版本归属" class="detail-side">
         <dl class="side-fields">
           <div><dt>来源</dt><dd>{{ item.source === 'FEEDBACK' ? '反馈转化' : '直接创建' }}</dd></div>
-          <div><dt>当前版本</dt><dd>{{ item.current_version_id || '-' }}</dd></div>
+          <div><dt>当前版本</dt><dd><ScopedRelationLink kind="version" :id="item.current_version_id" :return-to="backTo" :parent-identity="String(item.id)" /></dd></div>
           <div><dt>更新时间</dt><dd>{{ formatLocalDateTime(item.updated_at) }}</dd></div>
         </dl>
       </SectionCard>
@@ -222,7 +226,7 @@ onMounted(load)
       <SectionCard v-if="canViewFeedbacks" title="来源反馈" class="section">
         <ul v-if="feedbacks.length" class="links">
           <li v-for="f in feedbacks" :key="f.feedback_id">
-            <el-link type="primary" @click="router.push('/feedbacks/' + f.feedback_id)">
+            <el-link type="primary" @click="router.push(related('/feedbacks/' + f.feedback_id))">
               {{ f.feedback_no }} · {{ f.title }}
             </el-link>
             <el-tag v-if="f.is_primary" size="small" type="success" effect="light">主</el-tag>
@@ -298,6 +302,7 @@ onMounted(load)
 </template>
 
 <style scoped>
+.back-link { color: var(--if-brand-500); align-self: center; }
 .detail-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(250px, 300px); align-items: start; gap: var(--if-space-4); }
 .detail-main, .detail-side { min-width: 0; }
 .detail-grid > .detail-main + .detail-side { margin-top: 0; }

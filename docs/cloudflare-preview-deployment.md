@@ -1,13 +1,13 @@
-# IterFlow V1.7.0 Cloudflare Preview
+# IterFlow V1.8.0 Cloudflare Preview
 
 This runbook operates the independent `phase/cloudflare-preview` branch for online demonstration, trial use, and public acceptance at `https://iterflow.luqingyao.cc.cd`.
 
-- Preview application version: **v1.7.0**.
-- Released commit: `e485efea0155c5b4194f563926a531d606c77349` (annotated tag `v1.7.0`).
+- Preview application version: **v1.8.0**.
+- Released commit: `df9e1ba1a5ee1a4c763098d8e180250f409bedd3` (annotated tag `v1.8.0`, tag object `27de902fbd5fdb7a3048234937e50bb9c725d012`).
 - Preview branch: `phase/cloudflare-preview`.
-- Preview branch includes additional deployment-only commits: **v1.7.0 + Preview-only deployment configuration**. It is not the formal product release branch.
+- Preview branch includes additional deployment-only commits: **v1.8.0 + Preview-only deployment configuration**. It is not the formal product release branch.
 
-The Preview includes released V1.7 functionality and the existing V1.6 functionality from the reviewed release tag. For later upgrades, merge the reviewed release tag (or separately authorized master baseline) into `phase/cloudflare-preview`, retain the deployment configuration, verify CI, and then deploy. Develop product features on their own branches, not directly on the Preview branch. Do not merge Preview deployment configuration back into master.
+The Preview includes released V1.8 functionality and the existing V1.7/V1.6 functionality from the reviewed release tag. For later upgrades, merge the reviewed release tag (or separately authorized master baseline) into `phase/cloudflare-preview`, retain the deployment configuration, verify CI, and then deploy. Develop product features on their own branches, not directly on the Preview branch. Do not merge Preview deployment configuration back into master.
 
 ## Historical initial deployment
 
@@ -16,6 +16,10 @@ The Preview was originally created from historical base `f6a20b82b432543de4cadb2
 ## Historical V1.6.0 Preview upgrade
 
 The V1.6.0 upgrade retained the initial Preview deployment configuration and merged released commit `f0aa8475ff081fc963cdd08045d23e383a3c594e` (annotated tag `v1.6.0`). Its final Preview HEAD was `33d36d78ab4bedf48835d124f295f1ca8c352eae`; this is the pre-V1.7 upgrade baseline and rollback code reference, not the current application version. Both the initial deployment history above and the released V1.6/V1.5 tags remain immutable.
+
+## Historical V1.7.0 Preview upgrade
+
+The V1.7.0 upgrade merged released commit `e485efea0155c5b4194f563926a531d606c77349` through Preview merge `ff3eb7c39b9e60a2f7157f4e777766064ce24495`. Its final Preview HEAD was `79fa39d3611c166c992d5cbdf8d6c3757506ee46`. This is the pre-V1.8 upgrade rollback code reference, not the current application baseline. Code rollback alone does not authorize restoring or replacing trial data.
 
 ## Architecture and prerequisites
 
@@ -98,11 +102,26 @@ curl --fail --silent --show-error https://iterflow.luqingyao.cc.cd/ready
 
 From a device outside the Docker host, confirm valid HTTPS, the login page, Hash Router navigation, and same-origin `/api/` calls. On initial installation only, change the administrator first-use password. During upgrades, retain the existing password and verify administrator login, Home, Feedback, Requirement, Version, Release Detail, Notification, Profile, and authorized Audit pages. Verify Editing Presence, Revision Conflict UX, notification badge/read-all, list filters, and Dashboard Activity. Submit a trial Feedback; upload/download an allowed file; compare its downloaded SHA256 with the uploaded file; verify an unauthorized account cannot download it. Repeat key pages at 375px and 1440px. Verify that host public interfaces do not expose 5432, 6379, 8000, 8080, or the four diagnostic ports; the only public entry must be Cloudflare HTTPS 443. Restart the Compose services and check both public health endpoints and retained trial data.
 
-## V1.7 deployment smoke
+## V1.8 deployment smoke
+
+The released V1.8 product tree is the only source for Backend, Frontend and OpenAPI. Merge the released commit with `--no-ff`, verify both old Preview and release ancestors, and compare the Preview infrastructure patch before and after the merge. The Preview branch CI must include the merged Cloudflare Compose validation and all six jobs. Preserve the first failure evidence; only a proven transient infrastructure failure permits one failed-job rerun at the same HEAD.
+
+Public acceptance supplements the released CI:
+
+- C4 URL query / return context: apply a real list filter, reload, open detail and return, then use browser back/forward. The URL and renewed API request must retain the applied context. In a disposable session, reject external `return_to` and fall back to the internal list; never corrupt the real administrator session.
+- C3 main-chain navigation: follow an accessible Feedback → Requirement → Version → Release relationship and verify metadata and targets. Admin public smoke proves positive paths; SELF/ALL negative visibility remains backed by the released real API/CI tests when no existing restricted trial account is available. Do not alter existing roles to manufacture evidence.
+- C1 scoped selectors: open Feedback-to-Requirement, Requirement-to-Version, Version-add-Requirement and Requirement-move-Version selectors. Check paging/search, no results, cancel/clear and mobile layout. At least one safe write on explicitly new Preview test data must submit the latest revision and pass the server CAS/authorization checks. Do not mutate existing trial relationships for smoke.
+- C0 Version worklist: verify visible-scope progress, pending/blocked summary, state/keyword/priority filtering and reset, plus the visibility/real server publish-authority explanation. A safe existing READY test version may run publish/check to verify Chinese blockers; do not publish an existing trial version merely for acceptance.
+- Check Home, Feedback, Requirement, Version, Release, Notification, Profile and authorized Audit pages, desktop version `V1.8.0`, same-origin API requests and Hash Router. Keep mobile AuthShell footer hiding as designed.
+- Repeat selectors, worklists, filters and details at 375/390/768/1280/1440px; record actual public UI evidence (375px and 1440px screenshots recommended), including no unintended horizontal overflow.
+- Before upgrade, record existing trial object IDs/relationships and an existing attachment SHA256; verify migration `0004_integrity` and a separate checksummed pre-upgrade backup outside the repository. After upgrade, verify old data and the old hash, upload/download a new small test attachment with matching SHA256 and prove unauthenticated download still fails.
+- After public acceptance, restart only api/web/cloudflared, recheck public health/readiness, original-password login, old data and old attachment SHA256, then create a different checksummed post-upgrade backup outside the repository. Do not execute restore against actual Preview volumes.
+
+## V1.7 deployment smoke (historical / compatibility regression)
 
 The released V1.7 CI proves full feature correctness. Public deployment smoke additionally verifies:
 
-- Desktop AuthShell at 768px and 1440px displays `ITERFLOW / V1.7.0`; mobile footer hiding remains expected.
+- The historical V1.7 AuthShell version was `ITERFLOW / V1.7.0`; the current V1.8 upgrade must display `ITERFLOW / V1.8.0` at 768px and 1440px. Mobile footer hiding remains expected.
 - Feedback keyword `%`, `_`, and backslash are literal substrings (sample at least two); permissions, DataScope and pagination continue to apply. This is a compatibility change from SQL wildcard semantics.
 - Release local date range is start inclusive and includes the whole selected end day by sending `released_before` as next local day 00:00 exclusive; combines with existing `version_id`.
 - Notification badge refreshes on focus / hidden-to-visible with a shared 30-second attempt cooldown; short repeated focus must not create a request storm. No polling/WebSocket/SSE is introduced. Use two disposable sessions and a real notification-producing business action.

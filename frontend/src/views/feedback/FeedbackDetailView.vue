@@ -14,6 +14,10 @@ import {
   uploadFeedbackAttachment,
 } from '@/api/feedbacks'
 import { listSystems } from '@/api/systems'
+import ScopedObjectSelector from '@/components/ScopedObjectSelector.vue'
+import { getRequirement } from '@/api/requirements'
+import ScopedRelationLink from '@/components/ScopedRelationLink.vue'
+import { useDetailNavigation } from '@/composables/useDetailNavigation'
 import { usePermission } from '@/composables/usePermission'
 import { useEditingPresence } from '@/composables/useEditingPresence'
 import { useRevisionConflict } from '@/composables/useRevisionConflict'
@@ -53,6 +57,7 @@ import { feedbackConflictSummary } from '@/utils/revisionSummaries'
 
 const route = useRoute()
 const router = useRouter()
+const { backTo, related } = useDetailNavigation('/feedbacks')
 const { can } = usePermission()
 const { isMobile } = useResponsive()
 const feedbackId = Number(route.params.id)
@@ -135,6 +140,7 @@ async function submitConvert(): Promise<void> {
   }
   convertSubmitting.value = true
   try {
+    if (convertForm.type === 'LINK_EXISTING' && convertForm.requirement_id) await getRequirement(convertForm.requirement_id)
     const req = await convertFeedback(item.value.id, {
       type: convertForm.type,
       revision: item.value.revision,
@@ -150,7 +156,7 @@ async function submitConvert(): Promise<void> {
     await finishFeedbackConversion(
       req.id,
       can,
-      (path) => router.push(path),
+      (path) => router.push(related(path)),
       load,
     )
   } catch (error) {
@@ -186,6 +192,7 @@ async function submitStatus(): Promise<void> {
   }
   statusSubmitting.value = true
   try {
+    if (action.needsDuplicate && statusForm.duplicate_of_id && can('rd.feedback.view')) await getFeedback(statusForm.duplicate_of_id)
     await changeFeedbackStatus(item.value.id, {
       status: action.target,
       revision: item.value.revision,
@@ -355,7 +362,8 @@ onMounted(async () => {
         <template #status>
           <StatusTag :status="item.status" :label="feedbackStatusLabel[item.status]" :type="feedbackStatusTagType(item.status)" />
         </template>
-        <template v-if="canEdit || canConvert || statusActions.length" #actions>
+        <template #actions>
+        <RouterLink class="back-link" :to="backTo">返回列表</RouterLink>
         <el-button v-if="canEdit" @click="openEdit">编辑</el-button>
         <el-button v-if="canConvert" type="primary" @click="openConvert">转需求</el-button>
         <el-button
@@ -397,8 +405,8 @@ onMounted(async () => {
       </SectionCard>
       <SectionCard title="流转信息" description="关联对象与记录时间" class="detail-side">
         <dl class="side-fields">
-          <div><dt>关联需求</dt><dd>{{ item.main_requirement_id || '-' }}</dd></div>
-          <div v-if="item.duplicate_of_id"><dt>重复于</dt><dd>#{{ item.duplicate_of_id }}</dd></div>
+          <div><dt>关联需求</dt><dd><ScopedRelationLink kind="requirement" :id="item.main_requirement_id" :return-to="backTo" :parent-identity="String(item.id)" /></dd></div>
+          <div v-if="item.duplicate_of_id"><dt>重复于</dt><dd><ScopedRelationLink kind="feedback" :id="item.duplicate_of_id" :return-to="backTo" :parent-identity="String(item.id)" /></dd></div>
           <div><dt>提交人</dt><dd>#{{ item.submitter_id }}</dd></div>
           <div><dt>创建时间</dt><dd>{{ formatLocalDateTime(item.created_at) }}</dd></div>
           <div><dt>更新时间</dt><dd>{{ formatLocalDateTime(item.updated_at) }}</dd></div>
@@ -458,7 +466,7 @@ onMounted(async () => {
     >
       <el-form label-position="top">
         <el-form-item v-if="currentAction?.needsDuplicate" label="重复目标反馈 ID" required>
-          <el-input-number v-model="statusForm.duplicate_of_id" :min="1" style="width: 100%" />
+          <ScopedObjectSelector v-model="statusForm.duplicate_of_id" kind="feedback" :allowed="can('rd.feedback.view')" :active="statusDialog" :disabled="statusSubmitting" :exclude-id="feedbackId" />
         </el-form-item>
         <el-form-item label="原因" :required="currentAction?.needsReason">
           <el-input v-model="statusForm.reason" type="textarea" :rows="3" />
@@ -571,8 +579,8 @@ onMounted(async () => {
             <el-input v-model="convertForm.acceptance_criteria" type="textarea" :rows="3" />
           </el-form-item>
         </template>
-        <el-form-item v-else label="目标需求 ID" required>
-          <el-input-number v-model="convertForm.requirement_id" :min="1" style="width: 100%" />
+        <el-form-item v-else label="目标需求" required>
+          <ScopedObjectSelector v-model="convertForm.requirement_id" kind="requirement" :allowed="canLinkExisting" :active="convertDialog && convertForm.type === 'LINK_EXISTING'" :disabled="convertSubmitting" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -584,6 +592,7 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+.back-link { color: var(--if-brand-500); align-self: center; }
 .detail-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(250px, 300px); align-items: start; gap: var(--if-space-4); }
 .detail-main, .detail-side { min-width: 0; }
 .detail-grid > .detail-main + .detail-side { margin-top: 0; }

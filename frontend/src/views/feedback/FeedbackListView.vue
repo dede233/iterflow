@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { listFeedbacks } from '@/api/feedbacks'
 import FeedbackCreateView from './FeedbackCreateView.vue'
 import { listSystems } from '@/api/systems'
+import { useListQuery } from '@/composables/useListQuery'
 import { useResponsive } from '@/composables/useResponsive'
 import { usePermission } from '@/composables/usePermission'
 import StatusTag from '@/components/StatusTag.vue'
@@ -63,20 +64,23 @@ let disposed = false
 onBeforeUnmount(() => { disposed = true; requestSequence++ })
 
 async function load(): Promise<void> {
+  const q = queryState.applied()
+  const current = { page: Number(q.page ?? 1), page_size: Number(q.page_size ?? 20), keyword: q.keyword ?? '', status: q.status as FeedbackListParams['status'], feedback_type: q.feedback_type as FeedbackListParams['feedback_type'], urgency: q.urgency as FeedbackListParams['urgency'], system_id: q.system_id ? Number(q.system_id) : null, module_id: q.module_id ? Number(q.module_id) : null }
+
   if (disposed) return
   const sequence = ++requestSequence
   loading.value = true
   failed.value = false
   try {
     const page = await listFeedbacks({
-      page: filters.page,
-      page_size: filters.page_size,
-      keyword: filters.keyword.trim() || undefined,
-      status: filters.status || undefined,
-      feedback_type: filters.feedback_type || undefined,
-      urgency: filters.urgency || undefined,
-      system_id: filters.system_id ?? undefined,
-      module_id: filters.module_id ?? undefined,
+      page: current.page,
+      page_size: current.page_size,
+      keyword: current.keyword.trim() || undefined,
+      status: current.status || undefined,
+      feedback_type: current.feedback_type || undefined,
+      urgency: current.urgency || undefined,
+      system_id: current.system_id ?? undefined,
+      module_id: current.module_id ?? undefined,
     })
     if (sequence !== requestSequence) return
     rows.value = page.items
@@ -89,22 +93,13 @@ async function load(): Promise<void> {
 }
 
 function applyFilters(): void {
-  filters.page = 1
   filterDrawer.value = false
-  void load()
+  void queryState.apply()
 }
 
 function resetFilters(): void {
-  Object.assign(filters, {
-    keyword: '',
-    status: '',
-    feedback_type: '',
-    urgency: '',
-    system_id: null,
-    module_id: null,
-    page: 1,
-  })
-  void load()
+  filterDrawer.value = false
+  void queryState.reset()
 }
 
 function onSystemChange(): void {
@@ -119,7 +114,7 @@ function systemName(id: number | null | undefined): string {
 async function onFeedbackCreated(id: number): Promise<void> {
   createDialog.value = false
   await load()
-  await router.push(`/feedbacks/${id}`)
+  await router.push(queryState.detail(`/feedbacks/${id}`))
 }
 
 onMounted(async () => {
@@ -133,7 +128,22 @@ onMounted(async () => {
       // System dictionary is optional for filtering; ignore if unavailable.
     }
   }
-  await load()
+})
+
+const queryState = useListQuery({
+  path: '/feedbacks', readDraft: () => ({ ...filters }),
+  restore: q => {
+    filters.page = Number(q.page ?? 1)
+    filters.page_size = Number(q.page_size ?? 20)
+    filters.keyword = (q.keyword ?? '') as typeof filters.keyword
+    filters.status = (q.status ?? '') as typeof filters.status
+    filters.feedback_type = (q.feedback_type ?? '') as typeof filters.feedback_type
+    filters.urgency = (q.urgency ?? '') as typeof filters.urgency
+    filters.system_id = q.system_id ? Number(q.system_id) : null
+    filters.module_id = q.module_id ? Number(q.module_id) : null
+
+  },
+  load, invalidate: () => { requestSequence++ },
 })
 </script>
 
@@ -208,7 +218,7 @@ onMounted(async () => {
       v-loading="loading"
       :data="rows"
       row-key="id"
-      @row-click="(row: Feedback) => router.push('/feedbacks/' + row.id)"
+      @row-click="(row: Feedback) => router.push(queryState.detail('/feedbacks/' + row.id))"
     >
       <el-table-column prop="feedback_no" label="编号" width="180" />
       <el-table-column prop="title" label="标题" min-width="240" show-overflow-tooltip />
@@ -232,7 +242,7 @@ onMounted(async () => {
       </el-table-column>
       <el-table-column label="操作" width="90" fixed="right">
         <template #default="s">
-          <el-link type="primary" @click.stop="router.push('/feedbacks/' + s.row.id)">查看</el-link>
+          <el-link type="primary" @click.stop="router.push(queryState.detail('/feedbacks/' + s.row.id))">查看</el-link>
         </template>
       </el-table-column>
       <template #empty><EmptyState description="暂无反馈" compact /></template>
@@ -240,7 +250,7 @@ onMounted(async () => {
 
     <!-- Mobile cards -->
     <div v-else v-loading="loading" class="cards">
-      <ListCard v-for="r in rows" :key="r.id" :code="r.feedback_no" :title="r.title" @open="router.push('/feedbacks/' + r.id)">
+      <ListCard v-for="r in rows" :key="r.id" :code="r.feedback_no" :title="r.title" @open="router.push(queryState.detail('/feedbacks/' + r.id))">
         <template #status>
           <StatusTag :status="r.status" :label="feedbackStatusLabel[r.status]" :type="feedbackStatusTagType(r.status)" size="sm" />
         </template>
@@ -260,8 +270,7 @@ onMounted(async () => {
       background
       @current-change="
         (p: number) => {
-          filters.page = p
-          load()
+          void queryState.paginate(p)
         }
       "
     />

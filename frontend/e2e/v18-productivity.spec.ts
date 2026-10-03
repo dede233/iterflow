@@ -1,0 +1,212 @@
+import { expect, test, type Page } from '@playwright/test'
+const widths = [375, 390, 768, 1280, 1440]
+const permissions = ['rd.feedback.view', 'rd.feedback.convert', 'rd.feedback.edit', 'rd.requirement.view', 'rd.version.view', 'rd.version.edit', 'rd.version.publish', 'rd.release.view', 'sys.audit.view']
+const requirement = (id: number, status = 'CONFIRMED', priority = 'P0') => ({ id, requirement_no: `REQ-${id}`, title: id === 7 ? '可见需求 · 长标题验收'.repeat(4) : `需求 ${id}`, status, priority, source: 'DIRECT', requirement_type: 'FEATURE', description: '可见内容', current_version_id: 1, owner_id: 1, revision: 13, created_at: '2026-10-01T00:00:00Z' })
+const version = (id: number) => ({ id, version_no: `V1.8-${id}`, name: `可见版本 ${id}`, status: id === 2 ? 'READY' : 'PLANNING', revision: 3, description: null, owner_id: 1 })
+const feedback = { id: 1, feedback_no: 'FB-1', title: '链路反馈', status: 'ACCEPTED', feedback_type: 'OTHER', urgency: 'NORMAL', main_requirement_id: 7, duplicate_of_id: null, description: '测试反馈', revision: 4, submitter_id: 1 }
+const release = { id: 9, version_id: 1, result: 'SUCCESS', release_notes: '只读发布记录', rollback_notes: null, released_at: '2026-10-01T00:00:00Z', created_at: '2026-10-01T00:00:00Z', revision: 1 }
+async function fixture(page: Page, readRequirement = true, unlinked = false) {
+  const requests: { path: string; query: Record<string, string>; method: string; body: any }[] = []
+  const unexpected: string[] = []
+  await page.addInitScript(() => { localStorage.setItem('iterflow.access_token', 'v18-access'); localStorage.setItem('iterflow.refresh_token', 'v18-refresh') })
+  await page.route('**/api/v1/**', async route => {
+    const url = new URL(route.request().url()); const path = url.pathname.slice('/api/v1'.length); const query = Object.fromEntries(url.searchParams)
+    requests.push({ path, query, method: route.request().method(), body: route.request().postDataJSON() })
+    const json = (body: unknown, status = 200) => route.fulfill({ status, json: body })
+    if (path === '/auth/me') return json({ id: 1, username: 'scope-reader', display_name: '范围查看者', status: 'ACTIVE', revision: 1, must_change_password: false, data_scope: 'SELF', role_ids: [], permission_codes: permissions.filter(p => readRequirement || p !== 'rd.requirement.view') })
+    if (path === '/notifications/unread-count') return json({ unread_count: 0 })
+    if (path === '/feedbacks') return json({ items: query.keyword === 'duplicate' ? [{ ...feedback, id: 2, feedback_no: 'FB-2', title: '重复目标' }] : [feedback], total: 41, page: Number(query.page), page_size: 20 })
+    if (path === '/requirements') return json({ items: query.keyword === 'empty' ? [] : [requirement(query.page === '2' ? 8 : 7)], total: query.keyword === 'empty' ? 0 : 41, page: Number(query.page), page_size: 20 })
+    if (path === '/versions') return json({ items: [version(1), version(3)], total: 41, page: Number(query.page), page_size: 20 })
+    if (path === '/releases') return json({ items: [release], total: 41, page: Number(query.page), page_size: 20 })
+    if (path === '/audits') return json({ items: [], total: 41, page: Number(query.page), size: 20 })
+    if (path === '/feedbacks/1') return json({ ...feedback, main_requirement_id: unlinked ? null : 7 })
+    if (['/feedbacks/1/attachments', '/feedbacks/1/comments', '/requirements/7/feedbacks'].includes(path)) return json([])
+    if (path === '/requirements/7') return json(requirement(7))
+    if (path === '/requirements/8') return json(requirement(8, 'DONE', 'P2'))
+    if (path === '/requirements/99') return json({ code: 40400, message: '不存在或不可访问' }, 404)
+    if (/^\/versions\/[123]$/.test(path)) return json(version(Number(path.at(-1))))
+    if (/^\/versions\/[12]\/requirements$/.test(path)) {
+      if (route.request().method() === 'POST') return json(version(1))
+      return json({ version_id: Number(path.split('/')[2]), items: [{ ...requirement(7), revision: 1 }, requirement(8, 'DONE', 'P2')], stats: { total: 2, completed: 1, completion_rate: 0.5, by_status: { CONFIRMED: 1, DONE: 1 } } })
+    }
+    if (path === '/versions/3/requirements/move') return json(version(3))
+    if (path === '/feedbacks/1/convert') return json(requirement(7))
+    if (path === '/feedbacks/1/status') return json({ ...feedback, status: 'DUPLICATE', duplicate_of_id: 2 })
+    if (path === '/feedbacks/2') return json({ ...feedback, id: 2, feedback_no: 'FB-2', title: '重复目标' })
+    if (path === '/versions/2/publish/check') return json({ code: 40930, message: '发布检查未通过', data: { checks: [{ type: 'REQUIREMENTS_DONE', passed: false, message: '仍有未完成需求', blocking_requirements: [{ id: 99, requirement_no: 'REQ-99', status: 'DEVELOPING' }] }] } }, 409)
+    if (path === '/releases/9') return json(release)
+    unexpected.push(path); return json({ message: 'unexpected' }, 500)
+  })
+  return { requests, unexpected }
+}
+async function noOverflow(page: Page, width: number) { await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width + 1) }
+for (const width of widths) {
+  test(`V1.8 safe main chain and return context ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 }); const state = await fixture(page)
+    await page.goto('/#/feedbacks?page=2&status=ACCEPTED')
+    if (width < 768) await page.getByRole('button', { name: /FB-1 已受理 链路反馈/ }).click()
+    else await page.getByText('查看', { exact: true }).click()
+    await expect(page.getByRole('heading', { name: '链路反馈' })).toBeVisible()
+    await page.getByRole('link', { name: /^REQ-7 ·/ }).click()
+    await expect(page.getByRole('heading', { name: requirement(7).title })).toBeVisible()
+    await page.getByRole('link', { name: 'V1.8-1 · 可见版本 1' }).click()
+    await expect(page.getByRole('heading', { name: '可见版本 1' })).toBeVisible()
+    await expect(page.getByText('仅统计当前账号可见需求；发布准备以服务端发布检查为准。')).toBeVisible()
+    await page.getByPlaceholder('筛选可见编号或标题').fill('需求 8')
+    const worklist = page.locator('.section-card').filter({ has: page.getByText('需求清单', { exact: true }) })
+    await expect(worklist).toContainText('REQ-8'); await expect(worklist).not.toContainText(requirement(7).title)
+    await page.getByRole('link', { name: '查看发布详情' }).click()
+    await expect(page.getByRole('heading', { name: '发布记录详情' })).toBeVisible()
+    await page.getByRole('link', { name: '返回发布记录' }).click()
+    await expect(page).toHaveURL(/\/#\/feedbacks\?page=2&status=ACCEPTED$/)
+    await page.reload(); await expect.poll(() => state.requests.filter(r => r.path === '/feedbacks').at(-1)?.query).toEqual({ page: '2', page_size: '20', status: 'ACCEPTED' })
+    await noOverflow(page, width); expect(state.unexpected).toEqual([])
+  })
+  test(`V1.8 scoped selector pagination, cancel, empty, latest CAS ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 }); const state = await fixture(page)
+    await page.goto('/#/versions/1'); await page.getByRole('button', { name: '添加需求', exact: true }).click()
+    const parent = page.getByRole('dialog', { name: '添加需求', exact: true }); await parent.getByRole('button', { name: '选择需求', exact: true }).click()
+    let selector = page.getByRole('dialog', { name: '选择需求', exact: true }); await expect(selector.locator('.selector-option')).toHaveCount(1)
+    await expect(selector.locator('.selector-option')).toBeVisible()
+    if ([375, 1440].includes(width)) await page.screenshot({ path: `/tmp/v18-selector-${width}.png`, fullPage: true, animations: 'disabled' })
+    await selector.locator('.el-pagination .number').filter({ hasText: /^2$/ }).click(); await expect(selector.locator('.selector-option')).toContainText('REQ-8')
+    await selector.getByRole('textbox', { name: '搜索需求' }).fill('empty'); await expect(selector.getByText('暂无可见结果')).toBeVisible()
+    await selector.getByRole('button', { name: '取消', exact: true }).click(); await expect(selector).not.toBeVisible()
+    await parent.getByRole('button', { name: '选择需求', exact: true }).click(); selector = page.getByRole('dialog', { name: '选择需求', exact: true })
+    await expect(selector.locator('.selector-option')).toContainText('REQ-7'); await selector.locator('.selector-option').focus(); await page.keyboard.press('Enter')
+    await expect(selector).not.toBeVisible(); await parent.getByRole('button', { name: '添加', exact: true }).click()
+    await expect.poll(() => state.requests.find(r => r.path === '/versions/1/requirements' && r.method === 'POST')?.body).toEqual({ requirement_id: 7, revision: 13, version_revision: 3 })
+    const writeIndex = state.requests.findIndex(r => r.path === '/versions/1/requirements' && r.method === 'POST'); expect(state.requests[writeIndex - 1]?.path).toBe('/requirements/7')
+    await expect(parent).not.toBeVisible()
+    const row = width < 768 ? page.locator('.req-card').filter({ hasText: 'REQ-7' }) : page.locator('.el-table__row').filter({ hasText: 'REQ-7' })
+    await row.getByText('迁移', { exact: true }).click()
+    const move = page.getByRole('dialog', { name: '迁移需求到其他版本' })
+    await move.getByRole('button', { name: '选择版本' }).click()
+    const targets = page.getByRole('dialog', { name: '选择版本', exact: true })
+    await expect(targets.locator('.selector-option')).toHaveCount(1)
+    await expect(targets.locator('.selector-option')).toContainText('V1.8-3')
+    await targets.locator('.selector-option').click(); await move.locator('textarea').fill('明确迁移原因')
+    await move.getByRole('button', { name: '确定', exact: true }).click()
+    await expect.poll(() => state.requests.find(r => r.path === '/versions/3/requirements/move')?.body).toEqual({ requirement_id: 7, revision: 13, version_revision: 3, reason: '明确迁移原因' })
+    await expect(move).not.toBeVisible(); await noOverflow(page, width); expect(state.unexpected).toEqual([])
+  })
+  test(`V1.8 publish permission is not target read permission ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 }); const state = await fixture(page, false)
+    await page.goto('/#/versions/2?return_to=%2F%2Fevil.test'); await page.getByRole('button', { name: '发布', exact: true }).click()
+    const dialog = page.getByRole('dialog', { name: '发布版本', exact: true }); await expect(dialog).toContainText('仍有未完成需求'); await expect(dialog).toContainText('REQ-99（开发中）')
+    await expect(dialog).toContainText('无法查看详情'); await expect(dialog.getByRole('link', { name: '查看需求' })).toHaveCount(0)
+    await expect(dialog.getByRole('button', { name: '确认发布' })).toBeDisabled()
+    expect(state.requests.some(r => r.path.startsWith('/requirements'))).toBe(false)
+    await noOverflow(page, width); await dialog.getByRole('button', { name: '取消', exact: true }).click()
+    await page.getByRole('link', { name: '返回列表' }).click(); await expect(page).toHaveURL(/\/#\/versions$/); expect(state.unexpected).toEqual([])
+  })
+}
+const queryCases = [
+  { path: 'feedbacks', api: '/feedbacks', query: 'page=2&status=ACCEPTED', expected: { page: '2', page_size: '20', status: 'ACCEPTED' } },
+  { path: 'requirements', api: '/requirements', query: 'page=2&priority=P0&source=DIRECT&owner_id=1', expected: { page: '2', page_size: '20', priority: 'P0', source: 'DIRECT', owner_id: '1' } },
+  { path: 'versions', api: '/versions', query: 'page=2&status=PLANNING&owner_id=1', expected: { page: '2', page_size: '20', status: 'PLANNING', owner_id: '1' } },
+  { path: 'releases', api: '/releases', query: 'page=2&version_id=1', expected: { page: '2', page_size: '20', version_id: '1' } },
+  { path: 'admin/audits', api: '/audits', query: 'page=2&entity_type=FEEDBACK&operator_id=1', expected: { page: '2', size: '20', entity_type: 'FEEDBACK', operator_id: '1' } },
+]
+for (const config of queryCases) test(`V1.8 ${config.path} URL refresh and back forward`, async ({ page }) => {
+  const state = await fixture(page); await page.goto(`/#/${config.path}?${config.query}`)
+  await expect.poll(() => state.requests.filter(r => r.path === config.api).at(-1)?.query).toEqual(config.expected)
+  await page.reload(); await expect.poll(() => state.requests.filter(r => r.path === config.api).length).toBe(2)
+  await page.goto(`/#/${config.path}`); await expect.poll(() => state.requests.filter(r => r.path === config.api).at(-1)?.query.page).toBe('1')
+  await page.goBack(); await expect.poll(() => state.requests.filter(r => r.path === config.api).at(-1)?.query).toEqual(config.expected)
+  await page.goForward(); await expect.poll(() => state.requests.filter(r => r.path === config.api).at(-1)?.query.page).toBe('1'); expect(state.unexpected).toEqual([])
+})
+
+test('V1.8 Feedback LINK_EXISTING and duplicate selectors keep parent CAS', async ({ page }) => {
+  const state = await fixture(page, true, true)
+  await page.goto('/#/feedbacks/1'); await page.getByRole('button', { name: '转需求', exact: true }).click()
+  const convert = page.getByRole('dialog', { name: '转为需求' }); await convert.getByText('关联已有需求', { exact: true }).click(); await expect(convert.getByRole('radio', { name: '关联已有需求' })).toBeChecked()
+  await convert.getByRole('button', { name: '选择需求' }).click()
+  await page.getByRole('dialog', { name: '选择需求', exact: true }).locator('.selector-option').click()
+  await convert.getByRole('button', { name: '确定', exact: true }).click()
+  await expect.poll(() => state.requests.find(r => r.path === '/feedbacks/1/convert')?.body).toMatchObject({ type: 'LINK_EXISTING', revision: 4, requirement_id: 7 })
+  await expect(page.getByRole('heading', { name: requirement(7).title })).toBeVisible()
+  await page.goto('/#/feedbacks/1'); await page.getByRole('button', { name: '标记重复', exact: true }).click()
+  const duplicate = page.getByRole('dialog', { name: '标记重复', exact: true }); await duplicate.getByRole('button', { name: '选择反馈' }).click()
+  const selector = page.getByRole('dialog', { name: '选择反馈', exact: true })
+  await expect(selector.getByText('暂无可见结果')).toBeVisible()
+  await selector.getByRole('textbox', { name: '搜索反馈' }).fill('duplicate')
+  await selector.locator('.selector-option').filter({ hasText: 'FB-2' }).click()
+  await duplicate.getByRole('button', { name: '确定', exact: true }).click()
+  await expect.poll(() => state.requests.find(r => r.path === '/feedbacks/1/status')?.body).toEqual({ status: 'DUPLICATE', revision: 4, reason: null, duplicate_of_id: 2 }); expect(state.unexpected).toEqual([])
+})
+
+test('V1.8 readable domain but inaccessible blocker retains safe summary without link', async ({ page }) => {
+  const state = await fixture(page)
+  await page.goto('/#/versions/2'); await page.getByRole('button', { name: '发布', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: '发布版本' })
+  await expect(dialog).toContainText('REQ-99（开发中）'); await expect(dialog).toContainText('无法查看详情')
+  await expect.poll(() => state.requests.filter(r => r.path === '/requirements/99').length).toBe(1)
+  await expect(dialog.getByRole('link', { name: '查看需求' })).toHaveCount(0)
+  await expect(dialog.getByRole('button', { name: '确认发布' })).toBeDisabled()
+  await dialog.getByRole('button', { name: '取消', exact: true }).click(); await expect(page.getByRole('heading', { name: '可见版本 2' })).toBeVisible()
+  expect(state.unexpected).toEqual([])
+})
+
+test('V1.8 moving a requirement rechecks its source before using a fresh revision', async ({ page }) => {
+  const state = await fixture(page)
+  await page.goto('/#/versions/1')
+  await page.locator('.el-table__row').filter({ hasText: 'REQ-7' }).getByText('迁移', { exact: true }).click()
+  const move = page.getByRole('dialog', { name: '迁移需求到其他版本' })
+  await move.getByRole('button', { name: '选择版本' }).click()
+  await page.getByRole('dialog', { name: '选择版本', exact: true }).locator('.selector-option').click()
+  await move.locator('textarea').fill('迁移原因')
+  await page.route('**/api/v1/requirements/7', route => route.fulfill({ status: 200, json: { ...requirement(7), current_version_id: 99, revision: 14 } }))
+  await move.getByRole('button', { name: '确定', exact: true }).click()
+  await expect(page.getByText('需求所属版本已变化，请重新加载清单后再迁移')).toBeVisible()
+  await expect(move).not.toBeVisible()
+  expect(state.requests.some(r => r.path === '/versions/3/requirements/move')).toBe(false)
+})
+
+test('V1.8 selector failure/retry and local worklist filter intersections remain usable on mobile', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 900 }); const state = await fixture(page)
+  await page.goto('/#/versions/1')
+  const worklist = page.locator('.section-card').filter({ has: page.getByRole('heading', { name: '需求清单', exact: true }) })
+  await worklist.getByPlaceholder('筛选可见编号或标题').fill('REQ-8')
+  await worklist.locator('.el-form-item').filter({ hasText: '清单优先级' }).locator('.el-select').click()
+  await page.locator('.el-select-dropdown:visible').getByText('P0', { exact: true }).click()
+  await expect(worklist).toContainText('当前筛选 0 / 2 项可见需求')
+  await worklist.getByRole('button', { name: '重置清单' }).click()
+  await expect(worklist).toContainText('当前筛选 2 / 2 项可见需求')
+  await worklist.getByRole('button', { name: '已完成 1', exact: true }).click()
+  await expect(worklist.locator('.req-card')).toHaveCount(1)
+  expect(state.requests.filter(r => r.path.endsWith('/requirements') && r.path.startsWith('/versions')).length).toBe(1)
+  let failures = 0
+  await page.route('**/api/v1/requirements?*', route => { failures++; return failures === 1 ? route.fulfill({ status: 500, json: { message: 'test failure' } }) : route.fallback() })
+  await page.getByRole('button', { name: '添加需求', exact: true }).click()
+  const parent = page.getByRole('dialog', { name: '添加需求', exact: true }); await parent.getByRole('button', { name: '选择需求' }).click()
+  const selector = page.getByRole('dialog', { name: '选择需求', exact: true })
+  await expect(selector.getByRole('alert')).toContainText('搜索失败，请重试')
+  await selector.getByRole('button', { name: '重试', exact: true }).click(); await expect(selector.locator('.selector-option')).toHaveCount(1)
+  await page.keyboard.press('Escape'); await expect(selector).not.toBeVisible(); await expect(parent).toBeVisible()
+  await parent.getByRole('button', { name: '取消', exact: true }).click(); await noOverflow(page, 390)
+  expect(state.unexpected).toEqual([])
+})
+
+
+test('V1.8 relation conflict reports the freshly submitted revision rather than the old list row', async ({ page }) => {
+  const state = await fixture(page)
+  await page.goto('/#/versions/1')
+  await page.locator('.el-table__row').filter({ hasText: 'REQ-7' }).getByText('迁移', { exact: true }).click()
+  const move = page.getByRole('dialog', { name: '迁移需求到其他版本' })
+  await move.getByRole('button', { name: '选择版本' }).click()
+  await page.getByRole('dialog', { name: '选择版本', exact: true }).locator('.selector-option').click()
+  await move.locator('textarea').fill('CAS 冲突验收')
+  let body: any
+  await page.route('**/api/v1/versions/3/requirements/move', route => {
+    body = route.request().postDataJSON()
+    return route.fulfill({ status: 409, json: { code: 40910, message: '对象已更新', data: { current_revision: 14 } } })
+  })
+  await move.getByRole('button', { name: '确定', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: '数据已被其他用户修改' })
+  await expect(dialog).toContainText('版本 3 / 需求 13')
+  expect(body.revision).toBe(13)
+  await expect(page.getByText('服务器版本已变化，请查看冲突详情')).toHaveCount(0)
+  await expect(move).toBeVisible(); expect(state.unexpected).toEqual([])
+})

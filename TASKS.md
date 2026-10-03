@@ -1,4 +1,21 @@
-# IterFlow V1.7 Development Tasks
+# IterFlow Tasks
+
+> 当前正式发布目标：`v1.8.0`，已获 Final Release 授权。正式发布成立条件为 Final Master CI PASS + annotated v1.8.0 tag + 正式 GitHub Release；发布事实以三者和最终 master commit 为准，不提前记录 tag object SHA。发布 base：`d9e107f83a97229ab879987c1abe1c351afcad3b`；上一正式v1.7.0与更早标签均不可变。V1.8 C0/C1/C3/C4实现、内外部审查与readiness PASS，开发final master CI 37095500766 / attempt1六项成功。Preview独立线79fa39d3611c166c992d5cbdf8d6c3757506ee46不变。
+
+## V1.8 — Version Workspace & Main-Chain Productivity
+
+- [x] Phase 0：正式V1.7基线审计与产品范围冻结；原始分析保留。
+- [x] Phase 0：Scope branch六项CI、no-ff merge与final master六项CI。
+- [x] Phase 1 — Query Context & Main-Chain Traceability：C4白名单query/安全return_to与C3授权lookup/关系导航。
+- [x] Phase 2 — Scoped Relationship Selection：C1分页/搜索/竞态/权限降级/提交前revision。
+- [x] Phase 3 — Version Worklist Productivity：C0可见清单筛选、优先级、统计与安全阻塞导航。
+- [x] Phase 4 — Regression & Release Readiness：本地门禁、Fresh Self-Review、product branch/master CI与docs-only收口/final CI。
+
+C2、C5–C16本版DEFER；scroll持久化/全局缓存不做。无新permission/migration/entity、TEAM、状态机或Publish变化。开发阶段版本曾保持1.7.0；本次发布授权同步1.8.0，并仅在final master CI后创建annotated tag/Release；不更新Preview或生产。正式开发 base：`cf9a2fbcd4f045c8dfbc34030b1a3449faa19e8f`。验收见 `docs/v1.8-release-readiness.md`，执行证据见 `docs/v1.8-autonomous-execution-log.md`；同一Agent复查不称外部独立终审。
+
+## V1.7 历史开发清单
+
+以下保留 V1.7 开发、发布准备时的基线与授权记录；其中 Preview SHA 是当时冻结值，不代表当前部署线。V1.7 已正式发布，历史授权不自动延续到 V1.8。
 
 > 正式发布基线：v1.6.0 / `f0aa8475ff081fc963cdd08045d23e383a3c594e`。V1.7 已获用户自主开发授权；正式范围见 `docs/v1.7-plan.md`，事实与执行证据见 baseline audit / autonomous execution log。Phase 0–4开发版本为1.6.0；外部独立终审PASS，现已授权v1.7.0 Final Release并同步包/运行时元数据。Preview保持`33d36d78ab4bedf48835d124f295f1ca8c352eae`，不参与本次发布。V1.6 清单以其正式标签快照为历史依据。
 

@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { getRelease } from '@/api/releases'
 import { getVersion } from '@/api/versions'
+import { useDetailNavigation } from '@/composables/useDetailNavigation'
 import { usePermission } from '@/composables/usePermission'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import SectionCard from '@/components/ui/SectionCard.vue'
@@ -13,6 +14,7 @@ import { formatLocalDateTime } from '@/utils/dates'
 import type { ReleaseItem } from '@/types/domain'
 
 const route = useRoute()
+const { backTo, related } = useDetailNavigation('/releases')
 const { can } = usePermission()
 const canViewVersion = computed(() => can('rd.version.view'))
 const item = ref<ReleaseItem | null>(null)
@@ -51,6 +53,7 @@ watch(() => [item.value?.version_id, canViewVersion.value] as const, async ([id,
   if (id == null || !allowed) return
   try {
     const version = await getVersion(id)
+    if (version.id !== id) return
     if (sequence === versionSequence) versionLabel.value = `${version.version_no} · ${version.name}`
   } catch {
     // Keep the version ID when metadata is unavailable or outside its scope.
@@ -73,7 +76,7 @@ const fields = computed(() => item.value ? [
 <template>
   <section v-loading="loading" class="page release-detail" aria-label="发布记录详情">
     <PageHeader title="发布记录详情" :eyebrow="item ? `Release #${item.id}` : '发布'" description="查看实际发布结果与说明。">
-      <template #actions><RouterLink class="back-link" to="/releases">返回发布记录</RouterLink></template>
+      <template #actions><RouterLink class="back-link" :to="backTo">返回发布记录</RouterLink></template>
     </PageHeader>
     <ErrorState v-if="error === 'missing'" title="发布记录不存在或不可访问" description="请返回发布记录列表。" />
     <ErrorState v-else-if="error === 'failed'" title="发布记录加载失败" description="请检查网络后重试。" retry-label="重新加载" @retry="load" />
@@ -81,7 +84,7 @@ const fields = computed(() => item.value ? [
       <SectionCard title="发布信息" description="发布记录为只读历史信息。">
         <InfoGrid :items="fields">
           <template #version>
-            <RouterLink v-if="canViewVersion" class="version-link" :to="`/versions/${item.version_id}`">版本 #{{ item.version_id }}</RouterLink>
+            <RouterLink v-if="canViewVersion && versionLabel" class="version-link" :to="related(`/versions/${item.version_id}`)">版本 #{{ item.version_id }}</RouterLink>
             <span v-else>版本 #{{ item.version_id }}</span>
             <div v-if="versionLabel" class="version-label">{{ versionLabel }}</div>
           </template>

@@ -1,6 +1,6 @@
 # 迭程 IterFlow · 需求与版本协作管理系统
 
-本次正式发布版本为 `v1.7.0`，发布事实以 annotated tag、GitHub Release 与最终 master commit 为准。`v1.6.0`（`f0aa8475ff081fc963cdd08045d23e383a3c594e`）保留为不可变历史发布版本。`v1.5.0`（`a7e60e39893f162dd49b03d40f5ca975abd5d42d`）保留为不可变历史发布版本。V1.6 Phase 0–7 已完成，Release readiness PASS。V1.6 阶段文档保留为历史证据。V1.7 从正式 v1.6.0 开始，Phase 0–4 已完成，Fresh Self-Review与外部独立终审PASS，已获正式发布授权；包与运行时版本同步为1.7.0，Cloudflare Preview仍保持独立冻结基线。见 [基线审计](docs/v1.7-baseline-audit.md)、[V1.7 计划](docs/v1.7-plan.md) 和 [执行清单](TASKS.md)。
+本次正式发布目标为 `v1.8.0`，用户已授权 Final Release；正式发布成立条件为 Final Master CI PASS + annotated v1.8.0 tag + 正式 GitHub Release；发布事实以三者和最终 master commit 为准，不提前记录 tag object SHA。`v1.7.0`（`e485efea0155c5b4194f563926a531d606c77349`）保留为不可变历史版本。`v1.6.0`（`f0aa8475ff081fc963cdd08045d23e383a3c594e`）保留为不可变历史发布版本。`v1.5.0`（`a7e60e39893f162dd49b03d40f5ca975abd5d42d`）保留为不可变历史发布版本。V1.6 Phase 0–7 已完成，Release readiness PASS。V1.6 阶段文档保留为历史证据。本轮V1.8发布包/runtime/health与V1.8契约元数据同步1.8.0，范围仅C0/C1/C3/C4；历史V1.7从正式v1.6.0开始，Phase 0–4 已完成，Fresh Self-Review与外部独立终审PASS，已获正式发布授权；包与运行时版本同步为1.7.0，Cloudflare Preview仍保持独立冻结基线。见 [基线审计](docs/v1.7-baseline-audit.md)、[V1.7 计划](docs/v1.7-plan.md) 和 [执行清单](TASKS.md)。
 
 独立部署的研发协作系统，主链路为：
 
@@ -80,7 +80,7 @@ The independent Cloudflare trial deployment is documented in [Cloudflare Preview
 
 1. `AGENTS.md`
 2. `START_HERE.md`
-3. `docs/v1.7-baseline-audit.md` 与 `docs/v1.7-plan.md`
+3. `docs/v1.8-baseline-audit.md` 与 `docs/v1.8-plan.md`；V1.7 文档保留为历史证据
 4. `TASKS.md` 与 `DEVELOPMENT.md`
 
-V1.5 主文档和标签是正式版本的历史依据；V1.0–V1.4 仅为更早历史方案。当前开发任务按已批准的 V1.7 规划推进，核心业务规则仍受 `AGENTS.md` 和 V1.5 规格约束。
+V1.5 主文档和标签是正式版本的历史依据；V1.0–V1.4 仅为更早历史方案。V1.7 已正式发布；V1.8 C0/C1/C3/C4 已完成实现与内部 Fresh Self-Review，Release Readiness 与外部独立终审 PASS，已获得 Final Release 授权；发布验收见 [V1.8 Readiness](docs/v1.8-release-readiness.md)。其他候选本版 DEFER；本轮仅发布，Preview 升级和部署仍需另行授权。核心业务规则仍受 `AGENTS.md` 和 V1.5 规格约束。

@@ -105,7 +105,7 @@ async function logout(): Promise<void> {
       <span class="brand-mark">迭</span>
       <span class="brand-text"><strong>迭程</strong> IterFlow</span>
     </header>
-    <main class="content"><router-view /></main>
+    <main class="content"><router-view v-slot="{ Component, route: childRoute }"><component v-if="auth.user" :is="Component" :key="`${childRoute.path}:${auth.user?.id ?? 'guest'}:${auth.user?.data_scope ?? ''}:${auth.permissionCodes.join(',')}`" /></router-view></main>
     <MobileBottomNav />
   </div>
 </template>

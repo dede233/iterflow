@@ -1,16 +1,18 @@
-# IterFlow V1.7 开发 Agent 入口
+# IterFlow 开发 Agent 接手入口
 
-本次正式发布版本为v1.7.0，发布事实以最终master commit、annotated tag与GitHub Release为准。V1.7开发基线为`f0aa8475ff081fc963cdd08045d23e383a3c594e`；Phase 0–4开发期间版本为1.6.0，本次正式发布元数据同步为1.7.0。V1.6文档和标签保留为不可变历史发布证据。
+当前正式发布目标为 `v1.8.0`，用户已授权 Final Release；正式发布成立条件为 Final Master CI PASS + annotated v1.8.0 tag + 正式 GitHub Release；发布事实以三者和最终 master commit 为准，不提前记录 tag object SHA。发布 base 为 `d9e107f83a97229ab879987c1abe1c351afcad3b`，包/runtime版本同步1.8.0，当前契约 `spec/openapi-v1.8.yaml`。C0/C1/C3/C4实现与内外部审查PASS，其他候选DEFER；Preview 79fa39d3611c166c992d5cbdf8d6c3757506ee46保持不变。验收见 `docs/v1.8-release-readiness.md`，范围与执行见Plan/log/TASKS；本轮不开发新功能，不部署。下文V1.7段落为历史开发与发布授权，不自动沿用。
+
+历史正式发布版本为v1.7.0，发布事实以最终master commit、annotated tag与GitHub Release为准。V1.7开发基线为`f0aa8475ff081fc963cdd08045d23e383a3c594e`；Phase 0–4开发期间版本为1.6.0，本次正式发布元数据同步为1.7.0。V1.6文档和标签保留为不可变历史发布证据。
 
 ## 阅读顺序
 
 1. AGENTS.md 与 START_HERE.md
-2. docs/v1.7-baseline-audit.md、docs/v1.7-plan.md
-3. TASKS.md、DEVELOPMENT.md、docs/v1.7-autonomous-execution-log.md
-4. spec/status-machines.md 与当前spec/openapi-v1.7.yaml（V1.6/V1.5契约冻结）
+2. docs/v1.8-baseline-audit.md、docs/v1.8-plan.md、docs/v1.8-release-readiness.md（V1.7文档保留历史）
+3. TASKS.md、DEVELOPMENT.md、docs/v1.8-autonomous-execution-log.md
+4. spec/status-machines.md 与当前spec/openapi-v1.8.yaml（V1.7/V1.6/V1.5契约冻结）
 5. 代码、测试和当前 Git/CI 事实
 
-## 授权范围
+## V1.7 历史授权范围
 
 仅五个正式阶段：Phase 0 Scope Freeze；Phase 1 C1/C3/C8/C9 evidence-first；Phase 2 C2 Release 右开日期查询；Phase 3 C6 focus/visibility 刷新（30s cooldown，无 polling）；Phase 4 Regression & Release Readiness。C4 删除、C5 TEAM、C7 trusted IP 延期。
 

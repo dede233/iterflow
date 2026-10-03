@@ -32,7 +32,7 @@ beforeEach(() => {
   mocks.route = reactive({ params: { id: '123' } })
   mocks.can.mockReturnValue(false)
   mocks.getRelease.mockResolvedValue({ ...release })
-  mocks.getVersion.mockResolvedValue({ version_no: 'V1.6.0', name: '版本名称' })
+  mocks.getVersion.mockResolvedValue({ id: 456, version_no: 'V1.6.0', name: '版本名称' })
 })
 
 describe('read-only release detail', () => {
@@ -43,7 +43,7 @@ describe('read-only release detail', () => {
       expect(wrapper.text()).toContain(text)
     }
     expect(wrapper.findAll('.release-notes').map(node => node.text())).toEqual([release.release_notes, release.rollback_notes])
-    expect(wrapper.find('a[href="/versions/456"]').exists()).toBe(false)
+    expect(wrapper.find('a[href="/versions/456?return_to=%2Freleases"]').exists()).toBe(false)
     expect(mocks.getVersion).not.toHaveBeenCalled()
     expect(wrapper.findAll('button')).toHaveLength(0)
     expect(mocks.getRelease).toHaveBeenCalledWith(123)
@@ -63,7 +63,7 @@ describe('read-only release detail', () => {
     mocks.can.mockReturnValue(true)
     const wrapper = view()
     await flushPromises()
-    expect(wrapper.get('a[href="/versions/456"]').text()).toBe('版本 #456')
+    expect(wrapper.get('a[href="/versions/456?return_to=%2Freleases"]').text()).toBe('版本 #456')
     expect(wrapper.text()).toContain('V1.6.0 · 版本名称')
     expect(mocks.getVersion).toHaveBeenCalledWith(456)
     wrapper.unmount()
@@ -76,6 +76,7 @@ describe('read-only release detail', () => {
     await flushPromises()
     expect(wrapper.text()).toContain('版本 #456')
     expect(wrapper.text()).toContain(release.release_notes)
+    expect(wrapper.find('a[href^="/versions/"]').exists()).toBe(false)
     expect(wrapper.find('[role="alert"]').exists()).toBe(false)
     wrapper.unmount()
   })
@@ -125,7 +126,7 @@ describe('read-only release detail', () => {
     const wrapper = view()
     await flushPromises()
     mocks.getRelease.mockResolvedValue({ ...release, id: 124, version_id: 457 })
-    mocks.getVersion.mockResolvedValue({ version_no: 'V1.7.0', name: '最新版本' })
+    mocks.getVersion.mockResolvedValue({ id: 457, version_no: 'V1.7.0', name: '最新版本' })
     mocks.route.params.id = '124'
     await flushPromises()
     finish({ version_no: 'V1.6.0', name: '旧版本' })

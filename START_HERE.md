@@ -2,7 +2,7 @@
 
 # 开发 Agent 从这里开始
 
-这是迭程 IterFlow 当前 V1.7 入口。本次正式发布版本为`v1.7.0`，发布事实以最终master commit、annotated tag与GitHub Release为准；V1.7从正式v1.6.0解引用基线`f0aa8475ff081fc963cdd08045d23e383a3c594e`开始。`v1.5.0`与`v1.6.0`均不可变；正式发布包与运行时版本为1.7.0。当前范围/阶段见 `docs/v1.7-plan.md`、`TASKS.md`，自主执行证据见 `docs/v1.7-autonomous-execution-log.md`。
+这是迭程 IterFlow 当前接手入口。正式发布目标为 `v1.8.0`；包与运行时版本同步为1.8.0。正式发布成立条件为 Final Master CI PASS + annotated v1.8.0 tag + 正式 GitHub Release；发布事实以三者和最终 master commit 为准，不提前记录 tag object SHA。上一正式版本 v1.7.0 解引用到 `e485efea0155c5b4194f563926a531d606c77349`。`v1.5.0`、`v1.6.0`、`v1.7.0` 均不可变。V1.8 已批准范围实现完成、内部 Fresh Self-Review 与 Release Readiness PASS，已获得 Final Release 授权，Preview/部署另行授权，验收见 `docs/v1.8-release-readiness.md`，基线、范围与清单见 `docs/v1.8-baseline-audit.md`、`docs/v1.8-plan.md` 和 `TASKS.md`；C0/C1/C3/C4已完成，其他候选本版DEFER。V1.7 计划与自主执行日志保留为历史证据。
 
 
 ## 项目命名
@@ -35,16 +35,16 @@ Redis 服务：iterflow-redis
 
 1. `AGENTS.md`
 2. `README.md`
-3. `docs/v1.7-baseline-audit.md`
-4. `docs/v1.7-plan.md`
+3. `docs/v1.8-baseline-audit.md` 与 `docs/v1.8-plan.md`
+4. `docs/v1.7-baseline-audit.md`、`docs/v1.7-plan.md` 与 V1.7 发布证据（历史）
 5. `TASKS.md` 与 `DEVELOPMENT.md`
 6. `docs/需求与版本管理系统_独立部署版_V1.5_完整开发基线.pdf`
-7. `spec/status-machines.md` 与当前 `spec/openapi-v1.7.yaml`；V1.6/V1.5契约冻结，历史发布快照以对应标签为准
+7. `spec/status-machines.md` 与当前 `spec/openapi-v1.8.yaml`；V1.7/V1.6/V1.5契约冻结，历史发布快照以对应标签为准
 8. 现有代码和测试
 
 ## 第一条指令
 
-先核对 Git 冻结事实、基线审计和已批准范围。用户已授权 V1.7 Phase 0–4 自主实施、Fresh Self-Review、六项 CI、no-ff merge 与 docs closeout；每阶段 final master CI 通过后才进入下一阶段。硬停止条件见 AGENTS 第16节。Phase 0–4已完成，外部独立终审PASS，用户已授权v1.7.0 Final Release；完成后停止，Preview升级另行授权。
+先核对 Git 冻结事实与实际代码。V1.7 已正式发布；V1.8 从 `e485efea0155c5b4194f563926a531d606c77349` 开始，C0/C1/C3/C4 已完成自主实施、复查与产品主线门禁；开发最终 master CI 37095500766 / attempt1 六项通过，外部独立终审 PASS；本轮 Final Release 只同步元数据/契约快照，其他候选DEFER，Preview/部署另行授权；不得把历史 V1.7 自主实施授权沿用为 V1.8 开发授权。Preview 是独立部署线，不作为产品开发基线。
 
 ## 唯一核心链路
 
@@ -58,4 +58,4 @@ Redis 服务：iterflow-redis
 
 ## 可直接复制给开发 Agent
 
-`DEVELOPMENT_AGENT_PROMPT.md` 是当前 V1.7 开发 Agent 入口；具体阶段范围与验收以 `docs/v1.7-plan.md` 和 `TASKS.md` 为准。
+`DEVELOPMENT_AGENT_PROMPT.md` 是当前接手入口；V1.8 已完成已批准C0/C1/C3/C4，已获得 Final Release 授权，Preview/部署另行授权；禁止自动实施延期项，具体候选见 `docs/v1.8-plan.md`。V1.7 阶段范围与验收记录保留为历史依据。

@@ -1,3 +1,4 @@
+import { reactive } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import ElementPlus, { ElTable, ElMessage } from 'element-plus'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -7,7 +8,8 @@ vi.mock('@/api/audits', () => ({ listAudits: mocks.audits, getAudit: mocks.detai
 vi.mock('@/api/systems', () => ({ listSystems: vi.fn() }))
 vi.mock('@/composables/usePermission', () => ({ usePermission: () => ({ can: () => false }) }))
 vi.mock('@/composables/useResponsive', () => ({ useResponsive: () => ({ isMobile: false }) }))
-vi.mock('vue-router', () => ({ useRouter: () => ({ push: vi.fn() }) }))
+const route = reactive({ query: {} as Record<string, string> })
+vi.mock('vue-router', () => ({ useRoute: () => route, useRouter: () => ({ push: async (target: { query?: Record<string, string> }) => { route.query = target.query ?? {} } }) }))
 import FeedbackList from './feedback/FeedbackListView.vue'
 import AuditCenter from './audit/AuditCenterView.vue'
 function deferred<T>() {
@@ -28,7 +30,7 @@ function view(component: typeof FeedbackList | typeof AuditCenter) {
     },
   } })
 }
-beforeEach(() => { vi.resetAllMocks(); mocks.feedbacks.mockResolvedValue(page(1)); mocks.audits.mockResolvedValue(page(1)); mocks.detail.mockImplementation(async (id: number) => audit(id)) })
+beforeEach(() => { vi.resetAllMocks(); route.query = {}; mocks.feedbacks.mockResolvedValue(page(1)); mocks.audits.mockResolvedValue(page(1)); mocks.detail.mockImplementation(async (id: number) => audit(id)) })
 for (const config of [{ name: 'Feedback list', component: FeedbackList, api: mocks.feedbacks }, { name: 'Audit list', component: AuditCenter, api: mocks.audits }]) {
  describe(config.name, () => {
   it('ignores a stale success after the latest query succeeds', async () => {

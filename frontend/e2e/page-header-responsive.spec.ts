@@ -87,6 +87,7 @@ for (const width of widths) {
           return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, width: r.width }
         }
         return {
+          scrollWidth: document.documentElement.scrollWidth, viewportWidth: window.innerWidth,
           header: rect(element), heading: rect(element.querySelector('h1')!),
           text: rect(element.querySelector('.page-header__text')!),
           actions: rect(element.querySelector('.page-header__actions')!),

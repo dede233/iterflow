@@ -2,7 +2,7 @@
 
 # 开发 Agent 从这里开始
 
-这是迭程 IterFlow 当前接手入口。正式发布目标为 `v1.8.0`；包与运行时版本同步为1.8.0。正式发布成立条件为 Final Master CI PASS + annotated v1.8.0 tag + 正式 GitHub Release；发布事实以三者和最终 master commit 为准，不提前记录 tag object SHA。上一正式版本 v1.7.0 解引用到 `e485efea0155c5b4194f563926a531d606c77349`。`v1.5.0`、`v1.6.0`、`v1.7.0` 均不可变。V1.8 已批准范围实现完成、内部 Fresh Self-Review 与 Release Readiness PASS，已获得 Final Release 授权，Preview/部署另行授权，验收见 `docs/v1.8-release-readiness.md`，基线、范围与清单见 `docs/v1.8-baseline-audit.md`、`docs/v1.8-plan.md` 和 `TASKS.md`；C0/C1/C3/C4已完成，其他候选本版DEFER。V1.7 计划与自主执行日志保留为历史证据。
+本次正式发布目标为 `v1.8.1`，Hotfix 外部独立终审 PASS，用户已授权 Final Release + Cloudflare Preview Resume。正式发布成立条件为新的 Release Branch / Final Master 六项 CI PASS、annotated v1.8.1 tag 与正式 GitHub Release；发布事实以最终 master commit、标签和 Release 为准，不提前记录 tag SHA。发布 base：`df9e1ba1a5ee1a4c763098d8e180250f409bedd3`；包、FastAPI、health、Frontend 与当前契约元数据同步 1.8.1，当前契约 `spec/openapi-v1.8.1.yaml`，API shape 不变。v1.8.0 及更早正式标签/Release/契约不可变；本轮只发布已审查的共享 PageHeader 平板响应式修复，随后将正式版本合入独立 Preview 并恢复验收，不部署 Production。证据见 `docs/v1.8.1-release-readiness.md`。
 
 
 ## 项目命名
@@ -39,12 +39,12 @@ Redis 服务：iterflow-redis
 4. `docs/v1.7-baseline-audit.md`、`docs/v1.7-plan.md` 与 V1.7 发布证据（历史）
 5. `TASKS.md` 与 `DEVELOPMENT.md`
 6. `docs/需求与版本管理系统_独立部署版_V1.5_完整开发基线.pdf`
-7. `spec/status-machines.md` 与当前 `spec/openapi-v1.8.yaml`；V1.7/V1.6/V1.5契约冻结，历史发布快照以对应标签为准
+7. `spec/status-machines.md` 与当前 `spec/openapi-v1.8.1.yaml`；V1.8/V1.7/V1.6/V1.5契约冻结，历史发布快照以对应标签为准
 8. 现有代码和测试
 
 ## 第一条指令
 
-先核对 Git 冻结事实与实际代码。V1.7 已正式发布；V1.8 从 `e485efea0155c5b4194f563926a531d606c77349` 开始，C0/C1/C3/C4 已完成自主实施、复查与产品主线门禁；开发最终 master CI 37095500766 / attempt1 六项通过，外部独立终审 PASS；本轮 Final Release 只同步元数据/契约快照，其他候选DEFER，Preview/部署另行授权；不得把历史 V1.7 自主实施授权沿用为 V1.8 开发授权。Preview 是独立部署线，不作为产品开发基线。
+以下为 V1.8.0 开发与发布授权的历史记录，不代表本轮 V1.8.1 / Preview 授权边界。V1.7 已正式发布；V1.8 从 `e485efea0155c5b4194f563926a531d606c77349` 开始，C0/C1/C3/C4 已完成自主实施、复查与产品主线门禁；开发最终 master CI 37095500766 / attempt1 六项通过，外部独立终审 PASS；本轮 Final Release 只同步元数据/契约快照，其他候选DEFER，Preview/部署另行授权；不得把历史 V1.7 自主实施授权沿用为 V1.8 开发授权。Preview 是独立部署线，不作为产品开发基线。
 
 ## 唯一核心链路
 

@@ -29,7 +29,7 @@ Redis 服务：iterflow-redis
 
 ## 1. 开发目标
 
-本次正式发布目标为 `v1.8.0`，已获用户 Final Release 授权；正式发布成立条件为 Final Master CI PASS + annotated v1.8.0 tag + 正式 GitHub Release；发布事实以三者和最终 master commit 为准，不提前记录 tag object SHA。V1.7/V1.6/V1.5保留为不可变历史版本。V1.8 C0/C1/C3/C4实现、内外部审查和readiness均通过；当前范围与证据见 `docs/v1.8-plan.md`、`docs/v1.8-release-readiness.md`、`TASKS.md`，历史阶段事实不重写。执行流程与停止条件见 AGENTS 第17节。
+本次正式发布目标为 `v1.8.1`，Hotfix 外部独立终审 PASS，用户已授权 Final Release + Cloudflare Preview Resume。正式发布成立条件为新的 Release Branch / Final Master 六项 CI PASS、annotated v1.8.1 tag 与正式 GitHub Release；发布事实以最终 master commit、标签和 Release 为准，不提前记录 tag SHA。发布 base：`df9e1ba1a5ee1a4c763098d8e180250f409bedd3`；包、FastAPI、health、Frontend 与当前契约元数据同步 1.8.1，当前契约 `spec/openapi-v1.8.1.yaml`，API shape 不变。v1.8.0 及更早正式标签/Release/契约不可变；本轮只发布已审查的共享 PageHeader 平板响应式修复，随后将正式版本合入独立 Preview 并恢复验收，不部署 Production。证据见 `docs/v1.8.1-release-readiness.md`。
 
 完成标准不是“代码已生成”，而是：
 
@@ -58,7 +58,7 @@ Redis 服务：iterflow-redis
 
 ### 规格
 - `docs/`：V1.5 已发布主文档 PDF/Word、V1.6 历史证据、V1.7 历史证据、V1.8 规划和基线审计
-- `spec/openapi-v1.8.yaml`：当前V1.8发布目标契约；V1.7/V1.6/V1.5契约冻结，正式历史快照从对应标签读取
+- `spec/openapi-v1.8.1.yaml`：当前V1.8.1发布目标契约；V1.8/V1.7/V1.6/V1.5契约冻结，正式历史快照从对应标签读取
 - `spec/status-machines.md`：状态机
 
 ## 3. 本地环境
@@ -287,10 +287,10 @@ alembic upgrade head
 
 ## 11. OpenAPI 变更
 
-V1.7 Phase 1 从V1.6契约建立V1.7快照（历史事实）；本次 V1.8 Final Release 从 `spec/openapi-v1.7.yaml` 复制建立 `spec/openapi-v1.8.yaml`，无业务shape变化，切换 runtime元数据、生成类型与parity；旧文件冻结。`spec/openapi-v1.5.yaml` 当前已有发布后补充，不继续将其当作增量文件；历史正式契约以 `v1.5.0` 标签为准。API 修改流程：
+V1.7 Phase 1 从V1.6契约建立V1.7快照（历史事实）；历史 V1.8 Final Release 从 `spec/openapi-v1.7.yaml` 复制建立 `spec/openapi-v1.8.yaml`，无业务shape变化，切换 runtime元数据、生成类型与parity；旧文件冻结。`spec/openapi-v1.5.yaml` 当前已有发布后补充，不继续将其当作增量文件；历史正式契约以 `v1.5.0` 标签为准。API 修改流程：
 
 1. 先提出并评审当前开发契约，明确字段与错误行为。
-2. 更新 Backend schema/router/service，并校验运行时 OpenAPI 与当前开发契约一致；`backend/scripts/sync_openapi.py` 当前使用 V1.8 契约，避免覆盖历史文件。
+2. 更新 Backend schema/router/service，并校验运行时 OpenAPI 与当前开发契约一致；`backend/scripts/sync_openapi.py` 当前使用 V1.8.1 契约，避免覆盖历史文件。
 3. 使用 `frontend/package.json` 中与当前开发契约一致的 `generate:api-types` 生成 TypeScript DTO。
 4. 增加/更新测试，并执行 OpenAPI parity、`npm run check:api-types` 和构建门禁。
 

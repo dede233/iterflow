@@ -128,6 +128,13 @@ for (const width of widths) {
       }
       expect(unexpected).toEqual([])
       expect(errors).toEqual([])
+      if (width === 768) {
+        // CI's default dot reporter omits test names; expose this required gate's actual measurements.
+        console.info(`PageHeader regression PASS: ${screen.name} at 768px`, JSON.stringify({
+          scrollWidth: bounds.scrollWidth, viewportWidth: bounds.viewportWidth,
+          headingWidth: bounds.heading.width, actions: bounds.actions,
+        }))
+      }
     })
   }
 }

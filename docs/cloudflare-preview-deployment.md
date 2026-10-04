@@ -1,11 +1,11 @@
-# IterFlow V1.8.0 Cloudflare Preview
+# IterFlow V1.8.1 Cloudflare Preview
 
 This runbook operates the independent `phase/cloudflare-preview` branch for online demonstration, trial use, and public acceptance at `https://iterflow.luqingyao.cc.cd`.
 
-- Preview application version: **v1.8.0**.
-- Released commit: `df9e1ba1a5ee1a4c763098d8e180250f409bedd3` (annotated tag `v1.8.0`, tag object `27de902fbd5fdb7a3048234937e50bb9c725d012`).
+- Preview application version: **v1.8.1**.
+- Released commit: `206bf0dab358917940722e1e846d8b80de3f8221` (annotated tag `v1.8.1`, tag object `38c230817fe89be86c1cc7ca431e3ebf1324e4b0`).
 - Preview branch: `phase/cloudflare-preview`.
-- Preview branch includes additional deployment-only commits: **v1.8.0 + Preview-only deployment configuration**. It is not the formal product release branch.
+- Preview branch includes additional deployment-only commits: **v1.8.1 + Preview-only deployment configuration**. It is not the formal product release branch.
 
 The Preview includes released V1.8 functionality and the existing V1.7/V1.6 functionality from the reviewed release tag. For later upgrades, merge the reviewed release tag (or separately authorized master baseline) into `phase/cloudflare-preview`, retain the deployment configuration, verify CI, and then deploy. Develop product features on their own branches, not directly on the Preview branch. Do not merge Preview deployment configuration back into master.
 
@@ -20,6 +20,14 @@ The V1.6.0 upgrade retained the initial Preview deployment configuration and mer
 ## Historical V1.7.0 Preview upgrade
 
 The V1.7.0 upgrade merged released commit `e485efea0155c5b4194f563926a531d606c77349` through Preview merge `ff3eb7c39b9e60a2f7157f4e777766064ce24495`. Its final Preview HEAD was `79fa39d3611c166c992d5cbdf8d6c3757506ee46`. This is the pre-V1.8 upgrade rollback code reference, not the current application baseline. Code rollback alone does not authorize restoring or replacing trial data.
+
+## Historical V1.8.0 Preview upgrade and V1.8.1 resume
+
+The V1.8.0 Preview upgrade merged released commit `df9e1ba1a5ee1a4c763098d8e180250f409bedd3` through Preview merge `df685f42b538bceb51ab5bf4715ea9c0716b8b51`; its final runbook / deployed HEAD was `c77850b83ee96874df46fd12bbe6e291d2caeacb`. Acceptance correctly reached **HARD STOP** because the formal V1.8.0 shared PageHeader overflowed at 768px. Infrastructure was healthy and the Preview branch did not patch product code.
+
+The externally reviewed fix is now formally released as **v1.8.1**, after release branch CI `37216956699` and final master CI `37217382411`, both attempt 1 / six jobs success. Preview merge `28dc66305b26de6c31e6a89a7a2cf5a5c73a9ab5` has parents `c77850b83ee96874df46fd12bbe6e291d2caeacb` and `206bf0dab358917940722e1e846d8b80de3f8221`. Product code equals v1.8.1 and the existing infrastructure patch is unchanged. The original product defect is resolved by the formal patch; public acceptance remains **PENDING** until the new Preview CI, pre-hotfix backup and real upgrade pass and the 768px defect is verified first.
+
+Retain `/Users/xiaweiyi/Developer/backups/iterflow-preview-pre-v1.8.0-20261003-1330` and test feedback `FB-20261003-0001 / ID 10`. Before this upgrade, take an additional `preview-pre-v1.8.1-hotfix-<timestamp>` backup with the Preview env/override and the currently running build `c77850b`; verify SHA256SUMS. After upgrade, accept Feedback Detail at 768px first (scrollWidth ≤769, readable heading, visible actions and close-dialog cancellation), then the full 375/390/768/1280/1440 matrix on Feedback/Requirement/Version. Resume C0/C1/C3/C4, old attachment public SHA256, authorized new attachment round-trip, V1.7 compatibility and security checks. Restart only api/web/cloudflared and take a separate post-v1.8.1 backup after persistence checks. Never restore real Preview, delete its volumes or deploy Production during this task.
 
 ## Architecture and prerequisites
 
@@ -112,7 +120,7 @@ Public acceptance supplements the released CI:
 - C3 main-chain navigation: follow an accessible Feedback → Requirement → Version → Release relationship and verify metadata and targets. Admin public smoke proves positive paths; SELF/ALL negative visibility remains backed by the released real API/CI tests when no existing restricted trial account is available. Do not alter existing roles to manufacture evidence.
 - C1 scoped selectors: open Feedback-to-Requirement, Requirement-to-Version, Version-add-Requirement and Requirement-move-Version selectors. Check paging/search, no results, cancel/clear and mobile layout. At least one safe write on explicitly new Preview test data must submit the latest revision and pass the server CAS/authorization checks. Do not mutate existing trial relationships for smoke.
 - C0 Version worklist: verify visible-scope progress, pending/blocked summary, state/keyword/priority filtering and reset, plus the visibility/real server publish-authority explanation. A safe existing READY test version may run publish/check to verify Chinese blockers; do not publish an existing trial version merely for acceptance.
-- Check Home, Feedback, Requirement, Version, Release, Notification, Profile and authorized Audit pages, desktop version `V1.8.0`, same-origin API requests and Hash Router. Keep mobile AuthShell footer hiding as designed.
+- Check Home, Feedback, Requirement, Version, Release, Notification, Profile and authorized Audit pages, desktop version `V1.8.1`, same-origin API requests and Hash Router. Keep mobile AuthShell footer hiding as designed.
 - Repeat selectors, worklists, filters and details at 375/390/768/1280/1440px; record actual public UI evidence (375px and 1440px screenshots recommended), including no unintended horizontal overflow.
 - Before upgrade, record existing trial object IDs/relationships and an existing attachment SHA256; verify migration `0004_integrity` and a separate checksummed pre-upgrade backup outside the repository. After upgrade, verify old data and the old hash, upload/download a new small test attachment with matching SHA256 and prove unauthenticated download still fails.
 - After public acceptance, restart only api/web/cloudflared, recheck public health/readiness, original-password login, old data and old attachment SHA256, then create a different checksummed post-upgrade backup outside the repository. Do not execute restore against actual Preview volumes.
@@ -121,7 +129,7 @@ Public acceptance supplements the released CI:
 
 The released V1.7 CI proves full feature correctness. Public deployment smoke additionally verifies:
 
-- The historical V1.7 AuthShell version was `ITERFLOW / V1.7.0`; the current V1.8 upgrade must display `ITERFLOW / V1.8.0` at 768px and 1440px. Mobile footer hiding remains expected.
+- The historical V1.7 AuthShell version was `ITERFLOW / V1.7.0`; the current V1.8.1 upgrade must display `ITERFLOW / V1.8.1` at 768px and 1440px. Mobile footer hiding remains expected.
 - Feedback keyword `%`, `_`, and backslash are literal substrings (sample at least two); permissions, DataScope and pagination continue to apply. This is a compatibility change from SQL wildcard semantics.
 - Release local date range is start inclusive and includes the whole selected end day by sending `released_before` as next local day 00:00 exclusive; combines with existing `version_id`.
 - Notification badge refreshes on focus / hidden-to-visible with a shared 30-second attempt cooldown; short repeated focus must not create a request storm. No polling/WebSocket/SSE is introduced. Use two disposable sessions and a real notification-producing business action.

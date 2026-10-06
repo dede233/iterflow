@@ -3,6 +3,7 @@ import { onBeforeUnmount, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { listRequirements } from '@/api/requirements'
 import RequirementCreateView from './RequirementCreateView.vue'
+import RequirementDetailView from './RequirementDetailView.vue'
 import { useListQuery } from '@/composables/useListQuery'
 import { useResponsive } from '@/composables/useResponsive'
 import { usePermission } from '@/composables/usePermission'
@@ -27,6 +28,8 @@ const loading = ref(false)
 const failed = ref(false)
 const createDialog = ref(false)
 const filterDrawer = ref(false)
+const detailDrawer = ref(false)
+const activeRequirementId = ref<number | null>(null)
 const filters = reactive({ page: 1, page_size: 20, keyword: '', status: '' as RequirementListParams['status'], priority: '' as RequirementListParams['priority'], source: '' as RequirementListParams['source'], current_version_id: null as number | null, owner_id: null as number | null })
 let requestSequence = 0
 const positiveId = (value: number | null) => value != null && Number.isSafeInteger(value) && value >= 1 ? value : undefined
@@ -67,12 +70,21 @@ function resetFilters(): void {
 
 onBeforeUnmount(() => { requestSequence++ })
 
+function openDetail(id: number): void {
+  activeRequirementId.value = id
+  detailDrawer.value = true
+}
+
+function openFullScreen(id: number): void {
+  detailDrawer.value = false
+  void router.push(queryState.detail(`/requirements/${id}`))
+}
+
 async function onRequirementCreated(id: number): Promise<void> {
   createDialog.value = false
   await load()
   await router.push(queryState.detail(`/requirements/${id}`))
 }
-
 
 const queryState = useListQuery({
   path: '/requirements', readDraft: () => ({ ...filters }),
@@ -85,7 +97,6 @@ const queryState = useListQuery({
     filters.source = (q.source ?? '') as typeof filters.source
     filters.current_version_id = q.current_version_id ? Number(q.current_version_id) : null
     filters.owner_id = q.owner_id ? Number(q.owner_id) : null
-
   },
   load, invalidate: () => { requestSequence++ },
 })
@@ -122,7 +133,7 @@ const queryState = useListQuery({
       v-loading="loading"
       :data="rows"
       row-key="id"
-      @row-click="(row: Requirement) => router.push(queryState.detail('/requirements/' + row.id))"
+      @row-click="(row: Requirement) => openDetail(row.id)"
     >
       <el-table-column prop="requirement_no" label="编号" width="180" />
       <el-table-column prop="title" label="标题" min-width="240" show-overflow-tooltip />
@@ -141,7 +152,7 @@ const queryState = useListQuery({
       </el-table-column>
       <el-table-column label="操作" width="90" fixed="right">
         <template #default="s">
-          <el-link type="primary" @click.stop="router.push(queryState.detail('/requirements/' + s.row.id))">查看</el-link>
+          <el-link type="primary" @click.stop="openDetail(s.row.id)">查看</el-link>
         </template>
       </el-table-column>
       <template #empty><EmptyState description="暂无需求" compact /></template>
@@ -153,7 +164,7 @@ const queryState = useListQuery({
         :key="r.id"
         :code="r.requirement_no"
         :title="r.title"
-        @open="router.push(queryState.detail('/requirements/' + r.id))"
+        @open="openDetail(r.id)"
       >
         <template #status>
           <StatusTag :status="r.status" :label="requirementStatusLabel[r.status]" :type="requirementStatusTagType(r.status)" size="sm" />
@@ -179,14 +190,48 @@ const queryState = useListQuery({
       "
     />
 
+    <!-- Create Dialog -->
     <el-dialog v-model="createDialog" title="新建需求" class="create-dialog" width="min(720px, calc(100vw - 24px))" destroy-on-close :close-on-click-modal="false">
       <RequirementCreateView v-if="createDialog" embedded @cancel="createDialog = false" @created="onRequirementCreated" />
     </el-dialog>
+
+    <!-- Scheme C: Detail Drawer with full-screen expansion support -->
+    <el-drawer
+      v-model="detailDrawer"
+      title="需求详情"
+      direction="rtl"
+      size="min(860px, 94vw)"
+      destroy-on-close
+      class="detail-drawer"
+    >
+      <template #header>
+        <div class="drawer-header-custom">
+          <span class="drawer-title">需求详情</span>
+          <el-button
+            v-if="activeRequirementId"
+            size="small"
+            class="expand-btn"
+            @click="openFullScreen(activeRequirementId)"
+          >
+            新标签/全屏直达
+          </el-button>
+        </div>
+      </template>
+      <RequirementDetailView
+        v-if="activeRequirementId && detailDrawer"
+        embedded
+        :embedded-id="activeRequirementId"
+        @updated="load"
+      />
+    </el-drawer>
   </section>
 </template>
 
 <style scoped>
 .cards { display: grid; gap: 8px; padding: var(--if-space-3); }
 .pager { margin-top: var(--if-space-4); justify-content: flex-end; }
+.drawer-header-custom { display: flex; align-items: center; justify-content: space-between; width: 100%; padding-right: 28px; }
+.drawer-title { font-size: 16px; font-weight: 600; color: var(--if-text-primary); }
+.expand-btn { margin-left: auto; }
 @media (max-width: 767px) { .pager { justify-content: center; } }
 </style>

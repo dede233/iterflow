@@ -1,4 +1,4 @@
-import { onBeforeUnmount, ref } from 'vue'
+import { onBeforeUnmount, ref, toValue, type MaybeRefOrGetter } from 'vue'
 import {
   editingHeartbeat,
   endEditing,
@@ -16,12 +16,14 @@ interface EditingSession {
 }
 
 /** Serialize session requests so end cannot race with start or heartbeat. */
-export function useEditingPresence(entityType: EditingEntityType, entityId: number) {
+export function useEditingPresence(entityType: EditingEntityType, entityIdInput: MaybeRefOrGetter<number>) {
   const existingEditor = ref<ExistingEditor | null>(null)
   const isStarting = ref(false)
   const isActive = ref(false)
   let current: EditingSession | null = null
   let queue: Promise<void> = Promise.resolve()
+
+  const getEntityId = () => toValue(entityIdInput)
 
   function enqueue(operation: () => Promise<void>): Promise<void> {
     const result = queue.then(operation)
@@ -35,7 +37,7 @@ export function useEditingPresence(entityType: EditingEntityType, entityId: numb
     void enqueue(async () => {
       try {
         if (current !== session) return
-        const response = await editingHeartbeat(entityType, entityId)
+        const response = await editingHeartbeat(entityType, getEntityId())
         if (current === session) existingEditor.value = response.existing_editor
       } catch {
         // A failed hint never interrupts editing.
@@ -56,7 +58,7 @@ export function useEditingPresence(entityType: EditingEntityType, entityId: numb
     return enqueue(async () => {
       if (!session.started) return
       try {
-        await endEditing(entityType, entityId)
+        await endEditing(entityType, getEntityId())
       } catch {
         // Redis TTL releases a marker if this best-effort request fails.
       }
@@ -72,7 +74,7 @@ export function useEditingPresence(entityType: EditingEntityType, entityId: numb
     existingEditor.value = null
     return enqueue(async () => {
       try {
-        const response = await startEditing(entityType, entityId)
+        const response = await startEditing(entityType, getEntityId())
         session.started = true
         if (current !== session) return
         existingEditor.value = response.existing_editor

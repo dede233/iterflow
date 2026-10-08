@@ -18,6 +18,7 @@ interface NavigationItem {
   icon: string
   permission?: string | string[]
   requiresAllScope?: boolean
+  requiresApiDocsAccess?: boolean
 }
 interface NavigationGroup {
   label: string
@@ -51,6 +52,7 @@ const groups = computed<NavigationGroup[]>(() => [
       { to: '/admin/systems', label: '系统与模块', icon: 'system', permission: 'sys.system.manage', requiresAllScope: true },
       { to: '/system/users', label: '用户管理', icon: 'users', permission: 'sys.user.view' },
       { to: '/admin/roles', label: '角色管理', icon: 'shield', permission: ['sys.role.view', 'sys.role.manage'], requiresAllScope: true },
+      { to: '/admin/api-docs', label: '接口文档', icon: 'requirement', requiresApiDocsAccess: true },
     ],
   },
 ])
@@ -61,7 +63,7 @@ function can(permission?: string | string[], requiresAllScope = false): boolean 
 
 const visibleGroups = computed(() =>
   groups.value
-    .map((group) => ({ ...group, items: group.items.filter((item) => can(item.permission, item.requiresAllScope)) }))
+    .map((group) => ({ ...group, items: group.items.filter((item) => can(item.permission, item.requiresAllScope) && (!item.requiresApiDocsAccess || auth.canViewApiDocs)) }))
     .filter((group) => group.items.length),
 )
 const initial = computed(() => (auth.user?.display_name || auth.user?.username || '?').slice(0, 1).toUpperCase())

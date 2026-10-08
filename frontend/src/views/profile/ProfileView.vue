@@ -34,6 +34,7 @@ async function logout(): Promise<void> {
       </dl>
       <div class="actions">
         <el-button type="primary" @click="router.push('/change-password?from=profile')">修改密码</el-button>
+        <el-button v-if="auth.canViewApiDocs" @click="router.push('/admin/api-docs')">接口文档</el-button>
         <el-button @click="logout">退出登录</el-button>
       </div>
     </SectionCard>

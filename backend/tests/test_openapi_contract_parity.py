@@ -9,7 +9,7 @@ from app.main import app
 from scripts.sync_openapi import generated_spec
 
 ROOT = Path(__file__).resolve().parents[2]
-CANONICAL = ROOT / "spec" / "openapi-v1.8.1.yaml"
+CANONICAL = ROOT / "spec" / "openapi-development.yaml"
 IGNORED_DOCUMENTATION_FIELDS = {
     "description",
     "summary",

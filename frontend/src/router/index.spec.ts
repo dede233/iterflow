@@ -93,3 +93,20 @@ describe('release detail hash route', () => {
     if (allowed) expect(router.currentRoute.value.meta.permission).toBe('rd.release.view')
   })
 })
+
+describe('API documentation role eligibility', () => {
+  it.each([true, false])('uses server eligibility instead of wildcard permissions (allowed=%s)', async allowed => {
+    const auth = useAuthStore(pinia)
+    auth.$patch({
+      accessToken: 'docs-token', initialized: true,
+      user: {
+        id: 4, username: 'docs-viewer', display_name: '文档查看者', email: null,
+        status: 'ACTIVE', revision: 1, role_ids: [], data_scope: 'SELF', must_change_password: false,
+        permission_codes: ['*'], can_view_api_docs: allowed,
+      },
+    })
+    await router.push('/profile')
+    await router.push('/admin/api-docs')
+    expect(router.currentRoute.value.name).toBe(allowed ? 'api-documentation' : 'forbidden')
+  })
+})

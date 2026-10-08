@@ -11,6 +11,7 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    ApiSchemaView: typeof import('./src/components/ApiSchemaView.vue')['default']
     AppIcon: typeof import('./src/components/ui/AppIcon.vue')['default']
     AuthShell: typeof import('./src/components/ui/AuthShell.vue')['default']
     DashboardOverviewContent: typeof import('./src/components/DashboardOverviewContent.vue')['default']

@@ -25,7 +25,7 @@ const RouterLinkStub = defineComponent({
   },
 })
 
-async function renderLayout(permissionCodes: string[], dataScope: DataScope, unreadCount = 0): Promise<string> {
+async function renderLayout(permissionCodes: string[], dataScope: DataScope, unreadCount = 0, canViewApiDocs = false): Promise<string> {
   const pinia = createPinia()
   const auth = useAuthStore(pinia)
   auth.$patch({
@@ -42,6 +42,7 @@ async function renderLayout(permissionCodes: string[], dataScope: DataScope, unr
       permission_codes: permissionCodes,
       data_scope: dataScope,
       must_change_password: false,
+      can_view_api_docs: canViewApiDocs,
     },
   })
 
@@ -55,6 +56,15 @@ async function renderLayout(permissionCodes: string[], dataScope: DataScope, unr
 }
 
 describe('application navigation permissions', () => {
+  it('shows documentation for eligible SELF-scope development leads', async () => {
+    const html = await renderLayout([], 'SELF', 0, true)
+    expect(html).toContain('href="/admin/api-docs"')
+  })
+
+  it('hides documentation from wildcard accounts without role eligibility', async () => {
+    const html = await renderLayout(['*'], 'ALL')
+    expect(html).not.toContain('href="/admin/api-docs"')
+  })
   it('shows role management for ALL-scope role viewers', async () => {
     const html = await renderLayout(['sys.role.view'], 'ALL')
     expect(html).toContain('href="/admin/roles"')

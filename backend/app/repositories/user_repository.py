@@ -98,6 +98,22 @@ class UserRepository(BaseRepository[User]):
         ).all()
         return set(rows)
 
+    def can_view_api_docs(self, user_id: int) -> bool:
+        return (
+            self.db.scalar(
+                select(Role.id)
+                .join(UserRole, UserRole.role_id == Role.id)
+                .where(
+                    UserRole.user_id == user_id,
+                    Role.code.in_(("SUPER_ADMIN", "DEVELOPMENT_LEAD")),
+                    Role.is_system.is_(True),
+                    Role.enabled.is_(True),
+                )
+                .limit(1)
+            )
+            is not None
+        )
+
     def role_ids(self, user_id: int) -> list[int]:
         return list(
             self.db.scalars(

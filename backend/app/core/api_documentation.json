@@ -1,0 +1,610 @@
+{
+  "info": {
+    "title": "IterFlow API",
+    "version": "1.8.1",
+    "description": "IterFlow 当前开发契约：在 V1.8.1 基础上增加受保护的接口文档入口。该快照不代表新的正式发布；历史发布契约和标签保持不变。"
+  },
+  "tags": [
+    {
+      "name": "Auth"
+    },
+    {
+      "name": "Dashboard"
+    },
+    {
+      "name": "Feedback"
+    },
+    {
+      "name": "Requirement"
+    },
+    {
+      "name": "Version"
+    },
+    {
+      "name": "Release"
+    },
+    {
+      "name": "Audit"
+    },
+    {
+      "name": "Notification"
+    },
+    {
+      "name": "Collaboration"
+    },
+    {
+      "name": "System"
+    },
+    {
+      "name": "File"
+    }
+  ],
+  "paths": {
+    "/auth/login": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "登录"
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "刷新 Token"
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "退出登录并撤销当前 Refresh Session"
+      }
+    },
+    "/auth/change-password": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "修改密码并撤销旧 Refresh Session"
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "获取当前登录态和权限"
+      }
+    },
+    "/dashboard/overview": {
+      "get": {
+        "tags": [
+          "Dashboard"
+        ],
+        "summary": "获取权限感知的业务概览",
+        "description": "需要 dashboard.view。各领域 section 仅在拥有对应 rd.*.view 或 * 权限时返回，否则为 null；所有统计按当前用户的 SELF/ALL DataScope 在数据库查询中直接过滤。"
+      }
+    },
+    "/docs/openapi": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "查看接口文档",
+        "description": "仅允许启用的系统角色 SUPER_ADMIN 或 DEVELOPMENT_LEAD 读取当前 OpenAPI 文档。权限、账号停用和首次改密限制由后端实时执行；响应禁止缓存。"
+      }
+    },
+    "/audits": {
+      "get": {
+        "tags": [
+          "Audit"
+        ],
+        "summary": "审计中心查询",
+        "description": "仅返回当前用户具有业务对象查看权限且处于其数据范围内的审计记录。time_from 与 time_to 共同组成时间范围。"
+      }
+    },
+    "/audits/{audit_id}": {
+      "get": {
+        "tags": [
+          "Audit"
+        ],
+        "summary": "审计记录详情",
+        "description": "详情与列表使用相同的业务对象权限和数据范围校验。"
+      }
+    },
+    "/feedbacks": {
+      "get": {
+        "tags": [
+          "Feedback"
+        ],
+        "summary": "反馈列表",
+        "description": "keyword trim 后按 feedback_no/title/description 大小写不敏感的字面子串匹配;反斜杠、百分号和下划线不作通配符。空白视为无筛选。V1.7 相对 V1.6 的 wildcard 行为发生兼容性变化。所有条件与 DataScope 使用 AND, items/total 一致。"
+      },
+      "post": {
+        "tags": [
+          "Feedback"
+        ],
+        "summary": "提交反馈"
+      }
+    },
+    "/feedbacks/{feedback_id}": {
+      "get": {
+        "tags": [
+          "Feedback"
+        ],
+        "summary": "反馈详情"
+      },
+      "patch": {
+        "tags": [
+          "Feedback"
+        ],
+        "summary": "编辑反馈",
+        "description": "必须携带 revision；过期 revision 返回 409。"
+      }
+    },
+    "/feedbacks/{feedback_id}/status": {
+      "patch": {
+        "tags": [
+          "Feedback"
+        ],
+        "summary": "反馈状态变更",
+        "description": "集中式状态机；必须携带 revision；非法迁移返回 409；ManualFeedbackStatus 之外的值返回 422。"
+      }
+    },
+    "/feedbacks/{feedback_id}/attachments": {
+      "get": {
+        "tags": [
+          "Feedback"
+        ],
+        "summary": "反馈附件列表"
+      },
+      "post": {
+        "tags": [
+          "Feedback"
+        ],
+        "summary": "上传反馈附件",
+        "description": "在反馈数据范围内上传并以 file_id 建立 FEEDBACK 附件关系；仅存 file_id，不存物理路径。"
+      }
+    },
+    "/feedbacks/{feedback_id}/attachments/{file_id}/download": {
+      "get": {
+        "tags": [
+          "Feedback"
+        ],
+        "summary": "下载反馈附件",
+        "description": "按反馈数据范围 + 附件关系鉴权，非文件属主鉴权。"
+      }
+    },
+    "/feedbacks/{feedback_id}/comments": {
+      "get": {
+        "tags": [
+          "Feedback"
+        ],
+        "summary": "反馈评论列表"
+      },
+      "post": {
+        "tags": [
+          "Feedback"
+        ],
+        "summary": "发表反馈评论"
+      }
+    },
+    "/feedbacks/{feedback_id}/convert": {
+      "post": {
+        "tags": [
+          "Feedback"
+        ],
+        "summary": "反馈转正式需求",
+        "description": "CREATE_NEW 仅需要 rd.feedback.convert。LINK_EXISTING 还需要 rd.requirement.view，且目标需求必须在当前 Requirement DataScope 内。操作与关系及审计写入同一事务。"
+      }
+    },
+    "/requirements": {
+      "get": {
+        "tags": [
+          "Requirement"
+        ],
+        "summary": "需求列表",
+        "description": "所有筛选条件与 Requirement DataScope 使用 AND 组合。列表与 total 使用相同条件。keyword trim 后按编号/标题做大小写不敏感的部分匹配。空白视为无筛选。current_version_id 与 owner_id 只按需求字段过滤。不要求额外权限或验证关联对象存在。"
+      },
+      "post": {
+        "tags": [
+          "Requirement"
+        ],
+        "summary": "直接新建正式需求",
+        "description": "普通创建需要 rd.requirement.create。指定 version_id 与 version_revision 时还需要 rd.version.edit 和 rd.requirement.view。目标版本同时受 Version DataScope 限制。"
+      }
+    },
+    "/requirements/{requirement_id}": {
+      "get": {
+        "tags": [
+          "Requirement"
+        ],
+        "summary": "需求详情"
+      },
+      "patch": {
+        "tags": [
+          "Requirement"
+        ],
+        "summary": "编辑需求"
+      }
+    },
+    "/requirements/{requirement_id}/feedbacks": {
+      "get": {
+        "tags": [
+          "Requirement"
+        ],
+        "summary": "需求来源反馈",
+        "description": "需要 rd.requirement.view 与 rd.feedback.view。先校验 Requirement DataScope，再按 Feedback DataScope 过滤关联反馈；仅返回当前用户可见的反馈。"
+      }
+    },
+    "/requirements/{requirement_id}/status": {
+      "patch": {
+        "tags": [
+          "Requirement"
+        ],
+        "summary": "变更需求状态"
+      }
+    },
+    "/versions": {
+      "get": {
+        "tags": [
+          "Version"
+        ],
+        "summary": "版本列表",
+        "description": "所有筛选条件与 Version DataScope 使用 AND 组合。列表与 total 使用相同条件。keyword trim 后按版本号/名称做大小写不敏感的部分匹配。空白视为无筛选。计划发布日期范围包含两端。可只指定一端。from 晚于 to 返回 validation 422。owner_id 只按版本字段过滤。不要求额外 User 权限。"
+      },
+      "post": {
+        "tags": [
+          "Version"
+        ],
+        "summary": "创建版本"
+      }
+    },
+    "/versions/{version_id}": {
+      "get": {
+        "tags": [
+          "Version"
+        ],
+        "summary": "版本详情"
+      },
+      "patch": {
+        "tags": [
+          "Version"
+        ],
+        "summary": "编辑版本"
+      }
+    },
+    "/versions/{version_id}/status": {
+      "patch": {
+        "tags": [
+          "Version"
+        ],
+        "summary": "变更版本状态（禁止进入 RELEASED）",
+        "description": "READY 可退回 TESTING，但必须填写 reason。RELEASED 只能通过发布接口进入。"
+      }
+    },
+    "/versions/{version_id}/requirements": {
+      "get": {
+        "tags": [
+          "Version"
+        ],
+        "summary": "版本需求清单与进度",
+        "description": "需要 rd.version.view 与 rd.requirement.view。Version 和 Requirement 分别校验 DataScope；仅返回可见需求，stats 只基于返回项计算，不暴露隐藏需求数量。"
+      },
+      "post": {
+        "tags": [
+          "Version"
+        ],
+        "summary": "向版本添加需求",
+        "description": "需要 rd.version.edit 与 rd.requirement.view；目标 Version 与 Requirement 均须在各自 DataScope 内。通过 VersionService；READY/RELEASED/CANCELED 冻结返回 409。"
+      }
+    },
+    "/versions/{version_id}/requirements/move": {
+      "post": {
+        "tags": [
+          "Version"
+        ],
+        "summary": "迁移需求到该版本",
+        "description": "需要 rd.version.edit 与 rd.requirement.view；目标 Version、Requirement 及存在时的 source Version 均须在各自 DataScope 内。"
+      }
+    },
+    "/versions/{version_id}/requirements/{requirement_id}": {
+      "delete": {
+        "tags": [
+          "Version"
+        ],
+        "summary": "从版本移除需求",
+        "description": "需要 rd.version.edit 与 rd.requirement.view；Version 与 Requirement 均须在各自 DataScope 内。"
+      }
+    },
+    "/versions/{version_id}/publish/check": {
+      "post": {
+        "tags": [
+          "Version"
+        ],
+        "summary": "发布前检查",
+        "description": "运行与 publish 相同的前置检查；通过返回 200，未通过返回 409 并含 checks。"
+      }
+    },
+    "/versions/{version_id}/publish": {
+      "post": {
+        "tags": [
+          "Version"
+        ],
+        "summary": "发布版本",
+        "description": "只允许 READY，且 V1.5 仅支持成功发布。Release(SUCCESS) + Version + DONE Requirement -> ONLINE + Feedback -> ONLINE 同一业务事务。"
+      }
+    },
+    "/releases": {
+      "get": {
+        "tags": [
+          "Release"
+        ],
+        "summary": "发布记录",
+        "description": "日期条件只读查询: released_from <= released_at < released_before。两参数只接受带时区的 ISO datetime, 允许单边; from >= before 或无时区输入返回422。日期与 version_id、rd.release.view 和 Version DataScope 使用 AND, items/total 一致。"
+      }
+    },
+    "/releases/{release_id}": {
+      "get": {
+        "tags": [
+          "Release"
+        ],
+        "summary": "发布记录详情"
+      }
+    },
+    "/notifications": {
+      "get": {
+        "tags": [
+          "Notification"
+        ],
+        "summary": "通知中心"
+      }
+    },
+    "/notifications/unread-count": {
+      "get": {
+        "tags": [
+          "Notification"
+        ],
+        "summary": "当前用户真实未读总数",
+        "description": "仅当前登录用户自己的通知; 不依赖业务权限或 DataScope。"
+      }
+    },
+    "/notifications/read-all": {
+      "post": {
+        "tags": [
+          "Notification"
+        ],
+        "summary": "当前用户全部通知已读",
+        "description": "仅当前登录用户自己的通知; 不依赖业务权限或 DataScope。"
+      }
+    },
+    "/notifications/{notification_id}/read": {
+      "post": {
+        "tags": [
+          "Notification"
+        ],
+        "summary": "标记通知已读"
+      }
+    },
+    "/systems": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "业务系统与模块字典",
+        "description": "需要 sys.system.view 或 sys.system.manage; 仅返回已启用的系统与模块。"
+      },
+      "post": {
+        "tags": [
+          "System"
+        ],
+        "summary": "创建业务系统",
+        "description": "需要 sys.system.manage 与 ALL 数据范围；创建和审计在同一事务中完成。"
+      }
+    },
+    "/systems/manage": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "管理端业务系统与模块列表",
+        "description": "需要 sys.system.manage 与 ALL 数据范围；包含已停用的系统与模块。"
+      }
+    },
+    "/systems/{system_id}": {
+      "patch": {
+        "tags": [
+          "System"
+        ],
+        "summary": "编辑业务系统",
+        "description": "需要 sys.system.manage 与 ALL 数据范围；携带 revision，停用保留历史关联。"
+      }
+    },
+    "/systems/{system_id}/modules": {
+      "post": {
+        "tags": [
+          "System"
+        ],
+        "summary": "创建业务模块",
+        "description": "需要 sys.system.manage 与 ALL 数据范围。"
+      }
+    },
+    "/systems/modules/{module_id}": {
+      "patch": {
+        "tags": [
+          "System"
+        ],
+        "summary": "编辑业务模块",
+        "description": "需要 sys.system.manage 与 ALL 数据范围；携带 revision，停用保留历史关联。"
+      }
+    },
+    "/editing/start": {
+      "post": {
+        "tags": [
+          "Collaboration"
+        ],
+        "summary": "进入编辑并获取他人编辑提示"
+      }
+    },
+    "/editing/heartbeat": {
+      "post": {
+        "tags": [
+          "Collaboration"
+        ],
+        "summary": "编辑心跳续期"
+      }
+    },
+    "/editing/end": {
+      "post": {
+        "tags": [
+          "Collaboration"
+        ],
+        "summary": "结束编辑提示"
+      }
+    },
+    "/users": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "用户列表"
+      },
+      "post": {
+        "tags": [
+          "System"
+        ],
+        "summary": "创建用户"
+      }
+    },
+    "/users/{user_id}": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "用户详情",
+        "description": "SELF 数据范围只能查看当前登录用户自己的账号信息。"
+      },
+      "patch": {
+        "tags": [
+          "System"
+        ],
+        "summary": "编辑用户基本信息",
+        "description": "凭 revision 乐观锁更新；账号状态、角色和密码使用专用接口。"
+      }
+    },
+    "/users/{user_id}/status": {
+      "patch": {
+        "tags": [
+          "System"
+        ],
+        "summary": "启停用户"
+      }
+    },
+    "/users/{user_id}/roles": {
+      "put": {
+        "tags": [
+          "System"
+        ],
+        "summary": "分配用户角色",
+        "description": "仅 ALL 数据范围的用户管理权限可执行；凭 revision 乐观锁更新。"
+      }
+    },
+    "/roles": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "角色列表",
+        "description": "需要 ALL 数据范围；拥有 sys.role.view、sys.role.manage 或 sys.user.role.assign 任一权限即可读取。sys.user.role.assign 仅据此获取用户角色分配所需的角色选择列表。"
+      },
+      "post": {
+        "tags": [
+          "System"
+        ],
+        "summary": "创建角色",
+        "description": "仅拥有 sys.role.manage 且数据范围为 ALL 的用户可执行。"
+      }
+    },
+    "/roles/permissions": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "权限码列表",
+        "description": "需要 ALL 数据范围，并拥有 sys.role.view 或 sys.role.manage；返回代码定义的只读 Permission Catalog。"
+      }
+    },
+    "/roles/{role_id}": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "角色详情",
+        "description": "需要 ALL 数据范围，并拥有 sys.role.view 或 sys.role.manage。"
+      },
+      "patch": {
+        "tags": [
+          "System"
+        ],
+        "summary": "修改角色基础信息",
+        "description": "仅拥有 sys.role.manage 且数据范围为 ALL 的用户可执行；仅自定义角色可修改；系统角色为只读基线并返回 409。TEAM 数据范围在 V1.5 中保留，提交 TEAM 返回 422；revision 用于乐观锁。"
+      },
+      "delete": {
+        "tags": [
+          "System"
+        ],
+        "summary": "删除自定义角色",
+        "description": "仅拥有 sys.role.manage 且数据范围为 ALL 的用户可执行；系统角色为只读基线且不可删除；仍被用户分配的自定义角色返回 409。"
+      }
+    },
+    "/roles/{role_id}/permissions": {
+      "put": {
+        "tags": [
+          "System"
+        ],
+        "summary": "更新角色权限",
+        "description": "仅拥有 sys.role.manage 且数据范围为 ALL 的用户可执行；仅自定义角色可修改权限；系统角色为只读基线并返回 409；revision 用于乐观锁。"
+      }
+    },
+    "/files": {
+      "post": {
+        "tags": [
+          "File"
+        ],
+        "summary": "上传附件",
+        "description": "需要 sys.file.upload。MIME 白名单，单文件默认 50MB；按 MIME/扩展名与内容签名校验。文件由 StorageService 写入当前配置的 Driver，规范化后的原始文件名不会作为物理路径，响应不公开 storage_key。"
+      }
+    },
+    "/files/{file_id}/download": {
+      "get": {
+        "tags": [
+          "File"
+        ],
+        "summary": "下载附件",
+        "description": "需要 sys.file.download。仅用于未绑定 AttachmentRelation 的 standalone FileObject。已绑定业务对象的文件必须通过对应业务附件接口授权访问；此通用接口返回 404。"
+      }
+    },
+    "/files/{file_id}/exists": {
+      "get": {
+        "tags": [
+          "File"
+        ],
+        "summary": "检查附件是否存在",
+        "description": "需要 sys.file.download。仅检查未绑定 AttachmentRelation 的 standalone FileObject。已绑定业务对象的文件通过此通用接口返回 404。"
+      }
+    },
+    "/files/{file_id}": {
+      "delete": {
+        "tags": [
+          "File"
+        ],
+        "summary": "删除附件",
+        "description": "需要 sys.file.delete。仅允许删除未绑定 AttachmentRelation 的 standalone FileObject；已绑定业务对象的文件返回 409。"
+      }
+    }
+  }
+}

@@ -59,3 +59,7 @@ Redis 服务：iterflow-redis
 ## 可直接复制给开发 Agent
 
 `DEVELOPMENT_AGENT_PROMPT.md` 是当前接手入口；V1.8 已完成已批准C0/C1/C3/C4，已获得 Final Release 授权，Preview/部署另行授权；禁止自动实施延期项，具体候选见 `docs/v1.8-plan.md`。V1.7 阶段范围与验收记录保留为历史依据。
+
+## 当前开发增量（2026-10-08）
+
+用户已授权受保护的接口文档入口，访问规则和部署验收见 `docs/api-documentation-access.md`。当前开发契约为 `spec/openapi-development.yaml`，已发布的 V1.8.1 及更早契约 / tag 保持不变。

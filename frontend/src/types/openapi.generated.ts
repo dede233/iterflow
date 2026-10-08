@@ -109,6 +109,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/docs/openapi": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查看接口文档
+         * @description 仅允许启用的系统角色 SUPER_ADMIN 或 DEVELOPMENT_LEAD 读取当前 OpenAPI 文档。权限、账号停用和首次改密限制由后端实时执行；响应禁止缓存。
+         */
+        get: operations["api_documentation_api_v1_docs_openapi_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/audits": {
         parameters: {
             query?: never;
@@ -1154,6 +1174,12 @@ export interface components {
             role_ids: number[];
             /** Permission Codes */
             permission_codes: string[];
+            /**
+             * Can View Api Docs
+             * @description 当前账号是否具有启用的系统超级管理员或研发负责人角色。后端在每次读取文档时重新校验。
+             * @default false
+             */
+            can_view_api_docs: boolean;
         };
         /** BlockingRequirement */
         BlockingRequirement: {
@@ -1336,8 +1362,6 @@ export interface components {
         /** @enum {string} */
         DashboardActiveVersionStatus: "PLANNING" | "DEVELOPING" | "TESTING" | "READY";
         /** @enum {string} */
-        DashboardDataScope: "SELF" | "ALL";
-        /** @enum {string} */
         DashboardActivityEntityType: "FEEDBACK" | "REQUIREMENT" | "VERSION" | "RELEASE";
         /** DashboardActivityItem */
         DashboardActivityItem: {
@@ -1352,6 +1376,8 @@ export interface components {
              */
             created_at: string;
         };
+        /** @enum {string} */
+        DashboardDataScope: "SELF" | "ALL";
         /** DashboardFeedbackOverview */
         DashboardFeedbackOverview: {
             /** Pending Count */
@@ -2514,6 +2540,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DashboardOverviewOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    api_documentation_api_v1_docs_openapi_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description 未登录或登录凭证不可用 */

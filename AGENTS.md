@@ -41,7 +41,7 @@ Redis 服务：iterflow-redis
 1. `AGENTS.md` 中的非协商规则
 2. V1.5 核心领域冻结规则及 `docs/需求与版本管理系统_独立部署版_V1.5_完整开发基线.docx`
 3. `docs/v1.8-plan.md`：仅定义已批准的 V1.8 增量范围、非范围和阶段目标
-4. 当前契约：`spec/openapi-v1.8.1.yaml`；V1.5/V1.6/V1.7/V1.8 文件冻结，历史发布快照以不可变标签为准
+4. 当前开发契约：`spec/openapi-development.yaml`；已发布的 V1.5/V1.6/V1.7/V1.8/V1.8.1 契约冻结，历史发布快照以不可变标签为准
 5. `spec/status-machines.md`
 6. `docs/v1.8-baseline-audit.md`：正式 V1.7 基线实现事实盘点，不用于推翻冻结业务规则
 7. `DEVELOPMENT.md`
@@ -220,7 +220,9 @@ Redis 的“正在编辑”标记只用于提示，不是强制排他锁。建�
 
 ## 9. OpenAPI 契约
 
-当前正式发布目标契约为 `spec/openapi-v1.8.1.yaml`，由正式 V1.8 契约复制，仅更新 info.version / description，无 API shape 变化；生成类型与 parity 入口同步切换。V1.5/V1.6/V1.7/V1.8 契约冻结，历史正式快照以不可变标签为准。后续 API 变更继续 contract-first，并遵守核心业务规格优先级。
+2026-10-08 用户授权增加仅超级管理员 / 研发负责人可见的接口文档。当前开发入口改为 `spec/openapi-development.yaml`，新增 AuthMe 可选资格标记与受保护的文档读取接口；不新增角色、permission 或 migration，不修改核心业务契约。`spec/openapi-v1.8.1.yaml` 保留为已发布历史快照，不重写已有 tag / Release；该开发快照不构成新的正式发布。
+
+V1.8.1 正式发布时的契约为 `spec/openapi-v1.8.1.yaml`，由正式 V1.8 契约复制，仅更新 info.version / description，无 API shape 变化；生成类型与 parity 入口同步切换。V1.5/V1.6/V1.7/V1.8 契约冻结，历史正式快照以不可变标签为准。后续 API 变更继续 contract-first，并遵守核心业务规格优先级。
 
 开发要求：
 - 不要前后端分别创造字段名

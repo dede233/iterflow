@@ -21,13 +21,15 @@ from app.schemas.common import ErrorResponse
 
 settings = get_settings()
 logger = configure_logging(settings.log_level)
+# Public development tooling must never bypass the protected entry in production.
+public_api_docs = settings.enable_api_docs and settings.app_env != "production"
 app = FastAPI(
     title=settings.app_name,
     version="1.8.1",
     description="IterFlow V1.8.1 正式发布契约。核心领域规则保持冻结。",
-    docs_url="/docs" if settings.enable_api_docs else None,
-    redoc_url="/redoc" if settings.enable_api_docs else None,
-    openapi_url="/openapi.json" if settings.enable_api_docs else None,
+    docs_url="/docs" if public_api_docs else None,
+    redoc_url="/redoc" if public_api_docs else None,
+    openapi_url="/openapi.json" if public_api_docs else None,
 )
 if settings.allowed_host_list:
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.allowed_host_list)

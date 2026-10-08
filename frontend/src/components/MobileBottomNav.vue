@@ -18,15 +18,29 @@ const items = computed(() => [
 
 <template>
   <nav class="bottom mobile-only" aria-label="主导航">
-    <router-link v-for="item in items" :key="item.to" :to="item.to" :class="{ home: item.to === '/' }">
-      <span class="nav-icon"><AppIcon :name="item.icon" :size="20" /><span v-if="item.to === '/notifications' && notifications.unreadCount > 0" class="notification-badge" :aria-label="`${notifications.unreadCount} 条未读通知`">{{ notifications.badgeText }}</span></span>
-      <span>{{ item.label }}</span>
+    <router-link
+      v-for="item in items"
+      :key="item.to"
+      :to="item.to"
+      class="nav-tab"
+      :class="{ home: item.to === '/' }"
+    >
+      <span class="nav-tab__icon">
+        <AppIcon :name="item.icon" :size="20" />
+        <span
+          v-if="item.to === '/notifications' && notifications.unreadCount > 0"
+          class="notification-badge"
+          :aria-label="`${notifications.unreadCount} 条未读通知`"
+        >
+          {{ notifications.badgeText }}
+        </span>
+      </span>
+      <span class="nav-tab__label">{{ item.label }}</span>
     </router-link>
   </nav>
 </template>
+
 <style scoped>
-.nav-icon { position: relative; display: inline-flex; }
-.notification-badge { position: absolute; top: -7px; left: 12px; min-width: 16px; padding: 0 4px; border-radius: 999px; background: var(--if-brand-500); color: #fff; font-size: 10px; line-height: 16px; text-align: center; white-space: nowrap; }
 .bottom {
   position: fixed;
   right: 0;
@@ -36,28 +50,57 @@ const items = computed(() => [
   height: calc(var(--if-bottom-nav-height) + env(safe-area-inset-bottom));
   padding-bottom: env(safe-area-inset-bottom);
   align-items: stretch;
-  background: rgba(255, 255, 255, .96);
+  background: rgba(255, 255, 255, 0.95);
   border-top: 1px solid var(--if-border);
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
-.bottom a {
+.nav-tab {
   display: flex;
   flex: 1 1 0;
   min-width: 0;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
-  color: var(--if-text-3);
+  gap: 2px;
+  color: var(--if-text-tertiary);
   font-size: 11px;
   font-weight: 500;
+  transition: all 0.15s ease;
 }
 
-.bottom a.router-link-exact-active,
-.bottom a.router-link-active:not(.home) {
+.nav-tab__icon {
+  position: relative;
+  display: inline-flex;
+  padding: 2px 0;
+}
+
+.nav-tab__label {
+  line-height: 1.2;
+}
+
+.notification-badge {
+  position: absolute;
+  top: -4px;
+  left: 14px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 16px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.nav-tab.router-link-exact-active,
+.nav-tab.router-link-active:not(.home) {
   color: var(--if-brand-500);
-  font-weight: 700;
+  font-weight: 600;
 }
 
 @media (max-width: 767px) {

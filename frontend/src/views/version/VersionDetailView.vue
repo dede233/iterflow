@@ -49,7 +49,7 @@ import type {
 } from '@/types/domain'
 
 const props = defineProps<{ embedded?: boolean; embeddedId?: number }>()
-const emit = defineEmits<{ updated: [] }>()
+const emit = defineEmits<{ updated: []; close: [] }>()
 const route = useRoute()
 const router = useRouter()
 const { backTo, related } = useDetailNavigation('/versions')
@@ -395,7 +395,7 @@ onMounted(load)
           <StatusTag :status="item.status" :label="versionStatusLabel[item.status]" :type="versionStatusTagType(item.status)" />
         </template>
         <template #actions>
-        <RouterLink class="back-link" :to="backTo">返回列表</RouterLink>
+        <RouterLink class="back-link" :to="backTo" @click="props.embedded && emit('close')">返回列表</RouterLink>
         <el-button v-if="canEdit" @click="openEdit">编辑</el-button>
         <el-button v-if="canPublish" type="primary" @click="openPublish">发布</el-button>
         <el-button

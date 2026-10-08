@@ -60,3 +60,10 @@
 - 本地门禁：Frontend Vitest **310 passed / 44 files**；Typecheck + Build、API 类型一致性、Bundle（最大 JavaScript chunk 272.9 KiB）及 `git diff --check` PASS。最终本地浏览器回归 **154 passed**，覆盖全部模拟接口用例，包括管理、系统与模块、响应式页面、关联导航、编辑提示和并发冲突。
 - 本地浏览器测试地址为 `http://127.0.0.1:5173`；两个会创建真实业务数据的 release smoke 用例留给 GitHub CI 的隔离 Compose 环境执行，不对现有本地账号和业务数据运行它们。完整六项 CI 结果应核对该分支最终提交对应的 GitHub Actions 记录；本节只记录已经完成的本地验证。
 - 本节变更仅涉及前端详情、列表、导航及回归测试和本审计文档。无后端 / 契约 / migration / permission / 状态机变更，无规格冲突。同一 Agent 的复查不称为外部独立终审。master 与 v1.8.1 保持 `206bf0dab358917940722e1e846d8b80de3f8221`；尚未合并、发布或部署。
+
+## 6. CI 修复与生产构建抽屉验证（2026-10-08）
+
+- 首次分支 CI：[37740122661](https://github.com/dede233/iterflow/actions/runs/37740122661)，提交 `bddf15fea4d6370b2eea5395d263d1aefe0fb937`。Frontend 在依赖审计步骤失败，测试 / 构建步骤未执行；不把此次运行记为全绿。首次记录保留，后续验证以新提交的完整六项 CI 为准。
+- 失败原因：锁文件中的间接依赖 `source-map-js@1.2.1` 命中 GHSA-68fv-2mgg-jv7q。只更新该依赖到 `1.2.2`，不更换直接依赖、框架或降低审计门禁；[维护者补丁说明](https://github.com/7rulnik/source-map-js/releases/tag/v1.2.2)。重新 `npm ci` 后 Full / Production `npm audit --audit-level=moderate` 均 PASS，0 vulnerabilities。
+- 复查补齐嵌入详情“返回列表”的关闭事件，三类父列表关闭抽屉；独立详情仍正常路由返回。回归验证关闭后 URL、筛选和分页不变，再打开另一记录正常。
+- 安装更新后的锁文件再次验证：Frontend Vitest **310 passed / 44 files**，API 类型一致性、Typecheck + Build、Bundle PASS。使用实际 production build 在 `http://127.0.0.1:5175` 验证三类抽屉打开 / 返回关闭 / 全屏导航 / 编辑与状态刷新，**12 passed**，无意外 API 请求或页面运行错误。临时预览只用于本地验证。

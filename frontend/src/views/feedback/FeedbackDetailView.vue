@@ -56,7 +56,7 @@ import { formatLocalDateTime } from '@/utils/dates'
 import { feedbackConflictSummary } from '@/utils/revisionSummaries'
 
 const props = defineProps<{ embedded?: boolean; embeddedId?: number }>()
-const emit = defineEmits<{ updated: [] }>()
+const emit = defineEmits<{ updated: []; close: [] }>()
 const route = useRoute()
 const router = useRouter()
 const { backTo, related } = useDetailNavigation('/feedbacks')
@@ -368,7 +368,7 @@ onMounted(async () => {
           <StatusTag :status="item.status" :label="feedbackStatusLabel[item.status]" :type="feedbackStatusTagType(item.status)" />
         </template>
         <template #actions>
-        <RouterLink class="back-link" :to="backTo">返回列表</RouterLink>
+        <RouterLink class="back-link" :to="backTo" @click="props.embedded && emit('close')">返回列表</RouterLink>
         <el-button v-if="canEdit" @click="openEdit">编辑</el-button>
         <el-button v-if="canConvert" type="primary" @click="openConvert">转需求</el-button>
         <el-button

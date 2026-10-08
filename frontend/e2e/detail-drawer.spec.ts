@@ -76,8 +76,9 @@ for (const width of [1280, 390]) {
           expect(requests.some(path => path.startsWith('/api/v1/releases?') && path.includes(`version_id=${id}`))).toBe(true)
         }
         if (id === 7) {
-          await drawer.locator('.el-drawer__close-btn').click()
+          await drawer.getByRole('link', { name: '返回列表', exact: true }).click()
           await expect(drawer).not.toBeVisible()
+          await expect(page).toHaveURL(new RegExp(`#${entry.path}\\?page=2&keyword=context$`))
         } else {
           await drawer.getByRole('button', { name: '新标签/全屏直达', exact: true }).click()
           await expect(page).toHaveURL(new RegExp(`#${entry.path}/8\\?`))

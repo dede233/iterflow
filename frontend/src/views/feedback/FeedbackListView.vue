@@ -358,6 +358,7 @@ const queryState = useListQuery({
         embedded
         :embedded-id="activeFeedbackId"
         @updated="load"
+        @close="detailDrawer = false"
       />
     </el-drawer>
   </section>

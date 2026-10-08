@@ -105,6 +105,7 @@ def test_login_me_and_failed_login_are_audited_without_secrets(auth_api):
         "data_scope": "SELF",
         "role_ids": [],
         "permission_codes": [],
+        "can_view_api_docs": False,
     }
     assert decode_token(token_pair["refresh_token"], "refresh")["sid"]
     assert decode_token(token_pair["refresh_token"], "refresh")["jti"]

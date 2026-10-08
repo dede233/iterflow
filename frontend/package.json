@@ -8,7 +8,7 @@
     "build": "vue-tsc --noEmit && vite build",
     "test": "vitest run",
     "smoke:browser": "playwright test --config playwright.config.ts",
-    "generate:api-types": "openapi-typescript ../spec/openapi-v1.8.1.yaml -o src/types/openapi.generated.ts",
+    "generate:api-types": "openapi-typescript ../spec/openapi-development.yaml -o src/types/openapi.generated.ts",
     "check:api-types": "node scripts/check-api-types.mjs",
     "check:bundle": "node scripts/check-bundle-size.mjs"
   },

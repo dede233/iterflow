@@ -58,7 +58,8 @@ Redis 服务：iterflow-redis
 
 ### 规格
 - `docs/`：V1.5 已发布主文档 PDF/Word、V1.6 历史证据、V1.7 历史证据、V1.8 规划和基线审计
-- `spec/openapi-v1.8.1.yaml`：当前V1.8.1发布目标契约；V1.8/V1.7/V1.6/V1.5契约冻结，正式历史快照从对应标签读取
+- `spec/openapi-development.yaml`：当前开发契约，增加受保护的接口文档及当前账号文档资格标记。
+- `spec/openapi-v1.8.1.yaml` 及更早契约：已发布冻结快照；开发快照不是新 Release，包版本暂保持 1.8.1。
 - `spec/status-machines.md`：状态机
 
 ## 3. 本地环境

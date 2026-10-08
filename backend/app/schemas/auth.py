@@ -43,3 +43,7 @@ class AuthMe(BaseModel):
     data_scope: DataScope
     role_ids: list[int]
     permission_codes: list[str]
+    can_view_api_docs: bool = Field(
+        default=False,
+        description="当前账号是否具有启用的系统超级管理员或研发负责人角色。后端在每次读取文档时重新校验。",
+    )

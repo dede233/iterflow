@@ -9,6 +9,7 @@ declare module 'vue-router' {
     public?: boolean
     allowPasswordChangeRequired?: boolean
     requiresAllScope?: boolean
+    requiresApiDocsAccess?: boolean
   }
 }
 
@@ -42,6 +43,7 @@ export const router = createRouter({
         { path: 'notifications', name: 'notifications', component: () => import('@/views/notification/NotificationCenterView.vue') },
         { path: 'profile', name: 'profile', component: () => import('@/views/profile/ProfileView.vue') },
         { path: 'admin/audits', name: 'audit-center', component: () => import('@/views/audit/AuditCenterView.vue'), meta: { permission: 'sys.audit.view' } },
+        { path: 'admin/api-docs', name: 'api-documentation', component: () => import('@/views/system/ApiDocumentationView.vue'), meta: { requiresApiDocsAccess: true } },
         { path: 'admin/systems', name: 'system-catalog', component: () => import('@/views/system/SystemCatalogView.vue'), meta: { permission: 'sys.system.manage', requiresAllScope: true } },
         { path: 'admin/roles', name: 'role-management', component: () => import('@/views/system/RoleListView.vue'), meta: { permission: ['sys.role.view', 'sys.role.manage'], requiresAllScope: true } },
         { path: 'system/users', name: 'user-list', component: () => import('@/views/system/UserListView.vue'), meta: { permission: 'sys.user.view' } },
@@ -75,6 +77,9 @@ router.beforeEach(async (to) => {
     return { name: 'forbidden' }
   }
   if (to.meta.requiresAllScope && auth.user?.data_scope !== 'ALL') {
+    return { name: 'forbidden' }
+  }
+  if (to.meta.requiresApiDocsAccess && !auth.canViewApiDocs) {
     return { name: 'forbidden' }
   }
   return true

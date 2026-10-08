@@ -354,6 +354,7 @@ const queryState = useListQuery({
       </template>
       <FeedbackDetailView
         v-if="activeFeedbackId && detailDrawer"
+        :key="activeFeedbackId"
         embedded
         :embedded-id="activeFeedbackId"
         @updated="load"

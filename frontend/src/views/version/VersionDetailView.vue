@@ -48,12 +48,14 @@ import type {
   VersionStats,
 } from '@/types/domain'
 
+const props = defineProps<{ embedded?: boolean; embeddedId?: number }>()
+const emit = defineEmits<{ updated: [] }>()
 const route = useRoute()
 const router = useRouter()
 const { backTo, related } = useDetailNavigation('/versions')
 const { can } = usePermission()
 const { isMobile } = useResponsive()
-const id = Number(route.params.id)
+const id = Number(props.embedded ? props.embeddedId : route.params.id)
 const { start: startPresence, stop: stopPresence, existingEditor } = useEditingPresence('VERSION', id)
 const conflict = useRevisionConflict()
 
@@ -151,6 +153,7 @@ async function submitStatus(): Promise<void> {
   statusSubmitting.value = true
   try {
     await changeVersionStatus(item.value.id, action.target, item.value.revision, statusReason.value.trim() || null)
+    emit('updated')
     ElMessage.success('状态已更新')
     statusDialog.value = false
     await load()
@@ -206,6 +209,7 @@ async function submitPublish(): Promise<void> {
   publishSubmitting.value = true
   try {
     await publishVersion(item.value.id, releaseNotes.value.trim(), item.value.revision)
+    emit('updated')
     ElMessage.success('版本已发布')
     publishDialog.value = false
     await load()
@@ -250,6 +254,7 @@ async function submitEdit(): Promise<void> {
       description: editForm.description.trim() || null,
       revision: item.value.revision,
     })
+    emit('updated')
     ElMessage.success('版本已更新')
     editDialog.value = false
     await load()
@@ -277,6 +282,7 @@ async function submitAdd(): Promise<void> {
     const req = await getRequirement(addRequirementId.value)
     requirementRevision = req.revision
     await addVersionRequirement(item.value.id, req.id, req.revision, item.value.revision)
+    emit('updated')
     ElMessage.success('需求已加入版本')
     addDialog.value = false
     addRequirementId.value = null
@@ -332,6 +338,7 @@ async function submitMove(): Promise<void> {
       targetVersion.revision,
       moveTarget.reason.trim(),
     )
+    emit('updated')
     ElMessage.success('需求已迁移')
     moveDialog.value = false
     await load()
@@ -348,6 +355,7 @@ async function removeReq(req: Requirement): Promise<void> {
   if (!item.value) return
   try {
     await removeVersionRequirement(item.value.id, req.id, req.revision, item.value.revision, null)
+    emit('updated')
     ElMessage.success('需求已移出')
     await load()
   } catch (error) {

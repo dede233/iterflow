@@ -41,3 +41,22 @@
    - `Release`: ListView, DetailView
 5. **管理与支持页面**:
    - `UserListView`, `RoleListView`, `SystemCatalogView`, `AuditCenterView`, `NotificationCenterView`, `ProfileView`, `LoginView`, `ChangePasswordView`, `ForbiddenView`
+
+## 4. 详情抽屉加载修复（2026-10-08）
+
+- 实际本地域名复现：从版本列表打开详情，组件读取列表路由中不存在的 `id`，请求 `/api/v1/versions/NaN` 并收到 422。
+- 反馈、需求、版本详情组件声明并读取 `embedded` / `embeddedId`；抽屉使用列表传入的实体 ID，独立详情页仍使用路由 ID。列表按选中实体 ID 设置组件 key，隔离不同记录的详情及编辑状态。
+- 修改文件：三类实体的 ListView / DetailView，以及 `frontend/e2e/detail-drawer.spec.ts`。无后端、契约、migration 或权限变更，无规格冲突。
+- 新浏览器回归：桌面 1280px、移动 390px，三类抽屉打开两个不同记录、详情关联请求、展开完整页面及返回原筛选/分页列表，**6 passed**。修复前版本抽屉用例失败，修复后通过。
+- 既有编辑提示与 revision 冲突浏览器回归：**11 passed**；Frontend Vitest **303 passed / 43 files**；Typecheck + Build、`git diff --check` 均 PASS。
+- 实际 admin 登录验收：本地域名中 `1.0.0 / ceshi` 版本抽屉和完整详情页正常加载，版本详情及需求清单接口返回 200，无页面运行错误。已重新构建本地页面；本节不表示完整主链路或正式 CI 验收完成。
+
+## 5. 合并评估发现的回归修复（2026-10-08）
+
+- 评估发现：从带分页、筛选的反馈列表打开抽屉，沿需求 → 版本 → 发布记录返回时，原列表条件丢失；既有 V1.8 主链导航用例在 375 / 390 / 768 / 1280 / 1440px 五个视口均失败。嵌入详情现在通过 `listTarget` 从当前列表路由提取白名单查询字段；独立详情继续校验 `return_to`，不允许外部地址或嵌套跳转。
+- 评估发现：在抽屉中修改成功，详情更新而列表仍显示旧标题。反馈、需求、版本详情现在在服务端写入成功后发出 `updated`，由父列表使用当前已应用条件重新加载。覆盖编辑、状态、反馈转需求、版本发布及需求关联操作；保存失败或 revision 409 不发送成功事件。
+- 新浏览器用例覆盖三类实体、1280 / 390px：编辑标题后关闭抽屉看到新值，重新打开后用最新 revision 改状态，记录离开当前筛选结果且其他记录保留，有效分页和状态条件不变。修复前需求编辑用例失败（列表没有再次请求）；修复后新增编辑及既有抽屉用例共 **12 passed**。
+- 新导航单元测试覆盖三类列表上下文、独立详情、路由变化、外部地址、嵌套和重复参数；既有组件测试补充普通失败 / 409 无成功事件、显式刷新 revision 后保存只发送一次成功事件的断言。
+- 本地门禁：Frontend Vitest **310 passed / 44 files**；Typecheck + Build、API 类型一致性、Bundle（最大 JavaScript chunk 272.9 KiB）及 `git diff --check` PASS。最终本地浏览器回归 **154 passed**，覆盖全部模拟接口用例，包括管理、系统与模块、响应式页面、关联导航、编辑提示和并发冲突。
+- 本地浏览器测试地址为 `http://127.0.0.1:5173`；两个会创建真实业务数据的 release smoke 用例留给 GitHub CI 的隔离 Compose 环境执行，不对现有本地账号和业务数据运行它们。完整六项 CI 结果应核对该分支最终提交对应的 GitHub Actions 记录；本节只记录已经完成的本地验证。
+- 本节变更仅涉及前端详情、列表、导航及回归测试和本审计文档。无后端 / 契约 / migration / permission / 状态机变更，无规格冲突。同一 Agent 的复查不称为外部独立终审。master 与 v1.8.1 保持 `206bf0dab358917940722e1e846d8b80de3f8221`；尚未合并、发布或部署。

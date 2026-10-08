@@ -214,6 +214,7 @@ const queryState = useListQuery({
       </template>
       <VersionDetailView
         v-if="activeVersionId && detailDrawer"
+        :key="activeVersionId"
         embedded
         :embedded-id="activeVersionId"
         @updated="load"

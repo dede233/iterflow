@@ -55,12 +55,14 @@ import type {
 import { formatLocalDateTime } from '@/utils/dates'
 import { feedbackConflictSummary } from '@/utils/revisionSummaries'
 
+const props = defineProps<{ embedded?: boolean; embeddedId?: number }>()
+const emit = defineEmits<{ updated: [] }>()
 const route = useRoute()
 const router = useRouter()
 const { backTo, related } = useDetailNavigation('/feedbacks')
 const { can } = usePermission()
 const { isMobile } = useResponsive()
-const feedbackId = Number(route.params.id)
+const feedbackId = Number(props.embedded ? props.embeddedId : route.params.id)
 const { start: startPresence, stop: stopPresence, existingEditor } = useEditingPresence('FEEDBACK', feedbackId)
 const conflict = useRevisionConflict()
 
@@ -151,6 +153,7 @@ async function submitConvert(): Promise<void> {
       acceptance_criteria: convertForm.acceptance_criteria.trim() || null,
       requirement_id: convertForm.type === 'LINK_EXISTING' ? convertForm.requirement_id : null,
     })
+    emit('updated')
     ElMessage.success('已转为需求')
     convertDialog.value = false
     await finishFeedbackConversion(
@@ -199,6 +202,7 @@ async function submitStatus(): Promise<void> {
       reason: statusForm.reason.trim() || null,
       duplicate_of_id: action.needsDuplicate ? statusForm.duplicate_of_id : null,
     })
+    emit('updated')
     ElMessage.success('状态已更新')
     statusDialog.value = false
     await load()
@@ -272,6 +276,7 @@ async function submitEdit(): Promise<void> {
       reproduce_steps: editForm.reproduce_steps.trim() || null,
       revision: item.value.revision,
     })
+    emit('updated')
     ElMessage.success('反馈已更新')
     editDialog.value = false
     await load()

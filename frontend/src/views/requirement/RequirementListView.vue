@@ -219,6 +219,7 @@ const queryState = useListQuery({
       </template>
       <RequirementDetailView
         v-if="activeRequirementId && detailDrawer"
+        :key="activeRequirementId"
         embedded
         :embedded-id="activeRequirementId"
         @updated="load"

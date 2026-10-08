@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { listFeedbacks } from '@/api/feedbacks'
 import FeedbackCreateView from './FeedbackCreateView.vue'
+import FeedbackDetailView from './FeedbackDetailView.vue'
 import { listSystems } from '@/api/systems'
 import { useListQuery } from '@/composables/useListQuery'
 import { useResponsive } from '@/composables/useResponsive'
@@ -40,6 +41,8 @@ const loading = ref(false)
 const failed = ref(false)
 const filterDrawer = ref(false)
 const createDialog = ref(false)
+const detailDrawer = ref(false)
+const activeFeedbackId = ref<number | null>(null)
 const systems = ref<BusinessSystemItem[]>([])
 const modules = ref<BusinessModuleItem[]>([])
 const canReadSystems = computed(() => can(['sys.system.view', 'sys.system.manage']))
@@ -111,6 +114,16 @@ function systemName(id: number | null | undefined): string {
   return systems.value.find((s) => s.id === id)?.name ?? `#${id}`
 }
 
+function openDetail(id: number): void {
+  activeFeedbackId.value = id
+  detailDrawer.value = true
+}
+
+function openFullScreen(id: number): void {
+  detailDrawer.value = false
+  void router.push(queryState.detail(`/feedbacks/${id}`))
+}
+
 async function onFeedbackCreated(id: number): Promise<void> {
   createDialog.value = false
   await load()
@@ -141,7 +154,6 @@ const queryState = useListQuery({
     filters.urgency = (q.urgency ?? '') as typeof filters.urgency
     filters.system_id = q.system_id ? Number(q.system_id) : null
     filters.module_id = q.module_id ? Number(q.module_id) : null
-
   },
   load, invalidate: () => { requestSequence++ },
 })
@@ -218,7 +230,7 @@ const queryState = useListQuery({
       v-loading="loading"
       :data="rows"
       row-key="id"
-      @row-click="(row: Feedback) => router.push(queryState.detail('/feedbacks/' + row.id))"
+      @row-click="(row: Feedback) => openDetail(row.id)"
     >
       <el-table-column prop="feedback_no" label="编号" width="180" />
       <el-table-column prop="title" label="标题" min-width="240" show-overflow-tooltip />
@@ -242,7 +254,7 @@ const queryState = useListQuery({
       </el-table-column>
       <el-table-column label="操作" width="90" fixed="right">
         <template #default="s">
-          <el-link type="primary" @click.stop="router.push(queryState.detail('/feedbacks/' + s.row.id))">查看</el-link>
+          <el-link type="primary" @click.stop="openDetail(s.row.id)">查看</el-link>
         </template>
       </el-table-column>
       <template #empty><EmptyState description="暂无反馈" compact /></template>
@@ -250,7 +262,7 @@ const queryState = useListQuery({
 
     <!-- Mobile cards -->
     <div v-else v-loading="loading" class="cards">
-      <ListCard v-for="r in rows" :key="r.id" :code="r.feedback_no" :title="r.title" @open="router.push(queryState.detail('/feedbacks/' + r.id))">
+      <ListCard v-for="r in rows" :key="r.id" :code="r.feedback_no" :title="r.title" @open="openDetail(r.id)">
         <template #status>
           <StatusTag :status="r.status" :label="feedbackStatusLabel[r.status]" :type="feedbackStatusTagType(r.status)" size="sm" />
         </template>
@@ -313,9 +325,42 @@ const queryState = useListQuery({
       </template>
     </el-drawer>
 
+    <!-- Create Dialog -->
     <el-dialog v-model="createDialog" title="提交反馈" class="create-dialog" width="min(860px, calc(100vw - 24px))" destroy-on-close :close-on-click-modal="false">
       <FeedbackCreateView v-if="createDialog" embedded @cancel="createDialog = false" @created="onFeedbackCreated" />
     </el-dialog>
+
+    <!-- Scheme C: Detail Drawer with full-screen expansion support -->
+    <el-drawer
+      v-model="detailDrawer"
+      title="反馈详情"
+      direction="rtl"
+      size="min(860px, 94vw)"
+      destroy-on-close
+      class="detail-drawer"
+    >
+      <template #header>
+        <div class="drawer-header-custom">
+          <span class="drawer-title">反馈详情</span>
+          <el-button
+            v-if="activeFeedbackId"
+            size="small"
+            class="expand-btn"
+            @click="openFullScreen(activeFeedbackId)"
+          >
+            新标签/全屏直达
+          </el-button>
+        </div>
+      </template>
+      <FeedbackDetailView
+        v-if="activeFeedbackId && detailDrawer"
+        :key="activeFeedbackId"
+        embedded
+        :embedded-id="activeFeedbackId"
+        @updated="load"
+        @close="detailDrawer = false"
+      />
+    </el-drawer>
   </section>
 </template>
 
@@ -323,5 +368,8 @@ const queryState = useListQuery({
 .filters { margin-bottom: var(--if-space-4); }
 .cards { display: grid; gap: 8px; padding: var(--if-space-3); }
 .pager { margin-top: var(--if-space-4); justify-content: flex-end; }
+.drawer-header-custom { display: flex; align-items: center; justify-content: space-between; width: 100%; padding-right: 28px; }
+.drawer-title { font-size: 16px; font-weight: 600; color: var(--if-text-primary); }
+.expand-btn { margin-left: auto; }
 @media (max-width: 767px) { .pager { justify-content: center; } }
 </style>

@@ -35,12 +35,14 @@ import {
 } from '@/constants/requirement'
 import type { LinkedFeedback, Requirement } from '@/types/domain'
 
+const props = defineProps<{ embedded?: boolean; embeddedId?: number }>()
+const emit = defineEmits<{ updated: []; close: [] }>()
 const route = useRoute()
 const router = useRouter()
 const { backTo, related } = useDetailNavigation('/requirements')
 const { can } = usePermission()
 const { isMobile } = useResponsive()
-const id = Number(route.params.id)
+const id = Number(props.embedded ? props.embeddedId : route.params.id)
 const { start: startPresence, stop: stopPresence, existingEditor } = useEditingPresence('REQUIREMENT', id)
 const conflict = useRevisionConflict()
 
@@ -94,6 +96,7 @@ async function submitStatus(): Promise<void> {
       item.value.revision,
       statusReason.value.trim() || null,
     )
+    emit('updated')
     ElMessage.success('状态已更新')
     statusDialog.value = false
     await load()
@@ -148,6 +151,7 @@ async function submitEdit(): Promise<void> {
       acceptance_criteria: editForm.acceptance_criteria.trim() || null,
       revision: item.value.revision,
     })
+    emit('updated')
     ElMessage.success('需求已更新')
     editDialog.value = false
     await load()
@@ -184,7 +188,7 @@ onMounted(load)
           <StatusTag :status="item.status" :label="requirementStatusLabel[item.status]" :type="requirementStatusTagType(item.status)" />
         </template>
         <template #actions>
-        <RouterLink class="back-link" :to="backTo">返回列表</RouterLink>
+        <RouterLink class="back-link" :to="backTo" @click="props.embedded && emit('close')">返回列表</RouterLink>
         <el-button v-if="canEdit" @click="openEdit">编辑</el-button>
         <el-button
           v-for="action in statusActions"

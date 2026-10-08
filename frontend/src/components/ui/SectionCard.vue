@@ -16,18 +16,64 @@ withDefaults(defineProps<{ title?: string; description?: string; padded?: boolea
 </template>
 
 <style scoped>
-.section-card { min-width: 0; background: var(--if-bg-surface); border: 1px solid var(--if-border); border-radius: var(--if-radius); box-shadow: var(--if-shadow-sm); }
-.section-card + .section-card { margin-top: var(--if-space-4); }
-.section-card__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px var(--if-space-5); border-bottom: 1px solid var(--if-border); }
-.section-card__heading { min-width: 0; }
-.section-card__title { margin: 0; font-size: 15px; font-weight: 650; }
-.section-card__desc { margin: 2px 0 0; color: var(--if-text-3); font-size: 12px; }
-.section-card__actions { display: flex; flex-wrap: wrap; gap: 8px; flex-shrink: 0; }
-.section-card__actions :deep(.el-button + .el-button) { margin-left: 0; }
-.section-card__body { padding: var(--if-space-5); }
-.section-card__body.is-flush { padding: 0; }
+.section-card {
+  min-width: 0;
+  background-color: var(--if-bg-surface);
+  border: 1px solid var(--if-border);
+  border-radius: var(--if-radius);
+  box-shadow: var(--if-shadow-xs);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.section-card + .section-card {
+  margin-top: var(--if-space-4);
+}
+.section-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px var(--if-space-5);
+  border-bottom: 1px solid var(--if-border);
+  background-color: var(--if-bg-surface);
+  border-top-left-radius: var(--if-radius);
+  border-top-right-radius: var(--if-radius);
+}
+.section-card__heading {
+  min-width: 0;
+}
+.section-card__title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--if-text-primary);
+  letter-spacing: -0.01em;
+}
+.section-card__desc {
+  margin: 3px 0 0;
+  color: var(--if-text-tertiary);
+  font-size: 12px;
+}
+.section-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.section-card__actions :deep(.el-button + .el-button) {
+  margin-left: 0;
+}
+.section-card__body {
+  padding: var(--if-space-5);
+}
+.section-card__body.is-flush {
+  padding: 0;
+}
 @media (max-width: 767px) {
-  .section-card__head { padding: 12px var(--if-space-4); }
-  .section-card__body { padding: var(--if-space-4); }
+  .section-card__head {
+    padding: 12px var(--if-space-4);
+  }
+  .section-card__body {
+    padding: var(--if-space-4);
+  }
 }
 </style>

@@ -4,6 +4,7 @@ import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 import { listVersions } from '@/api/versions'
 import VersionCreateView from './VersionCreateView.vue'
+import VersionDetailView from './VersionDetailView.vue'
 import { useListQuery } from '@/composables/useListQuery'
 import { useResponsive } from '@/composables/useResponsive'
 import { usePermission } from '@/composables/usePermission'
@@ -28,6 +29,8 @@ const loading = ref(false)
 const failed = ref(false)
 const createDialog = ref(false)
 const filterDrawer = ref(false)
+const detailDrawer = ref(false)
+const activeVersionId = ref<number | null>(null)
 const filters = reactive({ page: 1, page_size: 20, keyword: '', status: '' as VersionListParams['status'], owner_id: null as number | null })
 const dateRange = ref<[string, string] | null>(null)
 let requestSequence = 0
@@ -76,12 +79,21 @@ function resetFilters(): void {
 
 onBeforeUnmount(() => { requestSequence++ })
 
+function openDetail(id: number): void {
+  activeVersionId.value = id
+  detailDrawer.value = true
+}
+
+function openFullScreen(id: number): void {
+  detailDrawer.value = false
+  void router.push(queryState.detail(`/versions/${id}`))
+}
+
 async function onVersionCreated(id: number): Promise<void> {
   createDialog.value = false
   await load()
   await router.push(queryState.detail(`/versions/${id}`))
 }
-
 
 const queryState = useListQuery({
   path: '/versions', readDraft: () => ({ ...filters, planned_release_from: dateRange.value?.[0], planned_release_to: dateRange.value?.[1] }),
@@ -126,7 +138,7 @@ const queryState = useListQuery({
       v-loading="loading"
       :data="rows"
       row-key="id"
-      @row-click="(row: VersionItem) => router.push(queryState.detail('/versions/' + row.id))"
+      @row-click="(row: VersionItem) => openDetail(row.id)"
     >
       <el-table-column prop="version_no" label="版本号" width="160" />
       <el-table-column prop="name" label="版本名称" min-width="200" show-overflow-tooltip />
@@ -142,14 +154,14 @@ const queryState = useListQuery({
       <el-table-column prop="planned_release_date" label="计划上线" width="140" />
       <el-table-column label="操作" width="90" fixed="right">
         <template #default="s">
-          <el-link type="primary" @click.stop="router.push(queryState.detail('/versions/' + s.row.id))">查看</el-link>
+          <el-link type="primary" @click.stop="openDetail(s.row.id)">查看</el-link>
         </template>
       </el-table-column>
       <template #empty><EmptyState description="暂无版本" compact /></template>
     </el-table>
 
     <div v-else v-loading="loading" class="cards">
-      <ListCard v-for="r in rows" :key="r.id" :code="r.version_no" :title="r.name" @open="router.push(queryState.detail('/versions/' + r.id))">
+      <ListCard v-for="r in rows" :key="r.id" :code="r.version_no" :title="r.name" @open="openDetail(r.id)">
         <template #status>
           <StatusTag :status="r.status" :label="versionStatusLabel[r.status]" :type="versionStatusTagType(r.status)" size="sm" />
         </template>
@@ -173,15 +185,51 @@ const queryState = useListQuery({
       "
     />
 
+    <!-- Create Dialog -->
     <el-dialog v-model="createDialog" title="新建版本" class="create-dialog" width="min(720px, calc(100vw - 24px))" destroy-on-close :close-on-click-modal="false">
       <VersionCreateView v-if="createDialog" embedded @cancel="createDialog = false" @created="onVersionCreated" />
     </el-dialog>
+
+    <!-- Scheme C: Detail Drawer with full-screen expansion support -->
+    <el-drawer
+      v-model="detailDrawer"
+      title="版本详情"
+      direction="rtl"
+      size="min(960px, 94vw)"
+      destroy-on-close
+      class="detail-drawer"
+    >
+      <template #header>
+        <div class="drawer-header-custom">
+          <span class="drawer-title">版本详情</span>
+          <el-button
+            v-if="activeVersionId"
+            size="small"
+            class="expand-btn"
+            @click="openFullScreen(activeVersionId)"
+          >
+            新标签/全屏直达
+          </el-button>
+        </div>
+      </template>
+      <VersionDetailView
+        v-if="activeVersionId && detailDrawer"
+        :key="activeVersionId"
+        embedded
+        :embedded-id="activeVersionId"
+        @updated="load"
+        @close="detailDrawer = false"
+      />
+    </el-drawer>
   </section>
 </template>
 
 <style scoped>
 .cards { display: grid; gap: 8px; padding: var(--if-space-3); }
 .pager { margin-top: var(--if-space-4); justify-content: flex-end; }
+.drawer-header-custom { display: flex; align-items: center; justify-content: space-between; width: 100%; padding-right: 28px; }
+.drawer-title { font-size: 16px; font-weight: 600; color: var(--if-text-primary); }
+.expand-btn { margin-left: auto; }
 @media (max-width: 767px) { .pager { justify-content: center; } }
 </style>
 

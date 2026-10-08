@@ -1,11 +1,12 @@
-# IterFlow V1.8.1 Cloudflare Preview
+# IterFlow Cloudflare Preview
 
 This runbook operates the independent `phase/cloudflare-preview` branch for online demonstration, trial use, and public acceptance at `https://iterflow.luqingyao.cc.cd`.
 
 - Preview application version: **v1.8.1**.
 - Released commit: `206bf0dab358917940722e1e846d8b80de3f8221` (annotated tag `v1.8.1`, tag object `38c230817fe89be86c1cc7ca431e3ebf1324e4b0`).
 - Preview branch: `phase/cloudflare-preview`.
-- Preview branch includes additional deployment-only commits: **v1.8.1 + Preview-only deployment configuration**. It is not the formal product release branch.
+- Authorized UI v2 master baseline: `a8c58607a254c0c16e1610efc45b0e5174d9fc7c`; master CI [37742872679](https://github.com/dede233/iterflow/actions/runs/37742872679) passed all six jobs.
+- Preview branch includes the reviewed UI v2 changes and additional deployment-only configuration. Application version remains **1.8.1**; this upgrade does not create or move a release/tag.
 
 The Preview includes released V1.8 functionality and the existing V1.7/V1.6 functionality from the reviewed release tag. For later upgrades, merge the reviewed release tag (or separately authorized master baseline) into `phase/cloudflare-preview`, retain the deployment configuration, verify CI, and then deploy. Develop product features on their own branches, not directly on the Preview branch. Do not merge Preview deployment configuration back into master.
 
@@ -28,6 +29,14 @@ The V1.8.0 Preview upgrade merged released commit `df9e1ba1a5ee1a4c763098d8e1802
 The externally reviewed fix is now formally released as **v1.8.1**, after release branch CI `37216956699` and final master CI `37217382411`, both attempt 1 / six jobs success. Preview merge `28dc66305b26de6c31e6a89a7a2cf5a5c73a9ab5` has parents `c77850b83ee96874df46fd12bbe6e291d2caeacb` and `206bf0dab358917940722e1e846d8b80de3f8221`. Product code equals v1.8.1 and the existing infrastructure patch is unchanged. The original product defect is resolved by the formal patch; public acceptance remains **PENDING** until the new Preview CI, pre-hotfix backup and real upgrade pass and the 768px defect is verified first.
 
 Retain `/Users/xiaweiyi/Developer/backups/iterflow-preview-pre-v1.8.0-20261003-1330` and test feedback `FB-20261003-0001 / ID 10`. Before this upgrade, take an additional `preview-pre-v1.8.1-hotfix-<timestamp>` backup with the Preview env/override and the currently running build `c77850b`; verify SHA256SUMS. After upgrade, accept Feedback Detail at 768px first (scrollWidth ≤769, readable heading, visible actions and close-dialog cancellation), then the full 375/390/768/1280/1440 matrix on Feedback/Requirement/Version. Resume C0/C1/C3/C4, old attachment public SHA256, authorized new attachment round-trip, V1.7 compatibility and security checks. Restart only api/web/cloudflared and take a separate post-v1.8.1 backup after persistence checks. Never restore real Preview, delete its volumes or deploy Production during this task.
+
+## Authorized UI v2 Preview upgrade (2026-10-08)
+
+The user authorized merging `refactor/ui-v2` into master and updating the existing Cloudflare Preview. The reviewed source is `a274226c189bbae8a187d80f3e853ef447b077fa` (branch CI [37740729231](https://github.com/dede233/iterflow/actions/runs/37740729231), six jobs success). Master merge `a8c58607a254c0c16e1610efc45b0e5174d9fc7c` passed a fresh six-job CI. Preview merge `79d09eaf04c9d06eebf8284ce7dc922d14ea67e7` retains the old Preview `72fd16ed06862daff473e100cf689e19223201da` and the authorized master as parents. Backend, frontend and contract trees equal master; deployment scripts/configuration and Preview CI additions are unchanged.
+
+This upgrade includes UI v2 styling and fixes for Feedback/Requirement/Version drawers: selected IDs load correctly, returning closes the drawer, full-screen navigation retains applied list context, and successful writes refresh the filtered list. There are no backend, schema, migration, permission or contract changes.
+
+Deployment gates remain: new Preview six-job CI, a separate verified pre-upgrade backup using the **currently running `BUILD_SHA=72fd16e`**, rebuild with the final checked-out Preview SHA, public original-password login and detail-drawer acceptance, existing data and attachment hash checks, api/web/cloudflared restart persistence, and a separate verified post-upgrade backup. Keep the original administrator password and all Preview volumes. Do not restore real data, deploy Production, or change historical tags. At the time this runbook update is committed, Preview CI and live upgrade acceptance are pending; record actual deployment evidence outside the repository alongside the backups.
 
 ## Architecture and prerequisites
 

@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
 import yaml
 
+from app.core.api_documentation import apply_schema_labels
 from app.main import app
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -60,13 +62,18 @@ def generated_spec(documentation: dict[str, Any]) -> dict[str, Any]:
                     if key in documented_operation
                 },
             }
+    components = deepcopy(runtime.get("components", {}))
+    for name, schema in components.get("schemas", {}).items():
+        apply_schema_labels(
+            schema, documentation.get("components", {}).get("schemas", {}).get(name, {})
+        )
     return {
         "openapi": runtime["openapi"],
         "info": documentation.get("info", runtime.get("info", {})),
         "servers": documentation.get("servers", [{"url": "/api/v1"}]),
         "tags": documentation.get("tags", runtime.get("tags", [])),
         "paths": paths,
-        "components": runtime.get("components", {}),
+        "components": components,
     }
 
 

@@ -4,6 +4,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from app.core.api_documentation import schema_labels
+
 ROOT = Path(__file__).resolve().parents[2]
 TARGET = ROOT / "backend" / "app" / "core" / "api_documentation.json"
 
@@ -13,6 +15,10 @@ def documentation_labels(contract: dict[str, Any]) -> dict[str, Any]:
     return {
         "info": contract["info"],
         "tags": contract.get("tags", []),
+        "schemas": {
+            name: schema_labels(schema)
+            for name, schema in contract["components"]["schemas"].items()
+        },
         "paths": {
             path: {
                 method: {key: value for key, value in operation.items() if key in fields}

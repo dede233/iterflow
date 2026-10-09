@@ -3477,15 +3477,17 @@ components:
       properties:
         requirement_id:
           type: integer
-          title: Requirement Id
+          title: 需求 ID
         revision:
           type: integer
           minimum: 1.0
-          title: Revision
+          title: 修订号
+          description: 对象的乐观锁修订号；写入时提交最后读取的修订号。
         version_revision:
           type: integer
           minimum: 1.0
-          title: Version Revision
+          title: 版本修订号
+          description: 目标版本的乐观锁修订号；版本内容变更时用于并发校验。
       type: object
       required:
       - requirement_id
@@ -3496,25 +3498,25 @@ components:
       properties:
         file_id:
           type: integer
-          title: File Id
+          title: 文件 ID
         original_name:
           type: string
-          title: Original Name
+          title: 原始文件名
         size:
           type: integer
-          title: Size
+          title: 文件大小（字节）
         mime_type:
           type: string
-          title: Mime Type
+          title: 文件 MIME 类型
         created_at:
           type: string
           format: date-time
-          title: Created At
+          title: 创建时间
         created_by:
           anyOf:
           - type: integer
           - type: 'null'
-          title: Created By
+          title: 创建人 ID
       type: object
       required:
       - file_id
@@ -3529,13 +3531,13 @@ components:
       properties:
         id:
           type: integer
-          title: Id
+          title: 唯一标识 ID
         username:
           type: string
-          title: Username
+          title: 用户名
         display_name:
           type: string
-          title: Display Name
+          title: 显示名称
       type: object
       required:
       - id
@@ -3547,38 +3549,39 @@ components:
       properties:
         id:
           type: integer
-          title: Id
+          title: 唯一标识 ID
         entity_type:
           type: string
-          title: Entity Type
+          title: 业务对象类型
         entity_id:
           anyOf:
           - type: integer
           - type: 'null'
-          title: Entity Id
+          title: 业务对象 ID
         action:
           type: string
-          title: Action
+          title: 操作类型
         operator:
           anyOf:
           - $ref: '#/components/schemas/AuditOperatorOut'
           - type: 'null'
+          title: 操作人
         before:
           anyOf:
           - additionalProperties: true
             type: object
           - type: 'null'
-          title: Before
+          title: 操作前数据
         after:
           anyOf:
           - additionalProperties: true
             type: object
           - type: 'null'
-          title: After
+          title: 操作后数据
         created_at:
           type: string
           format: date-time
-          title: Created At
+          title: 创建时间
       type: object
       required:
       - id
@@ -3596,16 +3599,16 @@ components:
           items:
             $ref: '#/components/schemas/AuditOut'
           type: array
-          title: Items
+          title: 数据列表
         page:
           type: integer
-          title: Page
+          title: 当前页码
         size:
           type: integer
-          title: Size
+          title: 每页条数
         total:
           type: integer
-          title: Total
+          title: 总条数
       type: object
       required:
       - items
@@ -3617,41 +3620,44 @@ components:
       properties:
         id:
           type: integer
-          title: Id
+          title: 唯一标识 ID
         username:
           type: string
-          title: Username
+          title: 用户名
         display_name:
           type: string
-          title: Display Name
+          title: 显示名称
         email:
           anyOf:
           - type: string
           - type: 'null'
-          title: Email
+          title: 邮箱
         status:
           $ref: '#/components/schemas/UserStatus'
+          title: 状态
         revision:
           type: integer
-          title: Revision
+          title: 修订号
+          description: 对象的乐观锁修订号；写入时提交最后读取的修订号。
         must_change_password:
           type: boolean
-          title: Must Change Password
+          title: 是否需要修改密码
         data_scope:
           $ref: '#/components/schemas/DataScope'
+          title: 数据范围
         role_ids:
           items:
             type: integer
           type: array
-          title: Role Ids
+          title: 角色 ID 列表
         permission_codes:
           items:
             type: string
           type: array
-          title: Permission Codes
+          title: 权限码列表
         can_view_api_docs:
           type: boolean
-          title: Can View Api Docs
+          title: 是否可查看接口文档
           description: 当前账号是否具有启用的系统超级管理员或研发负责人角色。后端在每次读取文档时重新校验。
           default: false
       type: object
@@ -3672,13 +3678,13 @@ components:
       properties:
         id:
           type: integer
-          title: Id
+          title: 唯一标识 ID
         requirement_no:
           type: string
-          title: Requirement No
+          title: 需求编号
         status:
           type: string
-          title: Status
+          title: 状态
       type: object
       required:
       - id
@@ -3690,7 +3696,7 @@ components:
         file:
           type: string
           contentMediaType: application/octet-stream
-          title: File
+          title: 上传文件
       type: object
       required:
       - file
@@ -3700,7 +3706,7 @@ components:
         file:
           type: string
           contentMediaType: application/octet-stream
-          title: File
+          title: 上传文件
       type: object
       required:
       - file
@@ -3711,19 +3717,19 @@ components:
           type: string
           maxLength: 64
           minLength: 1
-          title: Code
+          title: 模块编码
         name:
           type: string
           maxLength: 100
           minLength: 1
-          title: Name
+          title: 模块名称
         enabled:
           type: boolean
-          title: Enabled
+          title: 是否启用
           default: true
         sort_order:
           type: integer
-          title: Sort Order
+          title: 排序序号
           default: 0
       type: object
       required:
@@ -3734,43 +3740,44 @@ components:
       properties:
         id:
           type: integer
-          title: Id
+          title: 模块 ID
         system_id:
           type: integer
-          title: System Id
+          title: 业务系统 ID
         code:
           type: string
-          title: Code
+          title: 模块编码
         name:
           type: string
-          title: Name
+          title: 模块名称
         enabled:
           type: boolean
-          title: Enabled
+          title: 是否启用
         sort_order:
           type: integer
-          title: Sort Order
+          title: 排序序号
         created_at:
           type: string
           format: date-time
-          title: Created At
+          title: 创建时间
         created_by:
           anyOf:
           - type: integer
           - type: 'null'
-          title: Created By
+          title: 创建人 ID
         updated_at:
           type: string
           format: date-time
-          title: Updated At
+          title: 更新时间
         updated_by:
           anyOf:
           - type: integer
           - type: 'null'
-          title: Updated By
+          title: 更新人 ID
         revision:
           type: integer
-          title: Revision
+          title: 修订号
+          description: 对象的乐观锁修订号；写入时提交最后读取的修订号。
       type: object
       required:
       - id
@@ -3793,28 +3800,29 @@ components:
             maxLength: 64
             minLength: 1
           - type: 'null'
-          title: Code
+          title: 模块编码
         name:
           anyOf:
           - type: string
             maxLength: 100
             minLength: 1
           - type: 'null'
-          title: Name
+          title: 模块名称
         enabled:
           anyOf:
           - type: boolean
           - type: 'null'
-          title: Enabled
+          title: 是否启用
         sort_order:
           anyOf:
           - type: integer
           - type: 'null'
-          title: Sort Order
+          title: 排序序号
         revision:
           type: integer
           minimum: 1.0
-          title: Revision
+          title: 修订号
+          description: 对象的乐观锁修订号；写入时提交最后读取的修订号。
       type: object
       required:
       - revision
@@ -3825,12 +3833,12 @@ components:
           items:
             $ref: '#/components/schemas/BusinessSystemOut'
           type: array
-          title: Systems
+          title: 业务系统列表
         modules:
           items:
             $ref: '#/components/schemas/BusinessModuleOut'
           type: array
-          title: Modules
+          title: 模块列表
       type: object
       required:
       - systems
@@ -3842,19 +3850,19 @@ components:
           type: string
           maxLength: 64
           minLength: 1
-          title: Code
+          title: 业务系统编码
         name:
           type: string
           maxLength: 100
           minLength: 1
-          title: Name
+          title: 业务系统名称
         enabled:
           type: boolean
-          title: Enabled
+          title: 是否启用
           default: true
         sort_order:
           type: integer
-          title: Sort Order
+          title: 排序序号
           default: 0
       type: object
       required:
@@ -3865,40 +3873,41 @@ components:
       properties:
         id:
           type: integer
-          title: Id
+          title: 业务系统 ID
         code:
           type: string
-          title: Code
+          title: 业务系统编码
         name:
           type: string
-          title: Name
+          title: 业务系统名称
         enabled:
           type: boolean
-          title: Enabled
+          title: 是否启用
         sort_order:
           type: integer
-          title: Sort Order
+          title: 排序序号
         created_at:
           type: string
           format: date-time
-          title: Created At
+          title: 创建时间
         created_by:
           anyOf:
           - type: integer
           - type: 'null'
-          title: Created By
+          title: 创建人 ID
         updated_at:
           type: string
           format: date-time
-          title: Updated At
+          title: 更新时间
         updated_by:
           anyOf:
           - type: integer
           - type: 'null'
-          title: Updated By
+          title: 更新人 ID
         revision:
           type: integer
-          title: Revision
+          title: 修订号
+          description: 对象的乐观锁修订号；写入时提交最后读取的修订号。
       type: object
       required:
       - id
@@ -3920,28 +3929,29 @@ components:
             maxLength: 64
             minLength: 1
           - type: 'null'
-          title: Code
+          title: 业务系统编码
         name:
           anyOf:
           - type: string
             maxLength: 100
             minLength: 1
           - type: 'null'
-          title: Name
+          title: 业务系统名称
         enabled:
           anyOf:
           - type: boolean
           - type: 'null'
-          title: Enabled
+          title: 是否启用
         sort_order:
           anyOf:
           - type: integer
           - type: 'null'
-          title: Sort Order
+          title: 排序序号
         revision:
           type: integer
           minimum: 1.0
-          title: Revision
+          title: 修订号
+          description: 对象的乐观锁修订号；写入时提交最后读取的修订号。
       type: object
       required:
       - revision
@@ -3952,12 +3962,12 @@ components:
           type: string
           maxLength: 128
           minLength: 6
-          title: Current Password
+          title: 当前密码
         new_password:
           type: string
           maxLength: 128
           minLength: 8
-          title: New Password
+          title: 新密码
       type: object
       required:
       - current_password
@@ -3969,7 +3979,7 @@ components:
           type: string
           maxLength: 5000
           minLength: 1
-          title: Content
+          title: 内容
       type: object
       required:
       - content
@@ -3978,25 +3988,25 @@ components:
       properties:
         id:
           type: integer
-          title: Id
+          title: 唯一标识 ID
         entity_type:
           type: string
-          title: Entity Type
+          title: 业务对象类型
         entity_id:
           type: integer
-          title: Entity Id
+          title: 业务对象 ID
         content:
           type: string
-          title: Content
+          title: 内容
         created_at:
           type: string
           format: date-time
-          title: Created At
+          title: 创建时间
         created_by:
           anyOf:
           - type: integer
           - type: 'null'
-          title: Created By
+          title: 创建人 ID
       type: object
       required:
       - id
@@ -4029,16 +4039,17 @@ components:
       properties:
         entity_type:
           $ref: '#/components/schemas/DashboardActivityEntityType'
+          title: 业务对象类型
         entity_id:
           type: integer
-          title: Entity Id
+          title: 业务对象 ID
         action:
           type: string
-          title: Action
+          title: 操作类型
         created_at:
           type: string
           format: date-time
-          title: Created At
+          title: 创建时间
       type: object
       required:
       - entity_type
@@ -4056,16 +4067,16 @@ components:
         pending_count:
           type: integer
           minimum: 0.0
-          title: Pending Count
+          title: 待处理反馈数
         total_count:
           type: integer
           minimum: 0.0
-          title: Total Count
+          title: 总数量
         by_status:
           additionalProperties:
             type: integer
           type: object
-          title: By Status
+          title: 各状态数量
       type: object
       required:
       - pending_count
@@ -4076,28 +4087,33 @@ components:
       properties:
         data_scope:
           $ref: '#/components/schemas/DashboardDataScope'
+          title: 数据范围
         feedback:
           anyOf:
           - $ref: '#/components/schemas/DashboardFeedbackOverview'
           - type: 'null'
+          title: 反馈概览
         requirements:
           anyOf:
           - $ref: '#/components/schemas/DashboardRequirementOverview'
           - type: 'null'
+          title: 需求概览
         versions:
           anyOf:
           - $ref: '#/components/schemas/DashboardVersionOverview'
           - type: 'null'
+          title: 版本概览
         releases:
           anyOf:
           - $ref: '#/components/schemas/DashboardReleaseOverview'
           - type: 'null'
+          title: 发布概览
         activities:
           items:
             $ref: '#/components/schemas/DashboardActivityItem'
           type: array
           maxItems: 15
-          title: Activities
+          title: 最近协作动态
       type: object
       required:
       - data_scope
@@ -4111,22 +4127,23 @@ components:
       properties:
         id:
           type: integer
-          title: Id
+          title: 唯一标识 ID
         version_id:
           type: integer
-          title: Version Id
+          title: 版本 ID
         version_no:
           type: string
-          title: Version No
+          title: 版本号
         version_name:
           type: string
-          title: Version Name
+          title: 版本名称
         released_at:
           type: string
           format: date-time
-          title: Released At
+          title: 实际发布时间
         result:
           $ref: '#/components/schemas/DashboardReleaseResult'
+          title: 发布结果
       type: object
       required:
       - id
@@ -4141,13 +4158,13 @@ components:
         total_count:
           type: integer
           minimum: 0.0
-          title: Total Count
+          title: 总数量
         recent_releases:
           items:
             $ref: '#/components/schemas/DashboardReleaseItem'
           type: array
           maxItems: 5
-          title: Recent Releases
+          title: 最近发布记录
       type: object
       required:
       - total_count
@@ -4161,16 +4178,16 @@ components:
         active_count:
           type: integer
           minimum: 0.0
-          title: Active Count
+          title: 活跃数量
         total_count:
           type: integer
           minimum: 0.0
-          title: Total Count
+          title: 总数量
         by_status:
           additionalProperties:
             type: integer
           type: object
-          title: By Status
+          title: 各状态数量
       type: object
       required:
       - active_count
@@ -4181,25 +4198,26 @@ components:
       properties:
         id:
           type: integer
-          title: Id
+          title: 唯一标识 ID
         version_no:
           type: string
-          title: Version No
+          title: 版本号
         name:
           type: string
-          title: Name
+          title: 名称
         status:
           $ref: '#/components/schemas/DashboardActiveVersionStatus'
+          title: 状态
         planned_release_date:
           anyOf:
           - type: string
             format: date
           - type: 'null'
-          title: Planned Release Date
+          title: 计划发布日期
         updated_at:
           type: string
           format: date-time
-          title: Updated At
+          title: 更新时间
       type: object
       required:
       - id
@@ -4214,22 +4232,22 @@ components:
         active_count:
           type: integer
           minimum: 0.0
-          title: Active Count
+          title: 活跃数量
         total_count:
           type: integer
           minimum: 0.0
-          title: Total Count
+          title: 总数量
         by_status:
           additionalProperties:
             type: integer
           type: object
-          title: By Status
+          title: 各状态数量
         recent_active_versions:
           items:
             $ref: '#/components/schemas/DashboardVersionItem'
           type: array
           maxItems: 5
-          title: Recent Active Versions
+          title: 最近活跃版本
       type: object
       required:
       - active_count
@@ -4248,9 +4266,10 @@ components:
       properties:
         entity_type:
           $ref: '#/components/schemas/EditingEntityType'
+          title: 业务对象类型
         entity_id:
           type: integer
-          title: Entity Id
+          title: 业务对象 ID
       type: object
       required:
       - entity_type
@@ -4266,21 +4285,21 @@ components:
     ErrorResponse:
       properties:
         code:
-          title: Code
+          title: 错误码
           type: integer
         message:
-          title: Message
+          title: 消息说明
           type: string
         data:
           anyOf:
           - {}
           - type: 'null'
-          title: Data
+          title: 附加数据
         request_id:
           anyOf:
           - type: string
           - type: 'null'
-          title: Request Id
+          title: 请求追踪 ID
       required:
       - code
       - message
@@ -4292,17 +4311,19 @@ components:
       properties:
         type:
           $ref: '#/components/schemas/FeedbackConvertType'
+          title: 反馈转化方式
         revision:
           type: integer
           minimum: 1.0
-          title: Revision
+          title: 修订号
+          description: 对象的乐观锁修订号；写入时提交最后读取的修订号。
         requirement_title:
           anyOf:
           - type: string
             maxLength: 200
             minLength: 2
           - type: 'null'
-          title: Requirement Title
+          title: 需求标题
         requirement_type:
           anyOf:
           - type: string
@@ -4310,26 +4331,27 @@ components:
             minLength: 1
             pattern: ^[A-Z][A-Z0-9_]*$
           - type: 'null'
-          title: Requirement Type
+          title: 需求类型
         priority:
           $ref: '#/components/schemas/Priority'
           default: P2
+          title: 优先级
         description:
           anyOf:
           - type: string
             minLength: 2
           - type: 'null'
-          title: Description
+          title: 描述
         acceptance_criteria:
           anyOf:
           - type: string
           - type: 'null'
-          title: Acceptance Criteria
+          title: 验收标准
         requirement_id:
           anyOf:
           - type: integer
           - type: 'null'
-          title: Requirement Id
+          title: 需求 ID
       type: object
       required:
       - type
@@ -4356,41 +4378,43 @@ components:
           type: string
           maxLength: 200
           minLength: 2
-          title: Title
+          title: 反馈标题
         feedback_type:
           $ref: '#/components/schemas/FeedbackType'
+          title: 反馈类型
         urgency:
           $ref: '#/components/schemas/FeedbackUrgency'
           default: NORMAL
+          title: 紧急程度
         system_id:
           anyOf:
           - type: integer
           - type: 'null'
-          title: System Id
+          title: 业务系统 ID
         module_id:
           anyOf:
           - type: integer
           - type: 'null'
-          title: Module Id
+          title: 所属模块 ID
         description:
           type: string
           minLength: 2
-          title: Description
+          title: 描述
         expected_result:
           anyOf:
           - type: string
           - type: 'null'
-          title: Expected Result
+          title: 预期结果
         actual_result:
           anyOf:
           - type: string
           - type: 'null'
-          title: Actual Result
+          title: 实际结果
         reproduce_steps:
           anyOf:
           - type: string
           - type: 'null'
-          title: Reproduce Steps
+          title: 复现步骤
       type: object
       required:
       - title
@@ -4401,76 +4425,80 @@ components:
       properties:
         id:
           type: integer
-          title: Id
+          title: 反馈 ID
         feedback_no:
           type: string
-          title: Feedback No
+          title: 反馈编号
         title:
           type: string
-          title: Title
+          title: 反馈标题
         feedback_type:
           $ref: '#/components/schemas/FeedbackType'
+          title: 反馈类型
         urgency:
           $ref: '#/components/schemas/FeedbackUrgency'
+          title: 紧急程度
         status:
           $ref: '#/components/schemas/FeedbackStatus'
+          title: 反馈状态
         system_id:
           anyOf:
           - type: integer
           - type: 'null'
-          title: System Id
+          title: 业务系统 ID
         module_id:
           anyOf:
           - type: integer
           - type: 'null'
-          title: Module Id
+          title: 所属模块 ID
         submitter_id:
           type: integer
-          title: Submitter Id
+          title: 提交人 ID
         description:
           type: string
-          title: Description
+          title: 描述
         expected_result:
           anyOf:
           - type: string
           - type: 'null'
-          title: Expected Result
+          title: 预期结果
         actual_result:
           anyOf:
           - type: string
           - type: 'null'
-          title: Actual Result
+          title: 实际结果
         reproduce_steps:
           anyOf:
           - type: string
           - type: 'null'
-          title: Reproduce Steps
+          title: 复现步骤
         main_requirement_id:
           anyOf:
           - type: integer
           - type: 'null'
-          title: Main Requirement Id
+          title: 主需求 ID
         duplicate_of_id:
           anyOf:
           - type: integer
           - type: 'null'
-          title: Duplicate Of Id
+          title: 重复反馈关联 ID
         created_at:
           type: string
           format: date-time
-          title: Created At
+          title: 创建时间
         updated_at:
           type: string
           format: date-time
-          title: Updated At
+          title: 更新时间
         updated_by:
           anyOf:
           - type: integer
           - type: 'null'
-          title: Updated By
+          title: 更新人 ID
         revision:
           type: integer
-          title: Revision
+          title: 修订号
+          description: 对象的乐观锁修订号；写入时提交最后读取的修订号。
       type: object
       required:
       - id
@@ -4499,16 +4527,16 @@ components:
           items:
             $ref: '#/components/schemas/FeedbackOut'
           type: array
-          title: Items
+          title: 数据列表
         page:
           type: integer
-          title: Page
+          title: 当前页码
         page_size:
           type: integer
-          title: Page Size
+          title: 每页条数
         total:
           type: integer
-          title: Total
+          title: 总条数
       type: object
       required:
       - items
@@ -4531,20 +4559,22 @@ components:
       properties:
         status:
           $ref: '#/components/schemas/ManualFeedbackStatus'
+          title: 反馈状态
         revision:
           type: integer
           minimum: 1.0
-          title: Revision
+          title: 修订号
+          description: 对象的乐观锁修订号；写入时提交最后读取的修订号。
         reason:
           anyOf:
           - type: string
           - type: 'null'
-          title: Reason
+          title: 操作原因
         duplicate_of_id:
           anyOf:
           - type: integer
           - type: 'null'
-          title: Duplicate Of Id
+          title: 重复反馈关联 ID
       type: object
       required:
       - status
@@ -4568,50 +4598,53 @@ components:
             maxLength: 200
             minLength: 2
           - type: 'null'
-          title: Title
+          title: 反馈标题
         feedback_type:
           anyOf:
           - $ref: '#/components/schemas/FeedbackType'
           - type: 'null'
+          title: 反馈类型
         urgency:
           anyOf:
           - $ref: '#/components/schemas/FeedbackUrgency'
           - type: 'null'
+          title: 紧急程度
         system_id:
           anyOf:
           - type: integer
           - type: 'null'
-          title: System Id
+          title: 业务系统 ID
         module_id:
           anyOf:
           - type: integer
           - type: 'null'
-          title: Module Id
+          title: 所属模块 ID
         description:
           anyOf:
           - type: string
             minLength: 2
           - type: 'null'
-          title: Description
+          title: 描述
         expected_result:
           anyOf:
           - type: string
           - type: 'null'
-          title: Expected Result
+          title: 预期结果
         actual_result:
           anyOf:
           - type: string
           - type: 'null'
-          title: Actual Result
+          title: 实际结果
         reproduce_steps:
           anyOf:
           - type: string
           - type: 'null'
-          title: Reproduce Steps
+          title: 复现步骤
         revision:
           type: integer
           minimum: 1.0
-          title: Revision
+          title: 修订号
+          description: 对象的乐观锁修订号；写入时提交最后读取的修订号。
       type: object
       required:
       - revision
@@ -4627,10 +4660,10 @@ components:
       properties:
         file_id:
           type: integer
-          title: File Id
+          title: 文件 ID
         exists:
           type: boolean
-          title: Exists
+          title: 文件是否存在
       type: object
       required:
       - file_id
@@ -4640,30 +4673,31 @@ components:
       properties:
         id:
           type: integer
-          title: Id
+          title: 唯一标识 ID
         original_name:
           type: string
-          title: Original Name
+          title: 原始文件名
         size:
           type: integer
-          title: Size
+          title: 文件大小（字节）
         mime_type:
           type: string
-          title: Mime Type
+          title: 文件 MIME 类型
         sha256:
           type: string
-          title: Sha256
+          title: 文件 SHA256 校验值
         storage_driver:
           $ref: '#/components/schemas/StorageDriver'
+          title: 存储驱动
         created_at:
           type: string
           format: date-time
-          title: Created At
+          title: 创建时间
         created_by:
           anyOf:
           - type: integer
           - type: 'null'
-          title: Created By
+          title: 创建人 ID
       type: object
       required:
       - id
@@ -4681,26 +4715,26 @@ components:
           items:
             $ref: '#/components/schemas/ValidationError'
           type: array
-          title: Detail
+          title: 校验错误详情
       type: object
       title: HTTPValidationError
     LinkedFeedbackOut:
       properties:
         feedback_id:
           type: integer
-          title: Feedback Id
+          title: 反馈 ID
         feedback_no:
           type: string
-          title: Feedback No
+          title: 反馈编号
         title:
           type: string
-          title: Title
+          title: 标题
         status:
           type: string
-          title: Status
+          title: 状态
         is_primary:
           type: boolean
-          title: Is Primary
+          title: 是否为主关联
       type: object
       required:
       - feedback_id
@@ -4716,12 +4750,12 @@ components:
           type: string
           maxLength: 64
           minLength: 2
-          title: Username
+          title: 用户名
         password:
           type: string
           maxLength: 128
           minLength: 6
-          title: Password
+          title: 密码
       type: object
       required:
       - username
@@ -4731,7 +4765,7 @@ components:
       properties:
         ok:
           type: boolean
-          title: Ok
+          title: 操作是否成功
           default: true
       type: object
       title: LogoutResponse
@@ -4777,20 +4811,22 @@ components:
       properties:
         requirement_id:
           type: integer
-          title: Requirement Id
+          title: 需求 ID
         revision:
           type: integer
           minimum: 1.0
-          title: Revision
+          title: 修订号
+          description: 对象的乐观锁修订号；写入时提交最后读取的修订号。
         version_revision:
           type: integer
           minimum: 1.0
-          title: Version Revision
+          title: 版本修订号
+          description: 目标版本的乐观锁修订号；版本内容变更时用于并发校验。
         reason:
           type: string
           maxLength: 500
           minLength: 2
-          title: Reason
+          title: 操作原因
       type: object
       required:
       - requirement_id
@@ -4802,35 +4838,36 @@ components:
       properties:
         id:
           type: integer
-          title: Id
+          title: 唯一标识 ID
         type:
           $ref: '#/components/schemas/NotificationType'
+          title: 通知类型
         title:
           type: string
-          title: Title
+          title: 标题
         content:
           type: string
-          title: Content
+          title: 内容
         entity_type:
           anyOf:
           - type: string
           - type: 'null'
-          title: Entity Type
+          title: 业务对象类型
         entity_id:
           anyOf:
           - type: integer
           - type: 'null'
-          title: Entity Id
+          title: 业务对象 ID
         read_at:
           anyOf:
           - type: string
             format: date-time
           - type: 'null'
-          title: Read At
+          title: 已读时间
         created_at:
           type: string
           format: date-time
-          title: Created At
+          title: 创建时间
       type: object
       required:
       - id
@@ -4847,7 +4884,7 @@ components:
         updated_count:
           type: integer
           minimum: 0.0
-          title: Updated Count
+          title: 本次更新数量
       type: object
       required:
       - updated_count
@@ -4866,7 +4903,7 @@ components:
         unread_count:
           type: integer
           minimum: 0.0
-          title: Unread Count
+          title: 未读通知数
       type: object
       required:
       - unread_count
@@ -4875,30 +4912,30 @@ components:
       properties:
         id:
           type: integer
-          title: Id
+          title: 唯一标识 ID
         code:
           type: string
-          title: Code
+          title: 编码
         name:
           type: string
-          title: Name
+          title: 名称
         category:
           type: string
-          title: Category
+          title: 权限分类
         group:
           type: string
-          title: Group
+          title: 权限分组
         sensitive:
           type: boolean
-          title: Sensitive
+          title: 是否为敏感权限
         deprecated:
           type: boolean
-          title: Deprecated
+          title: 是否已弃用
         replacement_code:
           anyOf:
           - type: string
           - type: 'null'
-          title: Replacement Code
+          title: 替代权限码
       type: object
       required:
       - id
@@ -4923,18 +4960,18 @@ components:
       properties:
         type:
           type: string
-          title: Type
+          title: 检查类型
         passed:
           type: boolean
-          title: Passed
+          title: 是否通过
         message:
           type: string
-          title: Message
+          title: 消息说明
         blocking_requirements:
           items:
             $ref: '#/components/schemas/BlockingRequirement'
           type: array
-          title: Blocking Requirements
+          title: 阻断发布的需求
           default: []
       type: object
       required:
@@ -4946,12 +4983,12 @@ components:
       properties:
         passed:
           type: boolean
-          title: Passed
+          title: 是否通过
         checks:
           items:
             $ref: '#/components/schemas/PublishCheckItem'
           type: array
-          title: Checks
+          title: 检查项
       type: object
       required:
       - passed
@@ -4961,19 +4998,20 @@ components:
       properties:
         release:
           $ref: '#/components/schemas/ReleaseOut'
+          title: 发布记录
         version_id:
           type: integer
-          title: Version Id
+          title: 版本 ID
         released_requirement_ids:
           items:
             type: integer
           type: array
-          title: Released Requirement Ids
+          title: 本次上线的需求 ID 列表
         online_feedback_ids:
           items:
             type: integer
           type: array
-          title: Online Feedback Ids
+          title: 本次上线的反馈 ID 列表
       type: object
       required:
       - release
@@ -4987,15 +5025,16 @@ components:
         released_at:
           type: string
           format: date-time
-          title: Released At
+          title: 实际发布时间
         release_notes:
           type: string
           minLength: 1
-          title: Release Notes
+          title: 发布说明
         revision:
           type: integer
           minimum: 1.0
-          title: Revision
+          title: 修订号
+          description: 对象的乐观锁修订号；写入时提交最后读取的修订号。
       additionalProperties: false
       type: object
       required:
@@ -5007,7 +5046,7 @@ components:
       properties:
         refresh_token:
           type: string
-          title: Refresh Token
+          title: 刷新令牌
       type: object
       required:
       - refresh_token
@@ -5016,36 +5055,38 @@ components:
       properties:
         id:
           type: integer
-          title: Id
+          title: 发布记录 ID
         version_id:
           type: integer
-          title: Version Id
+          title: 版本 ID
         released_at:
           type: string
           format: date-time
-          title: Released At
+          title: 实际发布时间
         result:
           $ref: '#/components/schemas/ReleaseResult'
+          title: 发布结果
         release_notes:
           type: string
-          title: Release Notes
+          title: 发布说明
         rollback_notes:
           anyOf:
           - type: string
           - type: 'null'
-          title: Rollback Notes
+          title: 回滚说明
         created_at:
           type: string
           format: date-time
-          title: Created At
+          title: 创建时间
         created_by:
           anyOf:
           - type: integer
           - type: 'null'
-          title: Created By
+          title: 创建人 ID
         revision:
           type: integer
-          title: Revision
+          title: 修订号
+          description: 对象的乐观锁修订号；写入时提交最后读取的修订号。
       type: object
       required:
       - id
@@ -5067,16 +5108,16 @@ components:
           items:
             $ref: '#/components/schemas/ReleaseOut'
           type: array
-          title: Items
+          title: 数据列表
         page:
           type: integer
-          title: Page
+          title: 当前页码
         page_size:
           type: integer
-          title: Page Size
+          title: 每页条数
         total:
           type: integer
-          title: Total
+          title: 总条数
       type: object
       required:
       - items
@@ -5094,17 +5135,19 @@ components:
         revision:
           type: integer
           minimum: 1.0
-          title: Revision
+          title: 修订号
+          description: 对象的乐观锁修订号；写入时提交最后读取的修订号。
         version_revision:
           type: integer
           minimum: 1.0
-          title: Version Revision
+          title: 版本修订号
+          description: 目标版本的乐观锁修订号；版本内容变更时用于并发校验。
         reason:
           anyOf:
           - type: string
             maxLength: 500
           - type: 'null'
-          title: Reason
+          title: 操作原因
       type: object
       required:
       - revision
@@ -5116,50 +5159,52 @@ components:
           type: string
           maxLength: 200
           minLength: 2
-          title: Title
+          title: 需求标题
         requirement_type:
           type: string
           maxLength: 32
           minLength: 1
           pattern: ^[A-Z][A-Z0-9_]*$
-          title: Requirement Type
+          title: 需求类型
         priority:
           $ref: '#/components/schemas/Priority'
           default: P2
+          title: 优先级
         system_id:
           anyOf:
           - type: integer
           - type: 'null'
-          title: System Id
+          title: 业务系统 ID
         module_id:
           anyOf:
           - type: integer
           - type: 'null'
-          title: Module Id
+          title: 所属模块 ID
         owner_id:
           anyOf:
           - type: integer
           - type: 'null'
-          title: Owner Id
+          title: 负责人 ID
         description:
           type: string
-          title: Description
+          title: 描述
         acceptance_criteria:
           anyOf:
           - type: string
           - type: 'null'
-          title: Acceptance Criteria
+          title: 验收标准
         version_id:
           anyOf:
           - type: integer
           - type: 'null'
-          title: Version Id
+          title: 版本 ID
         version_revision:
           anyOf:
           - type: integer
             minimum: 1.0
           - type: 'null'
-          title: Version Revision
+          title: 版本修订号
+          description: 目标版本的乐观锁修订号；版本内容变更时用于并发校验。
       type: object
       required:
       - title
@@ -5170,66 +5215,70 @@ components:
       properties:
         id:
           type: integer
-          title: Id
+          title: 需求 ID
         requirement_no:
           type: string
-          title: Requirement No
+          title: 需求编号
         title:
           type: string
-          title: Title
+          title: 需求标题
         requirement_type:
           type: string
-          title: Requirement Type
+          title: 需求类型
         source:
           $ref: '#/components/schemas/RequirementSource'
+          title: 需求来源
         priority:
           $ref: '#/components/schemas/Priority'
+          title: 优先级
         status:
           $ref: '#/components/schemas/RequirementStatus'
+          title: 需求状态
         system_id:
           anyOf:
           - type: integer
           - type: 'null'
-          title: System Id
+          title: 业务系统 ID
         module_id:
           anyOf:
           - type: integer
           - type: 'null'
-          title: Module Id
+          title: 所属模块 ID
         owner_id:
           anyOf:
           - type: integer
           - type: 'null'
-          title: Owner Id
+          title: 负责人 ID
         current_version_id:
           anyOf:
           - type: integer
           - type: 'null'
-          title: Current Version Id
+          title: 当前所属版本 ID
         description:
           type: string
-          title: Description
+          title: 描述
         acceptance_criteria:
           anyOf:
           - type: string
           - type: 'null'
-          title: Acceptance Criteria
+          title: 验收标准
         created_at:
           type: string
           format: date-time
-          title: Created At
+          title: 创建时间
         updated_at:
           type: string
           format: date-time
-          title: Updated At
+          title: 更新时间
         updated_by:
           anyOf:
           - type: integer
           - type: 'null'
-          title: Updated By
+          title: 更新人 ID
         revision:
           type: integer
-          title: Revision
+          title: 修订号
+          description: 对象的乐观锁修订号；写入时提交最后读取的修订号。
       type: object
       required:
       - id
@@ -5256,16 +5305,16 @@ components:
           items:
             $ref: '#/components/schemas/RequirementOut'
           type: array
-          title: Items
+          title: 数据列表
         page:
           type: integer
-          title: Page
+          title: 当前页码
         page_size:
           type: integer
-          title: Page Size
+          title: 每页条数
         total:
           type: integer
-          title: Total
+          title: 总条数
       type: object
       required:
       - items
@@ -5296,17 +5345,19 @@ components:
       properties:
         status:
           $ref: '#/components/schemas/ManualRequirementStatus'
+          title: 需求状态
         revision:
           type: integer
           minimum: 1.0
-          title: Revision
+          title: 修订号
+          description: 对象的乐观锁修订号；写入时提交最后读取的修订号。
         reason:
           anyOf:
           - type: string
             maxLength: 500
             minLength: 2
           - type: 'null'
-          title: Reason
+          title: 操作原因
       type: object
       required:
       - status
@@ -5319,7 +5370,7 @@ components:
           - type: string
             maxLength: 200
           - type: 'null'
-          title: Title
+          title: 需求标题
         requirement_type:
           anyOf:
           - type: string
@@ -5327,40 +5378,42 @@ components:
             minLength: 1
             pattern: ^[A-Z][A-Z0-9_]*$
           - type: 'null'
-          title: Requirement Type
+          title: 需求类型
         priority:
           anyOf:
           - $ref: '#/components/schemas/Priority'
           - type: 'null'
+          title: 优先级
         system_id:
           anyOf:
           - type: integer
           - type: 'null'
-          title: System Id
+          title: 业务系统 ID
         module_id:
           anyOf:
           - type: integer
           - type: 'null'
-          title: Module Id
+          title: 所属模块 ID
         owner_id:
           anyOf:
           - type: integer
           - type: 'null'
-          title: Owner Id
+          title: 负责人 ID
         description:
           anyOf:
           - type: string
           - type: 'null'
-          title: Description
+          title: 描述
         acceptance_criteria:
           anyOf:
           - type: string
           - type: 'null'
-          title: Acceptance Criteria
+          title: 验收标准
         revision:
           type: integer
           minimum: 1.0
-          title: Revision
+          title: 修订号
+          description: 对象的乐观锁修订号；写入时提交最后读取的修订号。
       type: object
       required:
       - revision
@@ -5371,18 +5424,18 @@ components:
           anyOf:
           - type: integer
           - type: 'null'
-          title: Current Revision
+          title: 最新修订号
         current_updated_at:
           anyOf:
           - type: string
             format: date-time
           - type: 'null'
-          title: Current Updated At
+          title: 最新更新时间
         current_updated_by:
           anyOf:
           - type: integer
           - type: 'null'
-          title: Current Updated By
+          title: 最新更新人 ID
       type: object
       required:
       - current_revision
@@ -5394,17 +5447,18 @@ components:
         code:
           type: integer
           const: 40910
-          title: Code
+          title: 错误码
         message:
           type: string
-          title: Message
+          title: 消息说明
         data:
           $ref: '#/components/schemas/RevisionConflictData'
+          title: 附加数据
         request_id:
           anyOf:
           - type: string
           - type: 'null'
-          title: Request Id
+          title: 请求追踪 ID
       type: object
       required:
       - code
@@ -5418,20 +5472,21 @@ components:
           type: string
           maxLength: 64
           minLength: 2
-          title: Code
+          title: 角色编码
         name:
           type: string
           maxLength: 100
           minLength: 1
-          title: Name
+          title: 角色名称
         data_scope:
           $ref: '#/components/schemas/ConfigurableDataScope'
           default: SELF
+          title: 数据范围
         permission_ids:
           items:
             type: integer
           type: array
-          title: Permission Ids
+          title: 权限 ID 列表
       type: object
       required:
       - code
@@ -5441,10 +5496,10 @@ components:
       properties:
         id:
           type: integer
-          title: Id
+          title: 角色 ID
         deleted:
           type: boolean
-          title: Deleted
+          title: 是否已删除
           default: true
       type: object
       required:
@@ -5454,29 +5509,31 @@ components:
       properties:
         id:
           type: integer
-          title: Id
+          title: 角色 ID
         code:
           type: string
-          title: Code
+          title: 角色编码
         name:
           type: string
-          title: Name
+          title: 角色名称
         data_scope:
           $ref: '#/components/schemas/DataScope'
+          title: 数据范围
         enabled:
           type: boolean
-          title: Enabled
+          title: 是否启用
         is_system:
           type: boolean
-          title: Is System
+          title: 是否为系统角色
         revision:
           type: integer
-          title: Revision
+          title: 修订号
+          description: 对象的乐观锁修订号；写入时提交最后读取的修订号。
         permission_ids:
           items:
             type: integer
           type: array
-          title: Permission Ids
+          title: 权限 ID 列表
       type: object
       required:
       - id
@@ -5493,11 +5550,12 @@ components:
           items:
             type: integer
           type: array
-          title: Permission Ids
+          title: 权限 ID 列表
         revision:
           type: integer
           minimum: 1.0
-          title: Revision
+          title: 修订号
+          description: 对象的乐观锁修订号；写入时提交最后读取的修订号。
       type: object
       required:
       - permission_ids
@@ -5511,27 +5569,29 @@ components:
             maxLength: 64
             minLength: 2
           - type: 'null'
-          title: Code
+          title: 角色编码
         name:
           anyOf:
           - type: string
             maxLength: 100
             minLength: 1
           - type: 'null'
-          title: Name
+          title: 角色名称
         data_scope:
           anyOf:
           - $ref: '#/components/schemas/ConfigurableDataScope'
           - type: 'null'
+          title: 数据范围
         enabled:
           anyOf:
           - type: boolean
           - type: 'null'
-          title: Enabled
+          title: 是否启用
         revision:
           type: integer
           minimum: 1.0
-          title: Revision
+          title: 修订号
+          description: 对象的乐观锁修订号；写入时提交最后读取的修订号。
       type: object
       required:
       - revision
@@ -5546,17 +5606,17 @@ components:
       properties:
         access_token:
           type: string
-          title: Access Token
+          title: 访问令牌
         refresh_token:
           type: string
-          title: Refresh Token
+          title: 刷新令牌
         token_type:
           type: string
-          title: Token Type
+          title: 令牌类型
           default: bearer
         must_change_password:
           type: boolean
-          title: Must Change Password
+          title: 是否需要修改密码
       type: object
       required:
       - access_token
@@ -5569,33 +5629,33 @@ components:
           type: string
           maxLength: 64
           minLength: 2
-          title: Username
+          title: 用户名
         display_name:
           type: string
           maxLength: 100
           minLength: 1
-          title: Display Name
+          title: 显示名称
         password:
           type: string
           maxLength: 128
           minLength: 8
-          title: Password
+          title: 密码
         email:
           anyOf:
           - type: string
           - type: 'null'
-          title: Email
+          title: 邮箱
         mobile:
           anyOf:
           - type: string
             maxLength: 32
           - type: 'null'
-          title: Mobile
+          title: 手机号
         role_ids:
           items:
             type: integer
           type: array
-          title: Role Ids
+          title: 角色 ID 列表
       type: object
       required:
       - username
@@ -5606,33 +5666,35 @@ components:
       properties:
         id:
           type: integer
-          title: Id
+          title: 用户 ID
         username:
           type: string
-          title: Username
+          title: 用户名
         display_name:
           type: string
-          title: Display Name
+          title: 显示名称
         email:
           anyOf:
           - type: string
           - type: 'null'
-          title: Email
+          title: 邮箱
         mobile:
           anyOf:
           - type: string
           - type: 'null'
-          title: Mobile
+          title: 手机号
         status:
           $ref: '#/components/schemas/UserStatus'
+          title: 用户状态
         revision:
           type: integer
-          title: Revision
+          title: 修订号
+          description: 对象的乐观锁修订号；写入时提交最后读取的修订号。
         role_ids:
           items:
             type: integer
           type: array
-          title: Role Ids
+          title: 角色 ID 列表
       type: object
       required:
       - id
@@ -5648,16 +5710,16 @@ components:
           items:
             $ref: '#/components/schemas/UserOut'
           type: array
-          title: Items
+          title: 数据列表
         page:
           type: integer
-          title: Page
+          title: 当前页码
         page_size:
           type: integer
-          title: Page Size
+          title: 每页条数
         total:
           type: integer
-          title: Total
+          title: 总条数
       type: object
       required:
       - items
@@ -5671,11 +5733,12 @@ components:
           items:
             type: integer
           type: array
-          title: Role Ids
+          title: 角色 ID 列表
         revision:
           type: integer
           minimum: 1.0
-          title: Revision
+          title: 修订号
+          description: 对象的乐观锁修订号；写入时提交最后读取的修订号。
       type: object
       required:
       - role_ids
@@ -5692,10 +5755,12 @@ components:
       properties:
         status:
           $ref: '#/components/schemas/UserStatus'
+          title: 用户状态
         revision:
           type: integer
           minimum: 1.0
-          title: Revision
+          title: 修订号
+          description: 对象的乐观锁修订号；写入时提交最后读取的修订号。
       type: object
       required:
       - status
@@ -5709,23 +5774,24 @@ components:
             maxLength: 100
             minLength: 1
           - type: 'null'
-          title: Display Name
+          title: 显示名称
         email:
           anyOf:
           - type: string
             maxLength: 255
           - type: 'null'
-          title: Email
+          title: 邮箱
         mobile:
           anyOf:
           - type: string
             maxLength: 32
           - type: 'null'
-          title: Mobile
+          title: 手机号
         revision:
           type: integer
           minimum: 1.0
-          title: Revision
+          title: 修订号
+          description: 对象的乐观锁修订号；写入时提交最后读取的修订号。
       type: object
       required:
       - revision
@@ -5739,18 +5805,18 @@ components:
             - type: string
             - type: integer
           type: array
-          title: Location
+          title: 错误字段位置
         msg:
           type: string
-          title: Message
+          title: 校验错误说明
         type:
           type: string
-          title: Error Type
+          title: 校验错误类型
         input:
-          title: Input
+          title: 校验失败的输入
         ctx:
           type: object
-          title: Context
+          title: 校验上下文
       type: object
       required:
       - loc
@@ -5763,28 +5829,28 @@ components:
           type: string
           maxLength: 32
           minLength: 1
-          title: Version No
+          title: 版本号
         name:
           type: string
           maxLength: 100
           minLength: 1
-          title: Name
+          title: 版本名称
         owner_id:
           anyOf:
           - type: integer
           - type: 'null'
-          title: Owner Id
+          title: 负责人 ID
         planned_release_date:
           anyOf:
           - type: string
             format: date
           - type: 'null'
-          title: Planned Release Date
+          title: 计划发布日期
         description:
           anyOf:
           - type: string
           - type: 'null'
-          title: Description
+          title: 描述
       type: object
       required:
       - version_no
@@ -5794,53 +5860,55 @@ components:
       properties:
         id:
           type: integer
-          title: Id
+          title: 版本 ID
         version_no:
           type: string
-          title: Version No
+          title: 版本号
         name:
           type: string
-          title: Name
+          title: 版本名称
         status:
           $ref: '#/components/schemas/VersionStatus'
+          title: 版本状态
         owner_id:
           anyOf:
           - type: integer
           - type: 'null'
-          title: Owner Id
+          title: 负责人 ID
         planned_release_date:
           anyOf:
           - type: string
             format: date
           - type: 'null'
-          title: Planned Release Date
+          title: 计划发布日期
         released_at:
           anyOf:
           - type: string
             format: date-time
           - type: 'null'
-          title: Released At
+          title: 实际发布时间
         description:
           anyOf:
           - type: string
           - type: 'null'
-          title: Description
+          title: 描述
         created_at:
           type: string
           format: date-time
-          title: Created At
+          title: 创建时间
         updated_at:
           type: string
           format: date-time
-          title: Updated At
+          title: 更新时间
         updated_by:
           anyOf:
           - type: integer
           - type: 'null'
-          title: Updated By
+          title: 更新人 ID
         revision:
           type: integer
-          title: Revision
+          title: 修订号
+          description: 对象的乐观锁修订号；写入时提交最后读取的修订号。
       type: object
       required:
       - id
@@ -5862,16 +5930,16 @@ components:
           items:
             $ref: '#/components/schemas/VersionOut'
           type: array
-          title: Items
+          title: 数据列表
         page:
           type: integer
-          title: Page
+          title: 当前页码
         page_size:
           type: integer
-          title: Page Size
+          title: 每页条数
         total:
           type: integer
-          title: Total
+          title: 总条数
       type: object
       required:
       - items
@@ -5883,14 +5951,15 @@ components:
       properties:
         version_id:
           type: integer
-          title: Version Id
+          title: 版本 ID
         stats:
           $ref: '#/components/schemas/VersionStats'
+          title: 需求统计
         items:
           items:
             $ref: '#/components/schemas/RequirementOut'
           type: array
-          title: Items
+          title: 数据列表
       type: object
       required:
       - version_id
@@ -5901,18 +5970,19 @@ components:
       properties:
         total:
           type: integer
-          title: Total
+          title: 总条数
         by_status:
           additionalProperties:
             type: integer
           type: object
-          title: By Status
+          title: 各状态数量
         completed:
           type: integer
-          title: Completed
+          title: 已完成需求数
         completion_rate:
           type: number
-          title: Completion Rate
+          title: 完成率
+          description: 已完成需求数除以总需求数，取值为 0–1，保留四位小数；无需求时为 0。
       type: object
       required:
       - total
@@ -5934,17 +6004,19 @@ components:
       properties:
         status:
           $ref: '#/components/schemas/ManualVersionStatus'
+          title: 版本状态
         revision:
           type: integer
           minimum: 1.0
-          title: Revision
+          title: 修订号
+          description: 对象的乐观锁修订号；写入时提交最后读取的修订号。
         reason:
           anyOf:
           - type: string
             maxLength: 500
             minLength: 2
           - type: 'null'
-          title: Reason
+          title: 操作原因
       type: object
       required:
       - status
@@ -5957,27 +6029,28 @@ components:
           - type: string
             maxLength: 100
           - type: 'null'
-          title: Name
+          title: 版本名称
         owner_id:
           anyOf:
           - type: integer
           - type: 'null'
-          title: Owner Id
+          title: 负责人 ID
         planned_release_date:
           anyOf:
           - type: string
             format: date
           - type: 'null'
-          title: Planned Release Date
+          title: 计划发布日期
         description:
           anyOf:
           - type: string
           - type: 'null'
-          title: Description
+          title: 描述
         revision:
           type: integer
           minimum: 1.0
-          title: Revision
+          title: 修订号
+          description: 对象的乐观锁修订号；写入时提交最后读取的修订号。
       type: object
       required:
       - revision

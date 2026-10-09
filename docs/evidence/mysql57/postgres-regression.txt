@@ -58,4 +58,3 @@ COMMAND -m mypy app
 Success: no issues found in 98 source files
 
 COMMAND -m compileall -q app
-

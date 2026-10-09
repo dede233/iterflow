@@ -122,7 +122,7 @@
 #8 69.07 Installing collected packages: websockets, uvloop, urllib3, typing-extensions, six, redis, pyyaml, python-multipart, python-dotenv, pymysql, pyjwt, pycparser, pwdlib, psycopg-binary, markupsafe, jmespath, idna, httptools, h11, greenlet, click, annotated-types, annotated-doc, uvicorn, typing-inspection, sqlalchemy, python-dateutil, pydantic-core, psycopg, mako, cffi, anyio, watchfiles, starlette, pydantic, botocore, argon2-cffi-bindings, alembic, s3transfer, pydantic-settings, fastapi, argon2-cffi, boto3
 #8 90.60 Successfully installed alembic-1.20.0 annotated-doc-0.0.5 annotated-types-0.8.0 anyio-4.15.1 argon2-cffi-25.1.0 argon2-cffi-bindings-26.1.0 boto3-1.43.100 botocore-1.43.100 cffi-2.1.1 click-8.5.0 fastapi-0.141.1 greenlet-3.5.6 h11-0.16.0 httptools-0.8.0 idna-3.20 jmespath-1.1.0 mako-1.4.3 markupsafe-3.0.3 psycopg-3.3.6 psycopg-binary-3.3.6 pwdlib-0.3.1 pycparser-3.0 pydantic-2.13.5 pydantic-core-2.46.5 pydantic-settings-2.15.0 pyjwt-2.15.0 pymysql-1.2.3 python-dateutil-2.9.0.post0 python-dotenv-1.2.3 python-multipart-0.0.32 pyyaml-6.0.3 redis-6.4.0 s3transfer-0.19.2 six-1.17.0 sqlalchemy-2.0.54 starlette-1.7.0 typing-extensions-4.16.0 typing-inspection-0.4.4 urllib3-2.8.0 uvicorn-0.53.0 uvloop-0.22.1 watchfiles-1.3.0 websockets-17.1
 #8 90.60 WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
-#8 92.53 
+#8 92.53
 #8 92.53 [notice] A new release of pip is available: 25.0.1 -> 26.2.1
 #8 92.53 [notice] To update, run: pip install --upgrade pip
 #8 DONE 93.1s
@@ -141,7 +141,7 @@
 #11 13.16 Installing collected packages: setuptools
 #11 15.59 Successfully installed setuptools-84.0.0
 #11 15.59 WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
-#11 17.59 
+#11 17.59
 #11 17.59 [notice] A new release of pip is available: 25.0.1 -> 26.2.1
 #11 17.59 [notice] To update, run: pip install --upgrade pip
 #11 25.78 Processing /app
@@ -156,7 +156,7 @@
 #11 33.53 Installing collected packages: iterflow-api
 #11 34.04 Successfully installed iterflow-api-1.8.1
 #11 34.04 WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
-#11 35.91 
+#11 35.91
 #11 35.91 [notice] A new release of pip is available: 25.0.1 -> 26.2.1
 #11 35.91 [notice] To update, run: pip install --upgrade pip
 #11 42.25 No broken requirements found.
@@ -218,10 +218,10 @@
 #11 DONE 0.0s
 
 #12 [build 6/6] RUN npm run build && npm run check:bundle
-#12 1.019 
+#12 1.019
 #12 1.019 > iterflow-web@1.8.1 build
 #12 1.019 > vue-tsc --noEmit && vite build
-#12 1.019 
+#12 1.019
 #12 32.41 vite v6.4.3 building for production...
 #12 32.94 transforming...
 #12 68.26 ✓ 1937 modules transformed.
@@ -362,10 +362,10 @@
 #12 71.44 dist/assets/el-date-picker-CF3W2gwm.js           104.18 kB │ gzip:  29.14 kB
 #12 71.44 dist/assets/index-DB76Uz2l.js                    280.28 kB │ gzip: 105.82 kB
 #12 71.44 ✓ built in 38.90s
-#12 72.39 
+#12 72.39
 #12 72.39 > iterflow-web@1.8.1 check:bundle
 #12 72.39 > node scripts/check-bundle-size.mjs
-#12 72.39 
+#12 72.39
 #12 72.79 Largest JavaScript chunk: index-DB76Uz2l.js (273.7 KiB)
 #12 DONE 73.0s
 

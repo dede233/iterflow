@@ -573,7 +573,7 @@
 2026-10-09T16:49:57.8742060Z   Stored in directory: /tmp/pip-ephem-wheel-cache-lm8u8uvo/wheels/7a/bd/bf/5e305b7cc82a12cc8cda0a058136aad0ffe885040ffe63d468
 2026-10-09T16:49:57.8754835Z Successfully built iterflow-api
 2026-10-09T16:49:58.0606128Z Installing collected packages: sortedcontainers, boolean.py, websockets, uvloop, urllib3, typing-extensions, truststore, tomli-w, tomli, six, ruff, redis, pyyaml, python-multipart, python-dotenv, pyparsing, PyMySQL, pyjwt, pygments, pycparser, pwdlib, psycopg-binary, pluggy, platformdirs, pip-api, pathspec, packaging, packageurl-python, mypy_extensions, msgpack, mdurl, MarkupSafe, license-expression, librt, jmespath, iniconfig, idna, httptools, h11, greenlet, filelock, defusedxml, coverage, click, charset_normalizer, certifi, annotated-types, annotated-doc, uvicorn, typing-inspection, sqlalchemy, requests, python-dateutil, pytest, pydantic-core, py-serializable, psycopg, pip-requirements-parser, opentelemetry-api, mypy, markdown-it-py, Mako, httpcore2, httpcore, cffi, anyio, watchfiles, starlette, rich, pytest-cov, pydantic, httpx2, httpx, cyclonedx-python-lib, CacheControl, botocore, argon2-cffi-bindings, alembic, s3transfer, pydantic-settings, fastapi, argon2-cffi, pip-audit, boto3, iterflow-api
-2026-10-09T16:50:07.0217330Z 
+2026-10-09T16:50:07.0217330Z
 2026-10-09T16:50:07.0268115Z Successfully installed CacheControl-0.14.4 Mako-1.4.3 MarkupSafe-3.0.4 PyMySQL-1.2.3 alembic-1.20.0 annotated-doc-0.0.5 annotated-types-0.8.0 anyio-4.15.1 argon2-cffi-25.1.0 argon2-cffi-bindings-26.1.0 boolean.py-5.0 boto3-1.43.110 botocore-1.43.110 certifi-2026.7.22 cffi-2.1.1 charset_normalizer-3.5.2 click-8.5.0 coverage-7.16.2 cyclonedx-python-lib-11.12.0 defusedxml-0.7.1 fastapi-0.143.0 filelock-4.0.12 greenlet-3.5.6 h11-0.16.0 httpcore-1.0.9 httpcore2-2.13.1 httptools-0.8.0 httpx-0.28.1 httpx2-2.13.1 idna-3.20 iniconfig-2.3.1 iterflow-api-1.8.1 jmespath-1.1.0 librt-0.16.0 license-expression-30.4.4 markdown-it-py-4.2.0 mdurl-0.1.2 msgpack-1.2.3 mypy-1.20.2 mypy_extensions-1.1.0 opentelemetry-api-1.45.1 packageurl-python-0.17.6 packaging-26.3 pathspec-1.1.1 pip-api-0.0.35 pip-audit-2.10.1 pip-requirements-parser-32.0.1 platformdirs-4.12.4 pluggy-1.6.0 psycopg-3.3.6 psycopg-binary-3.3.6 pwdlib-0.3.1 py-serializable-2.1.0 pycparser-3.11 pydantic-2.14.0 pydantic-core-2.50.0 pydantic-settings-2.15.0 pygments-2.21.0 pyjwt-2.15.1 pyparsing-3.3.3 pytest-9.1.1 pytest-cov-6.3.0 python-dateutil-2.9.0.post0 python-dotenv-1.2.4 python-multipart-0.0.32 pyyaml-6.0.3 redis-6.4.0 requests-2.34.2 rich-15.0.0 ruff-0.16.10 s3transfer-0.19.2 six-1.17.0 sortedcontainers-2.4.0 sqlalchemy-2.1.4 starlette-1.7.0 tomli-2.5.0 tomli-w-1.2.0 truststore-0.10.4 typing-extensions-4.16.0 typing-inspection-0.4.4 urllib3-2.8.0 uvicorn-0.54.0 uvloop-0.23.0 watchfiles-1.3.0 websockets-17.2
 2026-10-09T16:50:07.3267434Z ##[group]Run python -m pip_audit
 2026-10-09T16:50:07.3267722Z [36;1mpython -m pip_audit[0m
@@ -694,7 +694,7 @@
 2026-10-09T16:51:05.4207244Z           https://www.postgresql.org/docs/current/auth-trust.html
 2026-10-09T16:51:05.4207587Z           In Docker's default configuration, this is effectively any other
 2026-10-09T16:51:05.4207891Z           container on the same system.
-2026-10-09T16:51:05.4208162Z  
+2026-10-09T16:51:05.4208162Z
 2026-10-09T16:51:05.4208398Z           It is not recommended to use POSTGRES_HOST_AUTH_METHOD=trust. Replace
 2026-10-09T16:51:05.4208789Z           it with "-e POSTGRES_PASSWORD=password" instead to set a password in
 2026-10-09T16:51:05.4209074Z           "docker run".
@@ -749,13 +749,13 @@
 2026-10-09T16:51:05.4238681Z  2026-10-09 16:50:51.094 UTC [205] STATEMENT:  COMMIT
 2026-10-09T16:51:05.4239008Z  The files belonging to this database system will be owned by user "postgres".
 2026-10-09T16:51:05.4239329Z  This user must also own the server process.
-2026-10-09T16:51:05.4239559Z  
+2026-10-09T16:51:05.4239559Z
 2026-10-09T16:51:05.4239790Z  The database cluster will be initialized with locale "en_US.utf8".
 2026-10-09T16:51:05.4240130Z  The default database encoding has accordingly been set to "UTF8".
 2026-10-09T16:51:05.4240604Z  The default text search configuration will be set to "english".
-2026-10-09T16:51:05.4240866Z  
+2026-10-09T16:51:05.4240866Z
 2026-10-09T16:51:05.4241032Z  Data page checksums are disabled.
-2026-10-09T16:51:05.4241230Z  
+2026-10-09T16:51:05.4241230Z
 2026-10-09T16:51:05.4241478Z  fixing permissions on existing directory /var/lib/postgresql/data ... ok
 2026-10-09T16:51:05.4241783Z  creating subdirectories ... ok
 2026-10-09T16:51:05.4242041Z  selecting dynamic shared memory implementation ... posix
@@ -766,12 +766,12 @@
 2026-10-09T16:51:05.4243231Z  running bootstrap script ... ok
 2026-10-09T16:51:05.4243465Z  performing post-bootstrap initialization ... ok
 2026-10-09T16:51:05.4243709Z  syncing data to disk ... ok
-2026-10-09T16:51:05.4243893Z  
-2026-10-09T16:51:05.4244034Z  
+2026-10-09T16:51:05.4243893Z
+2026-10-09T16:51:05.4244034Z
 2026-10-09T16:51:05.4244221Z  Success. You can now start the database server using:
-2026-10-09T16:51:05.4244463Z  
+2026-10-09T16:51:05.4244463Z
 2026-10-09T16:51:05.4244777Z      pg_ctl -D /var/lib/postgresql/data -l logfile start
-2026-10-09T16:51:05.4245018Z  
+2026-10-09T16:51:05.4245018Z
 2026-10-09T16:51:05.4245446Z  waiting for server to start....2026-10-09 16:49:39.717 UTC [43] LOG:  starting PostgreSQL 17.7 on x86_64-pc-linux-musl, compiled by gcc (Alpine 14.2.0) 14.2.0, 64-bit
 2026-10-09T16:51:05.4246045Z  2026-10-09 16:49:39.717 UTC [43] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
 2026-10-09T16:51:05.4246478Z  2026-10-09 16:49:39.720 UTC [46] LOG:  database system was shut down at 2026-10-09 16:49:38 UTC
@@ -779,10 +779,10 @@
 2026-10-09T16:51:05.4247148Z   done
 2026-10-09T16:51:05.4247308Z  server started
 2026-10-09T16:51:05.4247477Z  CREATE DATABASE
-2026-10-09T16:51:05.4247631Z  
-2026-10-09T16:51:05.4247772Z  
+2026-10-09T16:51:05.4247631Z
+2026-10-09T16:51:05.4247772Z
 2026-10-09T16:51:05.4248029Z  /usr/local/bin/docker-entrypoint.sh: ignoring /docker-entrypoint-initdb.d/*
-2026-10-09T16:51:05.4248327Z  
+2026-10-09T16:51:05.4248327Z
 2026-10-09T16:51:05.4248604Z  waiting for server to shut down....2026-10-09 16:49:39.881 UTC [43] LOG:  received fast shutdown request
 2026-10-09T16:51:05.4249001Z  2026-10-09 16:49:39.881 UTC [43] LOG:  aborting any active transactions
 2026-10-09T16:51:05.4249432Z  2026-10-09 16:49:39.885 UTC [43] LOG:  background worker "logical replication launcher" (PID 49) exited with exit code 1
@@ -792,9 +792,9 @@
 2026-10-09T16:51:05.4251853Z  2026-10-09 16:49:39.978 UTC [43] LOG:  database system is shut down
 2026-10-09T16:51:05.4252101Z   done
 2026-10-09T16:51:05.4252263Z  server stopped
-2026-10-09T16:51:05.4252422Z  
+2026-10-09T16:51:05.4252422Z
 2026-10-09T16:51:05.4252715Z  PostgreSQL init process complete; ready for start up.
-2026-10-09T16:51:05.4252953Z  
+2026-10-09T16:51:05.4252953Z
 2026-10-09T16:51:05.4257171Z Stop and remove container: bc214b3b9a254befb43398b3a06fbc30_postgres177alpine322_9c65e8
 2026-10-09T16:51:05.4261242Z ##[command]/usr/bin/docker rm --force 67468ef9c52ca909b895a411f8e751618b6518478b66b86396424cb13dc9518c
 2026-10-09T16:51:05.8211703Z 67468ef9c52ca909b895a411f8e751618b6518478b66b86396424cb13dc9518c
@@ -822,7 +822,7 @@
 2026-10-09T16:51:05.8350457Z  1:M 09 Oct 2026 16:49:40.538 * <search> Redis version found by RedisSearch : 8.2.2 - oss
 2026-10-09T16:51:05.8351072Z  1:M 09 Oct 2026 16:49:40.538 * <search> RediSearch version 8.2.5 (Git=222ad3b)
 2026-10-09T16:51:05.8351650Z  1:M 09 Oct 2026 16:49:40.538 * <search> Low level api version 1 initialized successfully
-2026-10-09T16:51:05.8353444Z  1:M 09 Oct 2026 16:49:40.538 * <search> gc: ON, prefix min length: 2, min word length to stem: 4, prefix max expansions: 200, query timeout (ms): 500, timeout policy: return, cursor read size: 1000, cursor max idle (ms): 300000, max doctable size: 1000000, max number of search results:  1000000, 
+2026-10-09T16:51:05.8353444Z  1:M 09 Oct 2026 16:49:40.538 * <search> gc: ON, prefix min length: 2, min word length to stem: 4, prefix max expansions: 200, query timeout (ms): 500, timeout policy: return, cursor read size: 1000, cursor max idle (ms): 300000, max doctable size: 1000000, max number of search results:  1000000,
 2026-10-09T16:51:05.8354693Z  1:M 09 Oct 2026 16:49:40.538 * <search> Initialized thread pools!
 2026-10-09T16:51:05.8355022Z  1:M 09 Oct 2026 16:49:40.538 * <search> Disabled workers threadpool of size 0
 2026-10-09T16:51:05.8355354Z  1:M 09 Oct 2026 16:49:40.538 * <search> Subscribe to config changes

@@ -55,7 +55,7 @@ web-1    | /docker-entrypoint.sh: Configuration complete; ready for start up
 web-1    | 2026/10/09 17:36:30 [notice] 1#1: using the "epoll" event method
 web-1    | 2026/10/09 17:36:30 [notice] 1#1: nginx/1.29.3
 redis-1  | 1:M 09 Oct 2026 17:36:47.342 * <search> Acquired RedisJSON_V5 API
-web-1    | 2026/10/09 17:36:30 [notice] 1#1: built by gcc 14.2.0 (Alpine 14.2.0) 
+web-1    | 2026/10/09 17:36:30 [notice] 1#1: built by gcc 14.2.0 (Alpine 14.2.0)
 web-1    | 2026/10/09 17:36:30 [notice] 1#1: OS: Linux 6.8.0-117-generic
 web-1    | 2026/10/09 17:36:30 [notice] 1#1: getrlimit(RLIMIT_NOFILE): 1024:524288
 web-1    | 2026/10/09 17:36:30 [notice] 1#1: start worker processes
@@ -105,7 +105,7 @@ redis-1  | 1:M 09 Oct 2026 17:37:29.590 * Module 'bf' loaded from /usr/local/lib
 redis-1  | 1:M 09 Oct 2026 17:37:29.607 * <search> Redis version found by RedisSearch : 8.2.2 - oss
 redis-1  | 1:M 09 Oct 2026 17:37:29.607 * <search> RediSearch version 8.2.5 (Git=222ad3b)
 redis-1  | 1:M 09 Oct 2026 17:37:29.607 * <search> Low level api version 1 initialized successfully
-redis-1  | 1:M 09 Oct 2026 17:37:29.607 * <search> gc: ON, prefix min length: 2, min word length to stem: 4, prefix max expansions: 200, query timeout (ms): 500, timeout policy: return, cursor read size: 1000, cursor max idle (ms): 300000, max doctable size: 1000000, max number of search results:  1000000, 
+redis-1  | 1:M 09 Oct 2026 17:37:29.607 * <search> gc: ON, prefix min length: 2, min word length to stem: 4, prefix max expansions: 200, query timeout (ms): 500, timeout policy: return, cursor read size: 1000, cursor max idle (ms): 300000, max doctable size: 1000000, max number of search results:  1000000,
 redis-1  | 1:M 09 Oct 2026 17:37:29.608 * <search> Initialized thread pools!
 redis-1  | 1:M 09 Oct 2026 17:37:29.608 * <search> Disabled workers threadpool of size 0
 redis-1  | 1:M 09 Oct 2026 17:37:29.608 * <search> Subscribe to config changes
@@ -178,7 +178,7 @@ web-1    | /docker-entrypoint.sh: Launching /docker-entrypoint.d/30-tune-worker-
 web-1    | /docker-entrypoint.sh: Configuration complete; ready for start up
 web-1    | 2026/10/09 17:37:13 [notice] 1#1: using the "epoll" event method
 web-1    | 2026/10/09 17:37:13 [notice] 1#1: nginx/1.29.3
-web-1    | 2026/10/09 17:37:13 [notice] 1#1: built by gcc 14.2.0 (Alpine 14.2.0) 
+web-1    | 2026/10/09 17:37:13 [notice] 1#1: built by gcc 14.2.0 (Alpine 14.2.0)
 web-1    | 2026/10/09 17:37:13 [notice] 1#1: OS: Linux 6.8.0-117-generic
 web-1    | 2026/10/09 17:37:13 [notice] 1#1: getrlimit(RLIMIT_NOFILE): 1024:524288
 web-1    | 2026/10/09 17:37:13 [notice] 1#1: start worker processes
@@ -210,7 +210,7 @@ web-1    | /docker-entrypoint.sh: Launching /docker-entrypoint.d/30-tune-worker-
 web-1    | /docker-entrypoint.sh: Configuration complete; ready for start up
 web-1    | 2026/10/09 17:37:55 [notice] 1#1: using the "epoll" event method
 web-1    | 2026/10/09 17:37:55 [notice] 1#1: nginx/1.29.3
-web-1    | 2026/10/09 17:37:55 [notice] 1#1: built by gcc 14.2.0 (Alpine 14.2.0) 
+web-1    | 2026/10/09 17:37:55 [notice] 1#1: built by gcc 14.2.0 (Alpine 14.2.0)
 web-1    | 2026/10/09 17:37:55 [notice] 1#1: OS: Linux 6.8.0-117-generic
 web-1    | 2026/10/09 17:37:55 [notice] 1#1: getrlimit(RLIMIT_NOFILE): 1024:524288
 web-1    | 2026/10/09 17:37:55 [notice] 1#1: start worker processes

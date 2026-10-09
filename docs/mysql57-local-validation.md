@@ -19,12 +19,16 @@ Apple Silicon 上旧 ARM Colima 的 amd64 用户态模拟发生过退出 139，�
 ```bash
 brew install qemu lima-additional-guestagents
 colima start iterflow-mysql57 --activate=false --arch x86_64 --vm-type qemu \
-  --cpu 2 --memory 3 --disk 25 --mount-type 9p --mount none
+  --cpu 2 --memory 3 --disk 25 --mount-type 9p \
+  --mount /Users/xiaweiyi/Developer/worktrees/iterflow/mysql-57-adaptation/data:w
 docker --context colima-iterflow-mysql57 compose -f tools/mysql57-proof/compose.yml up -d --wait db
 ```
 
 MySQL 的 Compose `platform` 始终是 `linux/amd64`。本地端口 57357 必须空闲；
 仅停止此任务自己建立的旧 proof-db，不停用其他环境来腾端口。
+该 profile 只挂载本工作目录的忽略目录 data：包验收的临时私密配置需要 bind mount，
+文件夹 700、文件 600；测试结束自动删除。数据库仍使用独立 Docker named volume。
+本次新 VM 的 resolv.conf stub 缺失，只修复了该 VM 的 DNS；没有改变现有 profile。
 Redis / PostgreSQL 可在原 context 中独立启动本任务的新实例（57379 / 57332）：
 
 ```bash

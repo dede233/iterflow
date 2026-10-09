@@ -191,7 +191,7 @@
 2026-10-09T16:49:46.3807733Z   DATABASE_URL: postgresql+psycopg://iterflow@localhost:5432/iterflow_test
 2026-10-09T16:49:46.3808227Z   ITERFLOW_TEST_POSTGRES_URL: postgresql+psycopg://iterflow@localhost:5432/iterflow_test
 2026-10-09T16:49:46.3808589Z   REDIS_URL: redis://localhost:6379/15
-2026-10-09T16:49:46.3808897Z   JWT_SECRET: ci-only-test-secret-not-for-production-and-long-enough
+2026-10-09T16:49:46.3808897Z   JWT_SECRET: [redacted]
 2026-10-09T16:49:46.3809197Z   STORAGE_DRIVER: local
 2026-10-09T16:49:46.3809393Z   LOCAL_STORAGE_PATH: ./data/ci-uploads
 2026-10-09T16:49:46.3809602Z   APP_ENV: test
@@ -264,7 +264,7 @@
 2026-10-09T16:49:47.4731752Z   DATABASE_URL: postgresql+psycopg://iterflow@localhost:5432/iterflow_test
 2026-10-09T16:49:47.4732204Z   ITERFLOW_TEST_POSTGRES_URL: postgresql+psycopg://iterflow@localhost:5432/iterflow_test
 2026-10-09T16:49:47.4732564Z   REDIS_URL: redis://localhost:6379/15
-2026-10-09T16:49:47.4732878Z   JWT_SECRET: ci-only-test-secret-not-for-production-and-long-enough
+2026-10-09T16:49:47.4732878Z   JWT_SECRET: [redacted]
 2026-10-09T16:49:47.4733177Z   STORAGE_DRIVER: local
 2026-10-09T16:49:47.4733369Z   LOCAL_STORAGE_PATH: ./data/ci-uploads
 2026-10-09T16:49:47.4733580Z   APP_ENV: test
@@ -281,7 +281,7 @@
 2026-10-09T16:49:47.6221685Z   DATABASE_URL: postgresql+psycopg://iterflow@localhost:5432/iterflow_test
 2026-10-09T16:49:47.6222133Z   ITERFLOW_TEST_POSTGRES_URL: postgresql+psycopg://iterflow@localhost:5432/iterflow_test
 2026-10-09T16:49:47.6222500Z   REDIS_URL: redis://localhost:6379/15
-2026-10-09T16:49:47.6222815Z   JWT_SECRET: ci-only-test-secret-not-for-production-and-long-enough
+2026-10-09T16:49:47.6222815Z   JWT_SECRET: [redacted]
 2026-10-09T16:49:47.6223159Z   STORAGE_DRIVER: local
 2026-10-09T16:49:47.6223377Z   LOCAL_STORAGE_PATH: ./data/ci-uploads
 2026-10-09T16:49:47.6223589Z   APP_ENV: test
@@ -582,7 +582,7 @@
 2026-10-09T16:50:07.3326762Z   DATABASE_URL: postgresql+psycopg://iterflow@localhost:5432/iterflow_test
 2026-10-09T16:50:07.3327214Z   ITERFLOW_TEST_POSTGRES_URL: postgresql+psycopg://iterflow@localhost:5432/iterflow_test
 2026-10-09T16:50:07.3327572Z   REDIS_URL: redis://localhost:6379/15
-2026-10-09T16:50:07.3327883Z   JWT_SECRET: ci-only-test-secret-not-for-production-and-long-enough
+2026-10-09T16:50:07.3327883Z   JWT_SECRET: [redacted]
 2026-10-09T16:50:07.3328188Z   STORAGE_DRIVER: local
 2026-10-09T16:50:07.3328391Z   LOCAL_STORAGE_PATH: ./data/ci-uploads
 2026-10-09T16:50:07.3328599Z   APP_ENV: test
@@ -604,7 +604,7 @@
 2026-10-09T16:50:08.5358170Z   DATABASE_URL: postgresql+psycopg://iterflow@localhost:5432/iterflow_test
 2026-10-09T16:50:08.5358629Z   ITERFLOW_TEST_POSTGRES_URL: postgresql+psycopg://iterflow@localhost:5432/iterflow_test
 2026-10-09T16:50:08.5358988Z   REDIS_URL: redis://localhost:6379/15
-2026-10-09T16:50:08.5359297Z   JWT_SECRET: ci-only-test-secret-not-for-production-and-long-enough
+2026-10-09T16:50:08.5359297Z   JWT_SECRET: [redacted]
 2026-10-09T16:50:08.5359593Z   STORAGE_DRIVER: local
 2026-10-09T16:50:08.5359792Z   LOCAL_STORAGE_PATH: ./data/ci-uploads
 2026-10-09T16:50:08.5360006Z   APP_ENV: test
@@ -631,7 +631,7 @@
 2026-10-09T16:50:49.5569862Z   DATABASE_URL: postgresql+psycopg://iterflow@localhost:5432/iterflow_test
 2026-10-09T16:50:49.5570315Z   ITERFLOW_TEST_POSTGRES_URL: postgresql+psycopg://iterflow@localhost:5432/iterflow_test
 2026-10-09T16:50:49.5570900Z   REDIS_URL: redis://localhost:6379/15
-2026-10-09T16:50:49.5571226Z   JWT_SECRET: ci-only-test-secret-not-for-production-and-long-enough
+2026-10-09T16:50:49.5571226Z   JWT_SECRET: [redacted]
 2026-10-09T16:50:49.5571526Z   STORAGE_DRIVER: local
 2026-10-09T16:50:49.5571723Z   LOCAL_STORAGE_PATH: ./data/ci-uploads
 2026-10-09T16:50:49.5571933Z   APP_ENV: test
@@ -654,7 +654,7 @@
 2026-10-09T16:50:56.1706947Z   DATABASE_URL: postgresql+psycopg://iterflow@localhost:5432/iterflow_test
 2026-10-09T16:50:56.1707413Z   ITERFLOW_TEST_POSTGRES_URL: postgresql+psycopg://iterflow@localhost:5432/iterflow_test
 2026-10-09T16:50:56.1707770Z   REDIS_URL: redis://localhost:6379/15
-2026-10-09T16:50:56.1708087Z   JWT_SECRET: ci-only-test-secret-not-for-production-and-long-enough
+2026-10-09T16:50:56.1708087Z   JWT_SECRET: [redacted]
 2026-10-09T16:50:56.1708399Z   STORAGE_DRIVER: local
 2026-10-09T16:50:56.1708598Z   LOCAL_STORAGE_PATH: ./data/ci-uploads
 2026-10-09T16:50:56.1708808Z   APP_ENV: test

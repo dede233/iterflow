@@ -1,0 +1,325 @@
+web-1  | 172.19.0.1 - - [09/Oct/2026:17:35:59 +0000] "POST /api/v1/versions/1/publish HTTP/1.1" 200 297 "-" "python-httpx/0.28.1" "-"
+web-1  | 172.19.0.1 - - [09/Oct/2026:17:35:59 +0000] "GET /api/v1/requirements/1 HTTP/1.1" 200 388 "-" "python-httpx/0.28.1" "-"
+web-1  | 172.19.0.1 - - [09/Oct/2026:17:35:59 +0000] "GET /api/v1/feedbacks/1 HTTP/1.1" 200 455 "-" "python-httpx/0.28.1" "-"
+web-1  | 172.19.0.1 - - [09/Oct/2026:17:35:59 +0000] "GET /api/v1/notifications HTTP/1.1" 200 221 "-" "python-httpx/0.28.1" "-"
+web-1  | 172.19.0.1 - - [09/Oct/2026:17:35:59 +0000] "POST /api/v1/files HTTP/1.1" 200 232 "-" "python-httpx/0.28.1" "-"
+web-1  | 172.19.0.1 - - [09/Oct/2026:17:35:59 +0000] "GET /api/v1/files/1/download HTTP/1.1" 401 87 "-" "python-httpx/0.28.1" "-"
+web-1  | 172.19.0.1 - - [09/Oct/2026:17:35:59 +0000] "GET /api/v1/files/1/download HTTP/1.1" 200 29 "-" "python-httpx/0.28.1" "-"
+web-1  | 2026/10/09 17:36:00 [notice] 1#1: signal 3 (SIGQUIT) received, shutting down
+web-1    | 2026/10/09 17:36:00 [notice] 21#21: gracefully shutting down
+web-1    | 2026/10/09 17:36:00 [notice] 20#20: gracefully shutting down
+redis-1  | 1:M 09 Oct 2026 17:36:47.328 * Module 'search' loaded from /usr/local/lib/redis/modules//redisearch.so
+web-1    | 2026/10/09 17:36:00 [notice] 20#20: exiting
+web-1    | 2026/10/09 17:36:00 [notice] 21#21: exiting
+web-1    | 2026/10/09 17:36:00 [notice] 20#20: exit
+web-1    | 2026/10/09 17:36:00 [notice] 21#21: exit
+web-1    | 2026/10/09 17:36:00 [notice] 1#1: signal 17 (SIGCHLD) received from 20
+web-1    | 2026/10/09 17:36:00 [notice] 1#1: worker process 20 exited with code 0
+web-1    | 2026/10/09 17:36:00 [notice] 1#1: signal 29 (SIGIO) received
+web-1    | 2026/10/09 17:36:00 [notice] 1#1: signal 17 (SIGCHLD) received from 21
+web-1    | 2026/10/09 17:36:00 [notice] 1#1: worker process 21 exited with code 0
+web-1    | 2026/10/09 17:36:00 [notice] 1#1: exit
+web-1    | /docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
+web-1    | /docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
+redis-1  | 1:M 09 Oct 2026 17:36:47.330 * <timeseries> RedisTimeSeries version 80200, git_sha=1439d4a439ca9c063e6ef124a510abff09a5d493
+redis-1  | 1:M 09 Oct 2026 17:36:47.330 * <timeseries> Redis version found by RedisTimeSeries : 8.2.2 - oss
+redis-1  | 1:M 09 Oct 2026 17:36:47.330 * <timeseries> Registering configuration options: [
+redis-1  | 1:M 09 Oct 2026 17:36:47.330 * <timeseries> 	{ ts-compaction-policy   :              }
+redis-1  | 1:M 09 Oct 2026 17:36:47.330 * <timeseries> 	{ ts-num-threads         :            3 }
+redis-1  | 1:M 09 Oct 2026 17:36:47.330 * <timeseries> 	{ ts-retention-policy    :            0 }
+redis-1  | 1:M 09 Oct 2026 17:36:47.330 * <timeseries> 	{ ts-duplicate-policy    :        block }
+redis-1  | 1:M 09 Oct 2026 17:36:47.331 * <timeseries> 	{ ts-chunk-size-bytes    :         4096 }
+redis-1  | 1:M 09 Oct 2026 17:36:47.331 * <timeseries> 	{ ts-encoding            :   compressed }
+redis-1  | 1:M 09 Oct 2026 17:36:47.331 * <timeseries> 	{ ts-ignore-max-time-diff:            0 }
+redis-1  | 1:M 09 Oct 2026 17:36:47.331 * <timeseries> 	{ ts-ignore-max-val-diff :     0.000000 }
+redis-1  | 1:M 09 Oct 2026 17:36:47.331 * <timeseries> ]
+redis-1  | 1:M 09 Oct 2026 17:36:47.331 * <timeseries> Detected redis oss
+redis-1  | 1:M 09 Oct 2026 17:36:47.333 * <timeseries> Enabled diskless replication
+redis-1  | 1:M 09 Oct 2026 17:36:47.333 * Module 'timeseries' loaded from /usr/local/lib/redis/modules//redistimeseries.so
+redis-1  | 1:M 09 Oct 2026 17:36:47.341 * <ReJSON> Created new data type 'ReJSON-RL'
+redis-1  | 1:M 09 Oct 2026 17:36:47.342 * <ReJSON> version: 80201 git sha: unknown branch: unknown
+redis-1  | 1:M 09 Oct 2026 17:36:47.342 * <ReJSON> Exported RedisJSON_V1 API
+redis-1  | 1:M 09 Oct 2026 17:36:47.342 * <ReJSON> Exported RedisJSON_V2 API
+web-1    | /docker-entrypoint.sh: Launching /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
+web-1    | 10-listen-on-ipv6-by-default.sh: info: can not modify /etc/nginx/conf.d/default.conf (read-only file system?)
+web-1    | /docker-entrypoint.sh: Sourcing /docker-entrypoint.d/15-local-resolvers.envsh
+web-1    | /docker-entrypoint.sh: Launching /docker-entrypoint.d/20-envsubst-on-templates.sh
+redis-1  | 1:M 09 Oct 2026 17:36:47.342 * <ReJSON> Exported RedisJSON_V3 API
+redis-1  | 1:M 09 Oct 2026 17:36:47.342 * <ReJSON> Exported RedisJSON_V4 API
+redis-1  | 1:M 09 Oct 2026 17:36:47.342 * <ReJSON> Exported RedisJSON_V5 API
+redis-1  | 1:M 09 Oct 2026 17:36:47.342 * <ReJSON> Enabled diskless replication
+web-1    | /docker-entrypoint.sh: Launching /docker-entrypoint.d/30-tune-worker-processes.sh
+redis-1  | 1:M 09 Oct 2026 17:36:47.342 * <ReJSON> Initialized shared string cache, thread safe: false.
+redis-1  | 1:M 09 Oct 2026 17:36:47.342 * Module 'ReJSON' loaded from /usr/local/lib/redis/modules//rejson.so
+web-1    | /docker-entrypoint.sh: Configuration complete; ready for start up
+web-1    | 2026/10/09 17:36:30 [notice] 1#1: using the "epoll" event method
+web-1    | 2026/10/09 17:36:30 [notice] 1#1: nginx/1.29.3
+redis-1  | 1:M 09 Oct 2026 17:36:47.342 * <search> Acquired RedisJSON_V5 API
+web-1    | 2026/10/09 17:36:30 [notice] 1#1: built by gcc 14.2.0 (Alpine 14.2.0) 
+web-1    | 2026/10/09 17:36:30 [notice] 1#1: OS: Linux 6.8.0-117-generic
+web-1    | 2026/10/09 17:36:30 [notice] 1#1: getrlimit(RLIMIT_NOFILE): 1024:524288
+web-1    | 2026/10/09 17:36:30 [notice] 1#1: start worker processes
+web-1    | 2026/10/09 17:36:30 [notice] 1#1: start worker process 21
+web-1    | 2026/10/09 17:36:30 [notice] 1#1: start worker process 22
+redis-1  | 1:M 09 Oct 2026 17:36:47.345 * Server initialized
+redis-1  | 1:M 09 Oct 2026 17:36:47.345 * <search> Loading event starts
+redis-1  | 1:M 09 Oct 2026 17:36:47.346 * <search> Enabled workers threadpool of size 4
+redis-1  | 1:M 09 Oct 2026 17:36:47.347 * Reading RDB base file on AOF loading...
+redis-1  | 1:M 09 Oct 2026 17:36:47.347 * Loading RDB produced by version 8.2.2
+redis-1  | 1:M 09 Oct 2026 17:36:47.347 * RDB age 95 seconds
+redis-1  | 1:M 09 Oct 2026 17:36:47.347 * RDB memory usage when created 0.92 Mb
+redis-1  | 1:M 09 Oct 2026 17:36:47.347 * RDB is base AOF
+redis-1  | 1:M 09 Oct 2026 17:36:47.347 * Done loading RDB, keys loaded: 0, keys expired: 0.
+redis-1  | 1:M 09 Oct 2026 17:36:47.350 * DB loaded from base file appendonly.aof.1.base.rdb: 0.004 seconds
+redis-1  | 1:M 09 Oct 2026 17:36:47.350 * <search> Disabled workers threadpool of size 4
+redis-1  | 1:M 09 Oct 2026 17:36:47.350 * <search> Loading event ends
+redis-1  | 1:M 09 Oct 2026 17:36:47.350 * DB loaded from append only file: 0.005 seconds
+redis-1  | 1:M 09 Oct 2026 17:36:47.361 * Opening AOF incr file appendonly.aof.1.incr.aof on server start
+redis-1  | 1:M 09 Oct 2026 17:36:47.361 * Ready to accept connections tcp
+redis-1  | 1:signal-handler (1791567447) Received SIGTERM scheduling shutdown...
+redis-1  | 1:M 09 Oct 2026 17:37:28.027 * User requested shutdown...
+redis-1  | 1:M 09 Oct 2026 17:37:28.028 * Calling fsync() on the AOF file.
+redis-1  | 1:M 09 Oct 2026 17:37:28.028 * Saving the final RDB snapshot before exiting.
+redis-1  | 1:M 09 Oct 2026 17:37:28.033 * DB saved on disk
+redis-1  | 1:M 09 Oct 2026 17:37:28.037 # Redis is now ready to exit, bye bye...
+redis-1  | Starting Redis Server
+redis-1  | 1:C 09 Oct 2026 17:37:29.573 # WARNING Memory overcommit must be enabled! Without it, a background save or replication may fail under low memory condition. Being disabled, it can also cause failures without low memory condition, see https://github.com/jemalloc/jemalloc/issues/1328. To fix this issue add 'vm.overcommit_memory = 1' to /etc/sysctl.conf and then reboot or run the command 'sysctl vm.overcommit_memory=1' for this to take effect.
+redis-1  | 1:C 09 Oct 2026 17:37:29.574 * oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+redis-1  | 1:C 09 Oct 2026 17:37:29.574 * Redis version=8.2.2, bits=64, commit=00000000, modified=1, pid=1, just started
+redis-1  | 1:C 09 Oct 2026 17:37:29.574 * Configuration loaded
+redis-1  | 1:M 09 Oct 2026 17:37:29.578 * Increased maximum number of open files to 10032 (it was originally set to 1024).
+redis-1  | 1:M 09 Oct 2026 17:37:29.578 * monotonic clock: POSIX clock_gettime
+redis-1  | 1:M 09 Oct 2026 17:37:29.584 * Running mode=standalone, port=6379.
+redis-1  | 1:M 09 Oct 2026 17:37:29.588 * <bf> RedisBloom version 8.2.3 (Git=unknown)
+redis-1  | 1:M 09 Oct 2026 17:37:29.589 * <bf> Registering configuration options: [
+redis-1  | 1:M 09 Oct 2026 17:37:29.589 * <bf> 	{ bf-error-rate       :      0.01 }
+redis-1  | 1:M 09 Oct 2026 17:37:29.589 * <bf> 	{ bf-initial-size     :       100 }
+redis-1  | 1:M 09 Oct 2026 17:37:29.589 * <bf> 	{ bf-expansion-factor :         2 }
+redis-1  | 1:M 09 Oct 2026 17:37:29.589 * <bf> 	{ cf-bucket-size      :         2 }
+redis-1  | 1:M 09 Oct 2026 17:37:29.589 * <bf> 	{ cf-initial-size     :      1024 }
+redis-1  | 1:M 09 Oct 2026 17:37:29.589 * <bf> 	{ cf-max-iterations   :        20 }
+redis-1  | 1:M 09 Oct 2026 17:37:29.589 * <bf> 	{ cf-expansion-factor :         1 }
+redis-1  | 1:M 09 Oct 2026 17:37:29.589 * <bf> 	{ cf-max-expansions   :        32 }
+redis-1  | 1:M 09 Oct 2026 17:37:29.589 * <bf> ]
+redis-1  | 1:M 09 Oct 2026 17:37:29.590 * Module 'bf' loaded from /usr/local/lib/redis/modules//redisbloom.so
+redis-1  | 1:M 09 Oct 2026 17:37:29.607 * <search> Redis version found by RedisSearch : 8.2.2 - oss
+redis-1  | 1:M 09 Oct 2026 17:37:29.607 * <search> RediSearch version 8.2.5 (Git=222ad3b)
+redis-1  | 1:M 09 Oct 2026 17:37:29.607 * <search> Low level api version 1 initialized successfully
+redis-1  | 1:M 09 Oct 2026 17:37:29.607 * <search> gc: ON, prefix min length: 2, min word length to stem: 4, prefix max expansions: 200, query timeout (ms): 500, timeout policy: return, cursor read size: 1000, cursor max idle (ms): 300000, max doctable size: 1000000, max number of search results:  1000000, 
+redis-1  | 1:M 09 Oct 2026 17:37:29.608 * <search> Initialized thread pools!
+redis-1  | 1:M 09 Oct 2026 17:37:29.608 * <search> Disabled workers threadpool of size 0
+redis-1  | 1:M 09 Oct 2026 17:37:29.608 * <search> Subscribe to config changes
+redis-1  | 1:M 09 Oct 2026 17:37:29.608 * <search> Enabled role change notification
+redis-1  | 1:M 09 Oct 2026 17:37:29.610 * <search> Cluster configuration: AUTO partitions, type: 0, coordinator timeout: 0ms
+redis-1  | 1:M 09 Oct 2026 17:37:29.611 * <search> Register write commands
+redis-1  | 1:M 09 Oct 2026 17:37:29.612 * Module 'search' loaded from /usr/local/lib/redis/modules//redisearch.so
+redis-1  | 1:M 09 Oct 2026 17:37:29.614 * <timeseries> RedisTimeSeries version 80200, git_sha=1439d4a439ca9c063e6ef124a510abff09a5d493
+redis-1  | 1:M 09 Oct 2026 17:37:29.615 * <timeseries> Redis version found by RedisTimeSeries : 8.2.2 - oss
+redis-1  | 1:M 09 Oct 2026 17:37:29.615 * <timeseries> Registering configuration options: [
+redis-1  | 1:M 09 Oct 2026 17:37:29.615 * <timeseries> 	{ ts-compaction-policy   :              }
+redis-1  | 1:M 09 Oct 2026 17:37:29.615 * <timeseries> 	{ ts-num-threads         :            3 }
+redis-1  | 1:M 09 Oct 2026 17:37:29.615 * <timeseries> 	{ ts-retention-policy    :            0 }
+redis-1  | 1:M 09 Oct 2026 17:37:29.615 * <timeseries> 	{ ts-duplicate-policy    :        block }
+redis-1  | 1:M 09 Oct 2026 17:37:29.615 * <timeseries> 	{ ts-chunk-size-bytes    :         4096 }
+redis-1  | 1:M 09 Oct 2026 17:37:29.615 * <timeseries> 	{ ts-encoding            :   compressed }
+redis-1  | 1:M 09 Oct 2026 17:37:29.615 * <timeseries> 	{ ts-ignore-max-time-diff:            0 }
+redis-1  | 1:M 09 Oct 2026 17:37:29.615 * <timeseries> 	{ ts-ignore-max-val-diff :     0.000000 }
+redis-1  | 1:M 09 Oct 2026 17:37:29.615 * <timeseries> ]
+redis-1  | 1:M 09 Oct 2026 17:37:29.616 * <timeseries> Detected redis oss
+redis-1  | 1:M 09 Oct 2026 17:37:29.618 * <timeseries> Enabled diskless replication
+redis-1  | 1:M 09 Oct 2026 17:37:29.618 * Module 'timeseries' loaded from /usr/local/lib/redis/modules//redistimeseries.so
+redis-1  | 1:M 09 Oct 2026 17:37:29.623 * <ReJSON> Created new data type 'ReJSON-RL'
+redis-1  | 1:M 09 Oct 2026 17:37:29.625 * <ReJSON> version: 80201 git sha: unknown branch: unknown
+redis-1  | 1:M 09 Oct 2026 17:37:29.625 * <ReJSON> Exported RedisJSON_V1 API
+redis-1  | 1:M 09 Oct 2026 17:37:29.625 * <ReJSON> Exported RedisJSON_V2 API
+redis-1  | 1:M 09 Oct 2026 17:37:29.625 * <ReJSON> Exported RedisJSON_V3 API
+redis-1  | 1:M 09 Oct 2026 17:37:29.625 * <ReJSON> Exported RedisJSON_V4 API
+redis-1  | 1:M 09 Oct 2026 17:37:29.625 * <ReJSON> Exported RedisJSON_V5 API
+redis-1  | 1:M 09 Oct 2026 17:37:29.625 * <ReJSON> Enabled diskless replication
+redis-1  | 1:M 09 Oct 2026 17:37:29.625 * <ReJSON> Initialized shared string cache, thread safe: false.
+redis-1  | 1:M 09 Oct 2026 17:37:29.625 * Module 'ReJSON' loaded from /usr/local/lib/redis/modules//rejson.so
+redis-1  | 1:M 09 Oct 2026 17:37:29.625 * <search> Acquired RedisJSON_V5 API
+redis-1  | 1:M 09 Oct 2026 17:37:29.628 * Server initialized
+redis-1  | 1:M 09 Oct 2026 17:37:29.629 * <search> Loading event starts
+redis-1  | 1:M 09 Oct 2026 17:37:29.629 * <search> Enabled workers threadpool of size 4
+redis-1  | 1:M 09 Oct 2026 17:37:29.631 * Reading RDB base file on AOF loading...
+redis-1  | 1:M 09 Oct 2026 17:37:29.631 * Loading RDB produced by version 8.2.2
+redis-1  | 1:M 09 Oct 2026 17:37:29.631 * RDB age 137 seconds
+redis-1  | 1:M 09 Oct 2026 17:37:29.631 * RDB memory usage when created 0.92 Mb
+redis-1  | 1:M 09 Oct 2026 17:37:29.631 * RDB is base AOF
+redis-1  | 1:M 09 Oct 2026 17:37:29.631 * Done loading RDB, keys loaded: 0, keys expired: 0.
+redis-1  | 1:M 09 Oct 2026 17:37:29.634 * DB loaded from base file appendonly.aof.1.base.rdb: 0.005 seconds
+redis-1  | 1:M 09 Oct 2026 17:37:29.635 * <search> Disabled workers threadpool of size 4
+redis-1  | 1:M 09 Oct 2026 17:37:29.635 * <search> Loading event ends
+redis-1  | 1:M 09 Oct 2026 17:37:29.635 * DB loaded from append only file: 0.006 seconds
+redis-1  | 1:M 09 Oct 2026 17:37:29.642 * Opening AOF incr file appendonly.aof.1.incr.aof on server start
+redis-1  | 1:M 09 Oct 2026 17:37:29.642 * Ready to accept connections tcp
+web-1    | 127.0.0.1 - - [09/Oct/2026:17:36:41 +0000] "GET / HTTP/1.1" 200 392 "-" "Wget" "-"
+web-1    | 172.19.0.1 - - [09/Oct/2026:17:36:41 +0000] "GET /api/v1/auth/me HTTP/1.1" 200 804 "-" "python-httpx/0.28.1" "-"
+web-1    | 172.19.0.1 - - [09/Oct/2026:17:36:41 +0000] "GET /api/v1/files/1/download HTTP/1.1" 200 29 "-" "python-httpx/0.28.1" "-"
+web-1    | 2026/10/09 17:36:42 [notice] 1#1: signal 3 (SIGQUIT) received, shutting down
+web-1    | 2026/10/09 17:36:42 [notice] 21#21: gracefully shutting down
+web-1    | 2026/10/09 17:36:42 [notice] 21#21: exiting
+web-1    | 2026/10/09 17:36:42 [notice] 22#22: gracefully shutting down
+web-1    | 2026/10/09 17:36:42 [notice] 22#22: exiting
+web-1    | 2026/10/09 17:36:42 [notice] 21#21: exit
+web-1    | 2026/10/09 17:36:42 [notice] 22#22: exit
+web-1    | 2026/10/09 17:36:42 [notice] 1#1: signal 17 (SIGCHLD) received from 21
+web-1    | 2026/10/09 17:36:42 [notice] 1#1: worker process 21 exited with code 0
+web-1    | 2026/10/09 17:36:42 [notice] 1#1: worker process 22 exited with code 0
+web-1    | 2026/10/09 17:36:42 [notice] 1#1: exit
+web-1    | /docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
+web-1    | /docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
+web-1    | /docker-entrypoint.sh: Launching /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
+web-1    | 10-listen-on-ipv6-by-default.sh: info: can not modify /etc/nginx/conf.d/default.conf (read-only file system?)
+web-1    | /docker-entrypoint.sh: Sourcing /docker-entrypoint.d/15-local-resolvers.envsh
+web-1    | /docker-entrypoint.sh: Launching /docker-entrypoint.d/20-envsubst-on-templates.sh
+web-1    | /docker-entrypoint.sh: Launching /docker-entrypoint.d/30-tune-worker-processes.sh
+web-1    | /docker-entrypoint.sh: Configuration complete; ready for start up
+web-1    | 2026/10/09 17:37:13 [notice] 1#1: using the "epoll" event method
+web-1    | 2026/10/09 17:37:13 [notice] 1#1: nginx/1.29.3
+web-1    | 2026/10/09 17:37:13 [notice] 1#1: built by gcc 14.2.0 (Alpine 14.2.0) 
+web-1    | 2026/10/09 17:37:13 [notice] 1#1: OS: Linux 6.8.0-117-generic
+web-1    | 2026/10/09 17:37:13 [notice] 1#1: getrlimit(RLIMIT_NOFILE): 1024:524288
+web-1    | 2026/10/09 17:37:13 [notice] 1#1: start worker processes
+web-1    | 2026/10/09 17:37:13 [notice] 1#1: start worker process 21
+web-1    | 2026/10/09 17:37:13 [notice] 1#1: start worker process 22
+web-1    | 127.0.0.1 - - [09/Oct/2026:17:37:24 +0000] "GET / HTTP/1.1" 200 392 "-" "Wget" "-"
+web-1    | 172.19.0.1 - - [09/Oct/2026:17:37:24 +0000] "GET /api/v1/auth/me HTTP/1.1" 200 804 "-" "python-httpx/0.28.1" "-"
+web-1    | 172.19.0.1 - - [09/Oct/2026:17:37:24 +0000] "GET /api/v1/files/1/download HTTP/1.1" 200 29 "-" "python-httpx/0.28.1" "-"
+web-1    | 2026/10/09 17:37:25 [notice] 1#1: signal 3 (SIGQUIT) received, shutting down
+web-1    | 2026/10/09 17:37:25 [notice] 22#22: gracefully shutting down
+web-1    | 2026/10/09 17:37:25 [notice] 21#21: gracefully shutting down
+web-1    | 2026/10/09 17:37:25 [notice] 22#22: exiting
+web-1    | 2026/10/09 17:37:25 [notice] 21#21: exiting
+web-1    | 2026/10/09 17:37:25 [notice] 22#22: exit
+web-1    | 2026/10/09 17:37:25 [notice] 21#21: exit
+web-1    | 2026/10/09 17:37:25 [notice] 1#1: signal 17 (SIGCHLD) received from 21
+web-1    | 2026/10/09 17:37:25 [notice] 1#1: worker process 21 exited with code 0
+web-1    | 2026/10/09 17:37:25 [notice] 1#1: signal 29 (SIGIO) received
+web-1    | 2026/10/09 17:37:25 [notice] 1#1: signal 17 (SIGCHLD) received from 22
+web-1    | 2026/10/09 17:37:25 [notice] 1#1: worker process 22 exited with code 0
+web-1    | 2026/10/09 17:37:25 [notice] 1#1: exit
+web-1    | /docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
+web-1    | /docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
+web-1    | /docker-entrypoint.sh: Launching /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
+web-1    | 10-listen-on-ipv6-by-default.sh: info: can not modify /etc/nginx/conf.d/default.conf (read-only file system?)
+web-1    | /docker-entrypoint.sh: Sourcing /docker-entrypoint.d/15-local-resolvers.envsh
+web-1    | /docker-entrypoint.sh: Launching /docker-entrypoint.d/20-envsubst-on-templates.sh
+web-1    | /docker-entrypoint.sh: Launching /docker-entrypoint.d/30-tune-worker-processes.sh
+web-1    | /docker-entrypoint.sh: Configuration complete; ready for start up
+web-1    | 2026/10/09 17:37:55 [notice] 1#1: using the "epoll" event method
+web-1    | 2026/10/09 17:37:55 [notice] 1#1: nginx/1.29.3
+web-1    | 2026/10/09 17:37:55 [notice] 1#1: built by gcc 14.2.0 (Alpine 14.2.0) 
+web-1    | 2026/10/09 17:37:55 [notice] 1#1: OS: Linux 6.8.0-117-generic
+web-1    | 2026/10/09 17:37:55 [notice] 1#1: getrlimit(RLIMIT_NOFILE): 1024:524288
+web-1    | 2026/10/09 17:37:55 [notice] 1#1: start worker processes
+web-1    | 2026/10/09 17:37:55 [notice] 1#1: start worker process 21
+web-1    | 2026/10/09 17:37:55 [notice] 1#1: start worker process 22
+web-1    | 127.0.0.1 - - [09/Oct/2026:17:38:05 +0000] "GET / HTTP/1.1" 200 392 "-" "Wget" "-"
+web-1    | 172.19.0.1 - - [09/Oct/2026:17:38:05 +0000] "GET /api/v1/auth/me HTTP/1.1" 200 804 "-" "python-httpx/0.28.1" "-"
+web-1    | 172.19.0.1 - - [09/Oct/2026:17:38:05 +0000] "GET /api/v1/files/1/download HTTP/1.1" 200 29 "-" "python-httpx/0.28.1" "-"
+web-1    | 172.19.0.1 - - [09/Oct/2026:17:38:06 +0000] "GET /api/v1/files/1/download HTTP/1.1" 200 29 "-" "python-httpx/0.28.1" "-"
+web-1    | 172.19.0.1 - - [09/Oct/2026:17:38:06 +0000] "GET /api/v1/requirements/1 HTTP/1.1" 200 388 "-" "python-httpx/0.28.1" "-"
+web-1    | 127.0.0.1 - - [09/Oct/2026:17:38:15 +0000] "GET / HTTP/1.1" 200 392 "-" "Wget" "-"
+web-1    | 127.0.0.1 - - [09/Oct/2026:17:38:25 +0000] "GET / HTTP/1.1" 200 392 "-" "Wget" "-"
+web-1    | 127.0.0.1 - - [09/Oct/2026:17:38:36 +0000] "GET / HTTP/1.1" 200 392 "-" "Wget" "-"
+web-1    | 172.19.0.1 - - [09/Oct/2026:17:38:36 +0000] "GET /api/v1/auth/me HTTP/1.1" 200 804 "-" "python-httpx/0.28.1" "-"
+web-1    | 2026/10/09 17:38:36 [notice] 1#1: signal 3 (SIGQUIT) received, shutting down
+web-1    | 2026/10/09 17:38:36 [notice] 22#22: gracefully shutting down
+web-1    | 2026/10/09 17:38:36 [notice] 21#21: gracefully shutting down
+web-1    | 2026/10/09 17:38:36 [notice] 21#21: exiting
+web-1    | 2026/10/09 17:38:36 [notice] 22#22: exiting
+web-1    | 2026/10/09 17:38:36 [notice] 21#21: exit
+web-1    | 2026/10/09 17:38:36 [notice] 22#22: exit
+web-1    | 2026/10/09 17:38:36 [notice] 1#1: signal 17 (SIGCHLD) received from 21
+web-1    | 2026/10/09 17:38:36 [notice] 1#1: worker process 21 exited with code 0
+web-1    | 2026/10/09 17:38:36 [notice] 1#1: signal 29 (SIGIO) received
+web-1    | 2026/10/09 17:38:36 [notice] 1#1: signal 17 (SIGCHLD) received from 22
+web-1    | 2026/10/09 17:38:36 [notice] 1#1: worker process 22 exited with code 0
+web-1    | 2026/10/09 17:38:36 [notice] 1#1: exit
+api-1    | INFO:     Started server process [1]
+api-1    | INFO:     Waiting for application startup.
+api-1    | INFO:     Application startup complete.
+api-1    | INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+api-1    | {"timestamp": "2026-10-09T17:35:37.115196+00:00", "level": "INFO", "message": "http request", "request_id": "req_b520ec52d8e04b17", "method": "GET", "path": "/ready", "status_code": 200, "duration_ms": 1248.75, "client_ip": "127.0.0.1"}
+api-1    | {"timestamp": "2026-10-09T17:35:49.233134+00:00", "level": "INFO", "message": "http request", "request_id": "req_87e6ba8141ea43cf", "method": "GET", "path": "/ready", "status_code": 200, "duration_ms": 79.14, "client_ip": "172.19.0.1"}
+api-1    | {"timestamp": "2026-10-09T17:35:49.272981+00:00", "level": "INFO", "message": "http request", "request_id": "req_76f0d088df284db3", "method": "GET", "path": "/health", "status_code": 200, "duration_ms": 14.39, "client_ip": "172.19.0.1"}
+api-1    | {"timestamp": "2026-10-09T17:35:50.920169+00:00", "level": "INFO", "message": "http request", "request_id": "req_4d3b08f36b17459e", "method": "POST", "path": "/api/v1/auth/login", "status_code": 200, "duration_ms": 1618.24, "client_ip": "172.19.0.4"}
+api-1    | {"timestamp": "2026-10-09T17:35:53.057985+00:00", "level": "INFO", "message": "http request", "request_id": "req_c47225f2c4144ec3", "method": "POST", "path": "/api/v1/auth/change-password", "status_code": 200, "duration_ms": 2115.49, "client_ip": "172.19.0.4"}
+api-1    | {"timestamp": "2026-10-09T17:35:53.320263+00:00", "level": "INFO", "message": "http request", "request_id": "req_a2d36468990e4fec", "method": "GET", "path": "/api/v1/roles/permissions", "status_code": 200, "duration_ms": 237.83, "client_ip": "172.19.0.4"}
+api-1    | {"timestamp": "2026-10-09T17:35:53.554059+00:00", "level": "INFO", "message": "http request", "request_id": "req_b762987054f64023", "method": "POST", "path": "/api/v1/roles", "status_code": 200, "duration_ms": 207.07, "client_ip": "172.19.0.4"}
+api-1    | {"timestamp": "2026-10-09T17:35:54.695750+00:00", "level": "INFO", "message": "http request", "request_id": "req_3454f77804404499", "method": "POST", "path": "/api/v1/users", "status_code": 200, "duration_ms": 1125.74, "client_ip": "172.19.0.4"}
+api-1    | {"timestamp": "2026-10-09T17:35:55.845745+00:00", "level": "INFO", "message": "http request", "request_id": "req_f5b4e5b312084db9", "method": "POST", "path": "/api/v1/auth/login", "status_code": 200, "duration_ms": 1131.59, "client_ip": "172.19.0.4"}
+api-1    | {"timestamp": "2026-10-09T17:35:56.925792+00:00", "level": "INFO", "message": "http request", "request_id": "req_7496530bd1cb4741", "method": "GET", "path": "/ready", "status_code": 200, "duration_ms": 1013.19, "client_ip": "127.0.0.1"}
+api-1    | {"timestamp": "2026-10-09T17:35:57.839701+00:00", "level": "INFO", "message": "http request", "request_id": "req_9d6652ae5af646a3", "method": "POST", "path": "/api/v1/auth/change-password", "status_code": 200, "duration_ms": 1979.55, "client_ip": "172.19.0.4"}
+api-1    | {"timestamp": "2026-10-09T17:35:57.947621+00:00", "level": "INFO", "message": "http request", "request_id": "req_bb5067eede714b15", "method": "POST", "path": "/api/v1/feedbacks", "status_code": 200, "duration_ms": 92.66, "client_ip": "172.19.0.4"}
+api-1    | {"timestamp": "2026-10-09T17:35:58.053489+00:00", "level": "INFO", "message": "http request", "request_id": "req_9f04408509104677", "method": "PATCH", "path": "/api/v1/feedbacks/1/status", "status_code": 200, "duration_ms": 91.01, "client_ip": "172.19.0.4"}
+api-1    | {"timestamp": "2026-10-09T17:35:58.122986+00:00", "level": "INFO", "message": "http request", "request_id": "req_13cb60c803344f53", "method": "POST", "path": "/api/v1/feedbacks/1/convert", "status_code": 200, "duration_ms": 160.07, "client_ip": "172.19.0.4"}
+api-1    | {"timestamp": "2026-10-09T17:35:58.219768+00:00", "level": "INFO", "message": "http request", "request_id": "req_d01109437e9e4a38", "method": "PATCH", "path": "/api/v1/requirements/1", "status_code": 200, "duration_ms": 83.59, "client_ip": "172.19.0.4"}
+api-1    | {"timestamp": "2026-10-09T17:35:58.304284+00:00", "level": "INFO", "message": "http request", "request_id": "req_86b0822e0a794dfa", "method": "PATCH", "path": "/api/v1/requirements/1", "status_code": 409, "duration_ms": 71.64, "client_ip": "172.19.0.4"}
+api-1    | {"timestamp": "2026-10-09T17:35:58.389223+00:00", "level": "INFO", "message": "http request", "request_id": "req_517d1b173a51455f", "method": "POST", "path": "/api/v1/versions", "status_code": 200, "duration_ms": 71.07, "client_ip": "172.19.0.4"}
+api-1    | {"timestamp": "2026-10-09T17:35:58.536543+00:00", "level": "INFO", "message": "http request", "request_id": "req_4d1735f6e2b541f6", "method": "POST", "path": "/api/v1/versions/1/requirements", "status_code": 200, "duration_ms": 132.11, "client_ip": "172.19.0.4"}
+api-1    | {"timestamp": "2026-10-09T17:35:58.590570+00:00", "level": "INFO", "message": "http request", "request_id": "req_7752a95dbc384234", "method": "GET", "path": "/api/v1/requirements/1", "status_code": 200, "duration_ms": 40.58, "client_ip": "172.19.0.4"}
+api-1    | {"timestamp": "2026-10-09T17:35:58.667102+00:00", "level": "INFO", "message": "http request", "request_id": "req_b7bae30c69ea43cd", "method": "PATCH", "path": "/api/v1/requirements/1/status", "status_code": 200, "duration_ms": 63.87, "client_ip": "172.19.0.4"}
+api-1    | {"timestamp": "2026-10-09T17:35:58.738939+00:00", "level": "INFO", "message": "http request", "request_id": "req_3066888e1c3847e0", "method": "PATCH", "path": "/api/v1/requirements/1/status", "status_code": 200, "duration_ms": 57.53, "client_ip": "172.19.0.4"}
+api-1    | {"timestamp": "2026-10-09T17:35:58.825796+00:00", "level": "INFO", "message": "http request", "request_id": "req_681352d11a364d5c", "method": "PATCH", "path": "/api/v1/requirements/1/status", "status_code": 200, "duration_ms": 72.54, "client_ip": "172.19.0.4"}
+api-1    | {"timestamp": "2026-10-09T17:35:58.927053+00:00", "level": "INFO", "message": "http request", "request_id": "req_9302af0513124bdb", "method": "PATCH", "path": "/api/v1/versions/1/status", "status_code": 200, "duration_ms": 86.57, "client_ip": "172.19.0.4"}
+api-1    | {"timestamp": "2026-10-09T17:35:59.024333+00:00", "level": "INFO", "message": "http request", "request_id": "req_00ce6df07de44c9c", "method": "PATCH", "path": "/api/v1/versions/1/status", "status_code": 200, "duration_ms": 77.24, "client_ip": "172.19.0.4"}
+api-1    | {"timestamp": "2026-10-09T17:35:59.127458+00:00", "level": "INFO", "message": "http request", "request_id": "req_e23d1a6e37bf4ca5", "method": "PATCH", "path": "/api/v1/versions/1/status", "status_code": 200, "duration_ms": 79.16, "client_ip": "172.19.0.4"}
+api-1    | {"timestamp": "2026-10-09T17:35:59.364240+00:00", "level": "INFO", "message": "http request", "request_id": "req_f4476b0521d24548", "method": "POST", "path": "/api/v1/versions/1/publish", "status_code": 200, "duration_ms": 222.5, "client_ip": "172.19.0.4"}
+api-1    | {"timestamp": "2026-10-09T17:35:59.416036+00:00", "level": "INFO", "message": "http request", "request_id": "req_7018fcfc1d754f11", "method": "GET", "path": "/api/v1/requirements/1", "status_code": 200, "duration_ms": 40.0, "client_ip": "172.19.0.4"}
+api-1    | {"timestamp": "2026-10-09T17:35:59.469857+00:00", "level": "INFO", "message": "http request", "request_id": "req_881cae3777e84f70", "method": "GET", "path": "/api/v1/feedbacks/1", "status_code": 200, "duration_ms": 38.09, "client_ip": "172.19.0.4"}
+api-1    | {"timestamp": "2026-10-09T17:35:59.520490+00:00", "level": "INFO", "message": "http request", "request_id": "req_801a68eaf5dd45d2", "method": "GET", "path": "/api/v1/notifications", "status_code": 200, "duration_ms": 37.78, "client_ip": "172.19.0.4"}
+api-1    | {"timestamp": "2026-10-09T17:35:59.621495+00:00", "level": "INFO", "message": "http request", "request_id": "req_2fd8f93a732c4694", "method": "POST", "path": "/api/v1/files", "status_code": 200, "duration_ms": 78.32, "client_ip": "172.19.0.4"}
+api-1    | {"timestamp": "2026-10-09T17:35:59.646318+00:00", "level": "INFO", "message": "http request", "request_id": "req_3b54cf391e594ff8", "method": "GET", "path": "/api/v1/files/1/download", "status_code": 401, "duration_ms": 11.92, "client_ip": "172.19.0.4"}
+api-1    | {"timestamp": "2026-10-09T17:35:59.727790+00:00", "level": "INFO", "message": "http request", "request_id": "req_e7779a3e9c9e4486", "method": "GET", "path": "/api/v1/files/1/download", "status_code": 200, "duration_ms": 68.88, "client_ip": "172.19.0.4"}
+api-1    | INFO:     Shutting down
+api-1    | INFO:     Waiting for application shutdown.
+api-1    | INFO:     Application shutdown complete.
+api-1    | INFO:     Finished server process [1]
+api-1    | INFO:     Started server process [1]
+api-1    | INFO:     Waiting for application startup.
+api-1    | INFO:     Application startup complete.
+api-1    | INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+api-1    | {"timestamp": "2026-10-09T17:36:29.186787+00:00", "level": "INFO", "message": "http request", "request_id": "req_f5568406a5bc45f6", "method": "GET", "path": "/ready", "status_code": 200, "duration_ms": 1397.76, "client_ip": "127.0.0.1"}
+api-1    | {"timestamp": "2026-10-09T17:36:41.731068+00:00", "level": "INFO", "message": "http request", "request_id": "req_53782e8bbf204d08", "method": "GET", "path": "/api/v1/auth/me", "status_code": 200, "duration_ms": 270.23, "client_ip": "172.19.0.4"}
+api-1    | {"timestamp": "2026-10-09T17:36:41.863906+00:00", "level": "INFO", "message": "http request", "request_id": "req_d3b8c737cb874e3e", "method": "GET", "path": "/api/v1/files/1/download", "status_code": 200, "duration_ms": 109.35, "client_ip": "172.19.0.4"}
+api-1    | INFO:     Shutting down
+api-1    | INFO:     Waiting for application shutdown.
+api-1    | INFO:     Application shutdown complete.
+api-1    | INFO:     Finished server process [1]
+api-1    | INFO:     Started server process [1]
+api-1    | INFO:     Waiting for application startup.
+api-1    | INFO:     Application startup complete.
+api-1    | INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+api-1    | {"timestamp": "2026-10-09T17:37:11.836972+00:00", "level": "INFO", "message": "http request", "request_id": "req_df03fae3d58842dd", "method": "GET", "path": "/ready", "status_code": 200, "duration_ms": 1383.23, "client_ip": "127.0.0.1"}
+api-1    | {"timestamp": "2026-10-09T17:37:24.463037+00:00", "level": "INFO", "message": "http request", "request_id": "req_7e35f108a0124ee6", "method": "GET", "path": "/api/v1/auth/me", "status_code": 200, "duration_ms": 293.03, "client_ip": "172.19.0.4"}
+api-1    | {"timestamp": "2026-10-09T17:37:24.711822+00:00", "level": "INFO", "message": "http request", "request_id": "req_f801ce6a85fa4d13", "method": "GET", "path": "/api/v1/files/1/download", "status_code": 200, "duration_ms": 218.97, "client_ip": "172.19.0.4"}
+api-1    | INFO:     Shutting down
+api-1    | INFO:     Waiting for application shutdown.
+api-1    | INFO:     Application shutdown complete.
+api-1    | INFO:     Finished server process [1]
+api-1    | INFO:     Started server process [1]
+api-1    | INFO:     Waiting for application startup.
+api-1    | INFO:     Application startup complete.
+api-1    | INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+api-1    | {"timestamp": "2026-10-09T17:37:53.673676+00:00", "level": "INFO", "message": "http request", "request_id": "req_7b3ea61a820642e3", "method": "GET", "path": "/ready", "status_code": 200, "duration_ms": 1350.96, "client_ip": "127.0.0.1"}
+api-1    | {"timestamp": "2026-10-09T17:38:05.754605+00:00", "level": "INFO", "message": "http request", "request_id": "req_ff7d80db658744f8", "method": "GET", "path": "/api/v1/auth/me", "status_code": 200, "duration_ms": 219.63, "client_ip": "172.19.0.4"}
+api-1    | {"timestamp": "2026-10-09T17:38:05.861750+00:00", "level": "INFO", "message": "http request", "request_id": "req_697b2a6082c0426d", "method": "GET", "path": "/api/v1/files/1/download", "status_code": 200, "duration_ms": 90.43, "client_ip": "172.19.0.4"}
+api-1    | {"timestamp": "2026-10-09T17:38:06.872569+00:00", "level": "INFO", "message": "http request", "request_id": "req_13202db243dd406f", "method": "GET", "path": "/api/v1/files/1/download", "status_code": 200, "duration_ms": 984.41, "client_ip": "172.19.0.4"}
+api-1    | {"timestamp": "2026-10-09T17:38:06.960122+00:00", "level": "INFO", "message": "http request", "request_id": "req_894b1657b8554036", "method": "GET", "path": "/api/v1/requirements/1", "status_code": 200, "duration_ms": 69.52, "client_ip": "172.19.0.4"}
+api-1    | INFO:     Shutting down
+api-1    | INFO:     Waiting for application shutdown.
+api-1    | INFO:     Application shutdown complete.
+api-1    | INFO:     Finished server process [1]
+api-1    | INFO:     Started server process [1]
+api-1    | INFO:     Waiting for application startup.
+api-1    | INFO:     Application startup complete.
+api-1    | INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+api-1    | {"timestamp": "2026-10-09T17:38:35.664178+00:00", "level": "INFO", "message": "http request", "request_id": "req_d18ec037aaf4404c", "method": "GET", "path": "/ready", "status_code": 200, "duration_ms": 1375.53, "client_ip": "127.0.0.1"}
+api-1    | {"timestamp": "2026-10-09T17:38:36.607457+00:00", "level": "INFO", "message": "http request", "request_id": "req_e1d07bf2c217421b", "method": "GET", "path": "/api/v1/auth/me", "status_code": 200, "duration_ms": 244.19, "client_ip": "172.19.0.4"}
+api-1    | INFO:     Shutting down
+api-1    | INFO:     Waiting for application shutdown.
+api-1    | INFO:     Application shutdown complete.
+api-1    | INFO:     Finished server process [1]

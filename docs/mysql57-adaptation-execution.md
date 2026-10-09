@@ -87,7 +87,7 @@ PostgreSQL 早期完整回归 375 passed、1 skipped（真实 S3 由单独门禁
 Fresh Self-Review：发布候选读取与 UPDATE 均在同一事务内；未弱化 revision 或添加业务模型/状态。
 阶段 3 的持续运行、备份恢复、最终回归与 CI 尚未完成；阶段 4 尚未开始。
 
-## 阶段 3 — 回归、真实数据库 CI 与备份恢复（进行中）
+## 阶段 3 — 回归、真实数据库 CI 与备份恢复
 
 新增真实死锁 1213、锁超时 1205 验证，均回滚并映射 40940；运行账号最小权限验证通过：
 21 业务表 DML + Alembic 表只读，不允许 DROP TRIGGER / TRUNCATE，关闭检查后的写入仍被拒绝。
@@ -131,3 +131,52 @@ backup-restore.json。旧 default ARM 用户态模拟的 139 未宣称修复；�
 MySQL 镜像从本地已缓存官方镜像 save/load 到新 VM，ID/amd64 与原镜像完全相同，未导入数据库。
 Fresh Self-Review 完成：主链、关系保护、CAS、事务、权限、通知和审计均保持；无规格冲突。
 阶段 4 开始，远程版本/TLS/权限/网络仍未核实，不代表服务器部署授权或远程兼容性已验证。
+
+## 阶段 4 — linux/amd64 冻结包与真实镜像验收
+
+新增 deploy/mysql57 的外部 MySQL 空库 Compose、分离 migration/runtime 配置模板、
+最小权限 SQL、受保护备份客户端、只读附件备份及 restart.sh。不启动服务器数据库，
+不带账号密码/JWT_SECRET/Token/测试库。构建器只 git archive 已提交源，排除私密配置与本地数据，
+显式构建 linux/amd64 API/Web，并选择官方 Redis/MySQL 客户端的 amd64 digest。
+四个镜像已 save/load 到独立 x86_64 VM，ID/架构与 manifest 一致。
+
+首次备份测试揭示两个实际权限问题：5.7.44 mysqldump 默认读取 tablespace 需额外权限，
+因此使用 --no-tablespaces；本基线没有 routine，无需 --routines 全局授权。
+CI 非 root 属主的 mode 600 客户端文件不能被 cap_drop=ALL 的容器 root 读取，
+因此备份服务显式使用配置文件属主 BACKUP_UID/GID。没有放宽文件权限或授予运行账号全局权限。
+83d4f05 首次 CI 失败证据保留；c14e8ea 的七项 CI 全 PASS（37965065800），
+但该次包测试还未包含实际包内附件恢复，因此没有据此结束最终验收。
+
+增强包验收包含三次重启、真实备份导入第二个新测试库、第二个测试附件卷、恢复后 HTTP
+授权下载、ONLINE/派生版本检查、63 guard 和恢复后再备份。9137a92 的 CI 揭示恢复工具
+继承 storage-backup 的只读挂载；run -v 没有覆盖 readonly。保留失败，修复为测试 override
+中独立 storage-restore 服务，只写新测试卷；包中的备份服务仍只读，不提供自动真实恢复。
+
+本地同时发现并行启动 Web/API 时，host 代理 DNS 把暂不存在的 api alias 解析为
+198.18.8.252（proof network 是 172.18.0.0/16），Nginx 缓存错误 IP 持续 502。
+证据见 proxy-dns-diagnosis.json、package-proxy-failure.txt；其他服务失败日志另行保留。
+restart.sh 改为停止 Web/API、重启 Redis、等待 API healthy 后启动 Web；不修改前端业务。
+readiness probe 只等待 502/503/504/transport 启动窗口；业务写入及持久化断言不重试。
+e319fd7 的三次重启通过，隔离恢复仍因旧工具 readonly 失败；完整日志保留。
+d0c3716 修复测试 helper 后重跑同一离线镜像包及新七项 CI：全部 PASS。
+CI run 37967917344；七项全 success，mysql57 的实际恢复门禁成功。
+本地 verification.json：15 步主链、低权限运行、三次重启、独立库/附件卷实际恢复、
+63 个 guard、恢复后再备份全部 PASS；每次代理 readiness 均首个 probe HTTP 200。
+
+Fresh Self-Review：构建输入 backend/frontend/deploy/mysql57 从 e319fd7 到最终测试工具修复不变；
+没有删除关系约束，PG 历史/当前契约/前端业务无差异。包四镜像 linux/amd64、配置没有秘密值，
+40 个独立镜像层、32,528 文件以及证据日志秘密扫描 PASS。独立 profile 仅额外挂载本工作目录
+忽略的 data 目录，私密测试配置 700/600，完成自动清理；没有挂载主仓库或旧环境数据。
+同一 Agent Fresh Self-Review；没有独立外审声明。最终包封装必须等待完整恢复和七项 CI PASS。
+
+阶段 4 完成：最终离线 tar 276,506,214 bytes，
+SHA256 `3700531f5d77b0693a15bf707d6084eff59155982d883c673594f5437ee637b7`。
+包路径与四镜像 ID 见 mysql57-delivery.md / package-delivery.json；SHA256SUMS 和 tar
+内容逐项验证 PASS，没有真实配置、测试 DB/附件或秘密值。主仓库 clean，master a38081a 未漂移，
+现有 Preview 健康且未重启/改变。后续只提交 imports 排序和交付记录/证据，再验证最终分支 CI；
+不合并 master、不创建 tag/Release、不操作服务器或远程库。
+
+最终 Fresh Self-Review：核心状态、主链、revision、事务、Release、RBAC/DataScope/文件权限、
+审计通知、有效/主关系唯一性和历史保留均保持，API/前端契约不变；无规格冲突。
+本地适配没有剩余阻断；未知远程 5.7 patch/vendor、TLS/网络/privilege/服务器条件仍为后续
+部署前门禁，不能宣称远程兼容性已验证或可直接上线。

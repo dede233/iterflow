@@ -1,9 +1,9 @@
 """Run MySQL acceptance explicitly, without exposing local credentials."""
 
 import os
-from pathlib import Path
 import subprocess
 import sys
+from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
 env = dict(os.environ)

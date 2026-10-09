@@ -1,0 +1,39 @@
+{
+  "status": "PASS",
+  "source_commit": "e319fd700020af2a9c32daf00eb895116e456b43",
+  "platform": "linux/amd64",
+  "scope": "isolated local empty database, synthetic accounts and separate volumes only",
+  "remote_verified": false,
+  "validation_commit": "d0c37166ebb94117d32acece9e8ab29e496f7fba",
+  "proxy_readiness_probes": [
+    [
+      200
+    ],
+    [
+      200
+    ],
+    [
+      200
+    ],
+    [
+      200
+    ],
+    [
+      200
+    ]
+  ],
+  "mysql_version": "5.7.44",
+  "empty_migration_seed": true,
+  "least_privilege_runtime": true,
+  "full_chain_15_steps": true,
+  "revision_409": true,
+  "notification_audit": true,
+  "file_permissions": true,
+  "package_restart_persistence": true,
+  "package_consecutive_restarts": 3,
+  "backup_database_sha256": "4be0856a492bf8c3f8b96caf7f15edc82e7a167db2b7f8690ea5812df41dbed1",
+  "backup_storage_sha256": "398e7af774cfef59f28d241cb044e7daad4a33719a4371c56790fe90d174a5cb",
+  "package_isolated_restore": true,
+  "restored_guard_triggers": 63,
+  "package_post_restore_backup_sha256": "eeceaa7a25b413437efccfaf05e8288ae06dc4e830498419886117eef175d203"
+}

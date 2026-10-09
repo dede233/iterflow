@@ -1,7 +1,7 @@
 """Generate fresh, local-only test configuration; refuse existing configuration."""
 
-from pathlib import Path
 import secrets
+from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
 files = [root / ".env", root / "tools/mysql57-proof/.env"]

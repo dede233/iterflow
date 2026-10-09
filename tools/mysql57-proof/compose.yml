@@ -1,5 +1,26 @@
 name: iterflow-mysql57-proof
 services:
+  postgres:
+    image: postgres:17.7-alpine3.22
+    container_name: iterflow-mysql57-regression-pg
+    environment:
+      POSTGRES_PASSWORD: ${MYSQL_ROOT_PASSWORD:?generate a local test password}
+      POSTGRES_USER: iterflow_mysql57_test
+      POSTGRES_DB: iterflow_mysql57_test
+    ports:
+      - '127.0.0.1:57332:5432'
+    volumes:
+      - regression-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD', 'pg_isready', '-U', 'iterflow_mysql57_test']
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  redis:
+    image: redis:8.2.2-alpine3.22
+    container_name: iterflow-mysql57-test-redis
+    ports:
+      - '127.0.0.1:57379:6379'
   db:
     image: mysql:5.7.44
     platform: linux/amd64
@@ -16,7 +37,7 @@ services:
       - --collation-server=utf8mb4_bin
       - --default-time-zone=+00:00
       - --transaction-isolation=READ-COMMITTED
-      - --sql-mode=STRICT_ALL_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION
+      - --sql-mode=ONLY_FULL_GROUP_BY,STRICT_ALL_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION
     healthcheck:
       test: ['CMD-SHELL', 'MYSQL_PWD="$$MYSQL_ROOT_PASSWORD" mysqladmin ping -h 127.0.0.1 -uroot --silent']
       interval: 3s
@@ -24,3 +45,4 @@ services:
       retries: 40
 volumes:
   proof-db:
+  regression-pg:

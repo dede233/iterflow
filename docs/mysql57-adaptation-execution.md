@@ -86,3 +86,29 @@ PostgreSQL 早期完整回归 375 passed、1 skipped（真实 S3 由单独门禁
 后续最终代码仍须复跑；不宣称此结果已覆盖所有最终变更。
 Fresh Self-Review：发布候选读取与 UPDATE 均在同一事务内；未弱化 revision 或添加业务模型/状态。
 阶段 3 的持续运行、备份恢复、最终回归与 CI 尚未完成；阶段 4 尚未开始。
+
+## 阶段 3 — 回归、真实数据库 CI 与备份恢复（进行中）
+
+新增真实死锁 1213、锁超时 1205 验证，均回滚并映射 40940；运行账号最小权限验证通过：
+21 业务表 DML + Alembic 表只读，不允许 DROP TRIGGER / TRUNCATE，关闭检查后的写入仍被拒绝。
+完整 15 步主链使用真实登录、新角色/新用户、首次改密、负责人/优先级与第二人旧 revision。
+隔离库 dump/restore 含触发器与本地附件，恢复后校验派生关系、附件授权读取和 63 个 guard。
+没有真实环境 restore，没有将测试数据放入交付物。
+
+最终 PostgreSQL 本地回归：375 passed / 1 skipped（真实 S3 单独 CI）；PG-only 37 passed / 0 skipped。
+前端：47 文件 / 320 tests、契约类型、构建、273.7 KiB 门禁、dev/prod audit 均 PASS。
+锁文件 hash 强制安装、pip check、生产依赖审计、Ruff / Mypy / 编译通过。
+历史 PostgreSQL migration 不变，Alembic upgrade/check PASS，当前契约与前端业务文件未改。
+
+本地旧 ARM Colima + amd64 用户态模拟曾有完整 42 passed / 0 skipped，含三次连续重启、
+独立备份恢复；新增最小权限用例单独 PASS。但最新完整运行为 39 passed / 1 failed / 4 errors：
+MySQL 容器在正常关机后的 entrypoint 阶段退出 139（非 OOM），后续数据库不可连接。
+健康检查 mysqladmin 也曾返回 139，尚无充分证据确定根因；不能用偶然通过覆盖该失败。
+失败日志/state 保留于 docs/evidence/mysql57/mysql-emulation-*。
+正在创建独立 x86_64 QEMU Colima profile，不更改/重启现有 default profile 或 Preview。
+完整本地重启门禁和 branch 七项 CI 尚未全部成立，阶段 4 未开始。
+
+Fresh Self-Review：独立 DDL 显式 ROW_FORMAT=DYNAMIC；预检增加 Barracuda/large_prefix，
+防止 5.7 较早配置导致唯一键截断；guard 不依赖 runtime TRIGGER 权限。
+CI 新增真实 5.7.44 与原六项并行门禁；构建 context 排除 host node_modules/venv/密钥配置。
+同一 Agent 的 Fresh Self-Review，不称为独立审查。当前保留环境阻断，不降低验收门禁。

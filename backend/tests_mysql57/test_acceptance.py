@@ -23,9 +23,6 @@ from test_release_date_filters_postgres import (
 from test_v1_e2e_postgres import (
     test_concurrent_publish_has_one_http_winner_and_no_duplicate_side_effects as _publish_race,
 )
-from test_v1_e2e_postgres import (
-    test_full_v1_business_lifecycle_over_http_and_postgresql as _lifecycle,
-)
 
 from alembic import command
 from app.cli.seed import seed_database
@@ -44,6 +41,7 @@ from app.models.entities import (
     Version,
     VersionRequirement,
 )
+from app.models.enums import FeedbackStatus, RequirementStatus, VersionStatus
 
 
 class RedactedHeaders(dict):
@@ -59,7 +57,7 @@ def mysql_api(monkeypatch, tmp_path):
     url = make_url(os.environ["DATABASE_URL"])
     assert url.drivername == "mysql+pymysql"
     assert url.host == "127.0.0.1" and url.port == 57357, "local dedicated container only"
-    admin = create_engine(url)
+    admin = create_engine(url, pool_pre_ping=True)
     name = "iterflow_mysql57_" + uuid4().hex
     with admin.connect() as connection:
         assert connection.scalar(text("SELECT VERSION()")) == "5.7.44"
@@ -70,7 +68,9 @@ def mysql_api(monkeypatch, tmp_path):
     monkeypatch.setenv("DATABASE_URL", test_url.render_as_string(hide_password=False))
     monkeypatch.setenv("LOCAL_STORAGE_PATH", str(tmp_path / "uploads"))
     get_settings.cache_clear()
-    engine = create_engine(test_url, isolation_level="READ COMMITTED", pool_size=8, max_overflow=4)
+    engine = create_engine(
+        test_url, isolation_level="READ COMMITTED", pool_size=8, max_overflow=4, pool_pre_ping=True
+    )
     event.listen(engine, "connect", database.configure_mysql)
     try:
         command.upgrade(Config(str(BACKEND / "alembic-mysql.ini")), "head")
@@ -101,8 +101,244 @@ def mysql_api(monkeypatch, tmp_path):
 
 
 def test_mysql_full_lifecycle(mysql_api):
-    client, engine, user_id, headers = mysql_api
-    _lifecycle(client, (engine, user_id, headers))
+    client, engine, _, _ = mysql_api
+    logged = client.post(
+        "/api/v1/auth/login", json={"username": "test-admin", "password": "Fresh-test-password-57!"}
+    )
+    assert logged.status_code == 200
+    admin_headers = RedactedHeaders(Authorization="Bearer " + logged.json()["access_token"])
+    permissions = client.get("/api/v1/roles/permissions", headers=admin_headers).json()
+    role = client.post(
+        "/api/v1/roles",
+        headers=admin_headers,
+        json={
+            "code": "CHAIN_OPERATOR",
+            "name": "主链验收角色",
+            "data_scope": "ALL",
+            "permission_ids": [p["id"] for p in permissions],
+        },
+    )
+    assert role.status_code == 200, role.text
+    user = client.post(
+        "/api/v1/users",
+        headers=admin_headers,
+        json={
+            "username": "chain-user",
+            "display_name": "主链提交人",
+            "password": "New-chain-password-57!",
+            "role_ids": [role.json()["id"]],
+        },
+    )
+    assert user.status_code == 200, user.text
+    user_id = user.json()["id"]
+    pair = client.post(
+        "/api/v1/auth/login", json={"username": "chain-user", "password": "New-chain-password-57!"}
+    ).json()
+    initial_headers = RedactedHeaders(Authorization="Bearer " + pair["access_token"])
+    changed = client.post(
+        "/api/v1/auth/change-password",
+        headers=initial_headers,
+        json={
+            "current_password": "New-chain-password-57!",
+            "new_password": "Changed-chain-password-57!",
+        },
+    )
+    assert changed.status_code == 200
+    headers = RedactedHeaders(Authorization="Bearer " + changed.json()["access_token"])
+    feedback_response = client.post(
+        "/api/v1/feedbacks",
+        headers=headers,
+        json={
+            "title": "Phase 8.2 real HTTP feedback",
+            "feedback_type": "NEW_FEATURE",
+            "urgency": "NORMAL",
+            "description": "Exercise the complete production business workflow.",
+        },
+    )
+    assert feedback_response.status_code == 200, feedback_response.text
+    feedback = feedback_response.json()
+    assert feedback["status"] == "NEW"
+
+    accepted = client.patch(
+        f"/api/v1/feedbacks/{feedback['id']}/status",
+        headers=headers,
+        json={"status": "ACCEPTED", "revision": feedback["revision"]},
+    )
+    assert accepted.status_code == 200, accepted.text
+
+    converted = client.post(
+        f"/api/v1/feedbacks/{feedback['id']}/convert",
+        headers=headers,
+        json={
+            "type": "CREATE_NEW",
+            "revision": accepted.json()["revision"],
+            "requirement_title": "Phase 8.2 converted requirement",
+            "requirement_type": "FEATURE",
+            "priority": "P2",
+            "description": "Requirement created through feedback conversion.",
+        },
+    )
+    assert converted.status_code == 200, converted.text
+    requirement = converted.json()
+    assert requirement["source"] == "FEEDBACK"
+    assert requirement["status"] == "CONFIRMED"
+    stale_revision = requirement["revision"]
+    assigned = client.patch(
+        f"/api/v1/requirements/{requirement['id']}",
+        headers=headers,
+        json={"owner_id": user_id, "priority": "P1", "revision": stale_revision},
+    )
+    assert assigned.status_code == 200, assigned.text
+    requirement = assigned.json()
+    stale = client.patch(
+        f"/api/v1/requirements/{requirement['id']}",
+        headers=admin_headers,
+        json={"priority": "P3", "revision": stale_revision},
+    )
+    assert stale.status_code == 409 and stale.json()["code"] == 40910
+    assert stale.json()["data"]["current_updated_by"] == user_id
+
+    version_response = client.post(
+        "/api/v1/versions",
+        headers=headers,
+        json={"version_no": f"8.2-{uuid4().hex[:8]}", "name": "Phase 8.2 acceptance"},
+    )
+    assert version_response.status_code == 200, version_response.text
+    version = version_response.json()
+
+    member_response = client.post(
+        f"/api/v1/versions/{version['id']}/requirements",
+        headers=headers,
+        json={
+            "requirement_id": requirement["id"],
+            "revision": requirement["revision"],
+            "version_revision": version["revision"],
+        },
+    )
+    assert member_response.status_code == 200, member_response.text
+    version = member_response.json()
+
+    planned_response = client.get(f"/api/v1/requirements/{requirement['id']}", headers=headers)
+    assert planned_response.status_code == 200, planned_response.text
+    current_requirement = planned_response.json()
+    assert current_requirement["status"] == "PLANNED"
+    for status in ("DEVELOPING", "TESTING", "DONE"):
+        response = client.patch(
+            f"/api/v1/requirements/{requirement['id']}/status",
+            headers=headers,
+            json={"status": status, "revision": current_requirement["revision"]},
+        )
+        assert response.status_code == 200, response.text
+        current_requirement = response.json()
+
+    for status in ("DEVELOPING", "TESTING", "READY"):
+        response = client.patch(
+            f"/api/v1/versions/{version['id']}/status",
+            headers=headers,
+            json={"status": status, "revision": version["revision"]},
+        )
+        assert response.status_code == 200, response.text
+        version = response.json()
+
+    publish_check = client.post(f"/api/v1/versions/{version['id']}/publish/check", headers=headers)
+    assert publish_check.status_code == 200, publish_check.text
+    assert publish_check.json()["passed"] is True
+
+    published = client.post(
+        f"/api/v1/versions/{version['id']}/publish",
+        headers=headers,
+        json={
+            "released_at": datetime.now(UTC).isoformat(),
+            "release_notes": "Phase 8.2 PostgreSQL end-to-end acceptance.",
+            "revision": version["revision"],
+        },
+    )
+    assert published.status_code == 200, published.text
+    result = published.json()
+    release_id = result["release"]["id"]
+    assert result["release"]["result"] == "SUCCESS"
+    assert result["released_requirement_ids"] == [requirement["id"]]
+    assert result["online_feedback_ids"] == [feedback["id"]]
+
+    release_list = client.get("/api/v1/releases", headers=headers)
+    release_detail = client.get(f"/api/v1/releases/{release_id}", headers=headers)
+    version_requirements = client.get(
+        f"/api/v1/versions/{version['id']}/requirements", headers=headers
+    )
+    requirement_feedbacks = client.get(
+        f"/api/v1/requirements/{requirement['id']}/feedbacks", headers=headers
+    )
+    assert release_list.status_code == 200, release_list.text
+    assert release_detail.status_code == 200, release_detail.text
+    assert version_requirements.status_code == 200, version_requirements.text
+    assert requirement_feedbacks.status_code == 200, requirement_feedbacks.text
+    assert any(item["id"] == release_id for item in release_list.json()["items"])
+    assert release_detail.json()["version_id"] == version["id"]
+    assert version_requirements.json()["items"][0]["id"] == requirement["id"]
+    assert requirement_feedbacks.json()[0]["feedback_id"] == feedback["id"]
+
+    with Session(engine) as session:
+        final_feedback = session.get(Feedback, feedback["id"])
+        final_requirement = session.get(Requirement, requirement["id"])
+        final_version = session.get(Version, version["id"])
+        final_release = session.get(Release, release_id)
+        assert final_feedback is not None and final_requirement is not None
+        assert final_version is not None and final_release is not None
+        assert final_version.status == VersionStatus.RELEASED
+        assert final_requirement.status == RequirementStatus.ONLINE
+        assert final_feedback.status == FeedbackStatus.ONLINE
+        assert final_feedback.main_requirement_id == final_requirement.id
+        assert final_requirement.current_version_id == final_version.id
+        assert final_release.version_id == final_version.id
+        assert (
+            session.scalar(
+                select(func.count(Release.id)).where(Release.version_id == final_version.id)
+            )
+            == 1
+        )
+        assert (
+            session.scalar(
+                select(func.count(VersionRequirement.id)).where(
+                    VersionRequirement.requirement_id == final_requirement.id,
+                    VersionRequirement.active.is_(True),
+                    VersionRequirement.version_id == final_version.id,
+                )
+            )
+            == 1
+        )
+        assert (
+            session.scalar(
+                select(func.count(RequirementFeedback.id)).where(
+                    RequirementFeedback.feedback_id == final_feedback.id,
+                    RequirementFeedback.requirement_id == final_requirement.id,
+                    RequirementFeedback.is_primary.is_(True),
+                )
+            )
+            == 1
+        )
+        assert (
+            session.scalar(
+                select(func.count(OperationLog.id)).where(
+                    OperationLog.entity_type == "VERSION",
+                    OperationLog.entity_id == final_version.id,
+                    OperationLog.action == "VERSION_PUBLISH",
+                )
+            )
+            == 1
+        )
+        assert (
+            session.scalar(
+                select(func.count(Notification.id)).where(
+                    Notification.user_id == user_id,
+                    Notification.entity_type == "FEEDBACK",
+                    Notification.entity_id == final_feedback.id,
+                )
+            )
+            == 1
+        )
+    notification = client.get("/api/v1/notifications", headers=headers)
+    assert notification.status_code == 200
+    assert any(n["entity_id"] == feedback["id"] for n in notification.json())
 
 
 def test_mysql_concurrent_publish(mysql_api):
@@ -221,6 +457,61 @@ def test_mysql_auth_refresh_logout_first_password_and_permissions(mysql_api):
         == 404
     )
     assert client.get("/api/v1/feedbacks", headers=member_headers).json()["total"] == 0
+    upload = client.post(
+        "/api/v1/files",
+        headers=headers,
+        files={"file": ("private.txt", b"scope-controlled", "text/plain")},
+    )
+    assert upload.status_code == 200
+    assert (
+        client.get(
+            f"/api/v1/files/{upload.json()['id']}/download", headers=member_headers
+        ).status_code
+        == 404
+    )
+    attachment = client.post(
+        f"/api/v1/feedbacks/{feedback.json()['id']}/attachments",
+        headers=headers,
+        files={"file": ("linked.txt", b"linked scope", "text/plain")},
+    )
+    assert attachment.status_code == 200
+    assert (
+        client.get(
+            f"/api/v1/feedbacks/{feedback.json()['id']}/attachments/{attachment.json()['file_id']}/download",
+            headers=member_headers,
+        ).status_code
+        == 404
+    )
+    assert (
+        client.delete(f"/api/v1/files/{attachment.json()['file_id']}", headers=headers).status_code
+        == 409
+    )
+    logged_member = client.post(
+        "/api/v1/auth/login",
+        json={"username": "mysql-member", "password": "New-member-password-57!"},
+    )
+    assert logged_member.status_code == 200
+    member_pair = logged_member.json()
+    current_member = client.get(f"/api/v1/users/{member_id}", headers=headers).json()
+    disabled = client.patch(
+        f"/api/v1/users/{member_id}/status",
+        headers=headers,
+        json={"status": "DISABLED", "revision": current_member["revision"]},
+    )
+    assert disabled.status_code == 200, disabled.text
+    assert (
+        client.get(
+            "/api/v1/auth/me",
+            headers=RedactedHeaders(Authorization="Bearer " + member_pair["access_token"]),
+        ).status_code
+        == 401
+    )
+    assert (
+        client.post(
+            "/api/v1/auth/refresh", json={"refresh_token": member_pair["refresh_token"]}
+        ).status_code
+        == 401
+    )
 
 
 def test_mysql_catalog_chinese_search_revision_and_files(mysql_api):
@@ -593,7 +884,8 @@ test_mysql_date_validation = _date_validation
     [
         "UPDATE sys_user SET revision=revision+1 WHERE id=1",
         "DELETE FROM rd_requirement WHERE id=1",
-        "INSERT INTO rd_version_requirement (version_id,requirement_id,active,added_at) VALUES (999,999,1,UTC_TIMESTAMP(6))",
+        "INSERT INTO rd_version_requirement (version_id,requirement_id,active,added_at) "
+        "VALUES (999,999,1,UTC_TIMESTAMP(6))",
     ],
 )
 def test_mysql_cannot_disable_integrity_in_writer_session(mysql_api, flag, mutation):
@@ -610,3 +902,291 @@ def test_mysql_cannot_disable_integrity_in_writer_session(mysql_api, flag, mutat
     with Session(mysql_api[1]) as session:
         assert session.get(Requirement, 1).current_version_id == 1
         assert session.get(Feedback, 1).main_requirement_id == 1
+
+
+def test_mysql_restart_and_isolated_backup_restore(mysql_api, monkeypatch, tmp_path):
+    import hashlib
+    import json
+    import shutil
+    import subprocess
+    import time
+
+    from sqlalchemy.exc import SQLAlchemyError
+
+    from app.core.mysql_preflight import validate_mysql
+
+    client, engine, _, headers = mysql_api
+    ids = ready(mysql_api)
+    upload = client.post(
+        f"/api/v1/feedbacks/{ids['feedback']}/attachments",
+        headers=headers,
+        files={"file": ("restore.txt", b"isolated mysql57 backup attachment", "text/plain")},
+    )
+    assert upload.status_code == 200, upload.text
+    file_id = upload.json()["file_id"]
+    source = engine.url.database
+    assert (
+        source.startswith("iterflow_mysql57_")
+        and source.removeprefix("iterflow_mysql57_").isalnum()
+    )
+    container = "iterflow-mysql57-proof-db"
+    inspect_info = json.loads(subprocess.check_output(["docker", "inspect", container]))[0]
+    assert inspect_info["Config"]["Image"] == "mysql:5.7.44"
+    assert (
+        inspect_info["Config"]["Labels"]["com.docker.compose.project"] == "iterflow-mysql57-proof"
+    )
+    dump = subprocess.check_output(
+        [
+            "docker",
+            "exec",
+            container,
+            "sh",
+            "-c",
+            'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mysqldump -uroot --single-transaction '
+            "--routines --triggers --hex-blob --set-gtid-purged=OFF " + source,
+        ]
+    )
+    dump_path = tmp_path / "source.sql"
+    dump_path.write_bytes(dump)
+    dump_path.chmod(0o600)
+    source_storage = get_settings().local_storage_root
+    saved_storage = tmp_path / "storage-backup"
+    shutil.copytree(source_storage, saved_storage)
+    for _restart_attempt in range(3):
+        subprocess.run(["docker", "restart", container], check=True, stdout=subprocess.DEVNULL)
+        engine.dispose()
+        for attempt in range(60):
+            try:
+                with engine.connect() as connection:
+                    validate_mysql(connection)
+                break
+            except SQLAlchemyError:
+                if attempt == 59:
+                    raise
+                time.sleep(0.5)
+        assert (
+            client.get(f"/api/v1/requirements/{ids['requirement']}", headers=headers).json()[
+                "current_version_id"
+            ]
+            == ids["version"]
+        )
+        download = f"/api/v1/feedbacks/{ids['feedback']}/attachments/{file_id}/download"
+    assert client.get(download, headers=headers).content == b"isolated mysql57 backup attachment"
+    restored = source + "_restore"
+    restore_storage = tmp_path / "restored-uploads"
+    with engine.connect() as connection:
+        connection.execute(
+            text(f"CREATE DATABASE `{restored}` CHARACTER SET utf8mb4 COLLATE utf8mb4_bin")
+        )
+    restore_engine = create_engine(engine.url.set(database=restored), pool_pre_ping=True)
+    event.listen(restore_engine, "connect", database.configure_mysql)
+    try:
+        subprocess.run(
+            [
+                "docker",
+                "exec",
+                "-i",
+                container,
+                "sh",
+                "-c",
+                'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mysql -uroot ' + restored,
+            ],
+            input=dump,
+            check=True,
+        )
+        shutil.copytree(saved_storage, restore_storage)
+        with restore_engine.connect() as connection:
+            validate_mysql(connection)
+        with Session(restore_engine) as session:
+            assert session.get(Requirement, ids["requirement"]).current_version_id == ids["version"]
+            assert session.get(Feedback, ids["feedback"]).main_requirement_id == ids["requirement"]
+            assert session.scalar(select(func.count(User.id))) == 1
+            assert session.scalar(select(func.count(VersionRequirement.id))) == 1
+        monkeypatch.setattr(
+            database,
+            "SessionLocal",
+            sessionmaker(bind=restore_engine, autoflush=False, expire_on_commit=False),
+        )
+        monkeypatch.setenv("LOCAL_STORAGE_PATH", str(restore_storage))
+        get_settings.cache_clear()
+        assert (
+            client.get(download, headers=headers).content == b"isolated mysql57 backup attachment"
+        )
+        post_dump = subprocess.check_output(
+            [
+                "docker",
+                "exec",
+                container,
+                "sh",
+                "-c",
+                'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mysqldump -uroot --single-transaction '
+                "--routines --triggers --hex-blob --set-gtid-purged=OFF " + restored,
+            ]
+        )
+        (BACKEND.parent / "docs/evidence/mysql57/backup-restore.json").write_text(
+            json.dumps(
+                {
+                    "status": "PASS",
+                    "scope": "isolated local synthetic database and storage only",
+                    "mysql_version": "5.7.44",
+                    "source_database": source,
+                    "restore_database": restored,
+                    "pre_backup_sha256": hashlib.sha256(dump).hexdigest(),
+                    "post_backup_sha256": hashlib.sha256(post_dump).hexdigest(),
+                    "storage_sha256": hashlib.sha256(
+                        b"isolated mysql57 backup attachment"
+                    ).hexdigest(),
+                    "restart_persistence": True,
+                    "successful_consecutive_restarts": 3,
+                    "restored_guard_triggers": 63,
+                },
+                indent=2,
+            )
+            + "\n"
+        )
+    finally:
+        restore_engine.dispose()
+        with engine.connect() as connection:
+            connection.execute(text(f"DROP DATABASE `{restored}`"))
+
+
+def test_mysql_preflight_requires_empty_or_verified_schema(mysql_api):
+    from app.core.mysql_preflight import validate_mysql
+
+    with mysql_api[1].connect() as connection:
+        result = validate_mysql(connection)
+        assert result["table_count"] == 22
+        with pytest.raises(RuntimeError, match="empty"):
+            validate_mysql(connection, empty=True)
+        connection.execute(text("DROP TRIGGER domain_sys_user_insert"))
+        with pytest.raises(RuntimeError, match="triggers"):
+            validate_mysql(connection)
+        # Runtime intentionally needs no TRIGGER privilege; migration preflight
+        # proves installed guards, runtime principals cannot drop them.
+        assert validate_mysql(connection, inspect_triggers=False)["version"] == "5.7.44"
+
+
+def test_mysql_real_deadlock_and_lock_timeout_are_conflicts(mysql_api):
+    from sqlalchemy.exc import OperationalError
+
+    from app.core.exceptions import ConflictError
+
+    with Session(mysql_api[1]) as session:
+        session.add(
+            User(
+                username="lock-other",
+                display_name="other",
+                password_hash="unused",
+                must_change_password=False,
+            )
+        )
+        session.commit()
+    barrier = Barrier(2)
+
+    def worker(first):
+        with mysql_api[1].connect() as connection:
+            try:
+                connection.execute(
+                    text("UPDATE sys_user SET revision=revision+1 WHERE id=:id"), {"id": first}
+                )
+                barrier.wait(timeout=10)
+                connection.execute(
+                    text("UPDATE sys_user SET revision=revision+1 WHERE id=:id"), {"id": 3 - first}
+                )
+                connection.commit()
+                return "committed", None
+            except OperationalError as error:
+                connection.rollback()
+                return "rejected", error
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(worker, [1, 2]))
+    assert sorted(status for status, _ in results) == ["committed", "rejected"]
+    errors = [error for _, error in results if error is not None]
+    assert errors[0].orig.args[0] == 1213
+    with mysql_api[1].connect() as blocker, mysql_api[1].connect() as waiter:
+        blocker.execute(text("UPDATE sys_user SET revision=revision+1 WHERE id=1"))
+        waiter.execute(text("SET SESSION innodb_lock_wait_timeout=1"))
+        with pytest.raises(OperationalError) as timeout:
+            waiter.execute(text("UPDATE sys_user SET revision=revision+1 WHERE id=1"))
+        assert timeout.value.orig.args[0] == 1205
+        waiter.rollback()
+        blocker.rollback()
+        errors.append(timeout.value)
+    for error in errors:
+        generator = database.get_db()
+        next(generator)
+        with pytest.raises(ConflictError) as mapped:
+            generator.throw(error)
+        assert mapped.value.status_code == 409 and mapped.value.code == 40940
+    with Session(mysql_api[1]) as session:
+        assert session.get(User, 1).revision == 2
+        assert session.get(User, 2).revision == 2
+
+
+def test_mysql_runtime_principal_cannot_remove_database_protection(mysql_api, monkeypatch):
+    import secrets
+
+    from sqlalchemy.exc import DBAPIError
+
+    from app.core.mysql_preflight import validate_mysql
+
+    client, engine, _, headers = mysql_api
+    username = "iterflow_rt_" + uuid4().hex[:12]
+    password = secrets.token_hex(24)
+    with engine.connect() as connection:
+        connection.execute(
+            text("CREATE USER :username@'%' IDENTIFIED BY :password"),
+            {"username": username, "password": password},
+        )
+        for table in database.Base.metadata.tables:
+            connection.execute(
+                text(
+                    f"GRANT SELECT, INSERT, UPDATE, DELETE ON `{engine.url.database}`.`{table}` "
+                    "TO :username@'%'"
+                ),
+                {"username": username},
+            )
+        connection.execute(
+            text(f"GRANT SELECT ON `{engine.url.database}`.alembic_version TO :username@'%'"),
+            {"username": username},
+        )
+    runtime = create_engine(
+        engine.url.set(username=username, password=password), pool_pre_ping=True
+    )
+    event.listen(runtime, "connect", database.configure_mysql)
+    try:
+        with runtime.connect() as connection:
+            assert validate_mysql(connection, inspect_triggers=False)["table_count"] == 22
+            with pytest.raises(DBAPIError):
+                connection.execute(text("DROP TRIGGER domain_sys_user_insert"))
+            with pytest.raises(DBAPIError):
+                connection.execute(text("TRUNCATE TABLE rd_version_requirement"))
+            connection.execute(text("SET foreign_key_checks=0"))
+            with pytest.raises(DBAPIError) as error:
+                connection.execute(text("UPDATE sys_user SET revision=revision+1 WHERE id=1"))
+            assert error.value.orig.args[0] == 1644
+            connection.execute(text("SET foreign_key_checks=1"))
+        monkeypatch.setattr(
+            database,
+            "SessionLocal",
+            sessionmaker(bind=runtime, autoflush=False, expire_on_commit=False),
+        )
+        response = client.post(
+            "/api/v1/feedbacks",
+            headers=headers,
+            json={
+                "title": "least privilege",
+                "feedback_type": "SYSTEM_ISSUE",
+                "urgency": "NORMAL",
+                "description": "runtime account verified",
+            },
+        )
+        assert response.status_code == 200, response.text
+        assert client.get("/api/v1/dashboard/overview", headers=headers).status_code == 200
+        with engine.connect() as connection:
+            validate_mysql(connection)
+    finally:
+        runtime.dispose()
+        with engine.connect() as connection:
+            connection.execute(text("DROP USER :username@'%'"), {"username": username})

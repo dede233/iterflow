@@ -1,0 +1,4 @@
+Hash-enforced clean production installation: PASS
+Package installation without dependency resolution: PASS
+pip check: PASS
+Production imports including PyMySQL: PASS

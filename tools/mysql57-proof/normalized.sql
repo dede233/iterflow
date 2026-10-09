@@ -32,3 +32,36 @@ BEGIN IF NEW.is_primary NOT IN (0,1) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TE
 CREATE TRIGGER rf_domain_update BEFORE UPDATE ON rd_requirement_feedback FOR EACH ROW
 BEGIN IF NEW.is_primary NOT IN (0,1) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='invalid primary'; END IF; END$$
 DELIMITER ;
+
+DELIMITER $$
+CREATE TRIGGER settings_rd_version_insert BEFORE INSERT ON rd_version FOR EACH ROW
+BEGIN IF @@foreign_key_checks <> 1 OR @@unique_checks <> 1 THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='integrity checks must remain enabled'; END IF; END$$
+CREATE TRIGGER settings_rd_version_update BEFORE UPDATE ON rd_version FOR EACH ROW
+BEGIN IF @@foreign_key_checks <> 1 OR @@unique_checks <> 1 THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='integrity checks must remain enabled'; END IF; END$$
+CREATE TRIGGER settings_rd_version_delete BEFORE DELETE ON rd_version FOR EACH ROW
+BEGIN IF @@foreign_key_checks <> 1 OR @@unique_checks <> 1 THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='integrity checks must remain enabled'; END IF; END$$
+CREATE TRIGGER settings_rd_requirement_insert BEFORE INSERT ON rd_requirement FOR EACH ROW
+BEGIN IF @@foreign_key_checks <> 1 OR @@unique_checks <> 1 THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='integrity checks must remain enabled'; END IF; END$$
+CREATE TRIGGER settings_rd_requirement_update BEFORE UPDATE ON rd_requirement FOR EACH ROW
+BEGIN IF @@foreign_key_checks <> 1 OR @@unique_checks <> 1 THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='integrity checks must remain enabled'; END IF; END$$
+CREATE TRIGGER settings_rd_requirement_delete BEFORE DELETE ON rd_requirement FOR EACH ROW
+BEGIN IF @@foreign_key_checks <> 1 OR @@unique_checks <> 1 THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='integrity checks must remain enabled'; END IF; END$$
+CREATE TRIGGER settings_rd_feedback_insert BEFORE INSERT ON rd_feedback FOR EACH ROW
+BEGIN IF @@foreign_key_checks <> 1 OR @@unique_checks <> 1 THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='integrity checks must remain enabled'; END IF; END$$
+CREATE TRIGGER settings_rd_feedback_update BEFORE UPDATE ON rd_feedback FOR EACH ROW
+BEGIN IF @@foreign_key_checks <> 1 OR @@unique_checks <> 1 THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='integrity checks must remain enabled'; END IF; END$$
+CREATE TRIGGER settings_rd_feedback_delete BEFORE DELETE ON rd_feedback FOR EACH ROW
+BEGIN IF @@foreign_key_checks <> 1 OR @@unique_checks <> 1 THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='integrity checks must remain enabled'; END IF; END$$
+CREATE TRIGGER settings_rd_requirement_feedback_insert BEFORE INSERT ON rd_requirement_feedback FOR EACH ROW
+BEGIN IF @@foreign_key_checks <> 1 OR @@unique_checks <> 1 THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='integrity checks must remain enabled'; END IF; END$$
+CREATE TRIGGER settings_rd_requirement_feedback_update BEFORE UPDATE ON rd_requirement_feedback FOR EACH ROW
+BEGIN IF @@foreign_key_checks <> 1 OR @@unique_checks <> 1 THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='integrity checks must remain enabled'; END IF; END$$
+CREATE TRIGGER settings_rd_requirement_feedback_delete BEFORE DELETE ON rd_requirement_feedback FOR EACH ROW
+BEGIN IF @@foreign_key_checks <> 1 OR @@unique_checks <> 1 THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='integrity checks must remain enabled'; END IF; END$$
+CREATE TRIGGER settings_rd_version_requirement_insert BEFORE INSERT ON rd_version_requirement FOR EACH ROW
+BEGIN IF @@foreign_key_checks <> 1 OR @@unique_checks <> 1 THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='integrity checks must remain enabled'; END IF; END$$
+CREATE TRIGGER settings_rd_version_requirement_update BEFORE UPDATE ON rd_version_requirement FOR EACH ROW
+BEGIN IF @@foreign_key_checks <> 1 OR @@unique_checks <> 1 THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='integrity checks must remain enabled'; END IF; END$$
+CREATE TRIGGER settings_rd_version_requirement_delete BEFORE DELETE ON rd_version_requirement FOR EACH ROW
+BEGIN IF @@foreign_key_checks <> 1 OR @@unique_checks <> 1 THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='integrity checks must remain enabled'; END IF; END$$
+DELIMITER ;

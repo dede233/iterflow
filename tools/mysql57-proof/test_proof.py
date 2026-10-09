@@ -239,3 +239,16 @@ def test_normalized_uncommitted_intermediate_step_invisible(database):
     assert execute(
         db, "SELECT current_version_id FROM rd_requirement_read WHERE id=1"
     ) == ((1,),)
+
+
+@pytest.mark.parametrize("flag", ["foreign_key_checks", "unique_checks"])
+def test_normalized_disabled_checks_cannot_bypass(database, flag):
+    db, _ = database
+    normalized(db)
+    execute(db, f"SET SESSION {flag}=0")
+    with pytest.raises(pymysql.MySQLError) as error:
+        execute(db, "INSERT INTO rd_version_requirement VALUES (1,999,999,1,DEFAULT)")
+    assert error.value.args[0] == 1644
+    db.rollback()
+    execute(db, f"SET SESSION {flag}=1")
+    assert execute(db, "SELECT * FROM rd_version_requirement") == ()

@@ -7,10 +7,14 @@ def validate_mysql(connection, *, empty=False, inspect_triggers=True):
     row = connection.execute(
         text(
             "SELECT VERSION(), @@version_comment, @@character_set_database, @@collation_database,"
-            " @@default_storage_engine, @@foreign_key_checks, @@unique_checks, @@innodb_strict_mode"
+            " @@default_storage_engine, @@foreign_key_checks, @@unique_checks,"
+            " @@innodb_strict_mode,"
+            " @@innodb_large_prefix, @@innodb_file_format"
         )
     ).one()
-    version, vendor, charset, collation, storage, fk, unique, strict = row
+    version, vendor, charset, collation, storage, fk, unique, strict, large_prefix, file_format = (
+        row
+    )
     if not version.startswith("5.7.") or "MariaDB" in vendor or "MariaDB" in version:
         raise RuntimeError("This path requires Oracle MySQL 5.7; vendor/version must be verified")
     if (charset, collation, storage.upper(), fk, unique, strict) != (
@@ -24,6 +28,10 @@ def validate_mysql(connection, *, empty=False, inspect_triggers=True):
         raise RuntimeError(
             "Required: utf8mb4/utf8mb4_bin, InnoDB; "
             "foreign_key_checks, unique_checks and innodb_strict_mode enabled"
+        )
+    if large_prefix != 1 or file_format.lower() != "barracuda":
+        raise RuntimeError(
+            "MySQL 5.7 requires innodb_large_prefix=ON and Barracuda for full unique keys"
         )
     tables = set(inspect(connection).get_table_names())
     if empty:

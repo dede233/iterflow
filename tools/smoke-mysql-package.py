@@ -3,6 +3,7 @@
 import argparse
 import hashlib
 import json
+import os
 import secrets
 import shutil
 import subprocess
@@ -62,9 +63,9 @@ for user, secret in [
 sql(f"GRANT ALL PRIVILEGES ON `{db_name}`.* TO %s@'%%'", (migration_user,))
 
 try:
-    with tempfile.TemporaryDirectory(
-        prefix="iterflow-mysql57-package-smoke-"
-    ) as directory:
+    staging_root = root / "data/mysql57-package-smoke"
+    staging_root.mkdir(parents=True, exist_ok=True, mode=0o700)
+    with tempfile.TemporaryDirectory(prefix="isolated-", dir=staging_root) as directory:
         stage = Path(directory)
         for name in ("compose.yml", "images.env", "tls"):
             source = bundle / name
@@ -79,6 +80,7 @@ try:
         image_env = image_env.replace("API_PORT=8000", "API_PORT=57300").replace(
             "WEB_PORT=8080", "WEB_PORT=57380"
         )
+        image_env += f"BACKUP_UID={os.getuid()}\nBACKUP_GID={os.getgid()}\n"
         (stage / "images.env").write_text(image_env)
         common = (
             "REDIS_URL=redis://redis:6379/0\nJWT_SECRET=" + secrets.token_hex(32) + "\n"

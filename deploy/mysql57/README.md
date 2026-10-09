@@ -69,6 +69,7 @@ MySQL DDL 不原子：失败即停，保留现场；不要 stamp/盲目续跑。
 ## 备份与恢复
 
 mysql-client.cnf 使用单独受保护的备份账号，配置真实 host/user/password 和 TLS。
+该文件 mode 600；若由非 root 用户持有，在 images.env 填该用户的 BACKUP_UID/BACKUP_GID。
 只有在已明确授权的环境中执行以下维护命令；本次实际演练只发生在隔离本地测试库/存储。
 暂停全部业务写入及 DDL，使 DB 与附件获得一致快照；备份目录必须新建且 mode 700。
 

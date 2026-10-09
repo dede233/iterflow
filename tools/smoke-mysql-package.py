@@ -107,6 +107,21 @@ def restore_package(stage, dump, files, headers, requirement_id, file_id):
             .replace("API_PORT=57300", "API_PORT=57301")
             .replace("WEB_PORT=57380", "WEB_PORT=57381")
         )
+    # A restore helper belongs only to this disposable test project. The shipped
+    # backup service keeps its read-only attachment mount; `compose run -v` does
+    # not reliably override the inherited mount's access mode.
+    (restore_stage / "restore-only.yml").write_text(
+        "services:\n"
+        "  storage-restore:\n"
+        "    image: ${API_IMAGE}\n"
+        "    platform: linux/amd64\n"
+        "    profiles: [ops]\n"
+        '    entrypoint: [python, -c, "import sys,tarfile; '
+        "tarfile.open(fileobj=sys.stdin.buffer,mode='r|').extractall('/app/data',filter='data')\"]\n"
+        "    volumes: [uploads:/app/data/uploads]\n"
+        "    security_opt: [no-new-privileges:true]\n"
+        "    cap_drop: [ALL]\n"
+    )
     compose = [
         "docker",
         "compose",
@@ -118,6 +133,8 @@ def restore_package(stage, dump, files, headers, requirement_id, file_id):
         str(restore_stage / "compose.yml"),
         "-f",
         str(restore_stage / "test-network.yml"),
+        "-f",
+        str(restore_stage / "restore-only.yml"),
     ]
 
     def dc(*arguments, **kwargs):
@@ -153,13 +170,7 @@ def restore_package(stage, dump, files, headers, requirement_id, file_id):
             "run",
             "--rm",
             "-T",
-            "--entrypoint",
-            "python",
-            "-v",
-            restore_project + "_uploads:/app/data/uploads",
-            "storage-backup",
-            "-c",
-            "import sys,tarfile; tarfile.open(fileobj=sys.stdin.buffer,mode='r|').extractall('/app/data',filter='data')",
+            "storage-restore",
             input=files,
         )
         dc(

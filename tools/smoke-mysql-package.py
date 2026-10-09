@@ -8,6 +8,7 @@ import secrets
 import shutil
 import subprocess
 import tempfile
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
@@ -44,13 +45,166 @@ proof = {
     "platform": "linux/amd64",
     "scope": "isolated local empty database, synthetic accounts and separate volumes only",
     "remote_verified": False,
+    "validation_commit": subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], cwd=root, text=True
+    ).strip(),
+    "proxy_readiness_probes": [],
 }
+
+
+def wait_proxy(client, headers):
+    """Readiness probes only; business writes and persistence checks never retry."""
+    deadline = time.monotonic() + 30
+    statuses = []
+    while True:
+        try:
+            response = client.get("/api/v1/auth/me", headers=headers, timeout=3)
+            status = response.status_code
+        except httpx.TransportError:
+            status = "transport-unavailable"
+        statuses.append(status)
+        if status == 200:
+            proof["proxy_readiness_probes"].append(statuses)
+            return
+        assert status in (502, 503, 504, "transport-unavailable"), (
+            f"Unexpected readiness HTTP {status}"
+        )
+        assert time.monotonic() < deadline, (
+            f"Proxy readiness deadline exceeded: {statuses}"
+        )
+        time.sleep(0.25)
 
 
 def sql(statement, parameters=()):
     with admin.cursor() as cursor:
         cursor.execute(statement, parameters)
         return cursor.fetchall()
+
+
+def restore_package(stage, dump, files, headers, requirement_id, file_id):
+    """Restore only into another newly created local test DB and new volumes."""
+    restored = db_name + "_restore"
+    restore_project = project + "-restore"
+    sql(f"CREATE DATABASE `{restored}` CHARACTER SET utf8mb4 COLLATE utf8mb4_bin")
+    sql(f"GRANT ALL PRIVILEGES ON `{restored}`.* TO %s@'%%'", (migration_user,))
+    restore_stage = stage / "restore"
+    restore_stage.mkdir(mode=0o700)
+    for name in (
+        "compose.yml",
+        "images.env",
+        ".env.runtime",
+        ".env.migration",
+        "mysql-client.cnf",
+        "test-network.yml",
+    ):
+        shutil.copy2(stage / name, restore_stage / name)
+    shutil.copytree(stage / "tls", restore_stage / "tls")
+    for name in ("images.env", ".env.runtime", ".env.migration"):
+        path = restore_stage / name
+        path.write_text(
+            path.read_text()
+            .replace(db_name, restored)
+            .replace("API_PORT=57300", "API_PORT=57301")
+            .replace("WEB_PORT=57380", "WEB_PORT=57381")
+        )
+    compose = [
+        "docker",
+        "compose",
+        "-p",
+        restore_project,
+        "--env-file",
+        str(restore_stage / "images.env"),
+        "-f",
+        str(restore_stage / "compose.yml"),
+        "-f",
+        str(restore_stage / "test-network.yml"),
+    ]
+
+    def dc(*arguments, **kwargs):
+        return subprocess.run([*compose, *arguments], check=True, **kwargs)
+
+    try:
+        dc(
+            "--profile",
+            "ops",
+            "run",
+            "--rm",
+            "-T",
+            "--entrypoint",
+            "mysql",
+            "client",
+            "--defaults-extra-file=/run/secrets/mysql-client.cnf",
+            restored,
+            input=dump,
+        )
+        for (table,) in sql(
+            "SELECT table_name FROM information_schema.tables WHERE table_schema=%s",
+            (restored,),
+        ):
+            rights = (
+                "SELECT"
+                if table == "alembic_version"
+                else "SELECT, INSERT, UPDATE, DELETE"
+            )
+            sql(f"GRANT {rights} ON `{restored}`.`{table}` TO %s@'%%'", (runtime_user,))
+        dc(
+            "--profile",
+            "ops",
+            "run",
+            "--rm",
+            "-T",
+            "--entrypoint",
+            "python",
+            "-v",
+            restore_project + "_uploads:/app/data/uploads",
+            "storage-backup",
+            "-c",
+            "import sys,tarfile; tarfile.open(fileobj=sys.stdin.buffer,mode='r|').extractall('/app/data',filter='data')",
+            input=files,
+        )
+        dc(
+            "--profile",
+            "init",
+            "run",
+            "--rm",
+            "migrate",
+            "python",
+            "-m",
+            "app.cli.mysql_preflight",
+        )
+        dc("up", "-d", "--wait", "--wait-timeout", "300", "redis", "api", "web")
+        with httpx.Client(base_url="http://127.0.0.1:57381", timeout=30) as client:
+            download = f"/api/v1/files/{file_id}/download"
+            assert client.get(download).status_code == 401
+            assert (
+                client.get(download, headers=headers).content == b"package attachment"
+            )
+            requirement = client.get(
+                f"/api/v1/requirements/{requirement_id}", headers=headers
+            ).json()
+            assert (
+                requirement["status"] == "ONLINE"
+                and requirement["current_version_id"] is not None
+            )
+        assert (
+            sql(
+                "SELECT COUNT(*) FROM information_schema.triggers WHERE trigger_schema=%s",
+                (restored,),
+            )[0][0]
+            == 63
+        )
+        dc("stop", "api")
+        post_dump = dc(
+            "--profile", "ops", "run", "--rm", "-T", "client", stdout=subprocess.PIPE
+        ).stdout
+        return {
+            "package_isolated_restore": True,
+            "restored_guard_triggers": 63,
+            "package_post_restore_backup_sha256": hashlib.sha256(post_dump).hexdigest(),
+        }
+    finally:
+        dc("down", "-v", "--remove-orphans")
+        sql(f"DROP DATABASE `{restored}`")
 
 
 assert sql("SELECT VERSION()")[0][0] == "5.7.44"
@@ -368,8 +522,20 @@ try:
                 download = f"/files/{file['id']}/download"
                 request("GET", download, expected=401)
                 assert request("GET", download, h).content == b"package attachment"
-                dc("restart", "api", "redis", "web")
-                dc("up", "-d", "--wait", "--wait-timeout", "300", "redis", "api", "web")
+                for _ in range(3):
+                    dc("restart", "api", "redis", "web")
+                    dc(
+                        "up",
+                        "-d",
+                        "--wait",
+                        "--wait-timeout",
+                        "300",
+                        "redis",
+                        "api",
+                        "web",
+                    )
+                    wait_proxy(client, h)
+                    assert request("GET", download, h).content == b"package attachment"
                 assert request("GET", download, h).content == b"package attachment"
                 assert (
                     request("GET", f"/requirements/{r['id']}", h).json()["status"]
@@ -401,6 +567,10 @@ try:
                 )
                 dc("start", "api")
                 dc("up", "-d", "--wait", "--wait-timeout", "300", "redis", "api", "web")
+                wait_proxy(client, h)
+                restored_proof = restore_package(
+                    stage, dump, files, h, r["id"], file["id"]
+                )
                 request("DELETE", f"/files/{file['id']}", h, expected=204)
                 request("GET", download, h, expected=404)
                 proof.update(
@@ -413,9 +583,22 @@ try:
                     notification_audit=True,
                     file_permissions=True,
                     package_restart_persistence=True,
+                    package_consecutive_restarts=3,
                     backup_database_sha256=hashlib.sha256(dump).hexdigest(),
                     backup_storage_sha256=hashlib.sha256(files).hexdigest(),
+                    **restored_proof,
                 )
+        except Exception:
+            evidence = root / "docs/evidence/mysql57"
+            logs = subprocess.run(
+                [*compose, "logs", "--no-color", "--tail", "120"],
+                capture_output=True,
+                check=False,
+            )
+            (evidence / "package-services-failure.log").write_bytes(
+                logs.stdout + logs.stderr
+            )
+            raise
         finally:
             dc("down", "-v", "--remove-orphans")
 finally:

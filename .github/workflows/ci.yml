@@ -261,6 +261,10 @@ jobs:
           python -m ruff check app tests_mysql57
           python -m ruff format --check app tests_mysql57
           python -m mypy app
+      - name: Build frozen linux amd64 package images
+        run: python tools/build-mysql-package.py --output "$RUNNER_TEMP/iterflow-mysql57-package" --skip-save
+      - name: Real package startup, least privilege, main chain, restart and backup
+        run: python tools/smoke-mysql-package.py --bundle "$RUNNER_TEMP/iterflow-mysql57-package"
       - name: Clean isolated test resources
         if: always()
         run: docker compose -f tools/mysql57-proof/compose.yml down -v --remove-orphans

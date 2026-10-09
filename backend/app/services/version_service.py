@@ -295,7 +295,8 @@ class VersionService:
         self._ensure_mutable(version)
 
         previous_current_version_id = requirement.current_version_id
-        requirement.current_version_id = version_id
+        if self.db.get_bind().dialect.name != "mysql":
+            requirement.current_version_id = version_id
         requirement.status = self._planned_status(requirement.status)
         self.db.add(
             VersionRequirement(
@@ -591,21 +592,30 @@ class VersionService:
         online_requirement_ids: list[int] = []
         online_feedback_ids: list[int] = []
         if requirement_ids:
-            online_requirement_ids = list(
-                self.db.scalars(
-                    update(Requirement)
-                    .where(
-                        Requirement.id.in_(requirement_ids),
-                        Requirement.status == RequirementStatus.DONE,
-                    )
-                    .values(
-                        status=RequirementStatus.ONLINE,
-                        updated_by=operator_id,
-                        revision=Requirement.revision + 1,
-                    )
-                    .returning(Requirement.id)
-                ).all()
-            )
+            if self.db.get_bind().dialect.name == "mysql":
+                online_requirement_ids = self._mysql_online_ids(
+                    Requirement,
+                    requirement_ids,
+                    RequirementStatus.DONE,
+                    RequirementStatus.ONLINE,
+                    operator_id,
+                )
+            else:
+                online_requirement_ids = list(
+                    self.db.scalars(
+                        update(Requirement)
+                        .where(
+                            Requirement.id.in_(requirement_ids),
+                            Requirement.status == RequirementStatus.DONE,
+                        )
+                        .values(
+                            status=RequirementStatus.ONLINE,
+                            updated_by=operator_id,
+                            revision=Requirement.revision + 1,
+                        )
+                        .returning(Requirement.id)
+                    ).all()
+                )
             for rid in online_requirement_ids:
                 self.audit.log(
                     "REQUIREMENT",
@@ -622,21 +632,30 @@ class VersionService:
                 ).all()
                 if feedback_ids:
                     # Only feedbacks still awaiting release (REQUIREMENT_LINKED) go ONLINE.
-                    online_feedback_ids = list(
-                        self.db.scalars(
-                            update(Feedback)
-                            .where(
-                                Feedback.id.in_(feedback_ids),
-                                Feedback.status == FeedbackStatus.REQUIREMENT_LINKED,
-                            )
-                            .values(
-                                status=FeedbackStatus.ONLINE,
-                                updated_by=operator_id,
-                                revision=Feedback.revision + 1,
-                            )
-                            .returning(Feedback.id)
-                        ).all()
-                    )
+                    if self.db.get_bind().dialect.name == "mysql":
+                        online_feedback_ids = self._mysql_online_ids(
+                            Feedback,
+                            list(feedback_ids),
+                            FeedbackStatus.REQUIREMENT_LINKED,
+                            FeedbackStatus.ONLINE,
+                            operator_id,
+                        )
+                    else:
+                        online_feedback_ids = list(
+                            self.db.scalars(
+                                update(Feedback)
+                                .where(
+                                    Feedback.id.in_(feedback_ids),
+                                    Feedback.status == FeedbackStatus.REQUIREMENT_LINKED,
+                                )
+                                .values(
+                                    status=FeedbackStatus.ONLINE,
+                                    updated_by=operator_id,
+                                    revision=Feedback.revision + 1,
+                                )
+                                .returning(Feedback.id)
+                            ).all()
+                        )
                     for feedback in self.db.scalars(
                         select(Feedback).where(Feedback.id.in_(online_feedback_ids))
                     ).all():
@@ -678,3 +697,26 @@ class VersionService:
             "released_requirement_ids": online_requirement_ids,
             "online_feedback_ids": online_feedback_ids,
         }
+
+    def _mysql_online_ids(self, model, candidates, before, after, operator_id) -> list[int]:
+        """Replace RETURNING with current reads and CAS under transaction row locks."""
+        rows = self.db.execute(
+            select(model.id, model.revision)
+            .where(model.id.in_(candidates), model.status == before)
+            .order_by(model.id)
+            .with_for_update()
+        ).all()
+        ids = []
+        for entity_id, revision in rows:
+            result = self.db.execute(
+                update(model)
+                .where(model.id == entity_id, model.revision == revision, model.status == before)
+                .values(status=after, updated_by=operator_id, revision=model.revision + 1)
+                .execution_options(synchronize_session=False)
+            )
+            if cast(CursorResult[Any], result).rowcount != 1:
+                raise ConflictError("发布对象已被其他事务修改")
+            ids.append(entity_id)
+        # ORM identity-map objects used for notifications must reflect actual DB updates.
+        self.db.expire_all()
+        return ids

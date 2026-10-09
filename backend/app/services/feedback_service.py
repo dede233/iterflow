@@ -290,7 +290,15 @@ class FeedbackService:
         requirement link + the feedback status flip + the relation row + audit
         all commit together, or nothing does. No version association here.
         """
-        feedback = self.repo.get(feedback_id)
+        if self.db.get_bind().dialect.name == "mysql":
+            feedback = self.db.scalar(
+                select(Feedback)
+                .where(Feedback.id == feedback_id)
+                .with_for_update()
+                .execution_options(populate_existing=True)
+            )
+        else:
+            feedback = self.repo.get(feedback_id)
         if not feedback:
             raise NotFoundError("反馈不存在")
         if feedback.revision != payload.revision:

@@ -53,6 +53,7 @@ Redis 服务：iterflow-redis
 ├── spec/
 ├── backend/
 ├── frontend/
+├── tools/
 └── deploy/
 ```
 
@@ -63,6 +64,11 @@ Redis 服务：iterflow-redis
 - `spec/status-machines.md`：状态机
 
 ## 3. 本地环境
+
+macOS / ServBay 本机启动脚本和目录整理约定见 [tools/README.md](tools/README.md)。
+主项目保存在 `~/Developer/work/iterflow/`，人工临时 worktree 与备份分别集中到
+`~/Developer/worktrees/iterflow/` 和 `~/Developer/backups/iterflow/`；上传文件归属
+主项目的 `data/uploads/`，不依赖旧开发 worktree。
 
 建议：
 - ServBay（可直接提供 Python、PostgreSQL、Redis 与 Nginx/Caddy），或 Docker Engine / Docker Desktop

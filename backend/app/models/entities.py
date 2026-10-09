@@ -6,6 +6,7 @@ from sqlalchemy import (
     JSON,
     BigInteger,
     Boolean,
+    Computed,
     Date,
     DateTime,
     ForeignKey,
@@ -14,13 +15,15 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    select,
     text,
 )
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, column_property, mapped_column
 
-from app.core.database import Base
+from app.core.database import Base, engine
+from app.core.db_types import ExactIdentifier, UTCDateTime
 from app.models.enums import (
     DataScope,
     FeedbackStatus,
@@ -36,18 +39,26 @@ from app.models.enums import (
     VersionStatus,
 )
 
+MYSQL = engine.dialect.name == "mysql"
+
+
+def identifier_type(length):
+    return ExactIdentifier(length) if MYSQL else String(length)
+
+
+def timestamp_type():
+    return UTCDateTime() if MYSQL else DateTime(timezone=True)
+
 
 def utcnow() -> datetime:
     return datetime.now(UTC)
 
 
 class AuditMixin:
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=utcnow, nullable=False
-    )
+    created_at: Mapped[datetime] = mapped_column(timestamp_type(), default=utcnow, nullable=False)
     created_by: Mapped[int | None] = mapped_column(BigInteger)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False
+        timestamp_type(), default=utcnow, onupdate=utcnow, nullable=False
     )
     updated_by: Mapped[int | None] = mapped_column(BigInteger)
     revision: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
@@ -56,7 +67,7 @@ class AuditMixin:
 class User(Base, AuditMixin):
     __tablename__ = "sys_user"
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    username: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    username: Mapped[str] = mapped_column(identifier_type(64), unique=True, index=True)
     display_name: Mapped[str] = mapped_column(String(100))
     password_hash: Mapped[str] = mapped_column(String(255))
     email: Mapped[str | None] = mapped_column(String(255))
@@ -73,13 +84,13 @@ class User(Base, AuditMixin):
         index=True,
     )
     must_change_password: Mapped[bool] = mapped_column(Boolean, default=True)
-    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_login_at: Mapped[datetime | None] = mapped_column(timestamp_type())
 
 
 class Role(Base, AuditMixin):
     __tablename__ = "sys_role"
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    code: Mapped[str] = mapped_column(String(64), unique=True)
+    code: Mapped[str] = mapped_column(identifier_type(64), unique=True)
     name: Mapped[str] = mapped_column(String(100))
     data_scope: Mapped[DataScope] = mapped_column(
         SAEnum(
@@ -100,7 +111,7 @@ class Role(Base, AuditMixin):
 class Permission(Base):
     __tablename__ = "sys_permission"
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    code: Mapped[str] = mapped_column(String(128), unique=True, index=True)
+    code: Mapped[str] = mapped_column(identifier_type(128), unique=True, index=True)
     name: Mapped[str] = mapped_column(String(100))
     category: Mapped[str] = mapped_column(String(32), default="BUTTON")
 
@@ -125,15 +136,11 @@ class RefreshSession(Base):
         BigInteger, ForeignKey("sys_user.id", ondelete="CASCADE"), index=True
     )
     token_jti: Mapped[str] = mapped_column(String(32), unique=True, nullable=False)
-    expires_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, index=True
-    )
-    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime] = mapped_column(timestamp_type(), nullable=False, index=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(timestamp_type())
     revoked_reason: Mapped[str | None] = mapped_column(String(64))
-    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=utcnow, nullable=False
-    )
+    last_used_at: Mapped[datetime | None] = mapped_column(timestamp_type())
+    created_at: Mapped[datetime] = mapped_column(timestamp_type(), default=utcnow, nullable=False)
 
 
 class RolePermission(Base):
@@ -147,7 +154,7 @@ class RolePermission(Base):
 class BusinessSystem(Base, AuditMixin):
     __tablename__ = "sys_business_system"
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    code: Mapped[str] = mapped_column(String(64), unique=True)
+    code: Mapped[str] = mapped_column(identifier_type(64), unique=True)
     name: Mapped[str] = mapped_column(String(100))
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
@@ -159,7 +166,7 @@ class BusinessModule(Base, AuditMixin):
     system_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("sys_business_system.id"), index=True
     )
-    code: Mapped[str] = mapped_column(String(64))
+    code: Mapped[str] = mapped_column(identifier_type(64))
     name: Mapped[str] = mapped_column(String(100))
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
@@ -169,7 +176,7 @@ class BusinessModule(Base, AuditMixin):
 class Dictionary(Base, AuditMixin):
     __tablename__ = "sys_dictionary"
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    code: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    code: Mapped[str] = mapped_column(identifier_type(64), unique=True, index=True)
     name: Mapped[str] = mapped_column(String(100))
     description: Mapped[str | None] = mapped_column(String(500))
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
@@ -181,7 +188,7 @@ class DictionaryItem(Base, AuditMixin):
     dictionary_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("sys_dictionary.id", ondelete="CASCADE"), index=True
     )
-    code: Mapped[str] = mapped_column(String(64))
+    code: Mapped[str] = mapped_column(identifier_type(64))
     label: Mapped[str] = mapped_column(String(100))
     value: Mapped[str] = mapped_column(String(255))
     sort_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
@@ -194,7 +201,7 @@ class DictionaryItem(Base, AuditMixin):
 class Requirement(Base, AuditMixin):
     __tablename__ = "rd_requirement"
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    requirement_no: Mapped[str] = mapped_column(String(32), unique=True, index=True)
+    requirement_no: Mapped[str] = mapped_column(identifier_type(32), unique=True, index=True)
     title: Mapped[str] = mapped_column(String(200))
     requirement_type: Mapped[str] = mapped_column(String(32))
     source: Mapped[RequirementSource] = mapped_column(
@@ -232,11 +239,12 @@ class Requirement(Base, AuditMixin):
     system_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("sys_business_system.id"))
     module_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("sys_business_module.id"))
     owner_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("sys_user.id"), index=True)
-    current_version_id: Mapped[int | None] = mapped_column(
-        BigInteger,
-        ForeignKey("rd_version.id", use_alter=True, name="fk_requirement_current_version"),
-        index=True,
-    )
+    if not MYSQL:
+        current_version_id: Mapped[int | None] = mapped_column(
+            BigInteger,
+            ForeignKey("rd_version.id", use_alter=True, name="fk_requirement_current_version"),
+            index=True,
+        )
     description: Mapped[str] = mapped_column(Text)
     acceptance_criteria: Mapped[str | None] = mapped_column(Text)
 
@@ -244,7 +252,7 @@ class Requirement(Base, AuditMixin):
 class Feedback(Base, AuditMixin):
     __tablename__ = "rd_feedback"
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    feedback_no: Mapped[str] = mapped_column(String(32), unique=True, index=True)
+    feedback_no: Mapped[str] = mapped_column(identifier_type(32), unique=True, index=True)
     title: Mapped[str] = mapped_column(String(200))
     feedback_type: Mapped[FeedbackType] = mapped_column(
         SAEnum(
@@ -283,16 +291,17 @@ class Feedback(Base, AuditMixin):
     expected_result: Mapped[str | None] = mapped_column(Text)
     actual_result: Mapped[str | None] = mapped_column(Text)
     reproduce_steps: Mapped[str | None] = mapped_column(Text)
-    main_requirement_id: Mapped[int | None] = mapped_column(
-        BigInteger, ForeignKey("rd_requirement.id"), index=True
-    )
+    if not MYSQL:
+        main_requirement_id: Mapped[int | None] = mapped_column(
+            BigInteger, ForeignKey("rd_requirement.id"), index=True
+        )
     duplicate_of_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("rd_feedback.id"))
 
 
 class Version(Base, AuditMixin):
     __tablename__ = "rd_version"
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    version_no: Mapped[str] = mapped_column(String(32), unique=True, index=True)
+    version_no: Mapped[str] = mapped_column(identifier_type(32), unique=True, index=True)
     name: Mapped[str] = mapped_column(String(100))
     status: Mapped[VersionStatus] = mapped_column(
         SAEnum(
@@ -307,7 +316,7 @@ class Version(Base, AuditMixin):
     )
     owner_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("sys_user.id"))
     planned_release_date: Mapped[date | None] = mapped_column(Date)
-    released_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    released_at: Mapped[datetime | None] = mapped_column(timestamp_type())
     description: Mapped[str | None] = mapped_column(Text)
 
 
@@ -315,13 +324,21 @@ class RequirementFeedback(Base):
     __tablename__ = "rd_requirement_feedback"
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     requirement_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("rd_requirement.id", ondelete="CASCADE"), index=True
+        BigInteger,
+        ForeignKey("rd_requirement.id", ondelete="RESTRICT" if MYSQL else "CASCADE"),
+        index=True,
     )
     feedback_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("rd_feedback.id", ondelete="CASCADE"), index=True
+        BigInteger,
+        ForeignKey("rd_feedback.id", ondelete="RESTRICT" if MYSQL else "CASCADE"),
+        index=True,
     )
     is_primary: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(timestamp_type(), default=utcnow)
+    if MYSQL:
+        primary_feedback_id: Mapped[int | None] = mapped_column(
+            BigInteger, Computed("IF(is_primary = 1, feedback_id, NULL)", persisted=True)
+        )
     # A feedback may have at most one PRIMARY requirement (V1.5). Enforced at the
     # database level (matches migration 0001's uq_feedback_primary_relation);
     # declared here too so metadata-created test databases enforce it as well.
@@ -329,7 +346,7 @@ class RequirementFeedback(Base):
         UniqueConstraint("requirement_id", "feedback_id", name="uq_requirement_feedback_pair"),
         Index(
             "uq_feedback_primary_relation",
-            "feedback_id",
+            "primary_feedback_id" if MYSQL else "feedback_id",
             unique=True,
             sqlite_where=text("is_primary = 1"),
             postgresql_where=text("is_primary = true"),
@@ -341,17 +358,25 @@ class VersionRequirement(Base):
     __tablename__ = "rd_version_requirement"
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     version_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("rd_version.id", ondelete="CASCADE"), index=True
+        BigInteger,
+        ForeignKey("rd_version.id", ondelete="RESTRICT" if MYSQL else "CASCADE"),
+        index=True,
     )
     requirement_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("rd_requirement.id", ondelete="CASCADE"), index=True
+        BigInteger,
+        ForeignKey("rd_requirement.id", ondelete="RESTRICT" if MYSQL else "CASCADE"),
+        index=True,
     )
     active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
-    added_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    added_at: Mapped[datetime] = mapped_column(timestamp_type(), default=utcnow)
     added_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("sys_user.id"))
-    removed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    removed_at: Mapped[datetime | None] = mapped_column(timestamp_type())
     removed_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("sys_user.id"))
     removed_reason: Mapped[str | None] = mapped_column(String(500))
+    if MYSQL:
+        active_requirement_id: Mapped[int | None] = mapped_column(
+            BigInteger, Computed("IF(active = 1, requirement_id, NULL)", persisted=True)
+        )
     # A requirement may belong to at most one ACTIVE version at a time (V1.5).
     # Enforced at the database level (matches migration 0001's
     # uq_requirement_active_version); declared here too so metadata-created test
@@ -359,7 +384,7 @@ class VersionRequirement(Base):
     __table_args__ = (
         Index(
             "uq_requirement_active_version",
-            "requirement_id",
+            "active_requirement_id" if MYSQL else "requirement_id",
             unique=True,
             sqlite_where=text("active = 1"),
             postgresql_where=text("active = true"),
@@ -371,7 +396,7 @@ class Release(Base, AuditMixin):
     __tablename__ = "rd_release"
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     version_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("rd_version.id"))
-    released_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    released_at: Mapped[datetime] = mapped_column(timestamp_type())
     result: Mapped[ReleaseResult] = mapped_column(
         SAEnum(
             ReleaseResult,
@@ -407,13 +432,13 @@ class Notification(Base, AuditMixin):
     content: Mapped[str] = mapped_column(Text)
     entity_type: Mapped[str | None] = mapped_column(String(32))
     entity_id: Mapped[int | None] = mapped_column(BigInteger)
-    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    read_at: Mapped[datetime | None] = mapped_column(timestamp_type(), index=True)
 
 
 class FileObject(Base, AuditMixin):
     __tablename__ = "sys_file"
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    storage_key: Mapped[str] = mapped_column(String(500), unique=True)
+    storage_key: Mapped[str] = mapped_column(identifier_type(500), unique=True)
     original_name: Mapped[str] = mapped_column(String(255))
     mime_type: Mapped[str] = mapped_column(String(128))
     size: Mapped[int] = mapped_column(BigInteger)
@@ -436,7 +461,7 @@ class AttachmentRelation(Base):
     file_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("sys_file.id", ondelete="CASCADE"))
     entity_type: Mapped[str] = mapped_column(String(32))
     entity_id: Mapped[int] = mapped_column(BigInteger)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(timestamp_type(), default=utcnow)
     __table_args__ = (
         UniqueConstraint("entity_type", "entity_id", "file_id", name="uq_attachment_entity_file"),
         Index("ix_attachment_entity_type_entity_id", "entity_type", "entity_id"),
@@ -466,10 +491,27 @@ class OperationLog(Base):
     user_agent: Mapped[str | None] = mapped_column(String(512))
     before_data: Mapped[dict | None] = mapped_column(JSON().with_variant(JSONB, "postgresql"))
     after_data: Mapped[dict | None] = mapped_column(JSON().with_variant(JSONB, "postgresql"))
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=utcnow, index=True
-    )
+    created_at: Mapped[datetime] = mapped_column(timestamp_type(), default=utcnow, index=True)
 
 
 Index("ix_feedback_system_module", Feedback.system_id, Feedback.module_id)
 Index("ix_requirement_system_module", Requirement.system_id, Requirement.module_id)
+
+
+if MYSQL:
+    Requirement.current_version_id = column_property(
+        select(VersionRequirement.version_id)
+        .where(
+            VersionRequirement.requirement_id == Requirement.id, VersionRequirement.active.is_(True)
+        )
+        .correlate_except(VersionRequirement)
+        .scalar_subquery()
+    )
+    Feedback.main_requirement_id = column_property(
+        select(RequirementFeedback.requirement_id)
+        .where(
+            RequirementFeedback.feedback_id == Feedback.id, RequirementFeedback.is_primary.is_(True)
+        )
+        .correlate_except(RequirementFeedback)
+        .scalar_subquery()
+    )

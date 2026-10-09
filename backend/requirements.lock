@@ -1079,3 +1079,8 @@ websockets==17.1 \
     --hash=sha256:fd8f47dbf2e8adb15c847215f83436de3fdb120b51fdae0fbbdf69fd97a3ad80 \
     --hash=sha256:ff3e2ba7a9f0a110b0555452e9b5a03a34e11662544e01beea15f144b48ba7b7
     # via uvicorn
+
+pymysql==1.2.3 \
+    --hash=sha256:14f1c68e2ed859243ae5ca41ffbe677027fc46bc136a9f0be8a4e928e5e7415a \
+    --hash=sha256:d5b288529782e536ae171866df3ca9dc4f6cbfb3cc2f18e6f837fbb90dbc262b
+    # via iterflow-api (pyproject.toml)

@@ -13,7 +13,7 @@ RUN pip install --no-cache-dir setuptools==84.0.0 \
     && mkdir -p /app/data/uploads \
     && chown -R iterflow:iterflow /app/data
 COPY alembic ./alembic
-COPY alembic.ini ./
+COPY alembic.ini alembic-mysql.ini ./
 USER iterflow
 EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]

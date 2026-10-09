@@ -40,3 +40,49 @@ PostgreSQL 继续保留实体指针列与提交时延迟检查，历史迁移不
 
 Fresh Self-Review：完成，没有用 Service 检查代替 DB 约束；没有信任可伪造的会话标记。
 候选验证仅覆盖最小模型，尚不代表应用完成适配。阶段 1–4 未完成，禁止部署声明。
+
+## 阶段 1 — 独立迁移、驱动、类型与约束
+
+新增 PyMySQL 1.2.3（固定版本及 PyPI SHA256）；PostgreSQL 驱动保留。
+独立 `alembic-mysql.ini` / `mysql57_0001` 使用冻结的显式 DDL，21 张业务表；
+不调用 create_all，不 stamp，不修改任何 `alembic/versions/` 历史脚本。
+默认 Alembic 路径拒绝 MySQL URL，避免误运行 PostgreSQL 历史迁移。
+空库检查拒绝已有表/视图；MySQL 非事务 DDL 失败保留部分库，禁止自动 stamp/续跑。
+本地初次 FK DDL 失败库 `iterflow_mysql57_app` 保留；调整关系 FK 为 RESTRICT 后，
+新库 `iterflow_mysql57_app2` 迁移及 seed 通过，后续类型/防绕过增强在随机新库重验。
+仅 seed 基础角色、权限和新管理员，没有已有账号/附件/数据导入。
+
+MySQL 使用 JSON、UTC DATETIME(6)、utf8mb4；会话设置 UTC、READ COMMITTED、严格模式。
+布尔/枚举由 INSERT/UPDATE 触发器执行，不能依赖 5.7 不执行的 CHECK。
+所有业务表 INSERT/UPDATE/DELETE 触发器拒绝 foreign_key_checks/unique_checks=0 的写会话。
+运行账号必须无 DDL/TRIGGER 权限；迁移账号分离。运行 readiness 不要求 TRIGGER 权限，
+由迁移后预检检查所有 63 个写保护触发器，runtime 检查表集/head/关系唯一索引。
+
+自然唯一标识采用 VARBINARY + UTF-8 codec，保持 PostgreSQL 的大小写和尾空格精确相等；
+数据库触发器验证 UTF-8/字符数，文本搜索显式转字符类型。
+MySQL 关系 FK 使用 RESTRICT（生成列 base 列不支持 CASCADE）；较 PG 更严格地拒绝物理删除
+有关联的实体，历史关系保留。当前业务 API 不物理删除这些实体，移除/迁版行为保持。
+
+Fresh Self-Review：识别并补齐会话关闭外键/唯一检查的绕过；不依赖应用约定。
+目前迁移版本尚在本地开发，后续需要应用全量验收与 linux/amd64 镜像验证。
+
+## 阶段 2 — 事务与并发兼容
+
+MySQL 发布在同一事务内按 ID 锁定合格对象，以 status + revision 条件更新并核对 rowcount，
+随后只对实际更新的 ID 写审计和通知；PostgreSQL RETURNING 路径保持。
+CAS 更新仍使用 WHERE revision、成功 +1；只把 MySQL 派生指针交给关联事实，
+不会将 SQL 表达式作为物理 UPDATE 目标。
+MySQL 转需求先锁定反馈进行 current read，之后仍使用 revision CAS，防止并发 CREATE_NEW
+在验证旧 revision 前产生重复业务编号候选。
+死锁/锁超时/数据库约束冲突映射为 HTTP 409（40940），不自动重放业务写入。
+数据库异常不向响应暴露 SQL/连接凭据。
+
+真实 MySQL 应用验收当前 39 passed（含 13 个日期用例）；0 skipped。
+覆盖主链、Auth/首次改密/Refresh rotation/logout、创建角色/用户、RBAC/DataScope、中文字面搜索、
+文件上传/下载/删除、旧 revision 40910、多反馈归并/迁版历史、并发转换/迁版/发布、
+发布写入完成后的故障回滚、数据库枚举/布尔/指针/外键/唯一检查关闭绕过。
+对应证据：`docs/evidence/mysql57/mysql-acceptance.txt`。
+PostgreSQL 早期完整回归 375 passed、1 skipped（真实 S3 由单独门禁覆盖），
+后续最终代码仍须复跑；不宣称此结果已覆盖所有最终变更。
+Fresh Self-Review：发布候选读取与 UPDATE 均在同一事务内；未弱化 revision 或添加业务模型/状态。
+阶段 3 的持续运行、备份恢复、最终回归与 CI 尚未完成；阶段 4 尚未开始。

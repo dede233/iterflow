@@ -1,0 +1,26 @@
+name: iterflow-mysql57-proof
+services:
+  db:
+    image: mysql:5.7.44
+    platform: linux/amd64
+    container_name: iterflow-mysql57-proof-db
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?generate a local test password}
+      MYSQL_DATABASE: iterflow_mysql57_proof
+    ports:
+      - '127.0.0.1:57357:3306'
+    volumes:
+      - proof-db:/var/lib/mysql
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_bin
+      - --default-time-zone=+00:00
+      - --transaction-isolation=READ-COMMITTED
+      - --sql-mode=STRICT_ALL_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION
+    healthcheck:
+      test: ['CMD-SHELL', 'MYSQL_PWD="$$MYSQL_ROOT_PASSWORD" mysqladmin ping -h 127.0.0.1 -uroot --silent']
+      interval: 3s
+      timeout: 3s
+      retries: 40
+volumes:
+  proof-db:

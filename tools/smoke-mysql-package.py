@@ -523,7 +523,8 @@ try:
                 request("GET", download, expected=401)
                 assert request("GET", download, h).content == b"package attachment"
                 for _ in range(3):
-                    dc("restart", "api", "redis", "web")
+                    dc("stop", "web", "api")
+                    dc("restart", "redis")
                     dc(
                         "up",
                         "-d",
@@ -568,9 +569,12 @@ try:
                 dc("start", "api")
                 dc("up", "-d", "--wait", "--wait-timeout", "300", "redis", "api", "web")
                 wait_proxy(client, h)
+                dc("stop", "web", "api")
                 restored_proof = restore_package(
                     stage, dump, files, h, r["id"], file["id"]
                 )
+                dc("up", "-d", "--wait", "--wait-timeout", "300", "redis", "api", "web")
+                wait_proxy(client, h)
                 request("DELETE", f"/files/{file['id']}", h, expected=204)
                 request("GET", download, h, expected=404)
                 proof.update(

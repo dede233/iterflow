@@ -66,6 +66,11 @@ MySQL DDL 不原子：失败即停，保留现场；不要 stamp/盲目续跑。
 清理失败初始化后重建。seed 只创建基础角色、权限和新管理员，首次登录必须改密。
 迁移后必须检查 63 个 trigger 与两个生成列唯一索引；runtime readiness 只用低权限检查。
 
+维护重启使用 `./restart.sh`：先停止 Web/API，再重启 Redis，按健康依赖启动 API 和 Web。
+Web 的 Nginx 在启动时解析 API；不要在 API 尚未恢复时并行启动 Web。本地代理 DNS 曾在
+该窗口把 `api` 解析到外部 fake IP，导致持续 502。包验收验证三次按依赖重启，并通过代理
+检查 `/api/v1/auth/me` 就绪后逐项断言持久化；业务写入不自动重试。
+
 ## 备份与恢复
 
 mysql-client.cnf 使用单独受保护的备份账号，配置真实 host/user/password 和 TLS。

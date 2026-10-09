@@ -7,12 +7,18 @@ const schema = {
     '/api/v1/feedbacks': { post: {
       summary: '提交反馈', tags: ['Feedback'], security: [{ bearerAuth: [] }],
       requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/FeedbackCreate' } } } },
-      responses: { '200': { description: 'Successful Response', content: { 'application/json': { schema: { type: 'object' } } } } },
+      responses: { '200': { description: 'Successful Response', content: { 'application/json': { schema: { $ref: '#/components/schemas/FeedbackPage' } } } } },
     } },
   },
   components: { schemas: { FeedbackCreate: { type: 'object', required: ['title'], properties: {
     title: { type: 'string', description: '反馈标题' },
     urgency: { type: 'string', enum: ['NORMAL', 'URGENT'] },
+  } }, FeedbackPage: { type: 'object', properties: {
+    items: { title: '数据列表', type: 'array', items: { $ref: '#/components/schemas/FeedbackOut' } },
+    total: { title: '总条数', type: 'integer' },
+  } }, FeedbackOut: { type: 'object', properties: {
+    feedback_no: { title: '反馈编号', type: 'string' },
+    status: { title: '反馈状态', type: 'string', enum: ['NEW', 'ACCEPTED'] },
   } } } },
 }
 
@@ -49,6 +55,11 @@ for (const width of [375, 1440]) {
         await page.getByText('提交反馈', { exact: true }).click()
         await expect(page.getByText('反馈标题', { exact: true })).toBeVisible()
         await expect(page.getByText('可选值：NORMAL、URGENT', { exact: true })).toBeVisible()
+        await expect(page.getByText('数据列表', { exact: true })).toBeVisible()
+        await expect(page.getByText('总条数', { exact: true })).toBeVisible()
+        await page.getByText('查看子字段', { exact: true }).click()
+        await expect(page.getByText('反馈编号', { exact: true })).toBeVisible()
+        await expect(page.getByText('反馈状态', { exact: true })).toBeVisible()
         const download = page.waitForEvent('download')
         await page.getByRole('button', { name: '下载 OpenAPI', exact: true }).click()
         expect((await download).suggestedFilename()).toBe('iterflow-openapi.json')

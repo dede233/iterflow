@@ -6,6 +6,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from app.core.api_documentation import apply_schema_labels
 from app.core.exceptions import PermissionDenied
 from app.models.entities import User
 from app.repositories.user_repository import UserRepository
@@ -31,6 +32,8 @@ class ApiDocumentationService:
         result["info"] = {**result["info"], **labels["info"]}
         result["info"]["title"] = "迭程 IterFlow 接口文档"
         result["tags"] = labels["tags"]
+        for name, schema in result.get("components", {}).get("schemas", {}).items():
+            apply_schema_labels(schema, labels.get("schemas", {}).get(name, {}))
         for path, operations in result["paths"].items():
             for method, operation in operations.items():
                 operation.update(

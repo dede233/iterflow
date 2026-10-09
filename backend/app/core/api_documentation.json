@@ -39,6 +39,2186 @@
       "name": "File"
     }
   ],
+  "schemas": {
+    "AddRequirementRequest": {
+      "title": "AddRequirementRequest",
+      "properties": {
+        "requirement_id": {
+          "title": "需求 ID"
+        },
+        "revision": {
+          "title": "修订号",
+          "description": "对象的乐观锁修订号；写入时提交最后读取的修订号。"
+        },
+        "version_revision": {
+          "title": "版本修订号",
+          "description": "目标版本的乐观锁修订号；版本内容变更时用于并发校验。"
+        }
+      }
+    },
+    "AttachmentOut": {
+      "title": "AttachmentOut",
+      "description": "Business-facing attachment metadata. Never exposes storage_key/path.",
+      "properties": {
+        "file_id": {
+          "title": "文件 ID"
+        },
+        "original_name": {
+          "title": "原始文件名"
+        },
+        "size": {
+          "title": "文件大小（字节）"
+        },
+        "mime_type": {
+          "title": "文件 MIME 类型"
+        },
+        "created_at": {
+          "title": "创建时间"
+        },
+        "created_by": {
+          "title": "创建人 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        }
+      }
+    },
+    "AuditOperatorOut": {
+      "title": "AuditOperatorOut",
+      "description": "A minimal, non-sensitive representation of the audit operator.",
+      "properties": {
+        "id": {
+          "title": "唯一标识 ID"
+        },
+        "username": {
+          "title": "用户名"
+        },
+        "display_name": {
+          "title": "显示名称"
+        }
+      }
+    },
+    "AuditOut": {
+      "title": "AuditOut",
+      "properties": {
+        "id": {
+          "title": "唯一标识 ID"
+        },
+        "entity_type": {
+          "title": "业务对象类型"
+        },
+        "entity_id": {
+          "title": "业务对象 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "action": {
+          "title": "操作类型"
+        },
+        "operator": {
+          "title": "操作人",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "before": {
+          "title": "操作前数据",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "after": {
+          "title": "操作后数据",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "created_at": {
+          "title": "创建时间"
+        }
+      }
+    },
+    "AuditPage": {
+      "title": "AuditPage",
+      "properties": {
+        "items": {
+          "title": "数据列表",
+          "items": {}
+        },
+        "page": {
+          "title": "当前页码"
+        },
+        "size": {
+          "title": "每页条数"
+        },
+        "total": {
+          "title": "总条数"
+        }
+      }
+    },
+    "AuthMe": {
+      "title": "AuthMe",
+      "description": "The safe account shape returned only for the authenticated user.",
+      "properties": {
+        "id": {
+          "title": "唯一标识 ID"
+        },
+        "username": {
+          "title": "用户名"
+        },
+        "display_name": {
+          "title": "显示名称"
+        },
+        "email": {
+          "title": "邮箱",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "status": {
+          "title": "状态"
+        },
+        "revision": {
+          "title": "修订号",
+          "description": "对象的乐观锁修订号；写入时提交最后读取的修订号。"
+        },
+        "must_change_password": {
+          "title": "是否需要修改密码"
+        },
+        "data_scope": {
+          "title": "数据范围"
+        },
+        "role_ids": {
+          "title": "角色 ID 列表",
+          "items": {}
+        },
+        "permission_codes": {
+          "title": "权限码列表",
+          "items": {}
+        },
+        "can_view_api_docs": {
+          "title": "是否可查看接口文档",
+          "description": "当前账号是否具有启用的系统超级管理员或研发负责人角色。后端在每次读取文档时重新校验。"
+        }
+      }
+    },
+    "BlockingRequirement": {
+      "title": "BlockingRequirement",
+      "properties": {
+        "id": {
+          "title": "唯一标识 ID"
+        },
+        "requirement_no": {
+          "title": "需求编号"
+        },
+        "status": {
+          "title": "状态"
+        }
+      }
+    },
+    "Body_add_feedback_attachment_api_v1_feedbacks__feedback_id__attachments_post": {
+      "title": "Body_add_feedback_attachment_api_v1_feedbacks__feedback_id__attachments_post",
+      "properties": {
+        "file": {
+          "title": "上传文件"
+        }
+      }
+    },
+    "Body_upload_file_api_v1_files_post": {
+      "title": "Body_upload_file_api_v1_files_post",
+      "properties": {
+        "file": {
+          "title": "上传文件"
+        }
+      }
+    },
+    "BusinessModuleCreate": {
+      "title": "BusinessModuleCreate",
+      "properties": {
+        "code": {
+          "title": "模块编码"
+        },
+        "name": {
+          "title": "模块名称"
+        },
+        "enabled": {
+          "title": "是否启用"
+        },
+        "sort_order": {
+          "title": "排序序号"
+        }
+      }
+    },
+    "BusinessModuleOut": {
+      "title": "BusinessModuleOut",
+      "properties": {
+        "id": {
+          "title": "模块 ID"
+        },
+        "system_id": {
+          "title": "业务系统 ID"
+        },
+        "code": {
+          "title": "模块编码"
+        },
+        "name": {
+          "title": "模块名称"
+        },
+        "enabled": {
+          "title": "是否启用"
+        },
+        "sort_order": {
+          "title": "排序序号"
+        },
+        "created_at": {
+          "title": "创建时间"
+        },
+        "created_by": {
+          "title": "创建人 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "updated_at": {
+          "title": "更新时间"
+        },
+        "updated_by": {
+          "title": "更新人 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "revision": {
+          "title": "修订号",
+          "description": "对象的乐观锁修订号；写入时提交最后读取的修订号。"
+        }
+      }
+    },
+    "BusinessModuleUpdate": {
+      "title": "BusinessModuleUpdate",
+      "properties": {
+        "code": {
+          "title": "模块编码",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "name": {
+          "title": "模块名称",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "enabled": {
+          "title": "是否启用",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "sort_order": {
+          "title": "排序序号",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "revision": {
+          "title": "修订号",
+          "description": "对象的乐观锁修订号；写入时提交最后读取的修订号。"
+        }
+      }
+    },
+    "BusinessSystemCatalogOut": {
+      "title": "BusinessSystemCatalogOut",
+      "properties": {
+        "systems": {
+          "title": "业务系统列表",
+          "items": {}
+        },
+        "modules": {
+          "title": "模块列表",
+          "items": {}
+        }
+      }
+    },
+    "BusinessSystemCreate": {
+      "title": "BusinessSystemCreate",
+      "properties": {
+        "code": {
+          "title": "业务系统编码"
+        },
+        "name": {
+          "title": "业务系统名称"
+        },
+        "enabled": {
+          "title": "是否启用"
+        },
+        "sort_order": {
+          "title": "排序序号"
+        }
+      }
+    },
+    "BusinessSystemOut": {
+      "title": "BusinessSystemOut",
+      "properties": {
+        "id": {
+          "title": "业务系统 ID"
+        },
+        "code": {
+          "title": "业务系统编码"
+        },
+        "name": {
+          "title": "业务系统名称"
+        },
+        "enabled": {
+          "title": "是否启用"
+        },
+        "sort_order": {
+          "title": "排序序号"
+        },
+        "created_at": {
+          "title": "创建时间"
+        },
+        "created_by": {
+          "title": "创建人 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "updated_at": {
+          "title": "更新时间"
+        },
+        "updated_by": {
+          "title": "更新人 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "revision": {
+          "title": "修订号",
+          "description": "对象的乐观锁修订号；写入时提交最后读取的修订号。"
+        }
+      }
+    },
+    "BusinessSystemUpdate": {
+      "title": "BusinessSystemUpdate",
+      "properties": {
+        "code": {
+          "title": "业务系统编码",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "name": {
+          "title": "业务系统名称",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "enabled": {
+          "title": "是否启用",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "sort_order": {
+          "title": "排序序号",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "revision": {
+          "title": "修订号",
+          "description": "对象的乐观锁修订号；写入时提交最后读取的修订号。"
+        }
+      }
+    },
+    "ChangePasswordRequest": {
+      "title": "ChangePasswordRequest",
+      "properties": {
+        "current_password": {
+          "title": "当前密码"
+        },
+        "new_password": {
+          "title": "新密码"
+        }
+      }
+    },
+    "CommentCreate": {
+      "title": "CommentCreate",
+      "properties": {
+        "content": {
+          "title": "内容"
+        }
+      }
+    },
+    "CommentOut": {
+      "title": "CommentOut",
+      "properties": {
+        "id": {
+          "title": "唯一标识 ID"
+        },
+        "entity_type": {
+          "title": "业务对象类型"
+        },
+        "entity_id": {
+          "title": "业务对象 ID"
+        },
+        "content": {
+          "title": "内容"
+        },
+        "created_at": {
+          "title": "创建时间"
+        },
+        "created_by": {
+          "title": "创建人 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        }
+      }
+    },
+    "ConfigurableDataScope": {},
+    "DashboardActiveVersionStatus": {},
+    "DashboardActivityEntityType": {},
+    "DashboardActivityItem": {
+      "title": "DashboardActivityItem",
+      "properties": {
+        "entity_type": {
+          "title": "业务对象类型"
+        },
+        "entity_id": {
+          "title": "业务对象 ID"
+        },
+        "action": {
+          "title": "操作类型"
+        },
+        "created_at": {
+          "title": "创建时间"
+        }
+      }
+    },
+    "DashboardDataScope": {},
+    "DashboardFeedbackOverview": {
+      "title": "DashboardFeedbackOverview",
+      "properties": {
+        "pending_count": {
+          "title": "待处理反馈数"
+        },
+        "total_count": {
+          "title": "总数量"
+        },
+        "by_status": {
+          "title": "各状态数量",
+          "additionalProperties": {}
+        }
+      }
+    },
+    "DashboardOverviewOut": {
+      "title": "DashboardOverviewOut",
+      "properties": {
+        "data_scope": {
+          "title": "数据范围"
+        },
+        "feedback": {
+          "title": "反馈概览",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "requirements": {
+          "title": "需求概览",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "versions": {
+          "title": "版本概览",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "releases": {
+          "title": "发布概览",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "activities": {
+          "title": "最近协作动态",
+          "items": {}
+        }
+      }
+    },
+    "DashboardReleaseItem": {
+      "title": "DashboardReleaseItem",
+      "properties": {
+        "id": {
+          "title": "唯一标识 ID"
+        },
+        "version_id": {
+          "title": "版本 ID"
+        },
+        "version_no": {
+          "title": "版本号"
+        },
+        "version_name": {
+          "title": "版本名称"
+        },
+        "released_at": {
+          "title": "实际发布时间"
+        },
+        "result": {
+          "title": "发布结果"
+        }
+      }
+    },
+    "DashboardReleaseOverview": {
+      "title": "DashboardReleaseOverview",
+      "properties": {
+        "total_count": {
+          "title": "总数量"
+        },
+        "recent_releases": {
+          "title": "最近发布记录",
+          "items": {}
+        }
+      }
+    },
+    "DashboardReleaseResult": {},
+    "DashboardRequirementOverview": {
+      "title": "DashboardRequirementOverview",
+      "properties": {
+        "active_count": {
+          "title": "活跃数量"
+        },
+        "total_count": {
+          "title": "总数量"
+        },
+        "by_status": {
+          "title": "各状态数量",
+          "additionalProperties": {}
+        }
+      }
+    },
+    "DashboardVersionItem": {
+      "title": "DashboardVersionItem",
+      "properties": {
+        "id": {
+          "title": "唯一标识 ID"
+        },
+        "version_no": {
+          "title": "版本号"
+        },
+        "name": {
+          "title": "名称"
+        },
+        "status": {
+          "title": "状态"
+        },
+        "planned_release_date": {
+          "title": "计划发布日期",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "updated_at": {
+          "title": "更新时间"
+        }
+      }
+    },
+    "DashboardVersionOverview": {
+      "title": "DashboardVersionOverview",
+      "properties": {
+        "active_count": {
+          "title": "活跃数量"
+        },
+        "total_count": {
+          "title": "总数量"
+        },
+        "by_status": {
+          "title": "各状态数量",
+          "additionalProperties": {}
+        },
+        "recent_active_versions": {
+          "title": "最近活跃版本",
+          "items": {}
+        }
+      }
+    },
+    "DataScope": {
+      "title": "DataScope"
+    },
+    "EditHeartbeat": {
+      "title": "EditHeartbeat",
+      "properties": {
+        "entity_type": {
+          "title": "业务对象类型"
+        },
+        "entity_id": {
+          "title": "业务对象 ID"
+        }
+      }
+    },
+    "EditingEntityType": {
+      "title": "EditingEntityType"
+    },
+    "ErrorResponse": {
+      "title": "ErrorResponse",
+      "properties": {
+        "code": {
+          "title": "错误码"
+        },
+        "message": {
+          "title": "消息说明"
+        },
+        "data": {
+          "title": "附加数据",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "request_id": {
+          "title": "请求追踪 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        }
+      }
+    },
+    "FeedbackConvertRequest": {
+      "title": "FeedbackConvertRequest",
+      "description": "Convert a feedback into a requirement (Phase 4).\n\nCREATE_NEW builds a brand-new requirement from the feedback; LINK_EXISTING\nattaches the feedback to an existing requirement. No version association here\n(that is a later phase).",
+      "properties": {
+        "type": {
+          "title": "反馈转化方式"
+        },
+        "revision": {
+          "title": "修订号",
+          "description": "对象的乐观锁修订号；写入时提交最后读取的修订号。"
+        },
+        "requirement_title": {
+          "title": "需求标题",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "requirement_type": {
+          "title": "需求类型",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "priority": {
+          "title": "优先级"
+        },
+        "description": {
+          "title": "描述",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "acceptance_criteria": {
+          "title": "验收标准",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "requirement_id": {
+          "title": "需求 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        }
+      }
+    },
+    "FeedbackConvertType": {
+      "title": "FeedbackConvertType",
+      "description": "How a Feedback is turned into / attached to a Requirement (Phase 4)."
+    },
+    "FeedbackCreate": {
+      "title": "FeedbackCreate",
+      "properties": {
+        "title": {
+          "title": "反馈标题"
+        },
+        "feedback_type": {
+          "title": "反馈类型"
+        },
+        "urgency": {
+          "title": "紧急程度"
+        },
+        "system_id": {
+          "title": "业务系统 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "module_id": {
+          "title": "所属模块 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "description": {
+          "title": "描述"
+        },
+        "expected_result": {
+          "title": "预期结果",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "actual_result": {
+          "title": "实际结果",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "reproduce_steps": {
+          "title": "复现步骤",
+          "anyOf": [
+            {},
+            {}
+          ]
+        }
+      }
+    },
+    "FeedbackOut": {
+      "title": "FeedbackOut",
+      "properties": {
+        "id": {
+          "title": "反馈 ID"
+        },
+        "feedback_no": {
+          "title": "反馈编号"
+        },
+        "title": {
+          "title": "反馈标题"
+        },
+        "feedback_type": {
+          "title": "反馈类型"
+        },
+        "urgency": {
+          "title": "紧急程度"
+        },
+        "status": {
+          "title": "反馈状态"
+        },
+        "system_id": {
+          "title": "业务系统 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "module_id": {
+          "title": "所属模块 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "submitter_id": {
+          "title": "提交人 ID"
+        },
+        "description": {
+          "title": "描述"
+        },
+        "expected_result": {
+          "title": "预期结果",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "actual_result": {
+          "title": "实际结果",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "reproduce_steps": {
+          "title": "复现步骤",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "main_requirement_id": {
+          "title": "主需求 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "duplicate_of_id": {
+          "title": "重复反馈关联 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "created_at": {
+          "title": "创建时间"
+        },
+        "updated_at": {
+          "title": "更新时间"
+        },
+        "updated_by": {
+          "title": "更新人 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "revision": {
+          "title": "修订号",
+          "description": "对象的乐观锁修订号；写入时提交最后读取的修订号。"
+        }
+      }
+    },
+    "FeedbackPage": {
+      "title": "FeedbackPage",
+      "properties": {
+        "items": {
+          "title": "数据列表",
+          "items": {}
+        },
+        "page": {
+          "title": "当前页码"
+        },
+        "page_size": {
+          "title": "每页条数"
+        },
+        "total": {
+          "title": "总条数"
+        }
+      }
+    },
+    "FeedbackStatus": {
+      "title": "FeedbackStatus"
+    },
+    "FeedbackStatusChange": {
+      "title": "FeedbackStatusChange",
+      "properties": {
+        "status": {
+          "title": "反馈状态"
+        },
+        "revision": {
+          "title": "修订号",
+          "description": "对象的乐观锁修订号；写入时提交最后读取的修订号。"
+        },
+        "reason": {
+          "title": "操作原因",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "duplicate_of_id": {
+          "title": "重复反馈关联 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        }
+      }
+    },
+    "FeedbackType": {
+      "title": "FeedbackType"
+    },
+    "FeedbackUpdate": {
+      "title": "FeedbackUpdate",
+      "properties": {
+        "title": {
+          "title": "反馈标题",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "feedback_type": {
+          "title": "反馈类型",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "urgency": {
+          "title": "紧急程度",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "system_id": {
+          "title": "业务系统 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "module_id": {
+          "title": "所属模块 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "description": {
+          "title": "描述",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "expected_result": {
+          "title": "预期结果",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "actual_result": {
+          "title": "实际结果",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "reproduce_steps": {
+          "title": "复现步骤",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "revision": {
+          "title": "修订号",
+          "description": "对象的乐观锁修订号；写入时提交最后读取的修订号。"
+        }
+      }
+    },
+    "FeedbackUrgency": {
+      "title": "FeedbackUrgency"
+    },
+    "FileExistsOut": {
+      "title": "FileExistsOut",
+      "properties": {
+        "file_id": {
+          "title": "文件 ID"
+        },
+        "exists": {
+          "title": "文件是否存在"
+        }
+      }
+    },
+    "FileOut": {
+      "title": "FileOut",
+      "properties": {
+        "id": {
+          "title": "唯一标识 ID"
+        },
+        "original_name": {
+          "title": "原始文件名"
+        },
+        "size": {
+          "title": "文件大小（字节）"
+        },
+        "mime_type": {
+          "title": "文件 MIME 类型"
+        },
+        "sha256": {
+          "title": "文件 SHA256 校验值"
+        },
+        "storage_driver": {
+          "title": "存储驱动"
+        },
+        "created_at": {
+          "title": "创建时间"
+        },
+        "created_by": {
+          "title": "创建人 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        }
+      }
+    },
+    "HTTPValidationError": {
+      "title": "HTTPValidationError",
+      "properties": {
+        "detail": {
+          "title": "校验错误详情",
+          "items": {}
+        }
+      }
+    },
+    "LinkedFeedbackOut": {
+      "title": "LinkedFeedbackOut",
+      "description": "A feedback linked to a requirement (source traceability).",
+      "properties": {
+        "feedback_id": {
+          "title": "反馈 ID"
+        },
+        "feedback_no": {
+          "title": "反馈编号"
+        },
+        "title": {
+          "title": "标题"
+        },
+        "status": {
+          "title": "状态"
+        },
+        "is_primary": {
+          "title": "是否为主关联"
+        }
+      }
+    },
+    "LoginRequest": {
+      "title": "LoginRequest",
+      "properties": {
+        "username": {
+          "title": "用户名"
+        },
+        "password": {
+          "title": "密码"
+        }
+      }
+    },
+    "LogoutResponse": {
+      "title": "LogoutResponse",
+      "properties": {
+        "ok": {
+          "title": "操作是否成功"
+        }
+      }
+    },
+    "ManualFeedbackStatus": {
+      "title": "ManualFeedbackStatus",
+      "description": "Feedback statuses a human may set through the status API.\n\nREQUIREMENT_LINKED and ONLINE are produced only by convert and publish\ntransactions. They are intentionally excluded here so they can never be set\nby hand."
+    },
+    "ManualRequirementStatus": {
+      "title": "ManualRequirementStatus"
+    },
+    "ManualVersionStatus": {
+      "title": "ManualVersionStatus"
+    },
+    "MoveRequirementRequest": {
+      "title": "MoveRequirementRequest",
+      "properties": {
+        "requirement_id": {
+          "title": "需求 ID"
+        },
+        "revision": {
+          "title": "修订号",
+          "description": "对象的乐观锁修订号；写入时提交最后读取的修订号。"
+        },
+        "version_revision": {
+          "title": "版本修订号",
+          "description": "目标版本的乐观锁修订号；版本内容变更时用于并发校验。"
+        },
+        "reason": {
+          "title": "操作原因"
+        }
+      }
+    },
+    "NotificationOut": {
+      "title": "NotificationOut",
+      "properties": {
+        "id": {
+          "title": "唯一标识 ID"
+        },
+        "type": {
+          "title": "通知类型"
+        },
+        "title": {
+          "title": "标题"
+        },
+        "content": {
+          "title": "内容"
+        },
+        "entity_type": {
+          "title": "业务对象类型",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "entity_id": {
+          "title": "业务对象 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "read_at": {
+          "title": "已读时间",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "created_at": {
+          "title": "创建时间"
+        }
+      }
+    },
+    "NotificationReadAllResult": {
+      "title": "NotificationReadAllResult",
+      "properties": {
+        "updated_count": {
+          "title": "本次更新数量"
+        }
+      }
+    },
+    "NotificationType": {
+      "title": "NotificationType"
+    },
+    "NotificationUnreadCount": {
+      "title": "NotificationUnreadCount",
+      "properties": {
+        "unread_count": {
+          "title": "未读通知数"
+        }
+      }
+    },
+    "PermissionOut": {
+      "title": "PermissionOut",
+      "properties": {
+        "id": {
+          "title": "唯一标识 ID"
+        },
+        "code": {
+          "title": "编码"
+        },
+        "name": {
+          "title": "名称"
+        },
+        "category": {
+          "title": "权限分类"
+        },
+        "group": {
+          "title": "权限分组"
+        },
+        "sensitive": {
+          "title": "是否为敏感权限"
+        },
+        "deprecated": {
+          "title": "是否已弃用"
+        },
+        "replacement_code": {
+          "title": "替代权限码",
+          "anyOf": [
+            {},
+            {}
+          ]
+        }
+      }
+    },
+    "Priority": {
+      "title": "Priority"
+    },
+    "PublishCheckItem": {
+      "title": "PublishCheckItem",
+      "properties": {
+        "type": {
+          "title": "检查类型"
+        },
+        "passed": {
+          "title": "是否通过"
+        },
+        "message": {
+          "title": "消息说明"
+        },
+        "blocking_requirements": {
+          "title": "阻断发布的需求",
+          "items": {}
+        }
+      }
+    },
+    "PublishCheckResult": {
+      "title": "PublishCheckResult",
+      "properties": {
+        "passed": {
+          "title": "是否通过"
+        },
+        "checks": {
+          "title": "检查项",
+          "items": {}
+        }
+      }
+    },
+    "PublishResult": {
+      "title": "PublishResult",
+      "description": "Outcome of a successful version publish transaction.",
+      "properties": {
+        "release": {
+          "title": "发布记录"
+        },
+        "version_id": {
+          "title": "版本 ID"
+        },
+        "released_requirement_ids": {
+          "title": "本次上线的需求 ID 列表",
+          "items": {}
+        },
+        "online_feedback_ids": {
+          "title": "本次上线的反馈 ID 列表",
+          "items": {}
+        }
+      }
+    },
+    "PublishVersionRequest": {
+      "title": "PublishVersionRequest",
+      "properties": {
+        "released_at": {
+          "title": "实际发布时间"
+        },
+        "release_notes": {
+          "title": "发布说明"
+        },
+        "revision": {
+          "title": "修订号",
+          "description": "对象的乐观锁修订号；写入时提交最后读取的修订号。"
+        }
+      }
+    },
+    "RefreshRequest": {
+      "title": "RefreshRequest",
+      "properties": {
+        "refresh_token": {
+          "title": "刷新令牌"
+        }
+      }
+    },
+    "ReleaseOut": {
+      "title": "ReleaseOut",
+      "description": "A release RECORD (record-type entity). Produced only by the publish\ntransaction; it has no independent workflow/state of its own.",
+      "properties": {
+        "id": {
+          "title": "发布记录 ID"
+        },
+        "version_id": {
+          "title": "版本 ID"
+        },
+        "released_at": {
+          "title": "实际发布时间"
+        },
+        "result": {
+          "title": "发布结果"
+        },
+        "release_notes": {
+          "title": "发布说明"
+        },
+        "rollback_notes": {
+          "title": "回滚说明",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "created_at": {
+          "title": "创建时间"
+        },
+        "created_by": {
+          "title": "创建人 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "revision": {
+          "title": "修订号",
+          "description": "对象的乐观锁修订号；写入时提交最后读取的修订号。"
+        }
+      }
+    },
+    "ReleasePage": {
+      "title": "ReleasePage",
+      "properties": {
+        "items": {
+          "title": "数据列表",
+          "items": {}
+        },
+        "page": {
+          "title": "当前页码"
+        },
+        "page_size": {
+          "title": "每页条数"
+        },
+        "total": {
+          "title": "总条数"
+        }
+      }
+    },
+    "ReleaseResult": {
+      "title": "ReleaseResult"
+    },
+    "RemoveRequirementRequest": {
+      "title": "RemoveRequirementRequest",
+      "properties": {
+        "revision": {
+          "title": "修订号",
+          "description": "对象的乐观锁修订号；写入时提交最后读取的修订号。"
+        },
+        "version_revision": {
+          "title": "版本修订号",
+          "description": "目标版本的乐观锁修订号；版本内容变更时用于并发校验。"
+        },
+        "reason": {
+          "title": "操作原因",
+          "anyOf": [
+            {},
+            {}
+          ]
+        }
+      }
+    },
+    "RequirementCreate": {
+      "title": "RequirementCreate",
+      "properties": {
+        "title": {
+          "title": "需求标题"
+        },
+        "requirement_type": {
+          "title": "需求类型"
+        },
+        "priority": {
+          "title": "优先级"
+        },
+        "system_id": {
+          "title": "业务系统 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "module_id": {
+          "title": "所属模块 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "owner_id": {
+          "title": "负责人 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "description": {
+          "title": "描述"
+        },
+        "acceptance_criteria": {
+          "title": "验收标准",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "version_id": {
+          "title": "版本 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "version_revision": {
+          "title": "版本修订号",
+          "description": "目标版本的乐观锁修订号；版本内容变更时用于并发校验。",
+          "anyOf": [
+            {},
+            {}
+          ]
+        }
+      }
+    },
+    "RequirementOut": {
+      "title": "RequirementOut",
+      "properties": {
+        "id": {
+          "title": "需求 ID"
+        },
+        "requirement_no": {
+          "title": "需求编号"
+        },
+        "title": {
+          "title": "需求标题"
+        },
+        "requirement_type": {
+          "title": "需求类型"
+        },
+        "source": {
+          "title": "需求来源"
+        },
+        "priority": {
+          "title": "优先级"
+        },
+        "status": {
+          "title": "需求状态"
+        },
+        "system_id": {
+          "title": "业务系统 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "module_id": {
+          "title": "所属模块 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "owner_id": {
+          "title": "负责人 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "current_version_id": {
+          "title": "当前所属版本 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "description": {
+          "title": "描述"
+        },
+        "acceptance_criteria": {
+          "title": "验收标准",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "created_at": {
+          "title": "创建时间"
+        },
+        "updated_at": {
+          "title": "更新时间"
+        },
+        "updated_by": {
+          "title": "更新人 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "revision": {
+          "title": "修订号",
+          "description": "对象的乐观锁修订号；写入时提交最后读取的修订号。"
+        }
+      }
+    },
+    "RequirementPage": {
+      "title": "RequirementPage",
+      "properties": {
+        "items": {
+          "title": "数据列表",
+          "items": {}
+        },
+        "page": {
+          "title": "当前页码"
+        },
+        "page_size": {
+          "title": "每页条数"
+        },
+        "total": {
+          "title": "总条数"
+        }
+      }
+    },
+    "RequirementSource": {
+      "title": "RequirementSource"
+    },
+    "RequirementStatus": {
+      "title": "RequirementStatus"
+    },
+    "RequirementStatusChange": {
+      "title": "RequirementStatusChange",
+      "properties": {
+        "status": {
+          "title": "需求状态"
+        },
+        "revision": {
+          "title": "修订号",
+          "description": "对象的乐观锁修订号；写入时提交最后读取的修订号。"
+        },
+        "reason": {
+          "title": "操作原因",
+          "anyOf": [
+            {},
+            {}
+          ]
+        }
+      }
+    },
+    "RequirementUpdate": {
+      "title": "RequirementUpdate",
+      "properties": {
+        "title": {
+          "title": "需求标题",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "requirement_type": {
+          "title": "需求类型",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "priority": {
+          "title": "优先级",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "system_id": {
+          "title": "业务系统 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "module_id": {
+          "title": "所属模块 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "owner_id": {
+          "title": "负责人 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "description": {
+          "title": "描述",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "acceptance_criteria": {
+          "title": "验收标准",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "revision": {
+          "title": "修订号",
+          "description": "对象的乐观锁修订号；写入时提交最后读取的修订号。"
+        }
+      }
+    },
+    "RevisionConflictData": {
+      "title": "RevisionConflictData",
+      "properties": {
+        "current_revision": {
+          "title": "最新修订号",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "current_updated_at": {
+          "title": "最新更新时间",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "current_updated_by": {
+          "title": "最新更新人 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        }
+      }
+    },
+    "RevisionConflictResponse": {
+      "title": "RevisionConflictResponse",
+      "properties": {
+        "code": {
+          "title": "错误码"
+        },
+        "message": {
+          "title": "消息说明"
+        },
+        "data": {
+          "title": "附加数据"
+        },
+        "request_id": {
+          "title": "请求追踪 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        }
+      }
+    },
+    "RoleCreate": {
+      "title": "RoleCreate",
+      "properties": {
+        "code": {
+          "title": "角色编码"
+        },
+        "name": {
+          "title": "角色名称"
+        },
+        "data_scope": {
+          "title": "数据范围"
+        },
+        "permission_ids": {
+          "title": "权限 ID 列表",
+          "items": {}
+        }
+      }
+    },
+    "RoleDeleteOut": {
+      "title": "RoleDeleteOut",
+      "properties": {
+        "id": {
+          "title": "角色 ID"
+        },
+        "deleted": {
+          "title": "是否已删除"
+        }
+      }
+    },
+    "RoleOut": {
+      "title": "RoleOut",
+      "properties": {
+        "id": {
+          "title": "角色 ID"
+        },
+        "code": {
+          "title": "角色编码"
+        },
+        "name": {
+          "title": "角色名称"
+        },
+        "data_scope": {
+          "title": "数据范围"
+        },
+        "enabled": {
+          "title": "是否启用"
+        },
+        "is_system": {
+          "title": "是否为系统角色"
+        },
+        "revision": {
+          "title": "修订号",
+          "description": "对象的乐观锁修订号；写入时提交最后读取的修订号。"
+        },
+        "permission_ids": {
+          "title": "权限 ID 列表",
+          "items": {}
+        }
+      }
+    },
+    "RolePermissionUpdate": {
+      "title": "RolePermissionUpdate",
+      "properties": {
+        "permission_ids": {
+          "title": "权限 ID 列表",
+          "items": {}
+        },
+        "revision": {
+          "title": "修订号",
+          "description": "对象的乐观锁修订号；写入时提交最后读取的修订号。"
+        }
+      }
+    },
+    "RoleUpdate": {
+      "title": "RoleUpdate",
+      "properties": {
+        "code": {
+          "title": "角色编码",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "name": {
+          "title": "角色名称",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "data_scope": {
+          "title": "数据范围",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "enabled": {
+          "title": "是否启用",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "revision": {
+          "title": "修订号",
+          "description": "对象的乐观锁修订号；写入时提交最后读取的修订号。"
+        }
+      }
+    },
+    "StorageDriver": {
+      "title": "StorageDriver"
+    },
+    "TokenPair": {
+      "title": "TokenPair",
+      "properties": {
+        "access_token": {
+          "title": "访问令牌"
+        },
+        "refresh_token": {
+          "title": "刷新令牌"
+        },
+        "token_type": {
+          "title": "令牌类型"
+        },
+        "must_change_password": {
+          "title": "是否需要修改密码"
+        }
+      }
+    },
+    "UserCreate": {
+      "title": "UserCreate",
+      "properties": {
+        "username": {
+          "title": "用户名"
+        },
+        "display_name": {
+          "title": "显示名称"
+        },
+        "password": {
+          "title": "密码"
+        },
+        "email": {
+          "title": "邮箱",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "mobile": {
+          "title": "手机号",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "role_ids": {
+          "title": "角色 ID 列表",
+          "items": {}
+        }
+      }
+    },
+    "UserOut": {
+      "title": "UserOut",
+      "properties": {
+        "id": {
+          "title": "用户 ID"
+        },
+        "username": {
+          "title": "用户名"
+        },
+        "display_name": {
+          "title": "显示名称"
+        },
+        "email": {
+          "title": "邮箱",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "mobile": {
+          "title": "手机号",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "status": {
+          "title": "用户状态"
+        },
+        "revision": {
+          "title": "修订号",
+          "description": "对象的乐观锁修订号；写入时提交最后读取的修订号。"
+        },
+        "role_ids": {
+          "title": "角色 ID 列表",
+          "items": {}
+        }
+      }
+    },
+    "UserPage": {
+      "title": "UserPage",
+      "properties": {
+        "items": {
+          "title": "数据列表",
+          "items": {}
+        },
+        "page": {
+          "title": "当前页码"
+        },
+        "page_size": {
+          "title": "每页条数"
+        },
+        "total": {
+          "title": "总条数"
+        }
+      }
+    },
+    "UserRoleUpdate": {
+      "title": "UserRoleUpdate",
+      "properties": {
+        "role_ids": {
+          "title": "角色 ID 列表",
+          "items": {}
+        },
+        "revision": {
+          "title": "修订号",
+          "description": "对象的乐观锁修订号；写入时提交最后读取的修订号。"
+        }
+      }
+    },
+    "UserStatus": {
+      "title": "UserStatus"
+    },
+    "UserStatusChange": {
+      "title": "UserStatusChange",
+      "properties": {
+        "status": {
+          "title": "用户状态"
+        },
+        "revision": {
+          "title": "修订号",
+          "description": "对象的乐观锁修订号；写入时提交最后读取的修订号。"
+        }
+      }
+    },
+    "UserUpdate": {
+      "title": "UserUpdate",
+      "description": "Editable account profile fields; credentials, status, and roles have dedicated APIs.",
+      "properties": {
+        "display_name": {
+          "title": "显示名称",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "email": {
+          "title": "邮箱",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "mobile": {
+          "title": "手机号",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "revision": {
+          "title": "修订号",
+          "description": "对象的乐观锁修订号；写入时提交最后读取的修订号。"
+        }
+      }
+    },
+    "ValidationError": {
+      "title": "ValidationError",
+      "properties": {
+        "loc": {
+          "title": "错误字段位置",
+          "items": {
+            "anyOf": [
+              {},
+              {}
+            ]
+          }
+        },
+        "msg": {
+          "title": "校验错误说明"
+        },
+        "type": {
+          "title": "校验错误类型"
+        },
+        "input": {
+          "title": "校验失败的输入"
+        },
+        "ctx": {
+          "title": "校验上下文"
+        }
+      }
+    },
+    "VersionCreate": {
+      "title": "VersionCreate",
+      "properties": {
+        "version_no": {
+          "title": "版本号"
+        },
+        "name": {
+          "title": "版本名称"
+        },
+        "owner_id": {
+          "title": "负责人 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "planned_release_date": {
+          "title": "计划发布日期",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "description": {
+          "title": "描述",
+          "anyOf": [
+            {},
+            {}
+          ]
+        }
+      }
+    },
+    "VersionOut": {
+      "title": "VersionOut",
+      "properties": {
+        "id": {
+          "title": "版本 ID"
+        },
+        "version_no": {
+          "title": "版本号"
+        },
+        "name": {
+          "title": "版本名称"
+        },
+        "status": {
+          "title": "版本状态"
+        },
+        "owner_id": {
+          "title": "负责人 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "planned_release_date": {
+          "title": "计划发布日期",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "released_at": {
+          "title": "实际发布时间",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "description": {
+          "title": "描述",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "created_at": {
+          "title": "创建时间"
+        },
+        "updated_at": {
+          "title": "更新时间"
+        },
+        "updated_by": {
+          "title": "更新人 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "revision": {
+          "title": "修订号",
+          "description": "对象的乐观锁修订号；写入时提交最后读取的修订号。"
+        }
+      }
+    },
+    "VersionPage": {
+      "title": "VersionPage",
+      "properties": {
+        "items": {
+          "title": "数据列表",
+          "items": {}
+        },
+        "page": {
+          "title": "当前页码"
+        },
+        "page_size": {
+          "title": "每页条数"
+        },
+        "total": {
+          "title": "总条数"
+        }
+      }
+    },
+    "VersionRequirementsOut": {
+      "title": "VersionRequirementsOut",
+      "properties": {
+        "version_id": {
+          "title": "版本 ID"
+        },
+        "stats": {
+          "title": "需求统计"
+        },
+        "items": {
+          "title": "数据列表",
+          "items": {}
+        }
+      }
+    },
+    "VersionStats": {
+      "title": "VersionStats",
+      "properties": {
+        "total": {
+          "title": "总条数"
+        },
+        "by_status": {
+          "title": "各状态数量",
+          "additionalProperties": {}
+        },
+        "completed": {
+          "title": "已完成需求数"
+        },
+        "completion_rate": {
+          "title": "完成率",
+          "description": "已完成需求数除以总需求数，取值为 0–1，保留四位小数；无需求时为 0。"
+        }
+      }
+    },
+    "VersionStatus": {
+      "title": "VersionStatus"
+    },
+    "VersionStatusChange": {
+      "title": "VersionStatusChange",
+      "properties": {
+        "status": {
+          "title": "版本状态"
+        },
+        "revision": {
+          "title": "修订号",
+          "description": "对象的乐观锁修订号；写入时提交最后读取的修订号。"
+        },
+        "reason": {
+          "title": "操作原因",
+          "anyOf": [
+            {},
+            {}
+          ]
+        }
+      }
+    },
+    "VersionUpdate": {
+      "title": "VersionUpdate",
+      "properties": {
+        "name": {
+          "title": "版本名称",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "owner_id": {
+          "title": "负责人 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "planned_release_date": {
+          "title": "计划发布日期",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "description": {
+          "title": "描述",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "revision": {
+          "title": "修订号",
+          "description": "对象的乐观锁修订号；写入时提交最后读取的修订号。"
+        }
+      }
+    }
+  },
   "paths": {
     "/auth/login": {
       "post": {

@@ -20,7 +20,7 @@ describe('documentation schema display', () => {
   })
   it('resolves references, required fields and enums without changing the schema', () => {
     const fields = schemaFields({ $ref: '#/components/schemas/Feedback' }, document)
-    expect(fields[0]).toEqual({ name: 'title', type: 'string', required: true, description: '—' })
+    expect(fields[0]).toMatchObject({ name: 'title', label: '', type: 'string', required: true, description: '' })
     expect(fields[1]?.description).toBe('可选值：NEW、ACCEPTED')
     expect(schemaType({ anyOf: [{ type: 'string' }, { type: 'null' }] }, document)).toBe('string / null')
     expect(schemaType({ type: 'array', items: { $ref: '#/components/schemas/Feedback' } }, document)).toBe('Feedback[]')

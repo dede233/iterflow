@@ -16,6 +16,10 @@
 
 页面以中文为主，显示模块、操作说明、路径 / 方法、参数、请求正文、状态码和响应字段，支持搜索及下载 OpenAPI。所有加载通过同源带身份请求完成，不把 token 放入 URL，不依赖外部 CDN，不在页面自动执行业务写接口。
 
+2026-10-09 修复响应字段中文名称缺失：开发契约的 397 个模型字段增加中文 title；文档生成与读取只覆盖 title / description，不更改字段名、类型、required、枚举、引用或任何业务响应结构。契约同步工具保留这些说明，避免下次生成时丢失。历史发布契约保持不变。页面同时展示英文字段名和中文名称；分页 items、顶层数组、可为空的引用对象支持逐层查看子字段，递归深度有限且保留完整结构查看。
+
+本次修复的本地门禁：后端 warnings-as-errors 338 passed / 38 环境依赖项 skipped，独立 PostgreSQL 门禁交由 CI；前端 320 passed / 47 files，类型 / 生产构建 / bundle 通过；文档浏览器 5 项通过。真实本地 API / 页面 10 项检查通过，375px / 1440px 分页响应子字段显示中文，搜索 / 下载与原账号登录正常。同一 Agent 的 Fresh Self-Review 验证了运行时 OpenAPI 缓存不被修改、下载及显示标签一致、契约生成不丢说明、剔除文档注释后响应 shape 不变、角色检查保持原样和递归终止；并非外部独立终审。此提交时 branch / master / Preview CI 和线上部署待执行，实际结果记录到独立备份证据目录。
+
 `spec/openapi-development.yaml` 是当前未发布开发快照。相对已发布的 `spec/openapi-v1.8.1.yaml`，仅增加文档读取路径和 AuthMe 可选资格字段；主链、revision、状态机、数据范围和各业务权限保持原样。后端 parity / 同步脚本与前端类型生成入口统一指向开发快照。测试验证剔除这两项增量后，快照与 V1.8.1 完全相同。没有创建新 Release / Tag，也没有新增角色、permission 或 migration。
 
 中文说明从开发契约生成到 `backend/app/core/api_documentation.json` 并随 API 包 / 镜像安装；线上返回真实运行时 OpenAPI 结构，只覆盖中文说明，避免文档接口结构与实现脱节。更新契约后运行：

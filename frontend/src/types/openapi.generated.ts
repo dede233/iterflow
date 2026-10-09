@@ -1075,11 +1075,17 @@ export interface components {
     schemas: {
         /** AddRequirementRequest */
         AddRequirementRequest: {
-            /** Requirement Id */
+            /** 需求 ID */
             requirement_id: number;
-            /** Revision */
+            /**
+             * 修订号
+             * @description 对象的乐观锁修订号；写入时提交最后读取的修订号。
+             */
             revision: number;
-            /** Version Revision */
+            /**
+             * 版本修订号
+             * @description 目标版本的乐观锁修订号；版本内容变更时用于并发校验。
+             */
             version_revision: number;
         };
         /**
@@ -1087,20 +1093,20 @@ export interface components {
          * @description Business-facing attachment metadata. Never exposes storage_key/path.
          */
         AttachmentOut: {
-            /** File Id */
+            /** 文件 ID */
             file_id: number;
-            /** Original Name */
+            /** 原始文件名 */
             original_name: string;
-            /** Size */
+            /** 文件大小（字节） */
             size: number;
-            /** Mime Type */
+            /** 文件 MIME 类型 */
             mime_type: string;
             /**
-             * Created At
+             * 创建时间
              * Format: date-time
              */
             created_at: string;
-            /** Created By */
+            /** 创建人 ID */
             created_by: number | null;
         };
         /**
@@ -1108,47 +1114,48 @@ export interface components {
          * @description A minimal, non-sensitive representation of the audit operator.
          */
         AuditOperatorOut: {
-            /** Id */
+            /** 唯一标识 ID */
             id: number;
-            /** Username */
+            /** 用户名 */
             username: string;
-            /** Display Name */
+            /** 显示名称 */
             display_name: string;
         };
         /** AuditOut */
         AuditOut: {
-            /** Id */
+            /** 唯一标识 ID */
             id: number;
-            /** Entity Type */
+            /** 业务对象类型 */
             entity_type: string;
-            /** Entity Id */
+            /** 业务对象 ID */
             entity_id: number | null;
-            /** Action */
+            /** 操作类型 */
             action: string;
+            /** 操作人 */
             operator: components["schemas"]["AuditOperatorOut"] | null;
-            /** Before */
+            /** 操作前数据 */
             before: {
                 [key: string]: unknown;
             } | null;
-            /** After */
+            /** 操作后数据 */
             after: {
                 [key: string]: unknown;
             } | null;
             /**
-             * Created At
+             * 创建时间
              * Format: date-time
              */
             created_at: string;
         };
         /** AuditPage */
         AuditPage: {
-            /** Items */
+            /** 数据列表 */
             items: components["schemas"]["AuditOut"][];
-            /** Page */
+            /** 当前页码 */
             page: number;
-            /** Size */
+            /** 每页条数 */
             size: number;
-            /** Total */
+            /** 总条数 */
             total: number;
         };
         /**
@@ -1156,26 +1163,31 @@ export interface components {
          * @description The safe account shape returned only for the authenticated user.
          */
         AuthMe: {
-            /** Id */
+            /** 唯一标识 ID */
             id: number;
-            /** Username */
+            /** 用户名 */
             username: string;
-            /** Display Name */
+            /** 显示名称 */
             display_name: string;
-            /** Email */
+            /** 邮箱 */
             email: string | null;
+            /** 状态 */
             status: components["schemas"]["UserStatus"];
-            /** Revision */
+            /**
+             * 修订号
+             * @description 对象的乐观锁修订号；写入时提交最后读取的修订号。
+             */
             revision: number;
-            /** Must Change Password */
+            /** 是否需要修改密码 */
             must_change_password: boolean;
+            /** 数据范围 */
             data_scope: components["schemas"]["DataScope"];
-            /** Role Ids */
+            /** 角色 ID 列表 */
             role_ids: number[];
-            /** Permission Codes */
+            /** 权限码列表 */
             permission_codes: string[];
             /**
-             * Can View Api Docs
+             * 是否可查看接口文档
              * @description 当前账号是否具有启用的系统超级管理员或研发负责人角色。后端在每次读取文档时重新校验。
              * @default false
              */
@@ -1183,178 +1195,190 @@ export interface components {
         };
         /** BlockingRequirement */
         BlockingRequirement: {
-            /** Id */
+            /** 唯一标识 ID */
             id: number;
-            /** Requirement No */
+            /** 需求编号 */
             requirement_no: string;
-            /** Status */
+            /** 状态 */
             status: string;
         };
         /** Body_add_feedback_attachment_api_v1_feedbacks__feedback_id__attachments_post */
         Body_add_feedback_attachment_api_v1_feedbacks__feedback_id__attachments_post: {
-            /** File */
+            /** 上传文件 */
             file: string;
         };
         /** Body_upload_file_api_v1_files_post */
         Body_upload_file_api_v1_files_post: {
-            /** File */
+            /** 上传文件 */
             file: string;
         };
         /** BusinessModuleCreate */
         BusinessModuleCreate: {
-            /** Code */
+            /** 模块编码 */
             code: string;
-            /** Name */
+            /** 模块名称 */
             name: string;
             /**
-             * Enabled
+             * 是否启用
              * @default true
              */
             enabled: boolean;
             /**
-             * Sort Order
+             * 排序序号
              * @default 0
              */
             sort_order: number;
         };
         /** BusinessModuleOut */
         BusinessModuleOut: {
-            /** Id */
+            /** 模块 ID */
             id: number;
-            /** System Id */
+            /** 业务系统 ID */
             system_id: number;
-            /** Code */
+            /** 模块编码 */
             code: string;
-            /** Name */
+            /** 模块名称 */
             name: string;
-            /** Enabled */
+            /** 是否启用 */
             enabled: boolean;
-            /** Sort Order */
+            /** 排序序号 */
             sort_order: number;
             /**
-             * Created At
+             * 创建时间
              * Format: date-time
              */
             created_at: string;
-            /** Created By */
+            /** 创建人 ID */
             created_by: number | null;
             /**
-             * Updated At
+             * 更新时间
              * Format: date-time
              */
             updated_at: string;
-            /** Updated By */
+            /** 更新人 ID */
             updated_by: number | null;
-            /** Revision */
+            /**
+             * 修订号
+             * @description 对象的乐观锁修订号；写入时提交最后读取的修订号。
+             */
             revision: number;
         };
         /** BusinessModuleUpdate */
         BusinessModuleUpdate: {
-            /** Code */
+            /** 模块编码 */
             code?: string | null;
-            /** Name */
+            /** 模块名称 */
             name?: string | null;
-            /** Enabled */
+            /** 是否启用 */
             enabled?: boolean | null;
-            /** Sort Order */
+            /** 排序序号 */
             sort_order?: number | null;
-            /** Revision */
+            /**
+             * 修订号
+             * @description 对象的乐观锁修订号；写入时提交最后读取的修订号。
+             */
             revision: number;
         };
         /** BusinessSystemCatalogOut */
         BusinessSystemCatalogOut: {
-            /** Systems */
+            /** 业务系统列表 */
             systems: components["schemas"]["BusinessSystemOut"][];
-            /** Modules */
+            /** 模块列表 */
             modules: components["schemas"]["BusinessModuleOut"][];
         };
         /** BusinessSystemCreate */
         BusinessSystemCreate: {
-            /** Code */
+            /** 业务系统编码 */
             code: string;
-            /** Name */
+            /** 业务系统名称 */
             name: string;
             /**
-             * Enabled
+             * 是否启用
              * @default true
              */
             enabled: boolean;
             /**
-             * Sort Order
+             * 排序序号
              * @default 0
              */
             sort_order: number;
         };
         /** BusinessSystemOut */
         BusinessSystemOut: {
-            /** Id */
+            /** 业务系统 ID */
             id: number;
-            /** Code */
+            /** 业务系统编码 */
             code: string;
-            /** Name */
+            /** 业务系统名称 */
             name: string;
-            /** Enabled */
+            /** 是否启用 */
             enabled: boolean;
-            /** Sort Order */
+            /** 排序序号 */
             sort_order: number;
             /**
-             * Created At
+             * 创建时间
              * Format: date-time
              */
             created_at: string;
-            /** Created By */
+            /** 创建人 ID */
             created_by: number | null;
             /**
-             * Updated At
+             * 更新时间
              * Format: date-time
              */
             updated_at: string;
-            /** Updated By */
+            /** 更新人 ID */
             updated_by: number | null;
-            /** Revision */
+            /**
+             * 修订号
+             * @description 对象的乐观锁修订号；写入时提交最后读取的修订号。
+             */
             revision: number;
         };
         /** BusinessSystemUpdate */
         BusinessSystemUpdate: {
-            /** Code */
+            /** 业务系统编码 */
             code?: string | null;
-            /** Name */
+            /** 业务系统名称 */
             name?: string | null;
-            /** Enabled */
+            /** 是否启用 */
             enabled?: boolean | null;
-            /** Sort Order */
+            /** 排序序号 */
             sort_order?: number | null;
-            /** Revision */
+            /**
+             * 修订号
+             * @description 对象的乐观锁修订号；写入时提交最后读取的修订号。
+             */
             revision: number;
         };
         /** ChangePasswordRequest */
         ChangePasswordRequest: {
-            /** Current Password */
+            /** 当前密码 */
             current_password: string;
-            /** New Password */
+            /** 新密码 */
             new_password: string;
         };
         /** CommentCreate */
         CommentCreate: {
-            /** Content */
+            /** 内容 */
             content: string;
         };
         /** CommentOut */
         CommentOut: {
-            /** Id */
+            /** 唯一标识 ID */
             id: number;
-            /** Entity Type */
+            /** 业务对象类型 */
             entity_type: string;
-            /** Entity Id */
+            /** 业务对象 ID */
             entity_id: number;
-            /** Content */
+            /** 内容 */
             content: string;
             /**
-             * Created At
+             * 创建时间
              * Format: date-time
              */
             created_at: string;
-            /** Created By */
+            /** 创建人 ID */
             created_by: number | null;
         };
         /** @enum {string} */
@@ -1365,13 +1389,14 @@ export interface components {
         DashboardActivityEntityType: "FEEDBACK" | "REQUIREMENT" | "VERSION" | "RELEASE";
         /** DashboardActivityItem */
         DashboardActivityItem: {
+            /** 业务对象类型 */
             entity_type: components["schemas"]["DashboardActivityEntityType"];
-            /** Entity Id */
+            /** 业务对象 ID */
             entity_id: number;
-            /** Action */
+            /** 操作类型 */
             action: string;
             /**
-             * Created At
+             * 创建时间
              * Format: date-time
              */
             created_at: string;
@@ -1380,90 +1405,97 @@ export interface components {
         DashboardDataScope: "SELF" | "ALL";
         /** DashboardFeedbackOverview */
         DashboardFeedbackOverview: {
-            /** Pending Count */
+            /** 待处理反馈数 */
             pending_count: number;
-            /** Total Count */
+            /** 总数量 */
             total_count: number;
-            /** By Status */
+            /** 各状态数量 */
             by_status: {
                 [key: string]: number;
             };
         };
         /** DashboardOverviewOut */
         DashboardOverviewOut: {
+            /** 数据范围 */
             data_scope: components["schemas"]["DashboardDataScope"];
+            /** 反馈概览 */
             feedback: components["schemas"]["DashboardFeedbackOverview"] | null;
+            /** 需求概览 */
             requirements: components["schemas"]["DashboardRequirementOverview"] | null;
+            /** 版本概览 */
             versions: components["schemas"]["DashboardVersionOverview"] | null;
+            /** 发布概览 */
             releases: components["schemas"]["DashboardReleaseOverview"] | null;
-            /** Activities */
+            /** 最近协作动态 */
             activities: components["schemas"]["DashboardActivityItem"][];
         };
         /** DashboardReleaseItem */
         DashboardReleaseItem: {
-            /** Id */
+            /** 唯一标识 ID */
             id: number;
-            /** Version Id */
+            /** 版本 ID */
             version_id: number;
-            /** Version No */
+            /** 版本号 */
             version_no: string;
-            /** Version Name */
+            /** 版本名称 */
             version_name: string;
             /**
-             * Released At
+             * 实际发布时间
              * Format: date-time
              */
             released_at: string;
+            /** 发布结果 */
             result: components["schemas"]["DashboardReleaseResult"];
         };
         /** DashboardReleaseOverview */
         DashboardReleaseOverview: {
-            /** Total Count */
+            /** 总数量 */
             total_count: number;
-            /** Recent Releases */
+            /** 最近发布记录 */
             recent_releases: components["schemas"]["DashboardReleaseItem"][];
         };
         /** @constant */
         DashboardReleaseResult: "SUCCESS";
         /** DashboardRequirementOverview */
         DashboardRequirementOverview: {
-            /** Active Count */
+            /** 活跃数量 */
             active_count: number;
-            /** Total Count */
+            /** 总数量 */
             total_count: number;
-            /** By Status */
+            /** 各状态数量 */
             by_status: {
                 [key: string]: number;
             };
         };
         /** DashboardVersionItem */
         DashboardVersionItem: {
-            /** Id */
+            /** 唯一标识 ID */
             id: number;
-            /** Version No */
+            /** 版本号 */
             version_no: string;
-            /** Name */
+            /** 名称 */
             name: string;
+            /** 状态 */
             status: components["schemas"]["DashboardActiveVersionStatus"];
-            /** Planned Release Date */
+            /** 计划发布日期 */
             planned_release_date: string | null;
             /**
-             * Updated At
+             * 更新时间
              * Format: date-time
              */
             updated_at: string;
         };
         /** DashboardVersionOverview */
         DashboardVersionOverview: {
-            /** Active Count */
+            /** 活跃数量 */
             active_count: number;
-            /** Total Count */
+            /** 总数量 */
             total_count: number;
-            /** By Status */
+            /** 各状态数量 */
             by_status: {
                 [key: string]: number;
             };
-            /** Recent Active Versions */
+            /** 最近活跃版本 */
             recent_active_versions: components["schemas"]["DashboardVersionItem"][];
         };
         /**
@@ -1473,8 +1505,9 @@ export interface components {
         DataScope: "SELF" | "TEAM" | "ALL";
         /** EditHeartbeat */
         EditHeartbeat: {
+            /** 业务对象类型 */
             entity_type: components["schemas"]["EditingEntityType"];
-            /** Entity Id */
+            /** 业务对象 ID */
             entity_id: number;
         };
         /**
@@ -1484,13 +1517,13 @@ export interface components {
         EditingEntityType: "FEEDBACK" | "REQUIREMENT" | "VERSION";
         /** ErrorResponse */
         ErrorResponse: {
-            /** Code */
+            /** 错误码 */
             code: number;
-            /** Message */
+            /** 消息说明 */
             message: string;
-            /** Data */
+            /** 附加数据 */
             data: unknown | null;
-            /** Request Id */
+            /** 请求追踪 ID */
             request_id: string | null;
         };
         /**
@@ -1502,20 +1535,27 @@ export interface components {
          *     (that is a later phase).
          */
         FeedbackConvertRequest: {
+            /** 反馈转化方式 */
             type: components["schemas"]["FeedbackConvertType"];
-            /** Revision */
+            /**
+             * 修订号
+             * @description 对象的乐观锁修订号；写入时提交最后读取的修订号。
+             */
             revision: number;
-            /** Requirement Title */
+            /** 需求标题 */
             requirement_title?: string | null;
-            /** Requirement Type */
+            /** 需求类型 */
             requirement_type?: string | null;
-            /** @default P2 */
+            /**
+             * 优先级
+             * @default P2
+             */
             priority: components["schemas"]["Priority"];
-            /** Description */
+            /** 描述 */
             description?: string | null;
-            /** Acceptance Criteria */
+            /** 验收标准 */
             acceptance_criteria?: string | null;
-            /** Requirement Id */
+            /** 需求 ID */
             requirement_id?: number | null;
         };
         /**
@@ -1526,77 +1566,87 @@ export interface components {
         FeedbackConvertType: "CREATE_NEW" | "LINK_EXISTING";
         /** FeedbackCreate */
         FeedbackCreate: {
-            /** Title */
+            /** 反馈标题 */
             title: string;
+            /** 反馈类型 */
             feedback_type: components["schemas"]["FeedbackType"];
-            /** @default NORMAL */
+            /**
+             * 紧急程度
+             * @default NORMAL
+             */
             urgency: components["schemas"]["FeedbackUrgency"];
-            /** System Id */
+            /** 业务系统 ID */
             system_id?: number | null;
-            /** Module Id */
+            /** 所属模块 ID */
             module_id?: number | null;
-            /** Description */
+            /** 描述 */
             description: string;
-            /** Expected Result */
+            /** 预期结果 */
             expected_result?: string | null;
-            /** Actual Result */
+            /** 实际结果 */
             actual_result?: string | null;
-            /** Reproduce Steps */
+            /** 复现步骤 */
             reproduce_steps?: string | null;
         };
         /** FeedbackOut */
         FeedbackOut: {
-            /** Id */
+            /** 反馈 ID */
             id: number;
-            /** Feedback No */
+            /** 反馈编号 */
             feedback_no: string;
-            /** Title */
+            /** 反馈标题 */
             title: string;
+            /** 反馈类型 */
             feedback_type: components["schemas"]["FeedbackType"];
+            /** 紧急程度 */
             urgency: components["schemas"]["FeedbackUrgency"];
+            /** 反馈状态 */
             status: components["schemas"]["FeedbackStatus"];
-            /** System Id */
+            /** 业务系统 ID */
             system_id: number | null;
-            /** Module Id */
+            /** 所属模块 ID */
             module_id: number | null;
-            /** Submitter Id */
+            /** 提交人 ID */
             submitter_id: number;
-            /** Description */
+            /** 描述 */
             description: string;
-            /** Expected Result */
+            /** 预期结果 */
             expected_result: string | null;
-            /** Actual Result */
+            /** 实际结果 */
             actual_result: string | null;
-            /** Reproduce Steps */
+            /** 复现步骤 */
             reproduce_steps: string | null;
-            /** Main Requirement Id */
+            /** 主需求 ID */
             main_requirement_id: number | null;
-            /** Duplicate Of Id */
+            /** 重复反馈关联 ID */
             duplicate_of_id: number | null;
             /**
-             * Created At
+             * 创建时间
              * Format: date-time
              */
             created_at: string;
             /**
-             * Updated At
+             * 更新时间
              * Format: date-time
              */
             updated_at: string;
-            /** Updated By */
+            /** 更新人 ID */
             updated_by: number | null;
-            /** Revision */
+            /**
+             * 修订号
+             * @description 对象的乐观锁修订号；写入时提交最后读取的修订号。
+             */
             revision: number;
         };
         /** FeedbackPage */
         FeedbackPage: {
-            /** Items */
+            /** 数据列表 */
             items: components["schemas"]["FeedbackOut"][];
-            /** Page */
+            /** 当前页码 */
             page: number;
-            /** Page Size */
+            /** 每页条数 */
             page_size: number;
-            /** Total */
+            /** 总条数 */
             total: number;
         };
         /**
@@ -1606,12 +1656,16 @@ export interface components {
         FeedbackStatus: "NEW" | "ACCEPTED" | "REQUIREMENT_LINKED" | "ONLINE" | "DUPLICATE" | "CANNOT_REPRODUCE" | "CLOSED";
         /** FeedbackStatusChange */
         FeedbackStatusChange: {
+            /** 反馈状态 */
             status: components["schemas"]["ManualFeedbackStatus"];
-            /** Revision */
+            /**
+             * 修订号
+             * @description 对象的乐观锁修订号；写入时提交最后读取的修订号。
+             */
             revision: number;
-            /** Reason */
+            /** 操作原因 */
             reason?: string | null;
-            /** Duplicate Of Id */
+            /** 重复反馈关联 ID */
             duplicate_of_id?: number | null;
         };
         /**
@@ -1621,23 +1675,28 @@ export interface components {
         FeedbackType: "NEW_FEATURE" | "FEATURE_OPTIMIZATION" | "SYSTEM_ISSUE" | "DATA_ISSUE" | "UI_UX" | "OTHER";
         /** FeedbackUpdate */
         FeedbackUpdate: {
-            /** Title */
+            /** 反馈标题 */
             title?: string | null;
+            /** 反馈类型 */
             feedback_type?: components["schemas"]["FeedbackType"] | null;
+            /** 紧急程度 */
             urgency?: components["schemas"]["FeedbackUrgency"] | null;
-            /** System Id */
+            /** 业务系统 ID */
             system_id?: number | null;
-            /** Module Id */
+            /** 所属模块 ID */
             module_id?: number | null;
-            /** Description */
+            /** 描述 */
             description?: string | null;
-            /** Expected Result */
+            /** 预期结果 */
             expected_result?: string | null;
-            /** Actual Result */
+            /** 实际结果 */
             actual_result?: string | null;
-            /** Reproduce Steps */
+            /** 复现步骤 */
             reproduce_steps?: string | null;
-            /** Revision */
+            /**
+             * 修订号
+             * @description 对象的乐观锁修订号；写入时提交最后读取的修订号。
+             */
             revision: number;
         };
         /**
@@ -1647,35 +1706,36 @@ export interface components {
         FeedbackUrgency: "NORMAL" | "URGENT" | "CRITICAL";
         /** FileExistsOut */
         FileExistsOut: {
-            /** File Id */
+            /** 文件 ID */
             file_id: number;
-            /** Exists */
+            /** 文件是否存在 */
             exists: boolean;
         };
         /** FileOut */
         FileOut: {
-            /** Id */
+            /** 唯一标识 ID */
             id: number;
-            /** Original Name */
+            /** 原始文件名 */
             original_name: string;
-            /** Size */
+            /** 文件大小（字节） */
             size: number;
-            /** Mime Type */
+            /** 文件 MIME 类型 */
             mime_type: string;
-            /** Sha256 */
+            /** 文件 SHA256 校验值 */
             sha256: string;
+            /** 存储驱动 */
             storage_driver: components["schemas"]["StorageDriver"];
             /**
-             * Created At
+             * 创建时间
              * Format: date-time
              */
             created_at: string;
-            /** Created By */
+            /** 创建人 ID */
             created_by: number | null;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
-            /** Detail */
+            /** 校验错误详情 */
             detail?: components["schemas"]["ValidationError"][];
         };
         /**
@@ -1683,28 +1743,28 @@ export interface components {
          * @description A feedback linked to a requirement (source traceability).
          */
         LinkedFeedbackOut: {
-            /** Feedback Id */
+            /** 反馈 ID */
             feedback_id: number;
-            /** Feedback No */
+            /** 反馈编号 */
             feedback_no: string;
-            /** Title */
+            /** 标题 */
             title: string;
-            /** Status */
+            /** 状态 */
             status: string;
-            /** Is Primary */
+            /** 是否为主关联 */
             is_primary: boolean;
         };
         /** LoginRequest */
         LoginRequest: {
-            /** Username */
+            /** 用户名 */
             username: string;
-            /** Password */
+            /** 密码 */
             password: string;
         };
         /** LogoutResponse */
         LogoutResponse: {
             /**
-             * Ok
+             * 操作是否成功
              * @default true
              */
             ok: boolean;
@@ -1731,39 +1791,46 @@ export interface components {
         ManualVersionStatus: "PLANNING" | "DEVELOPING" | "TESTING" | "READY" | "CANCELED";
         /** MoveRequirementRequest */
         MoveRequirementRequest: {
-            /** Requirement Id */
+            /** 需求 ID */
             requirement_id: number;
-            /** Revision */
+            /**
+             * 修订号
+             * @description 对象的乐观锁修订号；写入时提交最后读取的修订号。
+             */
             revision: number;
-            /** Version Revision */
+            /**
+             * 版本修订号
+             * @description 目标版本的乐观锁修订号；版本内容变更时用于并发校验。
+             */
             version_revision: number;
-            /** Reason */
+            /** 操作原因 */
             reason: string;
         };
         /** NotificationOut */
         NotificationOut: {
-            /** Id */
+            /** 唯一标识 ID */
             id: number;
+            /** 通知类型 */
             type: components["schemas"]["NotificationType"];
-            /** Title */
+            /** 标题 */
             title: string;
-            /** Content */
+            /** 内容 */
             content: string;
-            /** Entity Type */
+            /** 业务对象类型 */
             entity_type: string | null;
-            /** Entity Id */
+            /** 业务对象 ID */
             entity_id: number | null;
-            /** Read At */
+            /** 已读时间 */
             read_at: string | null;
             /**
-             * Created At
+             * 创建时间
              * Format: date-time
              */
             created_at: string;
         };
         /** NotificationReadAllResult */
         NotificationReadAllResult: {
-            /** Updated Count */
+            /** 本次更新数量 */
             updated_count: number;
         };
         /**
@@ -1773,26 +1840,26 @@ export interface components {
         NotificationType: "SYSTEM" | "FEEDBACK" | "REQUIREMENT" | "VERSION" | "RELEASE";
         /** NotificationUnreadCount */
         NotificationUnreadCount: {
-            /** Unread Count */
+            /** 未读通知数 */
             unread_count: number;
         };
         /** PermissionOut */
         PermissionOut: {
-            /** Id */
+            /** 唯一标识 ID */
             id: number;
-            /** Code */
+            /** 编码 */
             code: string;
-            /** Name */
+            /** 名称 */
             name: string;
-            /** Category */
+            /** 权限分类 */
             category: string;
-            /** Group */
+            /** 权限分组 */
             group: string;
-            /** Sensitive */
+            /** 是否为敏感权限 */
             sensitive: boolean;
-            /** Deprecated */
+            /** 是否已弃用 */
             deprecated: boolean;
-            /** Replacement Code */
+            /** 替代权限码 */
             replacement_code: string | null;
         };
         /**
@@ -1802,23 +1869,23 @@ export interface components {
         Priority: "P0" | "P1" | "P2" | "P3" | "P4";
         /** PublishCheckItem */
         PublishCheckItem: {
-            /** Type */
+            /** 检查类型 */
             type: string;
-            /** Passed */
+            /** 是否通过 */
             passed: boolean;
-            /** Message */
+            /** 消息说明 */
             message: string;
             /**
-             * Blocking Requirements
+             * 阻断发布的需求
              * @default []
              */
             blocking_requirements: components["schemas"]["BlockingRequirement"][];
         };
         /** PublishCheckResult */
         PublishCheckResult: {
-            /** Passed */
+            /** 是否通过 */
             passed: boolean;
-            /** Checks */
+            /** 检查项 */
             checks: components["schemas"]["PublishCheckItem"][];
         };
         /**
@@ -1826,29 +1893,33 @@ export interface components {
          * @description Outcome of a successful version publish transaction.
          */
         PublishResult: {
+            /** 发布记录 */
             release: components["schemas"]["ReleaseOut"];
-            /** Version Id */
+            /** 版本 ID */
             version_id: number;
-            /** Released Requirement Ids */
+            /** 本次上线的需求 ID 列表 */
             released_requirement_ids: number[];
-            /** Online Feedback Ids */
+            /** 本次上线的反馈 ID 列表 */
             online_feedback_ids: number[];
         };
         /** PublishVersionRequest */
         PublishVersionRequest: {
             /**
-             * Released At
+             * 实际发布时间
              * Format: date-time
              */
             released_at: string;
-            /** Release Notes */
+            /** 发布说明 */
             release_notes: string;
-            /** Revision */
+            /**
+             * 修订号
+             * @description 对象的乐观锁修订号；写入时提交最后读取的修订号。
+             */
             revision: number;
         };
         /** RefreshRequest */
         RefreshRequest: {
-            /** Refresh Token */
+            /** 刷新令牌 */
             refresh_token: string;
         };
         /**
@@ -1857,39 +1928,43 @@ export interface components {
          *     transaction; it has no independent workflow/state of its own.
          */
         ReleaseOut: {
-            /** Id */
+            /** 发布记录 ID */
             id: number;
-            /** Version Id */
+            /** 版本 ID */
             version_id: number;
             /**
-             * Released At
+             * 实际发布时间
              * Format: date-time
              */
             released_at: string;
+            /** 发布结果 */
             result: components["schemas"]["ReleaseResult"];
-            /** Release Notes */
+            /** 发布说明 */
             release_notes: string;
-            /** Rollback Notes */
+            /** 回滚说明 */
             rollback_notes: string | null;
             /**
-             * Created At
+             * 创建时间
              * Format: date-time
              */
             created_at: string;
-            /** Created By */
+            /** 创建人 ID */
             created_by: number | null;
-            /** Revision */
+            /**
+             * 修订号
+             * @description 对象的乐观锁修订号；写入时提交最后读取的修订号。
+             */
             revision: number;
         };
         /** ReleasePage */
         ReleasePage: {
-            /** Items */
+            /** 数据列表 */
             items: components["schemas"]["ReleaseOut"][];
-            /** Page */
+            /** 当前页码 */
             page: number;
-            /** Page Size */
+            /** 每页条数 */
             page_size: number;
-            /** Total */
+            /** 总条数 */
             total: number;
         };
         /**
@@ -1899,85 +1974,103 @@ export interface components {
         ReleaseResult: "SUCCESS";
         /** RemoveRequirementRequest */
         RemoveRequirementRequest: {
-            /** Revision */
+            /**
+             * 修订号
+             * @description 对象的乐观锁修订号；写入时提交最后读取的修订号。
+             */
             revision: number;
-            /** Version Revision */
+            /**
+             * 版本修订号
+             * @description 目标版本的乐观锁修订号；版本内容变更时用于并发校验。
+             */
             version_revision: number;
-            /** Reason */
+            /** 操作原因 */
             reason?: string | null;
         };
         /** RequirementCreate */
         RequirementCreate: {
-            /** Title */
+            /** 需求标题 */
             title: string;
-            /** Requirement Type */
+            /** 需求类型 */
             requirement_type: string;
-            /** @default P2 */
+            /**
+             * 优先级
+             * @default P2
+             */
             priority: components["schemas"]["Priority"];
-            /** System Id */
+            /** 业务系统 ID */
             system_id?: number | null;
-            /** Module Id */
+            /** 所属模块 ID */
             module_id?: number | null;
-            /** Owner Id */
+            /** 负责人 ID */
             owner_id?: number | null;
-            /** Description */
+            /** 描述 */
             description: string;
-            /** Acceptance Criteria */
+            /** 验收标准 */
             acceptance_criteria?: string | null;
-            /** Version Id */
+            /** 版本 ID */
             version_id?: number | null;
-            /** Version Revision */
+            /**
+             * 版本修订号
+             * @description 目标版本的乐观锁修订号；版本内容变更时用于并发校验。
+             */
             version_revision?: number | null;
         };
         /** RequirementOut */
         RequirementOut: {
-            /** Id */
+            /** 需求 ID */
             id: number;
-            /** Requirement No */
+            /** 需求编号 */
             requirement_no: string;
-            /** Title */
+            /** 需求标题 */
             title: string;
-            /** Requirement Type */
+            /** 需求类型 */
             requirement_type: string;
+            /** 需求来源 */
             source: components["schemas"]["RequirementSource"];
+            /** 优先级 */
             priority: components["schemas"]["Priority"];
+            /** 需求状态 */
             status: components["schemas"]["RequirementStatus"];
-            /** System Id */
+            /** 业务系统 ID */
             system_id: number | null;
-            /** Module Id */
+            /** 所属模块 ID */
             module_id: number | null;
-            /** Owner Id */
+            /** 负责人 ID */
             owner_id: number | null;
-            /** Current Version Id */
+            /** 当前所属版本 ID */
             current_version_id: number | null;
-            /** Description */
+            /** 描述 */
             description: string;
-            /** Acceptance Criteria */
+            /** 验收标准 */
             acceptance_criteria: string | null;
             /**
-             * Created At
+             * 创建时间
              * Format: date-time
              */
             created_at: string;
             /**
-             * Updated At
+             * 更新时间
              * Format: date-time
              */
             updated_at: string;
-            /** Updated By */
+            /** 更新人 ID */
             updated_by: number | null;
-            /** Revision */
+            /**
+             * 修订号
+             * @description 对象的乐观锁修订号；写入时提交最后读取的修订号。
+             */
             revision: number;
         };
         /** RequirementPage */
         RequirementPage: {
-            /** Items */
+            /** 数据列表 */
             items: components["schemas"]["RequirementOut"][];
-            /** Page */
+            /** 当前页码 */
             page: number;
-            /** Page Size */
+            /** 每页条数 */
             page_size: number;
-            /** Total */
+            /** 总条数 */
             total: number;
         };
         /**
@@ -1992,110 +2085,133 @@ export interface components {
         RequirementStatus: "DRAFT" | "CONFIRMED" | "PLANNED" | "DEVELOPING" | "TESTING" | "DONE" | "ONLINE" | "PAUSED" | "CANCELED";
         /** RequirementStatusChange */
         RequirementStatusChange: {
+            /** 需求状态 */
             status: components["schemas"]["ManualRequirementStatus"];
-            /** Revision */
+            /**
+             * 修订号
+             * @description 对象的乐观锁修订号；写入时提交最后读取的修订号。
+             */
             revision: number;
-            /** Reason */
+            /** 操作原因 */
             reason?: string | null;
         };
         /** RequirementUpdate */
         RequirementUpdate: {
-            /** Title */
+            /** 需求标题 */
             title?: string | null;
-            /** Requirement Type */
+            /** 需求类型 */
             requirement_type?: string | null;
+            /** 优先级 */
             priority?: components["schemas"]["Priority"] | null;
-            /** System Id */
+            /** 业务系统 ID */
             system_id?: number | null;
-            /** Module Id */
+            /** 所属模块 ID */
             module_id?: number | null;
-            /** Owner Id */
+            /** 负责人 ID */
             owner_id?: number | null;
-            /** Description */
+            /** 描述 */
             description?: string | null;
-            /** Acceptance Criteria */
+            /** 验收标准 */
             acceptance_criteria?: string | null;
-            /** Revision */
+            /**
+             * 修订号
+             * @description 对象的乐观锁修订号；写入时提交最后读取的修订号。
+             */
             revision: number;
         };
         /** RevisionConflictData */
         RevisionConflictData: {
-            /** Current Revision */
+            /** 最新修订号 */
             current_revision: number | null;
-            /** Current Updated At */
+            /** 最新更新时间 */
             current_updated_at: string | null;
-            /** Current Updated By */
+            /** 最新更新人 ID */
             current_updated_by: number | null;
         };
         /** RevisionConflictResponse */
         RevisionConflictResponse: {
             /**
-             * Code
+             * 错误码
              * @constant
              */
             code: 40910;
-            /** Message */
+            /** 消息说明 */
             message: string;
+            /** 附加数据 */
             data: components["schemas"]["RevisionConflictData"];
-            /** Request Id */
+            /** 请求追踪 ID */
             request_id: string | null;
         };
         /** RoleCreate */
         RoleCreate: {
-            /** Code */
+            /** 角色编码 */
             code: string;
-            /** Name */
+            /** 角色名称 */
             name: string;
-            /** @default SELF */
+            /**
+             * 数据范围
+             * @default SELF
+             */
             data_scope: components["schemas"]["ConfigurableDataScope"];
-            /** Permission Ids */
+            /** 权限 ID 列表 */
             permission_ids?: number[];
         };
         /** RoleDeleteOut */
         RoleDeleteOut: {
-            /** Id */
+            /** 角色 ID */
             id: number;
             /**
-             * Deleted
+             * 是否已删除
              * @default true
              */
             deleted: boolean;
         };
         /** RoleOut */
         RoleOut: {
-            /** Id */
+            /** 角色 ID */
             id: number;
-            /** Code */
+            /** 角色编码 */
             code: string;
-            /** Name */
+            /** 角色名称 */
             name: string;
+            /** 数据范围 */
             data_scope: components["schemas"]["DataScope"];
-            /** Enabled */
+            /** 是否启用 */
             enabled: boolean;
-            /** Is System */
+            /** 是否为系统角色 */
             is_system: boolean;
-            /** Revision */
+            /**
+             * 修订号
+             * @description 对象的乐观锁修订号；写入时提交最后读取的修订号。
+             */
             revision: number;
-            /** Permission Ids */
+            /** 权限 ID 列表 */
             permission_ids?: number[];
         };
         /** RolePermissionUpdate */
         RolePermissionUpdate: {
-            /** Permission Ids */
+            /** 权限 ID 列表 */
             permission_ids: number[];
-            /** Revision */
+            /**
+             * 修订号
+             * @description 对象的乐观锁修订号；写入时提交最后读取的修订号。
+             */
             revision: number;
         };
         /** RoleUpdate */
         RoleUpdate: {
-            /** Code */
+            /** 角色编码 */
             code?: string | null;
-            /** Name */
+            /** 角色名称 */
             name?: string | null;
+            /** 数据范围 */
             data_scope?: components["schemas"]["ConfigurableDataScope"] | null;
-            /** Enabled */
+            /** 是否启用 */
             enabled?: boolean | null;
-            /** Revision */
+            /**
+             * 修订号
+             * @description 对象的乐观锁修订号；写入时提交最后读取的修订号。
+             */
             revision: number;
         };
         /**
@@ -2105,67 +2221,74 @@ export interface components {
         StorageDriver: "LOCAL" | "S3";
         /** TokenPair */
         TokenPair: {
-            /** Access Token */
+            /** 访问令牌 */
             access_token: string;
-            /** Refresh Token */
+            /** 刷新令牌 */
             refresh_token: string;
             /**
-             * Token Type
+             * 令牌类型
              * @default bearer
              */
             token_type: string;
-            /** Must Change Password */
+            /** 是否需要修改密码 */
             must_change_password: boolean;
         };
         /** UserCreate */
         UserCreate: {
-            /** Username */
+            /** 用户名 */
             username: string;
-            /** Display Name */
+            /** 显示名称 */
             display_name: string;
-            /** Password */
+            /** 密码 */
             password: string;
-            /** Email */
+            /** 邮箱 */
             email?: string | null;
-            /** Mobile */
+            /** 手机号 */
             mobile?: string | null;
-            /** Role Ids */
+            /** 角色 ID 列表 */
             role_ids?: number[];
         };
         /** UserOut */
         UserOut: {
-            /** Id */
+            /** 用户 ID */
             id: number;
-            /** Username */
+            /** 用户名 */
             username: string;
-            /** Display Name */
+            /** 显示名称 */
             display_name: string;
-            /** Email */
+            /** 邮箱 */
             email: string | null;
-            /** Mobile */
+            /** 手机号 */
             mobile?: string | null;
+            /** 用户状态 */
             status: components["schemas"]["UserStatus"];
-            /** Revision */
+            /**
+             * 修订号
+             * @description 对象的乐观锁修订号；写入时提交最后读取的修订号。
+             */
             revision: number;
-            /** Role Ids */
+            /** 角色 ID 列表 */
             role_ids?: number[];
         };
         /** UserPage */
         UserPage: {
-            /** Items */
+            /** 数据列表 */
             items: components["schemas"]["UserOut"][];
-            /** Page */
+            /** 当前页码 */
             page: number;
-            /** Page Size */
+            /** 每页条数 */
             page_size: number;
-            /** Total */
+            /** 总条数 */
             total: number;
         };
         /** UserRoleUpdate */
         UserRoleUpdate: {
-            /** Role Ids */
+            /** 角色 ID 列表 */
             role_ids: number[];
-            /** Revision */
+            /**
+             * 修订号
+             * @description 对象的乐观锁修订号；写入时提交最后读取的修订号。
+             */
             revision: number;
         };
         /**
@@ -2175,8 +2298,12 @@ export interface components {
         UserStatus: "ACTIVE" | "DISABLED" | "LOCKED";
         /** UserStatusChange */
         UserStatusChange: {
+            /** 用户状态 */
             status: components["schemas"]["UserStatus"];
-            /** Revision */
+            /**
+             * 修订号
+             * @description 对象的乐观锁修订号；写入时提交最后读取的修订号。
+             */
             revision: number;
         };
         /**
@@ -2184,103 +2311,114 @@ export interface components {
          * @description Editable account profile fields; credentials, status, and roles have dedicated APIs.
          */
         UserUpdate: {
-            /** Display Name */
+            /** 显示名称 */
             display_name?: string | null;
-            /** Email */
+            /** 邮箱 */
             email?: string | null;
-            /** Mobile */
+            /** 手机号 */
             mobile?: string | null;
-            /** Revision */
+            /**
+             * 修订号
+             * @description 对象的乐观锁修订号；写入时提交最后读取的修订号。
+             */
             revision: number;
         };
         /** ValidationError */
         ValidationError: {
-            /** Location */
+            /** 错误字段位置 */
             loc: (string | number)[];
-            /** Message */
+            /** 校验错误说明 */
             msg: string;
-            /** Error Type */
+            /** 校验错误类型 */
             type: string;
-            /** Input */
+            /** 校验失败的输入 */
             input?: unknown;
-            /** Context */
+            /** 校验上下文 */
             ctx?: Record<string, never>;
         };
         /** VersionCreate */
         VersionCreate: {
-            /** Version No */
+            /** 版本号 */
             version_no: string;
-            /** Name */
+            /** 版本名称 */
             name: string;
-            /** Owner Id */
+            /** 负责人 ID */
             owner_id?: number | null;
-            /** Planned Release Date */
+            /** 计划发布日期 */
             planned_release_date?: string | null;
-            /** Description */
+            /** 描述 */
             description?: string | null;
         };
         /** VersionOut */
         VersionOut: {
-            /** Id */
+            /** 版本 ID */
             id: number;
-            /** Version No */
+            /** 版本号 */
             version_no: string;
-            /** Name */
+            /** 版本名称 */
             name: string;
+            /** 版本状态 */
             status: components["schemas"]["VersionStatus"];
-            /** Owner Id */
+            /** 负责人 ID */
             owner_id: number | null;
-            /** Planned Release Date */
+            /** 计划发布日期 */
             planned_release_date: string | null;
-            /** Released At */
+            /** 实际发布时间 */
             released_at: string | null;
-            /** Description */
+            /** 描述 */
             description: string | null;
             /**
-             * Created At
+             * 创建时间
              * Format: date-time
              */
             created_at: string;
             /**
-             * Updated At
+             * 更新时间
              * Format: date-time
              */
             updated_at: string;
-            /** Updated By */
+            /** 更新人 ID */
             updated_by: number | null;
-            /** Revision */
+            /**
+             * 修订号
+             * @description 对象的乐观锁修订号；写入时提交最后读取的修订号。
+             */
             revision: number;
         };
         /** VersionPage */
         VersionPage: {
-            /** Items */
+            /** 数据列表 */
             items: components["schemas"]["VersionOut"][];
-            /** Page */
+            /** 当前页码 */
             page: number;
-            /** Page Size */
+            /** 每页条数 */
             page_size: number;
-            /** Total */
+            /** 总条数 */
             total: number;
         };
         /** VersionRequirementsOut */
         VersionRequirementsOut: {
-            /** Version Id */
+            /** 版本 ID */
             version_id: number;
+            /** 需求统计 */
             stats: components["schemas"]["VersionStats"];
-            /** Items */
+            /** 数据列表 */
             items: components["schemas"]["RequirementOut"][];
         };
         /** VersionStats */
         VersionStats: {
-            /** Total */
+            /** 总条数 */
             total: number;
-            /** By Status */
+            /** 各状态数量 */
             by_status: {
                 [key: string]: number;
             };
-            /** Completed */
+            /** 已完成需求数 */
             completed: number;
-            /** Completion Rate */
+            /**
+             * 完成率
+             * @description 已完成需求数除以总需求数，取值为 0–1，保留四位小数；无需求时为 0。
+             */
             completion_rate: number;
         };
         /**
@@ -2290,23 +2428,30 @@ export interface components {
         VersionStatus: "PLANNING" | "DEVELOPING" | "TESTING" | "READY" | "RELEASED" | "CANCELED";
         /** VersionStatusChange */
         VersionStatusChange: {
+            /** 版本状态 */
             status: components["schemas"]["ManualVersionStatus"];
-            /** Revision */
+            /**
+             * 修订号
+             * @description 对象的乐观锁修订号；写入时提交最后读取的修订号。
+             */
             revision: number;
-            /** Reason */
+            /** 操作原因 */
             reason?: string | null;
         };
         /** VersionUpdate */
         VersionUpdate: {
-            /** Name */
+            /** 版本名称 */
             name?: string | null;
-            /** Owner Id */
+            /** 负责人 ID */
             owner_id?: number | null;
-            /** Planned Release Date */
+            /** 计划发布日期 */
             planned_release_date?: string | null;
-            /** Description */
+            /** 描述 */
             description?: string | null;
-            /** Revision */
+            /**
+             * 修订号
+             * @description 对象的乐观锁修订号；写入时提交最后读取的修订号。
+             */
             revision: number;
         };
     };

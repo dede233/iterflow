@@ -3,6 +3,7 @@ import os
 import subprocess
 import sys
 from collections.abc import Iterator
+from copy import deepcopy
 from pathlib import Path
 
 import pytest
@@ -11,6 +12,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event, select
 from sqlalchemy.orm import Session
 
+from app.core.api_documentation import schema_labels
 from app.core.database import get_db
 from app.core.security import create_access_token
 from app.main import app
@@ -107,6 +109,18 @@ def test_exact_enabled_system_roles_control_menu_capability_and_schema(docs_api,
         assert schema["info"]["title"] == "迭程 IterFlow 接口文档"
         assert schema["paths"]["/api/v1/auth/login"]["post"]["summary"] == "登录"
         assert "/api/v1/versions/{version_id}/publish" in schema["paths"]
+        assert (
+            schema["components"]["schemas"]["FeedbackOut"]["properties"]["feedback_no"]["title"]
+            == "反馈编号"
+        )
+        assert (
+            schema["components"]["schemas"]["FeedbackPage"]["properties"]["items"]["title"]
+            == "数据列表"
+        )
+        assert (
+            schema["components"]["schemas"]["TokenPair"]["properties"]["access_token"]["title"]
+            == "访问令牌"
+        )
         entry = session.scalar(select(OperationLog).where(OperationLog.action == "VIEW"))
         assert entry is not None and entry.operator_id == user.id
         assert entry.before_data is None and entry.after_data is None
@@ -164,7 +178,43 @@ def test_bundled_chinese_labels_match_the_active_contract():
     current["paths"].pop("/docs/openapi")
     current["components"]["schemas"]["AuthMe"]["properties"].pop("can_view_api_docs")
     current["info"] = released["info"]
+    for document in (current, released):
+        for schema in document["components"]["schemas"].values():
+            remove_schema_annotations(schema)
     assert current == released
+
+
+def remove_schema_annotations(schema):
+    schema.pop("title", None)
+    schema.pop("description", None)
+    for child in schema.get("properties", {}).values():
+        remove_schema_annotations(child)
+    for key in ("items", "additionalProperties"):
+        if isinstance(schema.get(key), dict):
+            remove_schema_annotations(schema[key])
+    for key in ("anyOf", "allOf", "oneOf"):
+        for child in schema.get(key, []):
+            remove_schema_annotations(child)
+
+
+def test_documented_response_fields_are_chinese_and_keep_runtime_structure(docs_api):
+    client, session, user, headers = docs_api
+    assign_role(session, user, "SUPER_ADMIN")
+    original = deepcopy(app.openapi())
+    result = client.get("/api/v1/docs/openapi", headers=headers).json()
+    assert app.openapi() == original, "documentation must not modify the cached runtime schema"
+    for name, schema in result["components"]["schemas"].items():
+        for field in schema.get("properties", {}).values():
+            assert any("\u3400" <= char <= "\u9fff" for char in field["title"]), name
+        runtime = deepcopy(original["components"]["schemas"][name])
+        documented = deepcopy(schema)
+        remove_schema_annotations(runtime)
+        remove_schema_annotations(documented)
+        assert documented == runtime, name
+    labels = schema_labels(
+        {"type": "object", "properties": {"title": {"type": "string", "title": "标题"}}}
+    )
+    assert labels == {"properties": {"title": {"title": "标题"}}}
 
 
 def test_production_cannot_enable_public_swagger_or_schema():

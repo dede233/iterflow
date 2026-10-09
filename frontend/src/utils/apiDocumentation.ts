@@ -29,7 +29,7 @@ export interface OpenApiDocument {
   security?: Record<string, string[]>[]
 }
 export interface DocumentedOperation extends ApiOperation { key: string; path: string; method: string; group: string }
-export interface SchemaField { name: string; type: string; required: boolean; description: string }
+export interface SchemaField { name: string; label: string; type: string; required: boolean; description: string; schema: ApiSchema }
 
 const METHODS = new Set(['get', 'post', 'put', 'patch', 'delete', 'head', 'options', 'trace'])
 const GROUPS: Record<string, string> = {
@@ -76,8 +76,18 @@ export function schemaFields(schema: ApiSchema | undefined, document: OpenApiDoc
   return Object.entries(resolved.properties ?? {}).map(([name, property]) => {
     const field = resolveSchema(property, document)
     const descriptions = [field.description, field.enum ? `可选值：${field.enum.join('、')}` : undefined]
-    return { name, type: schemaType(property, document), required: resolved.required?.includes(name) ?? false, description: descriptions.filter(Boolean).join('；') || '—' }
+    return { name, label: field.title && /[\u3400-\u9fff]/.test(field.title) ? field.title : '', schema: property, type: schemaType(property, document), required: resolved.required?.includes(name) ?? false, description: descriptions.filter(Boolean).join('；') }
   })
+}
+
+export function schemaBranches(schema: ApiSchema | undefined, document: OpenApiDocument): ApiSchema[] {
+  const resolved = resolveSchema(schema, document)
+  if (resolved.type === 'array' && resolved.items) return [resolved.items]
+  return (resolved.anyOf ?? resolved.allOf ?? []).filter(item => resolveSchema(item, document).type !== 'null')
+}
+
+export function hasSchemaChildren(schema: ApiSchema | undefined, document: OpenApiDocument): boolean {
+  return schemaFields(schema, document).length > 0 || schemaBranches(schema, document).some(branch => schemaFields(branch, document).length > 0 || resolveSchema(branch, document).type === 'array')
 }
 
 export function responseDescription(value?: string): string {

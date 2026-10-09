@@ -17,7 +17,7 @@ Apple Silicon 上旧 ARM Colima 的 amd64 用户态模拟发生过退出 139，�
 可创建完全独立 x86_64 profile，显式使用 QEMU CPU 模拟，不切换/重启现有 default profile：
 
 ```bash
-brew install qemu
+brew install qemu lima-additional-guestagents
 colima start iterflow-mysql57 --activate=false --arch x86_64 --vm-type qemu \
   --cpu 2 --memory 3 --disk 25 --mount-type 9p --mount none
 docker --context colima-iterflow-mysql57 compose -f tools/mysql57-proof/compose.yml up -d --wait db

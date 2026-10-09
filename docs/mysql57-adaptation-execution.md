@@ -117,3 +117,17 @@ CI 新增真实 5.7.44 与原六项并行门禁；构建 context 排除 host nod
 重启恢复通过；backend/mysql57 两个 job 失败于同一类型错误（SQLAlchemy 2.1.4 推断 list[object]）。
 明确 helper 模型类型与 list[int]，本地升级开发依赖 SQLAlchemy 2.1.4 后 Mypy 98 文件 PASS；
 生产锁仍为 2.0.54，不更改生产依赖版本。首次 CI 日志完整保留，非基础设施重跑。
+
+阶段 3 完成：a07bd9ef94cf34559a8e604f24fafca56d8b9469 的七项 branch CI 全 PASS：
+https://github.com/dede233/iterflow/actions/runs/37962404820 。
+本地独立 colima-iterflow-mysql57 为 x86_64 QEMU TCG（Mac arm64、2 CPU、3 GiB），
+全新卷 mysql:5.7.44；17 proof PASS，43 acceptance PASS / 0 skipped（165.12s），
+三次连续重启及隔离数据库/附件 restore PASS。环境元数据及备份摘要见 local-environment.json、
+backup-restore.json。旧 default ARM 用户态模拟的 139 未宣称修复；当前改用独立 CPU 模拟 VM。
+
+首次 VM 初始化需要 lima-additional-guestagents；安装后 Docker 组权限需要该新 profile 重启。
+新镜像的 /etc/resolv.conf 指向不存在的 systemd stub，dnsmasq 无法启动；只在本任务 VM 内
+替换为 DHCP 实际下发的 192.168.5.2 DNS 并重启 dnsmasq。未改 default profile。
+MySQL 镜像从本地已缓存官方镜像 save/load 到新 VM，ID/amd64 与原镜像完全相同，未导入数据库。
+Fresh Self-Review 完成：主链、关系保护、CAS、事务、权限、通知和审计均保持；无规格冲突。
+阶段 4 开始，远程版本/TLS/权限/网络仍未核实，不代表服务器部署授权或远程兼容性已验证。

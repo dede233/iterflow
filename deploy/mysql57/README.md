@@ -84,7 +84,9 @@ sha256sum backup-new/database.sql backup-new/uploads.tar > backup-new/SHA256SUMS
 
 任何一条失败立即停止，不把失败/空文件视为备份。确认 API 重启健康并保存备份至独立存储。
 备份账号需要读取数据、SHOW VIEW/TRIGGER，以及该服务器上 mysqldump 所需的额外权限；
-`--single-transaction --routines --triggers --hex-blob --set-gtid-purged=OFF` 保留关联与写保护。
+`--single-transaction --no-tablespaces --triggers --hex-blob --set-gtid-purged=OFF` 保留表、数据与写保护。
+本迁移没有存储过程/函数或自定义 tablespace；因此备份不需要为它们授予全局权限。
+`--no-tablespaces` 避免 5.7.31 起额外的 PROCESS 要求，见 [MySQL mysqldump 文档](https://dev.mysql.com/doc/refman/5.7/en/mysqldump.html)。
 请先在目标环境验证备份权限，不能以能登录替代能备份。
 
 恢复仅面向一个明确新建的隔离测试库与测试附件卷，mysql-client.cnf 指向该测试环境：

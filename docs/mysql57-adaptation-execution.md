@@ -112,3 +112,8 @@ Fresh Self-Review：独立 DDL 显式 ROW_FORMAT=DYNAMIC；预检增加 Barracud
 防止 5.7 较早配置导致唯一键截断；guard 不依赖 runtime TRIGGER 权限。
 CI 新增真实 5.7.44 与原六项并行门禁；构建 context 排除 host node_modules/venv/密钥配置。
 同一 Agent 的 Fresh Self-Review，不称为独立审查。当前保留环境阻断，不降低验收门禁。
+
+阶段 3 Fix Loop 1：CI run 37961859119 的真实 Linux amd64 MySQL 17 proof / 43 acceptance 全 PASS，
+重启恢复通过；backend/mysql57 两个 job 失败于同一类型错误（SQLAlchemy 2.1.4 推断 list[object]）。
+明确 helper 模型类型与 list[int]，本地升级开发依赖 SQLAlchemy 2.1.4 后 Mypy 98 文件 PASS；
+生产锁仍为 2.0.54，不更改生产依赖版本。首次 CI 日志完整保留，非基础设施重跑。

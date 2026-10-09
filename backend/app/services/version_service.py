@@ -698,7 +698,9 @@ class VersionService:
             "online_feedback_ids": online_feedback_ids,
         }
 
-    def _mysql_online_ids(self, model, candidates, before, after, operator_id) -> list[int]:
+    def _mysql_online_ids(
+        self, model: type[Requirement] | type[Feedback], candidates, before, after, operator_id
+    ) -> list[int]:
         """Replace RETURNING with current reads and CAS under transaction row locks."""
         rows = self.db.execute(
             select(model.id, model.revision)
@@ -706,7 +708,7 @@ class VersionService:
             .order_by(model.id)
             .with_for_update()
         ).all()
-        ids = []
+        ids: list[int] = []
         for entity_id, revision in rows:
             result = self.db.execute(
                 update(model)

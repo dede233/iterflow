@@ -1,0 +1,858 @@
+﻿2026-10-09T16:49:21.6943164Z Current runner version: '2.337.0'
+2026-10-09T16:49:21.6965398Z ##[group]Runner Image Provisioner
+2026-10-09T16:49:21.6966246Z Hosted Compute Agent
+2026-10-09T16:49:21.6966707Z Version: 20261002.596
+2026-10-09T16:49:21.6967205Z Commit: c3d12f3313a95f25162a1503be624f3b0617f8c0
+2026-10-09T16:49:21.6967656Z Build Date: 2026-10-02T22:28:27Z
+2026-10-09T16:49:21.6968120Z Worker ID: {4ca9af02-c7ba-4b85-82d2-821eaebc39ff}
+2026-10-09T16:49:21.6968558Z Region: centralus
+2026-10-09T16:49:21.6968895Z Cloud: Azure
+2026-10-09T16:49:21.6969310Z ##[endgroup]
+2026-10-09T16:49:21.6970200Z ##[group]Operating System
+2026-10-09T16:49:21.6970666Z Ubuntu
+2026-10-09T16:49:21.6971049Z 24.04.5
+2026-10-09T16:49:21.6971350Z LTS
+2026-10-09T16:49:21.6972068Z ##[endgroup]
+2026-10-09T16:49:21.6972416Z ##[group]Runner Image
+2026-10-09T16:49:21.6972841Z Image: ubuntu-24.04
+2026-10-09T16:49:21.6973205Z Version: 20261004.327.1
+2026-10-09T16:49:21.6974085Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261004.327/images/ubuntu/Ubuntu2404-Readme.md
+2026-10-09T16:49:21.6975011Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261004.327
+2026-10-09T16:49:21.6975788Z ##[endgroup]
+2026-10-09T16:49:21.6976679Z ##[group]GITHUB_TOKEN Permissions
+2026-10-09T16:49:21.6978286Z Contents: read
+2026-10-09T16:49:21.6978661Z Metadata: read
+2026-10-09T16:49:21.6979030Z Packages: read
+2026-10-09T16:49:21.6979419Z ##[endgroup]
+2026-10-09T16:49:21.6980923Z Secret source: Actions
+2026-10-09T16:49:21.6981588Z Cache mode: write
+2026-10-09T16:49:21.6982175Z Prepare workflow directory
+2026-10-09T16:49:21.7205181Z Prepare all required actions
+2026-10-09T16:49:21.7239219Z Getting action download info
+2026-10-09T16:49:21.9657877Z Download action repository 'actions/checkout@v4' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+2026-10-09T16:49:22.0507578Z Download action repository 'actions/setup-python@v5' (SHA:a26af69be951a213d495a4c3e4e4022e16d87065)
+2026-10-09T16:49:22.2927036Z Complete job name: mysql57
+2026-10-09T16:49:22.3471504Z ##[group]Run actions/checkout@v4
+2026-10-09T16:49:22.3471948Z with:
+2026-10-09T16:49:22.3472197Z   repository: dede233/iterflow
+2026-10-09T16:49:22.3474240Z   token: ***
+2026-10-09T16:49:22.3474479Z   ssh-strict: true
+2026-10-09T16:49:22.3474725Z   ssh-user: git
+2026-10-09T16:49:22.3474987Z   persist-credentials: true
+2026-10-09T16:49:22.3475287Z   clean: true
+2026-10-09T16:49:22.3475539Z   sparse-checkout-cone-mode: true
+2026-10-09T16:49:22.3476030Z   fetch-depth: 1
+2026-10-09T16:49:22.3476276Z   fetch-tags: false
+2026-10-09T16:49:22.3476529Z   show-progress: true
+2026-10-09T16:49:22.3476784Z   lfs: false
+2026-10-09T16:49:22.3477019Z   submodules: false
+2026-10-09T16:49:22.3477274Z   set-safe-directory: true
+2026-10-09T16:49:22.3477559Z   allow-unsafe-pr-checkout: false
+2026-10-09T16:49:22.3477931Z ##[endgroup]
+2026-10-09T16:49:22.4203634Z Syncing repository: dede233/iterflow
+2026-10-09T16:49:22.4204969Z ##[group]Getting Git version info
+2026-10-09T16:49:22.4205573Z Working directory is '/home/runner/work/iterflow/iterflow'
+2026-10-09T16:49:22.4206880Z [command]/usr/bin/git version
+2026-10-09T16:49:22.4456921Z git version 2.55.0
+2026-10-09T16:49:22.4471478Z ##[endgroup]
+2026-10-09T16:49:22.4482229Z Temporarily overriding HOME='/home/runner/work/_temp/0893ffe8-8562-4a64-ad8f-ecdf786143f7' before making global git config changes
+2026-10-09T16:49:22.4483594Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-09T16:49:22.4486463Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/iterflow/iterflow
+2026-10-09T16:49:22.4568075Z Deleting the contents of '/home/runner/work/iterflow/iterflow'
+2026-10-09T16:49:22.4576041Z ##[group]Initializing the repository
+2026-10-09T16:49:22.4583828Z [command]/usr/bin/git init /home/runner/work/iterflow/iterflow
+2026-10-09T16:49:22.5012138Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-10-09T16:49:22.5013158Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-10-09T16:49:22.5014281Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-10-09T16:49:22.5015316Z hint: call:
+2026-10-09T16:49:22.5015849Z hint:
+2026-10-09T16:49:22.5016308Z hint: 	git config --global init.defaultBranch <name>
+2026-10-09T16:49:22.5016708Z hint:
+2026-10-09T16:49:22.5017027Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-10-09T16:49:22.5017540Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-10-09T16:49:22.5018166Z hint:
+2026-10-09T16:49:22.5018512Z hint: 	git branch -m <name>
+2026-10-09T16:49:22.5018844Z hint:
+2026-10-09T16:49:22.5019190Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-10-09T16:49:22.5019774Z Initialized empty Git repository in /home/runner/work/iterflow/iterflow/.git/
+2026-10-09T16:49:22.5022988Z [command]/usr/bin/git remote add origin https://github.com/dede233/iterflow
+2026-10-09T16:49:22.5409381Z ##[endgroup]
+2026-10-09T16:49:22.5410135Z ##[group]Disabling automatic garbage collection
+2026-10-09T16:49:22.5413341Z [command]/usr/bin/git config --local gc.auto 0
+2026-10-09T16:49:22.5507015Z ##[endgroup]
+2026-10-09T16:49:22.5507469Z ##[group]Setting up auth
+2026-10-09T16:49:22.5512664Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-09T16:49:22.5544185Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-09T16:49:22.5891476Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-09T16:49:22.5928062Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-09T16:49:22.6122937Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-09T16:49:22.6156319Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-09T16:49:22.6349481Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-10-09T16:49:22.6499202Z ##[endgroup]
+2026-10-09T16:49:22.6500623Z ##[group]Fetching the repository
+2026-10-09T16:49:22.6508201Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +d4bfd4d336d0c4a625d02d0e0aabd908c1521da3:refs/remotes/origin/codex/mysql-57-adaptation
+2026-10-09T16:49:23.6198351Z From https://github.com/dede233/iterflow
+2026-10-09T16:49:23.6201019Z  * [new ref]         d4bfd4d336d0c4a625d02d0e0aabd908c1521da3 -> origin/codex/mysql-57-adaptation
+2026-10-09T16:49:23.6206147Z ##[endgroup]
+2026-10-09T16:49:23.6207502Z ##[group]Determining the checkout info
+2026-10-09T16:49:23.6209357Z ##[endgroup]
+2026-10-09T16:49:23.6210498Z [command]/usr/bin/git sparse-checkout disable
+2026-10-09T16:49:23.6479421Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-10-09T16:49:23.6582010Z ##[group]Checking out the ref
+2026-10-09T16:49:23.6583980Z [command]/usr/bin/git checkout --progress --force -B codex/mysql-57-adaptation refs/remotes/origin/codex/mysql-57-adaptation
+2026-10-09T16:49:23.7178282Z Switched to a new branch 'codex/mysql-57-adaptation'
+2026-10-09T16:49:23.7187202Z branch 'codex/mysql-57-adaptation' set up to track 'origin/codex/mysql-57-adaptation'.
+2026-10-09T16:49:23.7191088Z ##[endgroup]
+2026-10-09T16:49:23.7292662Z [command]/usr/bin/git log -1 --format=%H
+2026-10-09T16:49:23.7324060Z d4bfd4d336d0c4a625d02d0e0aabd908c1521da3
+2026-10-09T16:49:23.7831768Z ##[group]Run actions/setup-python@v5
+2026-10-09T16:49:23.7832643Z with:
+2026-10-09T16:49:23.7833218Z   python-version: 3.12
+2026-10-09T16:49:23.7833880Z   check-latest: false
+2026-10-09T16:49:23.7840009Z   token: ***
+2026-10-09T16:49:23.7840916Z   update-environment: true
+2026-10-09T16:49:23.7841638Z   allow-prereleases: false
+2026-10-09T16:49:23.7842332Z   freethreaded: false
+2026-10-09T16:49:23.7842959Z ##[endgroup]
+2026-10-09T16:49:23.8867226Z ##[group]Installed versions
+2026-10-09T16:49:23.9024096Z (node:2073) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-10-09T16:49:23.9026935Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-10-09T16:49:23.9028603Z Successfully set up CPython (3.12.15)
+2026-10-09T16:49:23.9030446Z ##[endgroup]
+2026-10-09T16:49:23.9388948Z ##[group]Run python -m pip install -e '.[dev]'
+2026-10-09T16:49:23.9390018Z [36;1mpython -m pip install -e '.[dev]'[0m
+2026-10-09T16:49:23.9907821Z shell: /usr/bin/bash -e {0}
+2026-10-09T16:49:23.9908609Z env:
+2026-10-09T16:49:23.9909350Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-09T16:49:23.9910558Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib/pkgconfig
+2026-10-09T16:49:23.9911757Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-09T16:49:23.9912817Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-09T16:49:23.9913908Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-09T16:49:23.9914996Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib
+2026-10-09T16:49:23.9916051Z ##[endgroup]
+2026-10-09T16:49:25.0909654Z Obtaining file:///home/runner/work/iterflow/iterflow/backend
+2026-10-09T16:49:25.0922847Z   Installing build dependencies: started
+2026-10-09T16:49:26.3522990Z   Installing build dependencies: finished with status 'done'
+2026-10-09T16:49:26.3528253Z   Checking if build backend supports build_editable: started
+2026-10-09T16:49:26.6040138Z   Checking if build backend supports build_editable: finished with status 'done'
+2026-10-09T16:49:26.6048732Z   Getting requirements to build editable: started
+2026-10-09T16:49:26.8717735Z   Getting requirements to build editable: finished with status 'done'
+2026-10-09T16:49:26.8727127Z   Preparing editable metadata (pyproject.toml): started
+2026-10-09T16:49:27.0395089Z   Preparing editable metadata (pyproject.toml): finished with status 'done'
+2026-10-09T16:49:27.1585442Z Collecting fastapi<1.0,>=0.116 (from iterflow-api==1.8.1)
+2026-10-09T16:49:27.2295839Z   Downloading fastapi-0.143.0-py3-none-any.whl.metadata (26 kB)
+2026-10-09T16:49:27.2683250Z Collecting uvicorn<1.0,>=0.35 (from uvicorn[standard]<1.0,>=0.35->iterflow-api==1.8.1)
+2026-10-09T16:49:27.2843718Z   Downloading uvicorn-0.54.0-py3-none-any.whl.metadata (6.6 kB)
+2026-10-09T16:49:27.5345284Z Collecting sqlalchemy<3.0,>=2.0 (from iterflow-api==1.8.1)
+2026-10-09T16:49:27.5509154Z   Downloading sqlalchemy-2.1.4-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (9.7 kB)
+2026-10-09T16:49:27.6537326Z Collecting greenlet<4.0,>=3.5 (from iterflow-api==1.8.1)
+2026-10-09T16:49:27.6697354Z   Downloading greenlet-3.5.6-cp312-cp312-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl.metadata (3.8 kB)
+2026-10-09T16:49:27.6958280Z Collecting psycopg<4.0,>=3.2 (from psycopg[binary]<4.0,>=3.2->iterflow-api==1.8.1)
+2026-10-09T16:49:27.7120333Z   Downloading psycopg-3.3.6-py3-none-any.whl.metadata (4.4 kB)
+2026-10-09T16:49:27.7373953Z Collecting PyMySQL==1.2.3 (from iterflow-api==1.8.1)
+2026-10-09T16:49:27.7534151Z   Downloading pymysql-1.2.3-py3-none-any.whl.metadata (4.2 kB)
+2026-10-09T16:49:27.7920377Z Collecting alembic<2.0,>=1.16 (from iterflow-api==1.8.1)
+2026-10-09T16:49:27.8079283Z   Downloading alembic-1.20.0-py3-none-any.whl.metadata (7.3 kB)
+2026-10-09T16:49:27.8828842Z Collecting pydantic<3.0,>=2.11 (from iterflow-api==1.8.1)
+2026-10-09T16:49:27.8992428Z   Downloading pydantic-2.14.0-py3-none-any.whl.metadata (131 kB)
+2026-10-09T16:49:27.9457195Z Collecting pydantic-settings<3.0,>=2.10 (from iterflow-api==1.8.1)
+2026-10-09T16:49:27.9621154Z   Downloading pydantic_settings-2.15.0-py3-none-any.whl.metadata (3.9 kB)
+2026-10-09T16:49:27.9890534Z Collecting pyjwt<3.0,>=2.10 (from iterflow-api==1.8.1)
+2026-10-09T16:49:28.0047988Z   Downloading pyjwt-2.15.1-py3-none-any.whl.metadata (3.5 kB)
+2026-10-09T16:49:28.0291581Z Collecting pwdlib<1.0,>=0.2 (from pwdlib[argon2]<1.0,>=0.2->iterflow-api==1.8.1)
+2026-10-09T16:49:28.0451382Z   Downloading pwdlib-0.3.1-py3-none-any.whl.metadata (5.6 kB)
+2026-10-09T16:49:28.0886592Z Collecting redis<7.0,>=6.0 (from iterflow-api==1.8.1)
+2026-10-09T16:49:28.1048923Z   Downloading redis-6.4.0-py3-none-any.whl.metadata (10 kB)
+2026-10-09T16:49:28.1455068Z Collecting python-multipart<1.0,>=0.0.20 (from iterflow-api==1.8.1)
+2026-10-09T16:49:28.1616255Z   Downloading python_multipart-0.0.32-py3-none-any.whl.metadata (2.1 kB)
+2026-10-09T16:49:28.3955245Z Collecting boto3<2.0,>=1.40 (from iterflow-api==1.8.1)
+2026-10-09T16:49:28.4116820Z   Downloading boto3-1.43.110-py3-none-any.whl.metadata (6.6 kB)
+2026-10-09T16:49:28.4454885Z Collecting pytest<10.0,>=9.0.3 (from iterflow-api==1.8.1)
+2026-10-09T16:49:28.4616006Z   Downloading pytest-9.1.1-py3-none-any.whl.metadata (7.6 kB)
+2026-10-09T16:49:28.5004329Z Collecting pytest-cov<7.0,>=6.2 (from iterflow-api==1.8.1)
+2026-10-09T16:49:28.5162908Z   Downloading pytest_cov-6.3.0-py3-none-any.whl.metadata (30 kB)
+2026-10-09T16:49:28.5627385Z Collecting httpx<1.0,>=0.28 (from iterflow-api==1.8.1)
+2026-10-09T16:49:28.5787713Z   Downloading httpx-0.28.1-py3-none-any.whl.metadata (7.1 kB)
+2026-10-09T16:49:28.6425812Z Collecting httpx2<3.0,>=2.13 (from iterflow-api==1.8.1)
+2026-10-09T16:49:28.6586257Z   Downloading httpx2-2.13.1-py3-none-any.whl.metadata (9.8 kB)
+2026-10-09T16:49:28.6842827Z Collecting pip-audit<3.0,>=2.7 (from iterflow-api==1.8.1)
+2026-10-09T16:49:28.7002618Z   Downloading pip_audit-2.10.1-py3-none-any.whl.metadata (28 kB)
+2026-10-09T16:49:28.9029839Z Collecting ruff<1.0,>=0.12 (from iterflow-api==1.8.1)
+2026-10-09T16:49:28.9190380Z   Downloading ruff-0.16.10-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (20 kB)
+2026-10-09T16:49:29.0492101Z Collecting mypy<2.0,>=1.17 (from iterflow-api==1.8.1)
+2026-10-09T16:49:29.0655907Z   Downloading mypy-1.20.2-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (2.4 kB)
+2026-10-09T16:49:29.0933732Z Collecting Mako (from alembic<2.0,>=1.16->iterflow-api==1.8.1)
+2026-10-09T16:49:29.1092956Z   Downloading mako-1.4.3-py3-none-any.whl.metadata (2.9 kB)
+2026-10-09T16:49:29.1343144Z Collecting typing-extensions>=4.12 (from alembic<2.0,>=1.16->iterflow-api==1.8.1)
+2026-10-09T16:49:29.1502153Z   Downloading typing_extensions-4.16.0-py3-none-any.whl.metadata (3.3 kB)
+2026-10-09T16:49:29.3027844Z Collecting botocore<1.44.0,>=1.43.110 (from boto3<2.0,>=1.40->iterflow-api==1.8.1)
+2026-10-09T16:49:29.3186330Z   Downloading botocore-1.43.110-py3-none-any.whl.metadata (5.6 kB)
+2026-10-09T16:49:29.3416575Z Collecting jmespath<2.0.0,>=0.7.1 (from boto3<2.0,>=1.40->iterflow-api==1.8.1)
+2026-10-09T16:49:29.3575159Z   Downloading jmespath-1.1.0-py3-none-any.whl.metadata (7.6 kB)
+2026-10-09T16:49:29.3826098Z Collecting s3transfer<0.20.0,>=0.19.0 (from boto3<2.0,>=1.40->iterflow-api==1.8.1)
+2026-10-09T16:49:29.3986032Z   Downloading s3transfer-0.19.2-py3-none-any.whl.metadata (1.7 kB)
+2026-10-09T16:49:29.4228226Z Collecting python-dateutil<3.0.0,>=2.1 (from botocore<1.44.0,>=1.43.110->boto3<2.0,>=1.40->iterflow-api==1.8.1)
+2026-10-09T16:49:29.4388065Z   Downloading python_dateutil-2.9.0.post0-py2.py3-none-any.whl.metadata (8.4 kB)
+2026-10-09T16:49:29.4675326Z Collecting urllib3!=2.2.0,<3,>=1.25.4 (from botocore<1.44.0,>=1.43.110->boto3<2.0,>=1.40->iterflow-api==1.8.1)
+2026-10-09T16:49:29.4835540Z   Downloading urllib3-2.8.0-py3-none-any.whl.metadata (7.4 kB)
+2026-10-09T16:49:29.5206452Z Collecting starlette>=0.46.0 (from fastapi<1.0,>=0.116->iterflow-api==1.8.1)
+2026-10-09T16:49:29.5367563Z   Downloading starlette-1.7.0-py3-none-any.whl.metadata (6.6 kB)
+2026-10-09T16:49:29.5621328Z Collecting typing-inspection>=0.4.2 (from fastapi<1.0,>=0.116->iterflow-api==1.8.1)
+2026-10-09T16:49:29.5778204Z   Downloading typing_inspection-0.4.4-py3-none-any.whl.metadata (2.6 kB)
+2026-10-09T16:49:29.6007476Z Collecting annotated-doc>=0.0.2 (from fastapi<1.0,>=0.116->iterflow-api==1.8.1)
+2026-10-09T16:49:29.6164549Z   Downloading annotated_doc-0.0.5-py3-none-any.whl.metadata (6.5 kB)
+2026-10-09T16:49:29.6424898Z Collecting opentelemetry-api>=1.44.0 (from fastapi<1.0,>=0.116->iterflow-api==1.8.1)
+2026-10-09T16:49:29.6584405Z   Downloading opentelemetry_api-1.45.1-py3-none-any.whl.metadata (1.4 kB)
+2026-10-09T16:49:29.6857008Z Collecting anyio (from httpx<1.0,>=0.28->iterflow-api==1.8.1)
+2026-10-09T16:49:29.7017064Z   Downloading anyio-4.15.1-py3-none-any.whl.metadata (4.7 kB)
+2026-10-09T16:49:29.7454802Z Collecting certifi (from httpx<1.0,>=0.28->iterflow-api==1.8.1)
+2026-10-09T16:49:29.7616292Z   Downloading certifi-2026.7.22-py3-none-any.whl.metadata (2.5 kB)
+2026-10-09T16:49:29.7865267Z Collecting httpcore==1.* (from httpx<1.0,>=0.28->iterflow-api==1.8.1)
+2026-10-09T16:49:29.8024409Z   Downloading httpcore-1.0.9-py3-none-any.whl.metadata (21 kB)
+2026-10-09T16:49:29.8279101Z Collecting idna (from httpx<1.0,>=0.28->iterflow-api==1.8.1)
+2026-10-09T16:49:29.8438391Z   Downloading idna-3.20-py3-none-any.whl.metadata (7.2 kB)
+2026-10-09T16:49:29.8670605Z Collecting h11>=0.16 (from httpcore==1.*->httpx<1.0,>=0.28->iterflow-api==1.8.1)
+2026-10-09T16:49:29.8832360Z   Downloading h11-0.16.0-py3-none-any.whl.metadata (8.3 kB)
+2026-10-09T16:49:29.9075886Z Collecting httpcore2==2.13.1 (from httpx2<3.0,>=2.13->iterflow-api==1.8.1)
+2026-10-09T16:49:29.9258221Z   Downloading httpcore2-2.13.1-py3-none-any.whl.metadata (26 kB)
+2026-10-09T16:49:29.9636512Z Collecting truststore>=0.10 (from httpx2<3.0,>=2.13->iterflow-api==1.8.1)
+2026-10-09T16:49:29.9796103Z   Downloading truststore-0.10.4-py3-none-any.whl.metadata (4.4 kB)
+2026-10-09T16:49:30.0065857Z Collecting mypy_extensions>=1.0.0 (from mypy<2.0,>=1.17->iterflow-api==1.8.1)
+2026-10-09T16:49:30.0223610Z   Downloading mypy_extensions-1.1.0-py3-none-any.whl.metadata (1.1 kB)
+2026-10-09T16:49:30.2461564Z Collecting pathspec>=1.0.0 (from mypy<2.0,>=1.17->iterflow-api==1.8.1)
+2026-10-09T16:49:30.2621024Z   Downloading pathspec-1.1.1-py3-none-any.whl.metadata (14 kB)
+2026-10-09T16:49:30.3727237Z Collecting librt>=0.8.0 (from mypy<2.0,>=1.17->iterflow-api==1.8.1)
+2026-10-09T16:49:30.3888612Z   Downloading librt-0.16.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (1.3 kB)
+2026-10-09T16:49:30.4363896Z Collecting CacheControl>=0.13.0 (from CacheControl[filecache]>=0.13.0->pip-audit<3.0,>=2.7->iterflow-api==1.8.1)
+2026-10-09T16:49:30.4523065Z   Downloading cachecontrol-0.14.4-py3-none-any.whl.metadata (3.1 kB)
+2026-10-09T16:49:30.5733857Z Collecting cyclonedx-python-lib<12,>=5 (from pip-audit<3.0,>=2.7->iterflow-api==1.8.1)
+2026-10-09T16:49:30.5894755Z   Downloading cyclonedx_python_lib-11.12.0-py3-none-any.whl.metadata (6.9 kB)
+2026-10-09T16:49:30.6153560Z Collecting packaging>=23.0.0 (from pip-audit<3.0,>=2.7->iterflow-api==1.8.1)
+2026-10-09T16:49:30.6313438Z   Downloading packaging-26.3-py3-none-any.whl.metadata (3.5 kB)
+2026-10-09T16:49:30.6561804Z Collecting pip-api>=0.0.28 (from pip-audit<3.0,>=2.7->iterflow-api==1.8.1)
+2026-10-09T16:49:30.6720788Z   Downloading pip_api-0.0.35-py3-none-any.whl.metadata (17 kB)
+2026-10-09T16:49:30.7118458Z Collecting pip-requirements-parser>=32.0.0 (from pip-audit<3.0,>=2.7->iterflow-api==1.8.1)
+2026-10-09T16:49:30.7276954Z   Downloading pip_requirements_parser-32.0.1-py3-none-any.whl.metadata (9.3 kB)
+2026-10-09T16:49:30.7559955Z Collecting requests>=2.31.0 (from pip-audit<3.0,>=2.7->iterflow-api==1.8.1)
+2026-10-09T16:49:30.7720055Z   Downloading requests-2.34.2-py3-none-any.whl.metadata (4.8 kB)
+2026-10-09T16:49:30.8060701Z Collecting rich>=12.4 (from pip-audit<3.0,>=2.7->iterflow-api==1.8.1)
+2026-10-09T16:49:30.8222439Z   Downloading rich-15.0.0-py3-none-any.whl.metadata (18 kB)
+2026-10-09T16:49:30.8548906Z Collecting tomli>=2.2.1 (from pip-audit<3.0,>=2.7->iterflow-api==1.8.1)
+2026-10-09T16:49:30.8709433Z   Downloading tomli-2.5.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (10 kB)
+2026-10-09T16:49:30.8940740Z Collecting tomli-w>=1.2.0 (from pip-audit<3.0,>=2.7->iterflow-api==1.8.1)
+2026-10-09T16:49:30.9098650Z   Downloading tomli_w-1.2.0-py3-none-any.whl.metadata (5.7 kB)
+2026-10-09T16:49:30.9372985Z Collecting platformdirs>=4.2.0 (from pip-audit<3.0,>=2.7->iterflow-api==1.8.1)
+2026-10-09T16:49:30.9531734Z   Downloading platformdirs-4.12.4-py3-none-any.whl.metadata (5.5 kB)
+2026-10-09T16:49:30.9777396Z Collecting license-expression<31,>=30 (from cyclonedx-python-lib<12,>=5->pip-audit<3.0,>=2.7->iterflow-api==1.8.1)
+2026-10-09T16:49:30.9934873Z   Downloading license_expression-30.4.4-py3-none-any.whl.metadata (11 kB)
+2026-10-09T16:49:31.0260087Z Collecting packageurl-python<2,>=0.11 (from cyclonedx-python-lib<12,>=5->pip-audit<3.0,>=2.7->iterflow-api==1.8.1)
+2026-10-09T16:49:31.0419854Z   Downloading packageurl_python-0.17.6-py3-none-any.whl.metadata (5.1 kB)
+2026-10-09T16:49:31.0672028Z Collecting py-serializable<3.0.0,>=2.1.0 (from cyclonedx-python-lib<12,>=5->pip-audit<3.0,>=2.7->iterflow-api==1.8.1)
+2026-10-09T16:49:31.0831399Z   Downloading py_serializable-2.1.0-py3-none-any.whl.metadata (4.3 kB)
+2026-10-09T16:49:31.1063293Z Collecting sortedcontainers<3.0.0,>=2.4.0 (from cyclonedx-python-lib<12,>=5->pip-audit<3.0,>=2.7->iterflow-api==1.8.1)
+2026-10-09T16:49:31.1222285Z   Downloading sortedcontainers-2.4.0-py2.py3-none-any.whl.metadata (10 kB)
+2026-10-09T16:49:31.1516332Z Collecting boolean.py>=4.0 (from license-expression<31,>=30->cyclonedx-python-lib<12,>=5->pip-audit<3.0,>=2.7->iterflow-api==1.8.1)
+2026-10-09T16:49:31.1674449Z   Downloading boolean_py-5.0-py3-none-any.whl.metadata (2.3 kB)
+2026-10-09T16:49:31.2814094Z Collecting psycopg-binary==3.3.6 (from psycopg[binary]<4.0,>=3.2->iterflow-api==1.8.1)
+2026-10-09T16:49:31.2973908Z   Downloading psycopg_binary-3.3.6-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (2.7 kB)
+2026-10-09T16:49:31.3264566Z Collecting argon2-cffi>=23.1.0 (from pwdlib[argon2]<1.0,>=0.2->iterflow-api==1.8.1)
+2026-10-09T16:49:31.3424107Z   Downloading argon2_cffi-25.1.0-py3-none-any.whl.metadata (4.1 kB)
+2026-10-09T16:49:31.3743237Z Collecting defusedxml<0.8.0,>=0.7.1 (from py-serializable<3.0.0,>=2.1.0->cyclonedx-python-lib<12,>=5->pip-audit<3.0,>=2.7->iterflow-api==1.8.1)
+2026-10-09T16:49:31.3901693Z   Downloading defusedxml-0.7.1-py2.py3-none-any.whl.metadata (32 kB)
+2026-10-09T16:49:31.4157548Z Collecting annotated-types>=0.6.0 (from pydantic<3.0,>=2.11->iterflow-api==1.8.1)
+2026-10-09T16:49:31.4316011Z   Downloading annotated_types-0.8.0-py3-none-any.whl.metadata (15 kB)
+2026-10-09T16:49:31.9212192Z Collecting pydantic-core==2.50.0 (from pydantic<3.0,>=2.11->iterflow-api==1.8.1)
+2026-10-09T16:49:31.9372430Z   Downloading pydantic_core-2.50.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (6.5 kB)
+2026-10-09T16:49:31.9655390Z Collecting python-dotenv>=0.21.0 (from pydantic-settings<3.0,>=2.10->iterflow-api==1.8.1)
+2026-10-09T16:49:31.9820761Z   Downloading python_dotenv-1.2.4-py3-none-any.whl.metadata (29 kB)
+2026-10-09T16:49:32.0067737Z Collecting iniconfig>=1.0.1 (from pytest<10.0,>=9.0.3->iterflow-api==1.8.1)
+2026-10-09T16:49:32.0225283Z   Downloading iniconfig-2.3.1-py3-none-any.whl.metadata (2.8 kB)
+2026-10-09T16:49:32.0475366Z Collecting pluggy<2,>=1.5 (from pytest<10.0,>=9.0.3->iterflow-api==1.8.1)
+2026-10-09T16:49:32.0633340Z   Downloading pluggy-1.6.0-py3-none-any.whl.metadata (4.8 kB)
+2026-10-09T16:49:32.0893409Z Collecting pygments>=2.7.2 (from pytest<10.0,>=9.0.3->iterflow-api==1.8.1)
+2026-10-09T16:49:32.1052557Z   Downloading pygments-2.21.0-py3-none-any.whl.metadata (2.5 kB)
+2026-10-09T16:49:32.4539916Z Collecting coverage>=7.5 (from coverage[toml]>=7.5->pytest-cov<7.0,>=6.2->iterflow-api==1.8.1)
+2026-10-09T16:49:32.4699599Z   Downloading coverage-7.16.2-cp312-cp312-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl.metadata (8.2 kB)
+2026-10-09T16:49:32.4945581Z Collecting six>=1.5 (from python-dateutil<3.0.0,>=2.1->botocore<1.44.0,>=1.43.110->boto3<2.0,>=1.40->iterflow-api==1.8.1)
+2026-10-09T16:49:32.5104477Z   Downloading six-1.17.0-py2.py3-none-any.whl.metadata (1.7 kB)
+2026-10-09T16:49:32.5515032Z Collecting click>=7.0 (from uvicorn<1.0,>=0.35->uvicorn[standard]<1.0,>=0.35->iterflow-api==1.8.1)
+2026-10-09T16:49:32.5673002Z   Downloading click-8.5.0-py3-none-any.whl.metadata (2.6 kB)
+2026-10-09T16:49:32.6032738Z Collecting httptools>=0.8.0 (from uvicorn[standard]<1.0,>=0.35->iterflow-api==1.8.1)
+2026-10-09T16:49:32.6194553Z   Downloading httptools-0.8.0-cp312-cp312-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl.metadata (3.5 kB)
+2026-10-09T16:49:32.6567340Z Collecting pyyaml>=5.1 (from uvicorn[standard]<1.0,>=0.35->iterflow-api==1.8.1)
+2026-10-09T16:49:32.6728274Z   Downloading pyyaml-6.0.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (2.4 kB)
+2026-10-09T16:49:32.7273567Z Collecting uvloop>=0.15.1 (from uvicorn[standard]<1.0,>=0.35->iterflow-api==1.8.1)
+2026-10-09T16:49:32.7436284Z   Downloading uvloop-0.23.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (5.1 kB)
+2026-10-09T16:49:32.8046397Z Collecting watchfiles>=0.20 (from uvicorn[standard]<1.0,>=0.35->iterflow-api==1.8.1)
+2026-10-09T16:49:32.8208605Z   Downloading watchfiles-1.3.0-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (4.9 kB)
+2026-10-09T16:49:32.9065204Z Collecting websockets>=13.0 (from uvicorn[standard]<1.0,>=0.35->iterflow-api==1.8.1)
+2026-10-09T16:49:32.9225526Z   Downloading websockets-17.2-cp312-cp312-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl.metadata (6.3 kB)
+2026-10-09T16:49:32.9499182Z Collecting argon2-cffi-bindings (from argon2-cffi>=23.1.0->pwdlib[argon2]<1.0,>=0.2->iterflow-api==1.8.1)
+2026-10-09T16:49:32.9657404Z   Downloading argon2_cffi_bindings-26.1.0-cp310-abi3-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl.metadata (7.5 kB)
+2026-10-09T16:49:33.0512284Z Collecting msgpack<2.0.0,>=0.5.2 (from CacheControl>=0.13.0->CacheControl[filecache]>=0.13.0->pip-audit<3.0,>=2.7->iterflow-api==1.8.1)
+2026-10-09T16:49:33.0678195Z   Downloading msgpack-1.2.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (8.3 kB)
+2026-10-09T16:49:33.1028958Z Collecting filelock>=3.8.0 (from CacheControl[filecache]>=0.13.0->pip-audit<3.0,>=2.7->iterflow-api==1.8.1)
+2026-10-09T16:49:33.1190205Z   Downloading filelock-4.0.12-py3-none-any.whl.metadata (2.0 kB)
+2026-10-09T16:49:33.1621699Z Requirement already satisfied: pip in /opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/site-packages (from pip-api>=0.0.28->pip-audit<3.0,>=2.7->iterflow-api==1.8.1) (26.2.1)
+2026-10-09T16:49:33.1934141Z Collecting pyparsing (from pip-requirements-parser>=32.0.0->pip-audit<3.0,>=2.7->iterflow-api==1.8.1)
+2026-10-09T16:49:33.2095194Z   Downloading pyparsing-3.3.3-py3-none-any.whl.metadata (5.9 kB)
+2026-10-09T16:49:33.3010980Z Collecting charset_normalizer<4,>=2 (from requests>=2.31.0->pip-audit<3.0,>=2.7->iterflow-api==1.8.1)
+2026-10-09T16:49:33.3170661Z   Downloading charset_normalizer-3.5.2-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (46 kB)
+2026-10-09T16:49:33.3479807Z Collecting markdown-it-py>=2.2.0 (from rich>=12.4->pip-audit<3.0,>=2.7->iterflow-api==1.8.1)
+2026-10-09T16:49:33.3639227Z   Downloading markdown_it_py-4.2.0-py3-none-any.whl.metadata (7.4 kB)
+2026-10-09T16:49:33.3958489Z Collecting mdurl~=0.1 (from markdown-it-py>=2.2.0->rich>=12.4->pip-audit<3.0,>=2.7->iterflow-api==1.8.1)
+2026-10-09T16:49:33.4116345Z   Downloading mdurl-0.1.2-py3-none-any.whl.metadata (1.6 kB)
+2026-10-09T16:49:33.4986467Z Collecting cffi>=1.0.1 (from argon2-cffi-bindings->argon2-cffi>=23.1.0->pwdlib[argon2]<1.0,>=0.2->iterflow-api==1.8.1)
+2026-10-09T16:49:33.5146280Z   Downloading cffi-2.1.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (2.5 kB)
+2026-10-09T16:49:33.6044030Z Collecting pycparser (from cffi>=1.0.1->argon2-cffi-bindings->argon2-cffi>=23.1.0->pwdlib[argon2]<1.0,>=0.2->iterflow-api==1.8.1)
+2026-10-09T16:49:33.6203543Z   Downloading pycparser-3.11-py3-none-any.whl.metadata (8.2 kB)
+2026-10-09T16:49:33.6692885Z Collecting MarkupSafe>=2.0 (from Mako->alembic<2.0,>=1.16->iterflow-api==1.8.1)
+2026-10-09T16:49:33.6852062Z   Downloading markupsafe-3.0.4-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (2.7 kB)
+2026-10-09T16:49:33.7288314Z Downloading pymysql-1.2.3-py3-none-any.whl (46 kB)
+2026-10-09T16:49:33.7588301Z Downloading alembic-1.20.0-py3-none-any.whl (268 kB)
+2026-10-09T16:49:33.7949122Z Downloading boto3-1.43.110-py3-none-any.whl (140 kB)
+2026-10-09T16:49:33.8150113Z Downloading botocore-1.43.110-py3-none-any.whl (16.0 MB)
+2026-10-09T16:49:34.0484311Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 16.0/16.0 MB 69.2 MB/s  0:00:00
+2026-10-09T16:49:34.0644162Z Downloading fastapi-0.143.0-py3-none-any.whl (144 kB)
+2026-10-09T16:49:34.0962219Z Downloading greenlet-3.5.6-cp312-cp312-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl (621 kB)
+2026-10-09T16:49:34.1004237Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 621.4/621.4 kB 150.8 MB/s  0:00:00
+2026-10-09T16:49:34.1162960Z Downloading httpx-0.28.1-py3-none-any.whl (73 kB)
+2026-10-09T16:49:34.1342030Z Downloading httpcore-1.0.9-py3-none-any.whl (78 kB)
+2026-10-09T16:49:34.1518909Z Downloading httpx2-2.13.1-py3-none-any.whl (95 kB)
+2026-10-09T16:49:34.1702412Z Downloading httpcore2-2.13.1-py3-none-any.whl (83 kB)
+2026-10-09T16:49:34.3904979Z Downloading jmespath-1.1.0-py3-none-any.whl (20 kB)
+2026-10-09T16:49:34.4124256Z Downloading mypy-1.20.2-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (14.7 MB)
+2026-10-09T16:49:34.5805233Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 14.7/14.7 MB 86.7 MB/s  0:00:00
+2026-10-09T16:49:34.5963789Z Downloading pip_audit-2.10.1-py3-none-any.whl (62 kB)
+2026-10-09T16:49:34.6614206Z Downloading cyclonedx_python_lib-11.12.0-py3-none-any.whl (529 kB)
+2026-10-09T16:49:34.6663850Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 529.5/529.5 kB 101.2 MB/s  0:00:00
+2026-10-09T16:49:34.6824057Z Downloading license_expression-30.4.4-py3-none-any.whl (120 kB)
+2026-10-09T16:49:34.7002175Z Downloading packageurl_python-0.17.6-py3-none-any.whl (36 kB)
+2026-10-09T16:49:34.7178812Z Downloading psycopg-3.3.6-py3-none-any.whl (215 kB)
+2026-10-09T16:49:34.7396065Z Downloading psycopg_binary-3.3.6-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (5.2 MB)
+2026-10-09T16:49:34.7667088Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 5.2/5.2 MB 198.2 MB/s  0:00:00
+2026-10-09T16:49:34.7824500Z Downloading pwdlib-0.3.1-py3-none-any.whl (9.3 kB)
+2026-10-09T16:49:34.7999901Z Downloading py_serializable-2.1.0-py3-none-any.whl (23 kB)
+2026-10-09T16:49:34.8175771Z Downloading defusedxml-0.7.1-py2.py3-none-any.whl (25 kB)
+2026-10-09T16:49:34.8357392Z Downloading pydantic-2.14.0-py3-none-any.whl (487 kB)
+2026-10-09T16:49:34.8573965Z Downloading pydantic_core-2.50.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (2.2 MB)
+2026-10-09T16:49:34.8857655Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.2/2.2 MB 71.8 MB/s  0:00:00
+2026-10-09T16:49:34.9016305Z Downloading pydantic_settings-2.15.0-py3-none-any.whl (69 kB)
+2026-10-09T16:49:34.9191964Z Downloading pyjwt-2.15.1-py3-none-any.whl (33 kB)
+2026-10-09T16:49:34.9369458Z Downloading pytest-9.1.1-py3-none-any.whl (386 kB)
+2026-10-09T16:49:34.9555904Z Downloading pluggy-1.6.0-py3-none-any.whl (20 kB)
+2026-10-09T16:49:34.9732184Z Downloading pytest_cov-6.3.0-py3-none-any.whl (25 kB)
+2026-10-09T16:49:34.9907144Z Downloading python_dateutil-2.9.0.post0-py2.py3-none-any.whl (229 kB)
+2026-10-09T16:49:35.0088366Z Downloading python_multipart-0.0.32-py3-none-any.whl (30 kB)
+2026-10-09T16:49:35.0264091Z Downloading redis-6.4.0-py3-none-any.whl (279 kB)
+2026-10-09T16:49:35.0451373Z Downloading ruff-0.16.10-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (10.4 MB)
+2026-10-09T16:49:35.1369231Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 10.4/10.4 MB 113.1 MB/s  0:00:00
+2026-10-09T16:49:35.1528337Z Downloading s3transfer-0.19.2-py3-none-any.whl (90 kB)
+2026-10-09T16:49:35.1706735Z Downloading sortedcontainers-2.4.0-py2.py3-none-any.whl (29 kB)
+2026-10-09T16:49:35.1883192Z Downloading sqlalchemy-2.1.4-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (4.7 MB)
+2026-10-09T16:49:35.2157698Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.7/4.7 MB 178.0 MB/s  0:00:00
+2026-10-09T16:49:35.2316766Z Downloading typing_extensions-4.16.0-py3-none-any.whl (45 kB)
+2026-10-09T16:49:35.2492436Z Downloading urllib3-2.8.0-py3-none-any.whl (135 kB)
+2026-10-09T16:49:35.2670383Z Downloading uvicorn-0.54.0-py3-none-any.whl (87 kB)
+2026-10-09T16:49:35.2846398Z Downloading annotated_doc-0.0.5-py3-none-any.whl (5.3 kB)
+2026-10-09T16:49:35.3022238Z Downloading annotated_types-0.8.0-py3-none-any.whl (13 kB)
+2026-10-09T16:49:35.3199502Z Downloading anyio-4.15.1-py3-none-any.whl (132 kB)
+2026-10-09T16:49:35.3378778Z Downloading argon2_cffi-25.1.0-py3-none-any.whl (14 kB)
+2026-10-09T16:49:35.3556965Z Downloading boolean_py-5.0-py3-none-any.whl (26 kB)
+2026-10-09T16:49:35.3768561Z Downloading cachecontrol-0.14.4-py3-none-any.whl (22 kB)
+2026-10-09T16:49:35.3942632Z Downloading msgpack-1.2.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (472 kB)
+2026-10-09T16:49:35.4128008Z Downloading click-8.5.0-py3-none-any.whl (125 kB)
+2026-10-09T16:49:35.4310640Z Downloading coverage-7.16.2-cp312-cp312-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl (258 kB)
+2026-10-09T16:49:35.4493862Z Downloading filelock-4.0.12-py3-none-any.whl (111 kB)
+2026-10-09T16:49:35.4672556Z Downloading h11-0.16.0-py3-none-any.whl (37 kB)
+2026-10-09T16:49:35.4851246Z Downloading httptools-0.8.0-cp312-cp312-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl (523 kB)
+2026-10-09T16:49:35.5036919Z Downloading idna-3.20-py3-none-any.whl (69 kB)
+2026-10-09T16:49:35.5214499Z Downloading iniconfig-2.3.1-py3-none-any.whl (7.6 kB)
+2026-10-09T16:49:35.5395220Z Downloading librt-0.16.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (531 kB)
+2026-10-09T16:49:35.5435879Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 532.0/532.0 kB 119.4 MB/s  0:00:00
+2026-10-09T16:49:35.5594042Z Downloading mypy_extensions-1.1.0-py3-none-any.whl (5.0 kB)
+2026-10-09T16:49:35.5773526Z Downloading opentelemetry_api-1.45.1-py3-none-any.whl (60 kB)
+2026-10-09T16:49:35.5995163Z Downloading packaging-26.3-py3-none-any.whl (129 kB)
+2026-10-09T16:49:35.6175477Z Downloading pathspec-1.1.1-py3-none-any.whl (57 kB)
+2026-10-09T16:49:35.6357570Z Downloading pip_api-0.0.35-py3-none-any.whl (123 kB)
+2026-10-09T16:49:35.6536017Z Downloading pip_requirements_parser-32.0.1-py3-none-any.whl (35 kB)
+2026-10-09T16:49:35.6712964Z Downloading platformdirs-4.12.4-py3-none-any.whl (32 kB)
+2026-10-09T16:49:35.6897988Z Downloading pygments-2.21.0-py3-none-any.whl (1.3 MB)
+2026-10-09T16:49:35.6949403Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.3/1.3 MB 292.5 MB/s  0:00:00
+2026-10-09T16:49:35.7107908Z Downloading python_dotenv-1.2.4-py3-none-any.whl (23 kB)
+2026-10-09T16:49:35.7287642Z Downloading pyyaml-6.0.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (807 kB)
+2026-10-09T16:49:35.7330531Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 807.9/807.9 kB 214.8 MB/s  0:00:00
+2026-10-09T16:49:35.7492746Z Downloading requests-2.34.2-py3-none-any.whl (73 kB)
+2026-10-09T16:49:35.7670219Z Downloading charset_normalizer-3.5.2-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (257 kB)
+2026-10-09T16:49:35.7850233Z Downloading certifi-2026.7.22-py3-none-any.whl (136 kB)
+2026-10-09T16:49:35.8029904Z Downloading rich-15.0.0-py3-none-any.whl (310 kB)
+2026-10-09T16:49:35.8259592Z Downloading markdown_it_py-4.2.0-py3-none-any.whl (91 kB)
+2026-10-09T16:49:35.8435101Z Downloading mdurl-0.1.2-py3-none-any.whl (10.0 kB)
+2026-10-09T16:49:35.8609930Z Downloading six-1.17.0-py2.py3-none-any.whl (11 kB)
+2026-10-09T16:49:35.8785450Z Downloading starlette-1.7.0-py3-none-any.whl (78 kB)
+2026-10-09T16:49:35.8961080Z Downloading tomli-2.5.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (286 kB)
+2026-10-09T16:49:35.9144821Z Downloading tomli_w-1.2.0-py3-none-any.whl (6.7 kB)
+2026-10-09T16:49:35.9320064Z Downloading truststore-0.10.4-py3-none-any.whl (18 kB)
+2026-10-09T16:49:35.9493349Z Downloading typing_inspection-0.4.4-py3-none-any.whl (14 kB)
+2026-10-09T16:49:35.9669581Z Downloading uvloop-0.23.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (4.5 MB)
+2026-10-09T16:49:35.9933590Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.5/4.5 MB 173.7 MB/s  0:00:00
+2026-10-09T16:49:36.0094254Z Downloading watchfiles-1.3.0-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (458 kB)
+2026-10-09T16:49:36.0284505Z Downloading websockets-17.2-cp312-cp312-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl (225 kB)
+2026-10-09T16:49:36.0482312Z Downloading argon2_cffi_bindings-26.1.0-cp310-abi3-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl (26 kB)
+2026-10-09T16:49:36.0655301Z Downloading cffi-2.1.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (221 kB)
+2026-10-09T16:49:36.0834083Z Downloading mako-1.4.3-py3-none-any.whl (80 kB)
+2026-10-09T16:49:36.1011170Z Downloading markupsafe-3.0.4-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (22 kB)
+2026-10-09T16:49:36.1186121Z Downloading pycparser-3.11-py3-none-any.whl (51 kB)
+2026-10-09T16:49:36.1363272Z Downloading pyparsing-3.3.3-py3-none-any.whl (126 kB)
+2026-10-09T16:49:36.3026104Z Building wheels for collected packages: iterflow-api
+2026-10-09T16:49:36.3032571Z   Building editable for iterflow-api (pyproject.toml): started
+2026-10-09T16:49:36.4857800Z   Building editable for iterflow-api (pyproject.toml): finished with status 'done'
+2026-10-09T16:49:36.4861998Z   Created wheel for iterflow-api: filename=iterflow_api-1.8.1-0.editable-py3-none-any.whl size=3028 sha256=44b7396ed049bef97b686cd76d6bfa685396d43e0bf41de1da72ff91c08187a9
+2026-10-09T16:49:36.4863042Z   Stored in directory: /tmp/pip-ephem-wheel-cache-izsmsqta/wheels/7a/bd/bf/5e305b7cc82a12cc8cda0a058136aad0ffe885040ffe63d468
+2026-10-09T16:49:36.4875554Z Successfully built iterflow-api
+2026-10-09T16:49:36.6844068Z Installing collected packages: sortedcontainers, boolean.py, websockets, uvloop, urllib3, typing-extensions, truststore, tomli-w, tomli, six, ruff, redis, pyyaml, python-multipart, python-dotenv, pyparsing, PyMySQL, pyjwt, pygments, pycparser, pwdlib, psycopg-binary, pluggy, platformdirs, pip-api, pathspec, packaging, packageurl-python, mypy_extensions, msgpack, mdurl, MarkupSafe, license-expression, librt, jmespath, iniconfig, idna, httptools, h11, greenlet, filelock, defusedxml, coverage, click, charset_normalizer, certifi, annotated-types, annotated-doc, uvicorn, typing-inspection, sqlalchemy, requests, python-dateutil, pytest, pydantic-core, py-serializable, psycopg, pip-requirements-parser, opentelemetry-api, mypy, markdown-it-py, Mako, httpcore2, httpcore, cffi, anyio, watchfiles, starlette, rich, pytest-cov, pydantic, httpx2, httpx, cyclonedx-python-lib, CacheControl, botocore, argon2-cffi-bindings, alembic, s3transfer, pydantic-settings, fastapi, argon2-cffi, pip-audit, boto3, iterflow-api
+2026-10-09T16:49:42.9061415Z 
+2026-10-09T16:49:42.9101507Z Successfully installed CacheControl-0.14.4 Mako-1.4.3 MarkupSafe-3.0.4 PyMySQL-1.2.3 alembic-1.20.0 annotated-doc-0.0.5 annotated-types-0.8.0 anyio-4.15.1 argon2-cffi-25.1.0 argon2-cffi-bindings-26.1.0 boolean.py-5.0 boto3-1.43.110 botocore-1.43.110 certifi-2026.7.22 cffi-2.1.1 charset_normalizer-3.5.2 click-8.5.0 coverage-7.16.2 cyclonedx-python-lib-11.12.0 defusedxml-0.7.1 fastapi-0.143.0 filelock-4.0.12 greenlet-3.5.6 h11-0.16.0 httpcore-1.0.9 httpcore2-2.13.1 httptools-0.8.0 httpx-0.28.1 httpx2-2.13.1 idna-3.20 iniconfig-2.3.1 iterflow-api-1.8.1 jmespath-1.1.0 librt-0.16.0 license-expression-30.4.4 markdown-it-py-4.2.0 mdurl-0.1.2 msgpack-1.2.3 mypy-1.20.2 mypy_extensions-1.1.0 opentelemetry-api-1.45.1 packageurl-python-0.17.6 packaging-26.3 pathspec-1.1.1 pip-api-0.0.35 pip-audit-2.10.1 pip-requirements-parser-32.0.1 platformdirs-4.12.4 pluggy-1.6.0 psycopg-3.3.6 psycopg-binary-3.3.6 pwdlib-0.3.1 py-serializable-2.1.0 pycparser-3.11 pydantic-2.14.0 pydantic-core-2.50.0 pydantic-settings-2.15.0 pygments-2.21.0 pyjwt-2.15.1 pyparsing-3.3.3 pytest-9.1.1 pytest-cov-6.3.0 python-dateutil-2.9.0.post0 python-dotenv-1.2.4 python-multipart-0.0.32 pyyaml-6.0.3 redis-6.4.0 requests-2.34.2 rich-15.0.0 ruff-0.16.10 s3transfer-0.19.2 six-1.17.0 sortedcontainers-2.4.0 sqlalchemy-2.1.4 starlette-1.7.0 tomli-2.5.0 tomli-w-1.2.0 truststore-0.10.4 typing-extensions-4.16.0 typing-inspection-0.4.4 urllib3-2.8.0 uvicorn-0.54.0 uvloop-0.23.0 watchfiles-1.3.0 websockets-17.2
+2026-10-09T16:49:43.4213693Z ##[group]Run python tools/init-mysql-test-env.py
+2026-10-09T16:49:43.4213958Z [36;1mpython tools/init-mysql-test-env.py[0m
+2026-10-09T16:49:43.4270004Z shell: /usr/bin/bash -e {0}
+2026-10-09T16:49:43.4270150Z env:
+2026-10-09T16:49:43.4270326Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-09T16:49:43.4270566Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib/pkgconfig
+2026-10-09T16:49:43.4270802Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-09T16:49:43.4271018Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-09T16:49:43.4271232Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-09T16:49:43.4271444Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib
+2026-10-09T16:49:43.4271624Z ##[endgroup]
+2026-10-09T16:49:43.4556446Z Generated independent local test configuration (credentials not displayed)
+2026-10-09T16:49:43.4623684Z ##[group]Run docker compose -f tools/mysql57-proof/compose.yml up -d --wait
+2026-10-09T16:49:43.4624008Z [36;1mdocker compose -f tools/mysql57-proof/compose.yml up -d --wait[0m
+2026-10-09T16:49:43.4678989Z shell: /usr/bin/bash -e {0}
+2026-10-09T16:49:43.4679143Z env:
+2026-10-09T16:49:43.4679303Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-09T16:49:43.4679560Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib/pkgconfig
+2026-10-09T16:49:43.4679800Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-09T16:49:43.4680015Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-09T16:49:43.4680227Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-09T16:49:43.4680443Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib
+2026-10-09T16:49:43.4680625Z ##[endgroup]
+2026-10-09T16:49:43.7366184Z  db Pulling 
+2026-10-09T16:49:43.7366359Z  redis Pulling 
+2026-10-09T16:49:43.7366602Z  postgres Pulling 
+2026-10-09T16:49:44.4317470Z  20e4dcae4c69 Pulling fs layer 
+2026-10-09T16:49:44.4318219Z  1c56c3d4ce74 Pulling fs layer 
+2026-10-09T16:49:44.4318720Z  e9f03a1c24ce Pulling fs layer 
+2026-10-09T16:49:44.4320024Z  68c3898c2015 Pulling fs layer 
+2026-10-09T16:49:44.4320442Z  6b95a940e7b6 Pulling fs layer 
+2026-10-09T16:49:44.4321710Z  90986bb8de6e Pulling fs layer 
+2026-10-09T16:49:44.4322193Z  ae71319cb779 Pulling fs layer 
+2026-10-09T16:49:44.4323460Z  ffc89e9dfd88 Pulling fs layer 
+2026-10-09T16:49:44.4323916Z  43d05e938198 Pulling fs layer 
+2026-10-09T16:49:44.4324986Z  064b2d298fba Pulling fs layer 
+2026-10-09T16:49:44.4325501Z  df9a4d85569b Pulling fs layer 
+2026-10-09T16:49:44.4326018Z  90986bb8de6e Waiting 
+2026-10-09T16:49:44.4326412Z  68c3898c2015 Waiting 
+2026-10-09T16:49:44.4326746Z  ae71319cb779 Waiting 
+2026-10-09T16:49:44.4326994Z  ffc89e9dfd88 Waiting 
+2026-10-09T16:49:44.4327319Z  064b2d298fba Waiting 
+2026-10-09T16:49:44.4327594Z  df9a4d85569b Waiting 
+2026-10-09T16:49:44.4327852Z  43d05e938198 Waiting 
+2026-10-09T16:49:44.4328159Z  6b95a940e7b6 Waiting 
+2026-10-09T16:49:44.4497551Z  d49a2dee86fb Pulling fs layer 
+2026-10-09T16:49:44.4498129Z  85aec37af180 Pulling fs layer 
+2026-10-09T16:49:44.4498477Z  2201b8e8a61e Pulling fs layer 
+2026-10-09T16:49:44.4498695Z  f26cc44de396 Pulling fs layer 
+2026-10-09T16:49:44.4498983Z  9cebd94b171b Pulling fs layer 
+2026-10-09T16:49:44.4499519Z  d27c9d73697f Pulling fs layer 
+2026-10-09T16:49:44.4499717Z  2dc121384798 Pulling fs layer 
+2026-10-09T16:49:44.4499924Z  c5fa2ad95c7a Pulling fs layer 
+2026-10-09T16:49:44.4500131Z  93300567c591 Pulling fs layer 
+2026-10-09T16:49:44.4500347Z  a99f8849fd36 Pulling fs layer 
+2026-10-09T16:49:44.4500544Z  d49a2dee86fb Waiting 
+2026-10-09T16:49:44.4500725Z  f26cc44de396 Waiting 
+2026-10-09T16:49:44.4500902Z  85aec37af180 Waiting 
+2026-10-09T16:49:44.4501081Z  9cebd94b171b Waiting 
+2026-10-09T16:49:44.4501253Z  2201b8e8a61e Waiting 
+2026-10-09T16:49:44.4501426Z  2dc121384798 Waiting 
+2026-10-09T16:49:44.4501608Z  d27c9d73697f Waiting 
+2026-10-09T16:49:44.4501786Z  c5fa2ad95c7a Waiting 
+2026-10-09T16:49:44.4501957Z  93300567c591 Waiting 
+2026-10-09T16:49:44.4502127Z  a99f8849fd36 Waiting 
+2026-10-09T16:49:44.4683058Z  2d35ebdb57d9 Pulling fs layer 
+2026-10-09T16:49:44.4683578Z  fdae656e2df8 Pulling fs layer 
+2026-10-09T16:49:44.4684133Z  52f6ffdb6a45 Pulling fs layer 
+2026-10-09T16:49:44.4684445Z  ada91f8fbee2 Pulling fs layer 
+2026-10-09T16:49:44.4684669Z  2d35ebdb57d9 Waiting 
+2026-10-09T16:49:44.4684885Z  0d40f9dbd95c Pulling fs layer 
+2026-10-09T16:49:44.4685118Z  4f4fb700ef54 Pulling fs layer 
+2026-10-09T16:49:44.4685324Z  fdae656e2df8 Waiting 
+2026-10-09T16:49:44.4685507Z  52f6ffdb6a45 Waiting 
+2026-10-09T16:49:44.4685817Z  4af236257a30 Pulling fs layer 
+2026-10-09T16:49:44.4686006Z  0d40f9dbd95c Waiting 
+2026-10-09T16:49:44.4686129Z  ada91f8fbee2 Waiting 
+2026-10-09T16:49:44.4686288Z  4af236257a30 Waiting 
+2026-10-09T16:49:44.4686452Z  4f4fb700ef54 Waiting 
+2026-10-09T16:49:44.6079536Z  e9f03a1c24ce Downloading [>                                                  ]  15.74kB/983.5kB
+2026-10-09T16:49:44.6083992Z  1c56c3d4ce74 Download complete 
+2026-10-09T16:49:44.6418478Z  20e4dcae4c69 Downloading [>                                                  ]  507.3kB/50.5MB
+2026-10-09T16:49:44.6601428Z  e9f03a1c24ce Verifying Checksum 
+2026-10-09T16:49:44.6618806Z  e9f03a1c24ce Download complete 
+2026-10-09T16:49:44.7420751Z  20e4dcae4c69 Downloading [======================>                            ]  22.35MB/50.5MB
+2026-10-09T16:49:44.7444790Z  68c3898c2015 Downloading [>                                                  ]  48.51kB/4.578MB
+2026-10-09T16:49:44.7976514Z  6b95a940e7b6 Downloading [==================================================>]   3.08kB/3.08kB
+2026-10-09T16:49:44.7978298Z  6b95a940e7b6 Verifying Checksum 
+2026-10-09T16:49:44.7982475Z  6b95a940e7b6 Download complete 
+2026-10-09T16:49:44.8068556Z  20e4dcae4c69 Verifying Checksum 
+2026-10-09T16:49:44.8068902Z  20e4dcae4c69 Download complete 
+2026-10-09T16:49:44.8221576Z  68c3898c2015 Verifying Checksum 
+2026-10-09T16:49:44.8223339Z  68c3898c2015 Download complete 
+2026-10-09T16:49:44.8234092Z  20e4dcae4c69 Extracting [>                                                  ]  524.3kB/50.5MB
+2026-10-09T16:49:44.9289408Z  20e4dcae4c69 Extracting [=========>                                         ]  9.437MB/50.5MB
+2026-10-09T16:49:44.9401850Z  ffc89e9dfd88 Downloading [==================================================>]     317B/317B
+2026-10-09T16:49:44.9407874Z  ffc89e9dfd88 Verifying Checksum 
+2026-10-09T16:49:44.9408875Z  ffc89e9dfd88 Download complete 
+2026-10-09T16:49:44.9518512Z  ae71319cb779 Downloading [>                                                  ]  261.5kB/25.53MB
+2026-10-09T16:49:44.9551773Z  90986bb8de6e Download complete 
+2026-10-09T16:49:45.0304298Z  20e4dcae4c69 Extracting [============>                                      ]  12.58MB/50.5MB
+2026-10-09T16:49:45.0521078Z  ae71319cb779 Downloading [===========================>                       ]  13.89MB/25.53MB
+2026-10-09T16:49:45.0791448Z  ae71319cb779 Download complete 
+2026-10-09T16:49:45.1039881Z  064b2d298fba Downloading [================================>                  ]    3.5kB/5.384kB
+2026-10-09T16:49:45.1040425Z  064b2d298fba Downloading [==================================================>]  5.384kB/5.384kB
+2026-10-09T16:49:45.1041104Z  064b2d298fba Verifying Checksum 
+2026-10-09T16:49:45.1041352Z  064b2d298fba Download complete 
+2026-10-09T16:49:45.1308031Z  20e4dcae4c69 Extracting [====================>                              ]  20.45MB/50.5MB
+2026-10-09T16:49:45.1384780Z  43d05e938198 Downloading [>                                                  ]    540kB/56.29MB
+2026-10-09T16:49:45.2089703Z  df9a4d85569b Downloading [==================================================>]     122B/122B
+2026-10-09T16:49:45.2091532Z  df9a4d85569b Verifying Checksum 
+2026-10-09T16:49:45.2092150Z  df9a4d85569b Download complete 
+2026-10-09T16:49:45.2353045Z  20e4dcae4c69 Extracting [=============================>                     ]  29.88MB/50.5MB
+2026-10-09T16:49:45.2404382Z  43d05e938198 Downloading [==========>                                        ]  11.35MB/56.29MB
+2026-10-09T16:49:45.2542315Z  d49a2dee86fb Downloading [>                                                  ]  48.51kB/3.805MB
+2026-10-09T16:49:45.3342134Z  d49a2dee86fb Verifying Checksum 
+2026-10-09T16:49:45.3342557Z  d49a2dee86fb Download complete 
+2026-10-09T16:49:45.3357133Z  d49a2dee86fb Extracting [>                                                  ]  65.54kB/3.805MB
+2026-10-09T16:49:45.3409684Z  43d05e938198 Downloading [============================================>      ]  49.74MB/56.29MB
+2026-10-09T16:49:45.3540969Z  43d05e938198 Verifying Checksum 
+2026-10-09T16:49:45.3541470Z  43d05e938198 Download complete 
+2026-10-09T16:49:45.3570831Z  85aec37af180 Downloading [==================================================>]     972B/972B
+2026-10-09T16:49:45.3575138Z  85aec37af180 Download complete 
+2026-10-09T16:49:45.3708574Z  20e4dcae4c69 Extracting [================================>                  ]  32.51MB/50.5MB
+2026-10-09T16:49:45.4140495Z  d49a2dee86fb Extracting [==================================================>]  3.805MB/3.805MB
+2026-10-09T16:49:45.4370552Z  d49a2dee86fb Pull complete 
+2026-10-09T16:49:45.4392216Z  85aec37af180 Extracting [==================================================>]     972B/972B
+2026-10-09T16:49:45.4396989Z  85aec37af180 Extracting [==================================================>]     972B/972B
+2026-10-09T16:49:45.4683684Z  2201b8e8a61e Downloading [>                                                  ]  16.38kB/918.3kB
+2026-10-09T16:49:45.4747391Z  20e4dcae4c69 Extracting [==================================>                ]   34.6MB/50.5MB
+2026-10-09T16:49:45.5070657Z  f26cc44de396 Downloading [==================================================>]     116B/116B
+2026-10-09T16:49:45.5071127Z  f26cc44de396 Verifying Checksum 
+2026-10-09T16:49:45.5071405Z  f26cc44de396 Download complete 
+2026-10-09T16:49:45.5205206Z  2201b8e8a61e Verifying Checksum 
+2026-10-09T16:49:45.5205464Z  2201b8e8a61e Download complete 
+2026-10-09T16:49:45.5703870Z  9cebd94b171b Downloading [>                                                  ]  539.4kB/105.9MB
+2026-10-09T16:49:45.5810834Z  20e4dcae4c69 Extracting [====================================>              ]  37.22MB/50.5MB
+2026-10-09T16:49:45.6496975Z  2dc121384798 Downloading [==================================================>]     128B/128B
+2026-10-09T16:49:45.6498961Z  2dc121384798 Verifying Checksum 
+2026-10-09T16:49:45.6499205Z  2dc121384798 Download complete 
+2026-10-09T16:49:45.6708188Z  9cebd94b171b Downloading [======>                                            ]  12.79MB/105.9MB
+2026-10-09T16:49:45.6871747Z  d27c9d73697f Downloading [=================>                                 ]    3.5kB/9.887kB
+2026-10-09T16:49:45.6872317Z  d27c9d73697f Downloading [==================================================>]  9.887kB/9.887kB
+2026-10-09T16:49:45.6872821Z  d27c9d73697f Verifying Checksum 
+2026-10-09T16:49:45.6873093Z  d27c9d73697f Download complete 
+2026-10-09T16:49:45.6973932Z  20e4dcae4c69 Extracting [=========================================>         ]  41.42MB/50.5MB
+2026-10-09T16:49:45.7718430Z  9cebd94b171b Downloading [==========================>                        ]  55.83MB/105.9MB
+2026-10-09T16:49:45.7994283Z  20e4dcae4c69 Extracting [===========================================>       ]  44.04MB/50.5MB
+2026-10-09T16:49:45.8039881Z  c5fa2ad95c7a Downloading [==================================================>]     168B/168B
+2026-10-09T16:49:45.8047162Z  c5fa2ad95c7a Verifying Checksum 
+2026-10-09T16:49:45.8047611Z  c5fa2ad95c7a Download complete 
+2026-10-09T16:49:45.8368992Z  93300567c591 Downloading [=============================>                     ]    3.5kB/5.842kB
+2026-10-09T16:49:45.8377896Z  93300567c591 Downloading [==================================================>]  5.842kB/5.842kB
+2026-10-09T16:49:45.8378380Z  93300567c591 Verifying Checksum 
+2026-10-09T16:49:45.8378704Z  93300567c591 Download complete 
+2026-10-09T16:49:45.8718659Z  9cebd94b171b Downloading [============================================>      ]  95.04MB/105.9MB
+2026-10-09T16:49:45.8951772Z  9cebd94b171b Verifying Checksum 
+2026-10-09T16:49:45.8952212Z  9cebd94b171b Download complete 
+2026-10-09T16:49:45.9210092Z  20e4dcae4c69 Extracting [=============================================>     ]  46.14MB/50.5MB
+2026-10-09T16:49:45.9430649Z  a99f8849fd36 Downloading [==================================================>]     184B/184B
+2026-10-09T16:49:45.9431626Z  a99f8849fd36 Verifying Checksum 
+2026-10-09T16:49:45.9432475Z  a99f8849fd36 Download complete 
+2026-10-09T16:49:45.9919421Z  2d35ebdb57d9 Downloading [>                                                  ]  48.51kB/3.802MB
+2026-10-09T16:49:46.0321197Z  fdae656e2df8 Downloading [==================================================>]     950B/950B
+2026-10-09T16:49:46.0321503Z  fdae656e2df8 Download complete 
+2026-10-09T16:49:46.0710870Z  2d35ebdb57d9 Verifying Checksum 
+2026-10-09T16:49:46.0711284Z  2d35ebdb57d9 Download complete 
+2026-10-09T16:49:46.0716165Z  2d35ebdb57d9 Extracting [>                                                  ]  65.54kB/3.802MB
+2026-10-09T16:49:46.0725367Z  52f6ffdb6a45 Downloading [>                                                  ]  3.456kB/197kB
+2026-10-09T16:49:46.1247051Z  52f6ffdb6a45 Verifying Checksum 
+2026-10-09T16:49:46.1247400Z  52f6ffdb6a45 Download complete 
+2026-10-09T16:49:46.1752382Z  2d35ebdb57d9 Extracting [==================>                                ]  1.376MB/3.802MB
+2026-10-09T16:49:46.2055439Z  2d35ebdb57d9 Extracting [==================================================>]  3.802MB/3.802MB
+2026-10-09T16:49:46.2131911Z  ada91f8fbee2 Downloading [>                                                  ]  245.1kB/23.48MB
+2026-10-09T16:49:46.2230602Z  0d40f9dbd95c Downloading [==================================================>]     100B/100B
+2026-10-09T16:49:46.2231120Z  0d40f9dbd95c Verifying Checksum 
+2026-10-09T16:49:46.2231364Z  0d40f9dbd95c Download complete 
+2026-10-09T16:49:46.2634891Z  4f4fb700ef54 Downloading [==================================================>]      32B/32B
+2026-10-09T16:49:46.3150033Z  4f4fb700ef54 Verifying Checksum 
+2026-10-09T16:49:46.3150291Z  4f4fb700ef54 Download complete 
+2026-10-09T16:49:46.3150589Z  ada91f8fbee2 Downloading [===>                                               ]  1.474MB/23.48MB
+2026-10-09T16:49:46.3409857Z  4af236257a30 Downloading [==================================================>]  2.104kB/2.104kB
+2026-10-09T16:49:46.3410288Z  4af236257a30 Verifying Checksum 
+2026-10-09T16:49:46.3410567Z  4af236257a30 Download complete 
+2026-10-09T16:49:46.3469869Z  20e4dcae4c69 Extracting [================================================>  ]  48.76MB/50.5MB
+2026-10-09T16:49:46.3871831Z  20e4dcae4c69 Extracting [==================================================>]   50.5MB/50.5MB
+2026-10-09T16:49:46.4161073Z  ada91f8fbee2 Downloading [========================>                          ]  11.55MB/23.48MB
+2026-10-09T16:49:46.4347438Z  2d35ebdb57d9 Pull complete 
+2026-10-09T16:49:46.4548344Z  fdae656e2df8 Extracting [==================================================>]     950B/950B
+2026-10-09T16:49:46.4561354Z  fdae656e2df8 Extracting [==================================================>]     950B/950B
+2026-10-09T16:49:46.4659979Z  ada91f8fbee2 Verifying Checksum 
+2026-10-09T16:49:46.4660355Z  ada91f8fbee2 Download complete 
+2026-10-09T16:49:47.1145575Z  20e4dcae4c69 Pull complete 
+2026-10-09T16:49:47.2548627Z  1c56c3d4ce74 Extracting [==================================================>]     869B/869B
+2026-10-09T16:49:47.2553305Z  1c56c3d4ce74 Extracting [==================================================>]     869B/869B
+2026-10-09T16:49:47.4057402Z  1c56c3d4ce74 Pull complete 
+2026-10-09T16:49:47.5347552Z  e9f03a1c24ce Extracting [=>                                                 ]  32.77kB/983.5kB
+2026-10-09T16:49:47.6459649Z  e9f03a1c24ce Extracting [=============>                                     ]  262.1kB/983.5kB
+2026-10-09T16:49:47.6528687Z  e9f03a1c24ce Extracting [==================================================>]  983.5kB/983.5kB
+2026-10-09T16:49:53.2316003Z  fdae656e2df8 Pull complete 
+2026-10-09T16:49:53.2316338Z  85aec37af180 Pull complete 
+2026-10-09T16:49:53.2319622Z  e9f03a1c24ce Pull complete 
+2026-10-09T16:49:53.2323964Z  52f6ffdb6a45 Extracting [========>                                          ]  32.77kB/197kB
+2026-10-09T16:49:53.2387077Z  2201b8e8a61e Extracting [=>                                                 ]  32.77kB/918.3kB
+2026-10-09T16:49:53.2474941Z  68c3898c2015 Extracting [>                                                  ]  65.54kB/4.578MB
+2026-10-09T16:49:53.2664659Z  2201b8e8a61e Extracting [==================================================>]  918.3kB/918.3kB
+2026-10-09T16:49:53.2676055Z  52f6ffdb6a45 Extracting [==================================================>]    197kB/197kB
+2026-10-09T16:49:53.2982963Z  2201b8e8a61e Pull complete 
+2026-10-09T16:49:53.2992204Z  f26cc44de396 Extracting [==================================================>]     116B/116B
+2026-10-09T16:49:53.2995882Z  f26cc44de396 Extracting [==================================================>]     116B/116B
+2026-10-09T16:49:53.3106512Z  f26cc44de396 Pull complete 
+2026-10-09T16:49:53.3331595Z  9cebd94b171b Extracting [>                                                  ]  557.1kB/105.9MB
+2026-10-09T16:49:53.3412149Z  68c3898c2015 Extracting [========================>                          ]  2.228MB/4.578MB
+2026-10-09T16:49:53.4379111Z  9cebd94b171b Extracting [=>                                                 ]  3.342MB/105.9MB
+2026-10-09T16:49:53.4426266Z  68c3898c2015 Extracting [================================================>  ]  4.456MB/4.578MB
+2026-10-09T16:49:53.4438514Z  68c3898c2015 Extracting [==================================================>]  4.578MB/4.578MB
+2026-10-09T16:49:53.4447579Z  68c3898c2015 Extracting [==================================================>]  4.578MB/4.578MB
+2026-10-09T16:49:53.5443224Z  9cebd94b171b Extracting [==>                                                ]  6.128MB/105.9MB
+2026-10-09T16:49:53.6044377Z  52f6ffdb6a45 Pull complete 
+2026-10-09T16:49:53.6478487Z  9cebd94b171b Extracting [====>                                              ]  10.03MB/105.9MB
+2026-10-09T16:49:53.6772338Z  68c3898c2015 Pull complete 
+2026-10-09T16:49:53.6787305Z  6b95a940e7b6 Extracting [==================================================>]   3.08kB/3.08kB
+2026-10-09T16:49:53.6789901Z  6b95a940e7b6 Extracting [==================================================>]   3.08kB/3.08kB
+2026-10-09T16:49:53.7062057Z  ada91f8fbee2 Extracting [>                                                  ]  262.1kB/23.48MB
+2026-10-09T16:49:53.7072014Z  6b95a940e7b6 Pull complete 
+2026-10-09T16:49:53.7091377Z  90986bb8de6e Extracting [==================================================>]     331B/331B
+2026-10-09T16:49:53.7097197Z  90986bb8de6e Extracting [==================================================>]     331B/331B
+2026-10-09T16:49:53.7460947Z  90986bb8de6e Pull complete 
+2026-10-09T16:49:53.7543180Z  9cebd94b171b Extracting [=======>                                           ]  15.04MB/105.9MB
+2026-10-09T16:49:53.7550414Z  ae71319cb779 Extracting [>                                                  ]  262.1kB/25.53MB
+2026-10-09T16:49:53.8071212Z  ada91f8fbee2 Extracting [=========>                                         ]  4.456MB/23.48MB
+2026-10-09T16:49:53.8568674Z  9cebd94b171b Extracting [==========>                                        ]  22.84MB/105.9MB
+2026-10-09T16:49:53.8572067Z  ae71319cb779 Extracting [===============>                                   ]  8.126MB/25.53MB
+2026-10-09T16:49:53.9094090Z  ada91f8fbee2 Extracting [========================>                          ]  11.27MB/23.48MB
+2026-10-09T16:49:53.9582083Z  9cebd94b171b Extracting [==============>                                    ]  30.08MB/105.9MB
+2026-10-09T16:49:53.9584907Z  ae71319cb779 Extracting [=============================>                     ]   15.2MB/25.53MB
+2026-10-09T16:49:54.0103981Z  ada91f8fbee2 Extracting [====================================>              ]   17.3MB/23.48MB
+2026-10-09T16:49:54.0623813Z  ae71319cb779 Extracting [===========================================>       ]  22.02MB/25.53MB
+2026-10-09T16:49:54.0624422Z  9cebd94b171b Extracting [==================>                                ]  38.44MB/105.9MB
+2026-10-09T16:49:54.0922640Z  ada91f8fbee2 Extracting [==================================================>]  23.48MB/23.48MB
+2026-10-09T16:49:54.2430701Z  9cebd94b171b Extracting [===================>                               ]  42.34MB/105.9MB
+2026-10-09T16:49:54.3634806Z  9cebd94b171b Extracting [====================>                              ]  42.89MB/105.9MB
+2026-10-09T16:49:54.5372370Z  9cebd94b171b Extracting [====================>                              ]  44.01MB/105.9MB
+2026-10-09T16:49:54.5427189Z  ae71319cb779 Extracting [=============================================>     ]  23.33MB/25.53MB
+2026-10-09T16:49:54.6353496Z  ae71319cb779 Extracting [==================================================>]  25.53MB/25.53MB
+2026-10-09T16:49:54.6423620Z  9cebd94b171b Extracting [======================>                            ]  47.91MB/105.9MB
+2026-10-09T16:49:54.7439142Z  9cebd94b171b Extracting [==========================>                        ]  56.26MB/105.9MB
+2026-10-09T16:49:54.8444216Z  9cebd94b171b Extracting [=============================>                     ]  61.83MB/105.9MB
+2026-10-09T16:49:55.0845895Z  9cebd94b171b Extracting [=============================>                     ]  62.39MB/105.9MB
+2026-10-09T16:49:55.1963822Z  9cebd94b171b Extracting [=============================>                     ]  62.95MB/105.9MB
+2026-10-09T16:49:55.3578571Z  9cebd94b171b Extracting [=============================>                     ]   63.5MB/105.9MB
+2026-10-09T16:49:55.4597923Z  9cebd94b171b Extracting [===============================>                   ]  66.85MB/105.9MB
+2026-10-09T16:49:55.5610274Z  9cebd94b171b Extracting [===============================>                   ]   67.4MB/105.9MB
+2026-10-09T16:49:55.6125319Z  ada91f8fbee2 Pull complete 
+2026-10-09T16:49:55.6138249Z  0d40f9dbd95c Extracting [==================================================>]     100B/100B
+2026-10-09T16:49:55.6149163Z  0d40f9dbd95c Extracting [==================================================>]     100B/100B
+2026-10-09T16:49:55.6149979Z  ae71319cb779 Pull complete 
+2026-10-09T16:49:55.6322603Z  ffc89e9dfd88 Extracting [==================================================>]     317B/317B
+2026-10-09T16:49:55.6328563Z  ffc89e9dfd88 Extracting [==================================================>]     317B/317B
+2026-10-09T16:49:55.7124261Z  0d40f9dbd95c Pull complete 
+2026-10-09T16:49:55.7124990Z  9cebd94b171b Extracting [==================================>                ]  73.53MB/105.9MB
+2026-10-09T16:49:55.7148696Z  ffc89e9dfd88 Pull complete 
+2026-10-09T16:49:55.7150990Z  4f4fb700ef54 Extracting [==================================================>]      32B/32B
+2026-10-09T16:49:55.7151830Z  4f4fb700ef54 Extracting [==================================================>]      32B/32B
+2026-10-09T16:49:55.7339776Z  4f4fb700ef54 Pull complete 
+2026-10-09T16:49:55.7362554Z  4af236257a30 Extracting [==================================================>]  2.104kB/2.104kB
+2026-10-09T16:49:55.7370268Z  4af236257a30 Extracting [==================================================>]  2.104kB/2.104kB
+2026-10-09T16:49:55.7403230Z  43d05e938198 Extracting [>                                                  ]  557.1kB/56.29MB
+2026-10-09T16:49:55.7646118Z  4af236257a30 Pull complete 
+2026-10-09T16:49:55.7723363Z  redis Pulled 
+2026-10-09T16:49:55.8223728Z  9cebd94b171b Extracting [===================================>               ]   75.2MB/105.9MB
+2026-10-09T16:49:55.8412709Z  43d05e938198 Extracting [========>                                          ]   9.47MB/56.29MB
+2026-10-09T16:49:55.9414007Z  9cebd94b171b Extracting [====================================>              ]  76.32MB/105.9MB
+2026-10-09T16:49:55.9440299Z  43d05e938198 Extracting [=================>                                 ]  20.05MB/56.29MB
+2026-10-09T16:49:56.0428259Z  9cebd94b171b Extracting [=====================================>             ]  79.66MB/105.9MB
+2026-10-09T16:49:56.0910514Z  43d05e938198 Extracting [=======================>                           ]  26.18MB/56.29MB
+2026-10-09T16:49:56.1565306Z  9cebd94b171b Extracting [========================================>          ]  85.79MB/105.9MB
+2026-10-09T16:49:56.1950530Z  43d05e938198 Extracting [============================>                      ]  31.75MB/56.29MB
+2026-10-09T16:49:56.3065383Z  43d05e938198 Extracting [==============================>                    ]  34.54MB/56.29MB
+2026-10-09T16:49:56.3139396Z  9cebd94b171b Extracting [===========================================>       ]  93.03MB/105.9MB
+2026-10-09T16:49:56.4187393Z  9cebd94b171b Extracting [=================================================> ]  105.3MB/105.9MB
+2026-10-09T16:49:56.4419251Z  9cebd94b171b Extracting [==================================================>]  105.9MB/105.9MB
+2026-10-09T16:49:56.5288035Z  43d05e938198 Extracting [===============================>                   ]  35.65MB/56.29MB
+2026-10-09T16:49:56.6437789Z  43d05e938198 Extracting [================================>                  ]  36.21MB/56.29MB
+2026-10-09T16:49:56.7545886Z  43d05e938198 Extracting [================================>                  ]  36.77MB/56.29MB
+2026-10-09T16:49:57.0115127Z  43d05e938198 Extracting [=================================>                 ]  37.88MB/56.29MB
+2026-10-09T16:49:57.1970933Z  43d05e938198 Extracting [==================================>                ]  38.99MB/56.29MB
+2026-10-09T16:49:57.3458753Z  43d05e938198 Extracting [===================================>               ]  39.55MB/56.29MB
+2026-10-09T16:49:57.4668168Z  43d05e938198 Extracting [===================================>               ]  40.11MB/56.29MB
+2026-10-09T16:49:57.6555890Z  43d05e938198 Extracting [====================================>              ]  41.22MB/56.29MB
+2026-10-09T16:49:57.7782062Z  43d05e938198 Extracting [=====================================>             ]  41.78MB/56.29MB
+2026-10-09T16:49:57.9068540Z  9cebd94b171b Pull complete 
+2026-10-09T16:49:57.9092249Z  d27c9d73697f Extracting [==================================================>]  9.887kB/9.887kB
+2026-10-09T16:49:57.9102811Z  d27c9d73697f Extracting [==================================================>]  9.887kB/9.887kB
+2026-10-09T16:49:57.9103740Z  43d05e938198 Extracting [=====================================>             ]  42.34MB/56.29MB
+2026-10-09T16:49:58.0303827Z  43d05e938198 Extracting [======================================>            ]  42.89MB/56.29MB
+2026-10-09T16:49:58.1427494Z  43d05e938198 Extracting [======================================>            ]  43.45MB/56.29MB
+2026-10-09T16:49:58.2648099Z  43d05e938198 Extracting [=======================================>           ]  44.01MB/56.29MB
+2026-10-09T16:49:58.3744939Z  43d05e938198 Extracting [========================================>          ]  45.12MB/56.29MB
+2026-10-09T16:49:58.4538570Z  d27c9d73697f Pull complete 
+2026-10-09T16:49:58.4549063Z  2dc121384798 Extracting [==================================================>]     128B/128B
+2026-10-09T16:49:58.4554032Z  2dc121384798 Extracting [==================================================>]     128B/128B
+2026-10-09T16:49:58.4876681Z  43d05e938198 Extracting [=========================================>         ]  46.79MB/56.29MB
+2026-10-09T16:49:58.5007501Z  2dc121384798 Pull complete 
+2026-10-09T16:49:58.5029923Z  c5fa2ad95c7a Extracting [==================================================>]     168B/168B
+2026-10-09T16:49:58.5036167Z  c5fa2ad95c7a Extracting [==================================================>]     168B/168B
+2026-10-09T16:49:58.5953207Z  c5fa2ad95c7a Pull complete 
+2026-10-09T16:49:58.6000883Z  93300567c591 Extracting [==================================================>]  5.842kB/5.842kB
+2026-10-09T16:49:58.6008192Z  93300567c591 Extracting [==================================================>]  5.842kB/5.842kB
+2026-10-09T16:49:58.6089914Z  93300567c591 Pull complete 
+2026-10-09T16:49:58.6100693Z  a99f8849fd36 Extracting [==================================================>]     184B/184B
+2026-10-09T16:49:58.6110869Z  a99f8849fd36 Extracting [==================================================>]     184B/184B
+2026-10-09T16:49:58.6178897Z  a99f8849fd36 Pull complete 
+2026-10-09T16:49:58.6231811Z  postgres Pulled 
+2026-10-09T16:49:58.6457303Z  43d05e938198 Extracting [==========================================>        ]  47.35MB/56.29MB
+2026-10-09T16:49:58.7482836Z  43d05e938198 Extracting [===========================================>       ]  49.02MB/56.29MB
+2026-10-09T16:49:58.8478851Z  43d05e938198 Extracting [==================================================>]  56.29MB/56.29MB
+2026-10-09T16:49:59.0949456Z  43d05e938198 Pull complete 
+2026-10-09T16:49:59.0958102Z  064b2d298fba Extracting [==================================================>]  5.384kB/5.384kB
+2026-10-09T16:49:59.0962552Z  064b2d298fba Extracting [==================================================>]  5.384kB/5.384kB
+2026-10-09T16:49:59.1063278Z  064b2d298fba Pull complete 
+2026-10-09T16:49:59.1070723Z  df9a4d85569b Extracting [==================================================>]     122B/122B
+2026-10-09T16:49:59.1074440Z  df9a4d85569b Extracting [==================================================>]     122B/122B
+2026-10-09T16:49:59.1132363Z  df9a4d85569b Pull complete 
+2026-10-09T16:49:59.1180834Z  db Pulled 
+2026-10-09T16:49:59.1200272Z  Network iterflow-mysql57-proof_default  Creating
+2026-10-09T16:49:59.1480827Z  Network iterflow-mysql57-proof_default  Created
+2026-10-09T16:49:59.1553492Z  Volume "iterflow-mysql57-proof_proof-db"  Creating
+2026-10-09T16:49:59.1567861Z  Volume "iterflow-mysql57-proof_proof-db"  Created
+2026-10-09T16:49:59.1571074Z  Volume "iterflow-mysql57-proof_regression-pg"  Creating
+2026-10-09T16:49:59.1577362Z  Volume "iterflow-mysql57-proof_regression-pg"  Created
+2026-10-09T16:49:59.1581481Z  Container iterflow-mysql57-test-redis  Creating
+2026-10-09T16:49:59.1581875Z  Container iterflow-mysql57-proof-db  Creating
+2026-10-09T16:49:59.1582357Z  Container iterflow-mysql57-regression-pg  Creating
+2026-10-09T16:49:59.1916452Z  Container iterflow-mysql57-regression-pg  Created
+2026-10-09T16:49:59.1917001Z  Container iterflow-mysql57-test-redis  Created
+2026-10-09T16:49:59.1917328Z  Container iterflow-mysql57-proof-db  Created
+2026-10-09T16:49:59.1924079Z  Container iterflow-mysql57-regression-pg  Starting
+2026-10-09T16:49:59.1924698Z  Container iterflow-mysql57-test-redis  Starting
+2026-10-09T16:49:59.1925099Z  Container iterflow-mysql57-proof-db  Starting
+2026-10-09T16:49:59.4130135Z  Container iterflow-mysql57-regression-pg  Started
+2026-10-09T16:49:59.4135063Z  Container iterflow-mysql57-test-redis  Started
+2026-10-09T16:49:59.4247037Z  Container iterflow-mysql57-proof-db  Started
+2026-10-09T16:49:59.4248795Z  Container iterflow-mysql57-regression-pg  Waiting
+2026-10-09T16:49:59.4249279Z  Container iterflow-mysql57-test-redis  Waiting
+2026-10-09T16:49:59.4249739Z  Container iterflow-mysql57-proof-db  Waiting
+2026-10-09T16:49:59.9267231Z  Container iterflow-mysql57-test-redis  Healthy
+2026-10-09T16:50:02.9259814Z  Container iterflow-mysql57-regression-pg  Healthy
+2026-10-09T16:50:08.9259320Z  Container iterflow-mysql57-proof-db  Healthy
+2026-10-09T16:50:08.9329089Z ##[group]Run python -m pytest -q tools/mysql57-proof/test_proof.py
+2026-10-09T16:50:08.9329387Z [36;1mpython -m pytest -q tools/mysql57-proof/test_proof.py[0m
+2026-10-09T16:50:08.9386107Z shell: /usr/bin/bash -e {0}
+2026-10-09T16:50:08.9386282Z env:
+2026-10-09T16:50:08.9386452Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-09T16:50:08.9386711Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib/pkgconfig
+2026-10-09T16:50:08.9386955Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-09T16:50:08.9387180Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-09T16:50:08.9387398Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-09T16:50:08.9387620Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib
+2026-10-09T16:50:08.9387839Z ##[endgroup]
+2026-10-09T16:50:11.6314463Z .................                                                        [100%]
+2026-10-09T16:50:11.6314962Z 17 passed in 2.15s
+2026-10-09T16:50:11.6832171Z ##[group]Run set -o pipefail
+2026-10-09T16:50:11.6832376Z [36;1mset -o pipefail[0m
+2026-10-09T16:50:11.6832583Z [36;1m# Use the CI interpreter while retaining the same local safety checks.[0m
+2026-10-09T16:50:11.6832807Z [36;1mmkdir -p .venv/bin[0m
+2026-10-09T16:50:11.6832968Z [36;1mln -s "$(command -v python)" .venv/bin/python[0m
+2026-10-09T16:50:11.6833283Z [36;1mpython tools/run-mysql-tests.py -q --tb=short -W error::DeprecationWarning | tee /tmp/iterflow-mysql57.log[0m
+2026-10-09T16:50:11.6833636Z [36;1mif grep -Eq '[1-9][0-9]* skipped' /tmp/iterflow-mysql57.log; then exit 1; fi[0m
+2026-10-09T16:50:11.6889845Z shell: /usr/bin/bash -e {0}
+2026-10-09T16:50:11.6890021Z env:
+2026-10-09T16:50:11.6890192Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-09T16:50:11.6890454Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib/pkgconfig
+2026-10-09T16:50:11.6890687Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-09T16:50:11.6890951Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-09T16:50:11.6891184Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-09T16:50:11.6891433Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib
+2026-10-09T16:50:11.6891702Z ##[endgroup]
+2026-10-09T16:50:53.8410065Z ...........................................                              [100%]
+2026-10-09T16:50:53.8410378Z 43 passed in 41.58s
+2026-10-09T16:50:54.5799386Z ##[group]Run python -m ruff check app tests_mysql57
+2026-10-09T16:50:54.5799791Z [36;1mpython -m ruff check app tests_mysql57[0m
+2026-10-09T16:50:54.5800123Z [36;1mpython -m ruff format --check app tests_mysql57[0m
+2026-10-09T16:50:54.5800422Z [36;1mpython -m mypy app[0m
+2026-10-09T16:50:54.5873369Z shell: /usr/bin/bash -e {0}
+2026-10-09T16:50:54.5873650Z env:
+2026-10-09T16:50:54.5873922Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-09T16:50:54.5874339Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib/pkgconfig
+2026-10-09T16:50:54.5874761Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-09T16:50:54.5875115Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-09T16:50:54.5875466Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-09T16:50:54.5876029Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib
+2026-10-09T16:50:54.5876334Z ##[endgroup]
+2026-10-09T16:50:54.6252389Z All checks passed!
+2026-10-09T16:50:54.6556583Z 99 files already formatted
+2026-10-09T16:51:02.5562669Z app/services/version_service.py:722: error: Incompatible return value type (got "list[object]", expected "list[int]")  [return-value]
+2026-10-09T16:51:02.6400147Z Found 1 error in 1 file (checked 98 source files)
+2026-10-09T16:51:02.6655112Z ##[error]Process completed with exit code 1.
+2026-10-09T16:51:02.6695158Z ##[group]Run docker compose -f tools/mysql57-proof/compose.yml down -v --remove-orphans
+2026-10-09T16:51:02.6695922Z [36;1mdocker compose -f tools/mysql57-proof/compose.yml down -v --remove-orphans[0m
+2026-10-09T16:51:02.6749703Z shell: /usr/bin/bash -e {0}
+2026-10-09T16:51:02.6758849Z env:
+2026-10-09T16:51:02.6759022Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-09T16:51:02.6759273Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib/pkgconfig
+2026-10-09T16:51:02.6759517Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-09T16:51:02.6759731Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-09T16:51:02.6759943Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-09T16:51:02.6760158Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib
+2026-10-09T16:51:02.6760341Z ##[endgroup]
+2026-10-09T16:51:02.7360596Z  Container iterflow-mysql57-proof-db  Stopping
+2026-10-09T16:51:02.7361567Z  Container iterflow-mysql57-regression-pg  Stopping
+2026-10-09T16:51:02.7362029Z  Container iterflow-mysql57-test-redis  Stopping
+2026-10-09T16:51:02.9943581Z  Container iterflow-mysql57-regression-pg  Stopped
+2026-10-09T16:51:02.9944016Z  Container iterflow-mysql57-regression-pg  Removing
+2026-10-09T16:51:03.0039859Z  Container iterflow-mysql57-regression-pg  Removed
+2026-10-09T16:51:03.0225137Z  Container iterflow-mysql57-test-redis  Stopped
+2026-10-09T16:51:03.0225534Z  Container iterflow-mysql57-test-redis  Removing
+2026-10-09T16:51:03.0279939Z  Container iterflow-mysql57-test-redis  Removed
+2026-10-09T16:51:04.1700164Z  Container iterflow-mysql57-proof-db  Stopped
+2026-10-09T16:51:04.1700658Z  Container iterflow-mysql57-proof-db  Removing
+2026-10-09T16:51:04.1758863Z  Container iterflow-mysql57-proof-db  Removed
+2026-10-09T16:51:04.1763613Z  Volume iterflow-mysql57-proof_proof-db  Removing
+2026-10-09T16:51:04.1764142Z  Volume iterflow-mysql57-proof_regression-pg  Removing
+2026-10-09T16:51:04.1764808Z  Network iterflow-mysql57-proof_default  Removing
+2026-10-09T16:51:04.2390144Z  Volume iterflow-mysql57-proof_proof-db  Removed
+2026-10-09T16:51:04.2466827Z  Network iterflow-mysql57-proof_default  Removed
+2026-10-09T16:51:04.3933107Z  Volume iterflow-mysql57-proof_regression-pg  Removed
+2026-10-09T16:51:04.4056513Z Post job cleanup.
+2026-10-09T16:51:04.4651385Z [command]/usr/bin/git version
+2026-10-09T16:51:04.4686863Z git version 2.55.0
+2026-10-09T16:51:04.4713738Z Temporarily overriding HOME='/home/runner/work/_temp/398992e1-a599-4e9a-9416-f2f33f15aea2' before making global git config changes
+2026-10-09T16:51:04.4714832Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-09T16:51:04.4718140Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/iterflow/iterflow
+2026-10-09T16:51:04.4758453Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-09T16:51:04.4794676Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-09T16:51:04.5008567Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-09T16:51:04.5036312Z http.https://github.com/.extraheader
+2026-10-09T16:51:04.5047817Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-10-09T16:51:04.5113944Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-09T16:51:04.5323639Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-09T16:51:04.5356308Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-09T16:51:04.5672599Z Cleaning up orphan processes
+2026-10-09T16:51:04.5888780Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4, actions/setup-python@v5. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

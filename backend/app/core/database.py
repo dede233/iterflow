@@ -19,6 +19,7 @@ if engine.dialect.name == "mysql":
     @event.listens_for(engine, "connect")
     def configure_mysql(connection, _record):
         with connection.cursor() as cursor:
+            cursor.execute("SET SESSION innodb_strict_mode = ON")
             cursor.execute("SET SESSION foreign_key_checks = 1")
             cursor.execute("SET SESSION unique_checks = 1")
             cursor.execute("SET SESSION time_zone = '+00:00'")

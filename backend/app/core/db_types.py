@@ -35,14 +35,19 @@ class ExactIdentifier(TypeDecorator[str]):
     impl = String
     cache_ok = True
 
-    def __init__(self, length):
+    def __init__(self, length, *, overflow_bytes=0):
         super().__init__(length=length)
         self.length = length
+        self.overflow_bytes = overflow_bytes
 
     def load_dialect_impl(self, dialect):
         from sqlalchemy.dialects.mysql import VARBINARY
 
-        return dialect.type_descriptor(VARBINARY(self.length * 4))
+        # File keys need overflow space so a permissive raw SQL writer cannot
+        # truncate an oversized 4-byte UTF-8 key into a valid 500-character key
+        # before the database guard runs. The accepted domain is unchanged.
+        capacity = self.length * 4 + self.overflow_bytes
+        return dialect.type_descriptor(VARBINARY(capacity))
 
     def process_bind_param(self, value, dialect):
         return value.encode("utf-8") if value is not None else None

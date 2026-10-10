@@ -3,7 +3,11 @@
 This is a frozen explicit DDL snapshot, not metadata.create_all.
 """
 
-from sqlalchemy import inspect
+import runpy
+from pathlib import Path
+
+from sqlalchemy import inspect, text
+
 from alembic import op
 
 revision = "mysql57_0001"
@@ -148,8 +152,21 @@ def upgrade():
         raise RuntimeError(
             "MySQL baseline requires an empty database; partial DDL must be inspected explicitly"
         )
+    from app.core.mysql_preflight import validate_mysql
+
+    # Alembic creates its empty bookkeeping table before invoking a baseline.
+    validate_mysql(bind, empty=True, allow_empty_version_table=True)
+    portable = bind.scalar(text("SELECT @@innodb_large_prefix")) == 0
+    file_keys = runpy.run_path(str(Path(__file__).parents[1] / "mysql_file_keys.py"))
+    if portable:
+        file_keys["create_registry"](bind)
     for statement in DDL:
+        if portable and statement.startswith("CREATE TABLE sys_file"):
+            statement = file_keys["portable_file_ddl"](statement)
         op.execute(statement)
+    if portable:
+        for statement in file_keys["FILE_TRIGGERS"]:
+            op.execute(statement)
 
 
 def downgrade():

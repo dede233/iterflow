@@ -20,18 +20,21 @@ from sqlalchemy.engine import URL
 root = Path(__file__).resolve().parents[1]
 parser = argparse.ArgumentParser()
 parser.add_argument("--bundle", type=Path, required=True)
+parser.add_argument("--portable", action="store_true")
 args = parser.parse_args()
 bundle = args.bundle.resolve()
 manifest = json.loads((bundle / "manifest.json").read_text())
-container = "iterflow-mysql57-proof-db"
-info = json.loads(subprocess.check_output(["docker", "inspect", container]))[0]
-assert (
-    info["Config"]["Labels"]["com.docker.compose.project"] == "iterflow-mysql57-proof"
+container = (
+    "iterflow-mysql57-portable-db" if args.portable else "iterflow-mysql57-proof-db"
 )
+db_project = "iterflow-mysql57-portable" if args.portable else "iterflow-mysql57-proof"
+test_port = 57358 if args.portable else 57357
+info = json.loads(subprocess.check_output(["docker", "inspect", container]))[0]
+assert info["Config"]["Labels"]["com.docker.compose.project"] == db_project
 assert info["Config"]["Image"] == "mysql:5.7.44" and info["State"]["Running"]
 password = (root / "tools/mysql57-proof/.env").read_text().strip().split("=", 1)[1]
 admin = pymysql.connect(
-    host="127.0.0.1", port=57357, user="root", password=password, autocommit=True
+    host="127.0.0.1", port=test_port, user="root", password=password, autocommit=True
 )
 suffix = uuid4().hex[:12]
 db_name = "iterflow_mysql57_pkg_" + suffix
@@ -160,7 +163,7 @@ def restore_package(stage, dump, files, headers, requirement_id, file_id):
         ):
             rights = (
                 "SELECT"
-                if table == "alembic_version"
+                if table in {"alembic_version", "iterflow_file_key_node"}
                 else "SELECT, INSERT, UPDATE, DELETE"
             )
             sql(f"GRANT {rights} ON `{restored}`.`{table}` TO %s@'%%'", (runtime_user,))
@@ -197,12 +200,35 @@ def restore_package(stage, dump, files, headers, requirement_id, file_id):
                 requirement["status"] == "ONLINE"
                 and requirement["current_version_id"] is not None
             )
+            uploaded = client.post(
+                "/api/v1/files",
+                headers=headers,
+                files={
+                    "file": (
+                        "after-restore.txt",
+                        b"restored function writes",
+                        "text/plain",
+                    )
+                },
+            )
+            assert uploaded.status_code == 200, uploaded.text
+            new_file = uploaded.json()["id"]
+            assert (
+                client.get(
+                    f"/api/v1/files/{new_file}/download", headers=headers
+                ).content
+                == b"restored function writes"
+            )
+            assert (
+                client.delete(f"/api/v1/files/{new_file}", headers=headers).status_code
+                == 204
+            )
         assert (
             sql(
                 "SELECT COUNT(*) FROM information_schema.triggers WHERE trigger_schema=%s",
                 (restored,),
             )[0][0]
-            == 63
+            == 68
         )
         dc("stop", "api")
         post_dump = dc(
@@ -210,7 +236,8 @@ def restore_package(stage, dump, files, headers, requirement_id, file_id):
         ).stdout
         return {
             "package_isolated_restore": True,
-            "restored_guard_triggers": 63,
+            "restored_guard_triggers": 68,
+            "restored_function_runtime_upload": True,
             "package_post_restore_backup_sha256": hashlib.sha256(post_dump).hexdigest(),
         }
     finally:
@@ -218,7 +245,15 @@ def restore_package(stage, dump, files, headers, requirement_id, file_id):
         sql(f"DROP DATABASE `{restored}`")
 
 
-assert sql("SELECT VERSION()")[0][0] == "5.7.44"
+assert sql("SELECT VERSION()")[0][0] == ("5.7.44-log" if args.portable else "5.7.44")
+if args.portable:
+    assert sql("SELECT @@GLOBAL.innodb_large_prefix, @@GLOBAL.innodb_strict_mode")[
+        0
+    ] == (0, 0)
+proof["database_profile"] = db_project
+proof["global_innodb_settings"] = list(
+    sql("SELECT @@GLOBAL.innodb_large_prefix, @@GLOBAL.innodb_strict_mode")[0]
+)
 sql(f"CREATE DATABASE `{db_name}` CHARACTER SET utf8mb4 COLLATE utf8mb4_bin")
 for user, secret in [
     (migration_user, migration_password),
@@ -226,6 +261,7 @@ for user, secret in [
 ]:
     sql("CREATE USER %s@'%%' IDENTIFIED BY %s", (user, secret))
 sql(f"GRANT ALL PRIVILEGES ON `{db_name}`.* TO %s@'%%'", (migration_user,))
+sql("GRANT SELECT ON mysql.proc TO %s@'%%'", (migration_user,))
 
 try:
     staging_root = root / "data/mysql57-package-smoke"
@@ -284,7 +320,7 @@ try:
                 f"  {service}:\n    networks: [default, proof]\n"
                 for service in ("api", "migrate", "seed", "client")
             )
-            + "networks:\n  proof:\n    external: true\n    name: iterflow-mysql57-proof_default\n"
+            + f"networks:\n  proof:\n    external: true\n    name: {db_project}_default\n"
         )
         compose = [
             "docker",
@@ -332,7 +368,7 @@ try:
             ):
                 rights = (
                     "SELECT"
-                    if table == "alembic_version"
+                    if table in {"alembic_version", "iterflow_file_key_node"}
                     else "SELECT, INSERT, UPDATE, DELETE"
                 )
                 sql(

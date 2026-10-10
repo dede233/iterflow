@@ -50,17 +50,26 @@ class RedactedHeaders(dict):
 
 
 BACKEND = Path(__file__).resolve().parents[1]
+PORTABLE = os.environ.get("ITERFLOW_MYSQL_TEST_PROFILE") == "portable"
+TEST_PORT = 57358 if PORTABLE else 57357
+TEST_CONTAINER = "iterflow-mysql57-portable-db" if PORTABLE else "iterflow-mysql57-proof-db"
+TEST_PROJECT = "iterflow-mysql57-portable" if PORTABLE else "iterflow-mysql57-proof"
+TEST_VERSION = "5.7.44-log" if PORTABLE else "5.7.44"
 
 
 @pytest.fixture
 def mysql_api(monkeypatch, tmp_path):
     url = make_url(os.environ["DATABASE_URL"])
     assert url.drivername == "mysql+pymysql"
-    assert url.host == "127.0.0.1" and url.port == 57357, "local dedicated container only"
+    assert url.host == "127.0.0.1" and url.port == TEST_PORT, "local dedicated container only"
     admin = create_engine(url, pool_pre_ping=True)
     name = "iterflow_mysql57_" + uuid4().hex
     with admin.connect() as connection:
-        assert connection.scalar(text("SELECT VERSION()")) == "5.7.44"
+        assert connection.scalar(text("SELECT VERSION()")) == TEST_VERSION
+        if PORTABLE:
+            assert connection.execute(
+                text("SELECT @@GLOBAL.innodb_large_prefix, @@GLOBAL.innodb_strict_mode")
+            ).one() == (0, 0)
         connection.execute(
             text(f"CREATE DATABASE `{name}` CHARACTER SET utf8mb4 COLLATE utf8mb4_bin")
         )
@@ -929,12 +938,10 @@ def test_mysql_restart_and_isolated_backup_restore(mysql_api, monkeypatch, tmp_p
         source.startswith("iterflow_mysql57_")
         and source.removeprefix("iterflow_mysql57_").isalnum()
     )
-    container = "iterflow-mysql57-proof-db"
+    container = TEST_CONTAINER
     inspect_info = json.loads(subprocess.check_output(["docker", "inspect", container]))[0]
     assert inspect_info["Config"]["Image"] == "mysql:5.7.44"
-    assert (
-        inspect_info["Config"]["Labels"]["com.docker.compose.project"] == "iterflow-mysql57-proof"
-    )
+    assert inspect_info["Config"]["Labels"]["com.docker.compose.project"] == TEST_PROJECT
     dump = subprocess.check_output(
         [
             "docker",
@@ -1012,6 +1019,18 @@ def test_mysql_restart_and_isolated_backup_restore(mysql_api, monkeypatch, tmp_p
         assert (
             client.get(download, headers=headers).content == b"isolated mysql57 backup attachment"
         )
+        after_restore = client.post(
+            "/api/v1/files",
+            headers=headers,
+            files={"file": ("after-restore.txt", b"restored function writes", "text/plain")},
+        )
+        assert after_restore.status_code == 200, after_restore.text
+        assert (
+            client.delete(
+                f"/api/v1/files/{after_restore.json()['id']}", headers=headers
+            ).status_code
+            == 204
+        )
         post_dump = subprocess.check_output(
             [
                 "docker",
@@ -1023,12 +1042,16 @@ def test_mysql_restart_and_isolated_backup_restore(mysql_api, monkeypatch, tmp_p
                 "--routines --triggers --hex-blob --set-gtid-purged=OFF " + restored,
             ]
         )
-        (BACKEND.parent / "docs/evidence/mysql57/backup-restore.json").write_text(
+        evidence = BACKEND.parent / "docs/evidence/mysql57-portable"
+        evidence.mkdir(parents=True, exist_ok=True)
+        (
+            evidence / ("backup-restore.json" if PORTABLE else "standard-backup-restore.json")
+        ).write_text(
             json.dumps(
                 {
                     "status": "PASS",
                     "scope": "isolated local synthetic database and storage only",
-                    "mysql_version": "5.7.44",
+                    "mysql_version": TEST_VERSION,
                     "source_database": source,
                     "restore_database": restored,
                     "pre_backup_sha256": hashlib.sha256(dump).hexdigest(),
@@ -1038,7 +1061,9 @@ def test_mysql_restart_and_isolated_backup_restore(mysql_api, monkeypatch, tmp_p
                     ).hexdigest(),
                     "restart_persistence": True,
                     "successful_consecutive_restarts": 3,
-                    "restored_guard_triggers": 63,
+                    "restored_guard_triggers": 68,
+                    "profile": TEST_PROJECT,
+                    "restored_function_upload": True,
                 },
                 indent=2,
             )
@@ -1055,7 +1080,7 @@ def test_mysql_preflight_requires_empty_or_verified_schema(mysql_api):
 
     with mysql_api[1].connect() as connection:
         result = validate_mysql(connection)
-        assert result["table_count"] == 22
+        assert result["table_count"] == 23
         with pytest.raises(RuntimeError, match="empty"):
             validate_mysql(connection, empty=True)
         connection.execute(text("DROP TRIGGER domain_sys_user_insert"))
@@ -1063,7 +1088,7 @@ def test_mysql_preflight_requires_empty_or_verified_schema(mysql_api):
             validate_mysql(connection)
         # Runtime intentionally needs no TRIGGER privilege; migration preflight
         # proves installed guards, runtime principals cannot drop them.
-        assert validate_mysql(connection, inspect_triggers=False)["version"] == "5.7.44"
+        assert validate_mysql(connection, inspect_triggers=False)["version"] == TEST_VERSION
 
 
 def test_mysql_real_deadlock_and_lock_timeout_are_conflicts(mysql_api):
@@ -1151,13 +1176,19 @@ def test_mysql_runtime_principal_cannot_remove_database_protection(mysql_api, mo
             text(f"GRANT SELECT ON `{engine.url.database}`.alembic_version TO :username@'%'"),
             {"username": username},
         )
+        connection.execute(
+            text(
+                f"GRANT SELECT ON `{engine.url.database}`.iterflow_file_key_node TO :username@'%'"
+            ),
+            {"username": username},
+        )
     runtime = create_engine(
         engine.url.set(username=username, password=password), pool_pre_ping=True
     )
     event.listen(runtime, "connect", database.configure_mysql)
     try:
         with runtime.connect() as connection:
-            assert validate_mysql(connection, inspect_triggers=False)["table_count"] == 22
+            assert validate_mysql(connection, inspect_triggers=False)["table_count"] == 23
             with pytest.raises(DBAPIError):
                 connection.execute(text("DROP TRIGGER domain_sys_user_insert"))
             with pytest.raises(DBAPIError):
@@ -1183,6 +1214,19 @@ def test_mysql_runtime_principal_cannot_remove_database_protection(mysql_api, mo
             },
         )
         assert response.status_code == 200, response.text
+        uploaded = client.post(
+            f"/api/v1/feedbacks/{response.json()['id']}/attachments",
+            headers=headers,
+            files={"file": ("runtime.txt", b"definer writes the key registry", "text/plain")},
+        )
+        assert uploaded.status_code == 200, uploaded.text
+        with runtime.connect() as connection:
+            with pytest.raises(DBAPIError):
+                connection.execute(
+                    text("UPDATE iterflow_file_key_node SET segment=X'61' WHERE id=1")
+                )
+            with pytest.raises(DBAPIError):
+                connection.execute(text("SELECT iterflow_register_file_key(X'61')"))
         assert client.get("/api/v1/dashboard/overview", headers=headers).status_code == 200
         with engine.connect() as connection:
             validate_mysql(connection)
@@ -1190,3 +1234,177 @@ def test_mysql_runtime_principal_cannot_remove_database_protection(mysql_api, mo
         runtime.dispose()
         with engine.connect() as connection:
             connection.execute(text("DROP USER :username@'%'"), {"username": username})
+
+
+def test_mysql_session_strict_mode_without_global_change(mysql_api):
+    from app.core.mysql_preflight import validate_mysql
+
+    with mysql_api[1].connect() as connection:
+        assert connection.scalar(text("SELECT @@SESSION.innodb_strict_mode")) == 1
+        assert connection.scalar(text("SELECT @@SESSION.time_zone")) == "+00:00"
+        if PORTABLE:
+            assert connection.execute(
+                text("SELECT @@GLOBAL.innodb_large_prefix, @@GLOBAL.innodb_strict_mode")
+            ).one() == (0, 0)
+        connection.execute(text("SET SESSION innodb_strict_mode=OFF"))
+        with pytest.raises(RuntimeError, match="innodb_strict_mode"):
+            validate_mysql(connection)
+        connection.execute(text("SET SESSION innodb_strict_mode=ON"))
+
+
+def test_mysql_portable_complete_file_key_semantics(mysql_api):
+    from sqlalchemy.exc import IntegrityError
+
+    from app.models.entities import FileObject
+
+    engine = mysql_api[1]
+    keys = [
+        "",
+        "Exact",
+        "exact",
+        "Exact ",
+        "😀" * 499 + "甲",
+        "😀" * 499 + "乙",
+        "😀" * 128,
+        "😀" * 128 + "a",
+        "a" * 499 + "x",
+        "a" * 499 + "y",
+    ]
+    with Session(engine) as session:
+        for key in keys:
+            session.add(
+                FileObject(
+                    storage_key=key,
+                    original_name="键",
+                    mime_type="text/plain",
+                    size=1,
+                    sha256="a" * 64,
+                    storage_driver="LOCAL",
+                )
+            )
+        session.commit()
+        assert set(session.scalars(select(FileObject.storage_key))) == set(keys)
+        for key in keys:
+            session.add(
+                FileObject(
+                    storage_key=key,
+                    original_name="重复",
+                    mime_type="text/plain",
+                    size=1,
+                    sha256="b" * 64,
+                    storage_driver="LOCAL",
+                )
+            )
+            with pytest.raises(IntegrityError) as error:
+                session.commit()
+            assert error.value.orig.args[0] == 1062
+            session.rollback()
+        original = session.scalar(select(FileObject).where(FileObject.storage_key == keys[4]))
+        original.storage_key = keys[5]
+        with pytest.raises(IntegrityError):
+            session.commit()
+        session.rollback()
+        assert original.storage_key == keys[4]
+        original.storage_key = "😀" * 499 + "新"
+        session.commit()
+        session.delete(original)
+        session.commit()
+        # Deletion frees file uniqueness; the immutable index nodes can be reused.
+        session.add(
+            FileObject(
+                storage_key="😀" * 499 + "新",
+                original_name="复用",
+                mime_type="text/plain",
+                size=1,
+                sha256="c" * 64,
+                storage_driver="LOCAL",
+            )
+        )
+        session.commit()
+
+
+def test_mysql_registry_is_exact_and_immutable(mysql_api):
+    from sqlalchemy.exc import DBAPIError
+
+    with mysql_api[1].connect() as connection:
+        for statement in (
+            "UPDATE iterflow_file_key_node SET segment=X'61' WHERE id=1",
+            "DELETE FROM iterflow_file_key_node WHERE id=1",
+            "INSERT INTO iterflow_file_key_node (id,parent_id,segment) VALUES (100,100,X'61')",
+        ):
+            with pytest.raises(DBAPIError) as error:
+                connection.execute(text(statement))
+            assert error.value.orig.args[0] == 1644
+            connection.rollback()
+
+
+def test_mysql_raw_permissive_writer_cannot_truncate_file_key(mysql_api):
+    from sqlalchemy.exc import DBAPIError
+
+    with mysql_api[1].connect() as connection:
+        connection.execute(text("SET SESSION sql_mode=''"))
+        with pytest.raises(DBAPIError) as error:
+            connection.execute(
+                text(
+                    "INSERT INTO sys_file(storage_key,original_name,mime_type,size,sha256,"
+                    "storage_driver,created_at,updated_at,revision) VALUES "
+                    "(:key,'invalid','text/plain',1,REPEAT('a',64),'LOCAL',UTC_TIMESTAMP(6),"
+                    "UTC_TIMESTAMP(6),1)"
+                ),
+                {"key": ("😀" * 501).encode()},
+            )
+        assert error.value.orig.args[0] == 1644
+        connection.rollback()
+        assert connection.scalar(text("SELECT COUNT(*) FROM sys_file")) == 0
+
+
+def test_mysql_upgrade_legacy_0001_preserves_full_keys(monkeypatch):
+    """Separate old-ON test database; never change either running server's globals."""
+    from app.cli import migrate
+    from app.core.mysql_preflight import validate_mysql
+    from app.models.entities import FileObject
+
+    url = make_url(os.environ["DATABASE_URL"])
+    assert url.host == "127.0.0.1" and url.port == TEST_PORT
+    admin = create_engine(url.set(port=57357, database="iterflow_mysql57_proof"))
+    name = "iterflow_mysql57_legacy_" + uuid4().hex
+    with admin.connect() as c:
+        assert c.scalar(text("SELECT VERSION()")) == "5.7.44"
+        assert c.scalar(text("SELECT @@GLOBAL.innodb_large_prefix")) == 1
+        c.execute(text(f"CREATE DATABASE `{name}` CHARACTER SET utf8mb4 COLLATE utf8mb4_bin"))
+    engine = create_engine(url.set(port=57357, database=name))
+    event.listen(engine, "connect", database.configure_mysql)
+    monkeypatch.setenv("DATABASE_URL", engine.url.render_as_string(hide_password=False))
+    get_settings.cache_clear()
+    try:
+        command.upgrade(Config(str(BACKEND / "alembic-mysql.ini")), "mysql57_0001")
+        keys = ["😀" * 499 + "甲", "😀" * 499 + "乙", "Exact", "Exact "]
+        with Session(engine) as session:
+            for key in keys:
+                session.add(
+                    FileObject(
+                        storage_key=key,
+                        original_name="legacy",
+                        mime_type="text/plain",
+                        size=1,
+                        sha256="a" * 64,
+                        storage_driver="LOCAL",
+                    )
+                )
+            session.commit()
+        with engine.connect() as c:
+            assert validate_mysql(c, allow_legacy=True)["table_count"] == 22
+            with pytest.raises(RuntimeError, match="head"):
+                validate_mysql(c)
+        monkeypatch.setattr(migrate, "engine", engine)
+        migrate.main()
+        with engine.connect() as c:
+            assert validate_mysql(c)["table_count"] == 23
+        with Session(engine) as session:
+            assert set(session.scalars(select(FileObject.storage_key))) == set(keys)
+    finally:
+        engine.dispose()
+        with admin.connect() as c:
+            c.execute(text(f"DROP DATABASE `{name}`"))
+        admin.dispose()
+        get_settings.cache_clear()

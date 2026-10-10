@@ -22,3 +22,5 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON `iterflow`.`rd_requirement` TO 'iterflow
 GRANT SELECT, INSERT, UPDATE, DELETE ON `iterflow`.`rd_requirement_feedback` TO 'iterflow_runtime'@'APP_HOST';
 GRANT SELECT, INSERT, UPDATE, DELETE ON `iterflow`.`rd_version_requirement` TO 'iterflow_runtime'@'APP_HOST';
 GRANT SELECT ON `iterflow`.`alembic_version` TO 'iterflow_runtime'@'APP_HOST';
+-- Physical long-key registry: read-only metadata; writes occur in DEFINER triggers.
+GRANT SELECT ON `iterflow`.`iterflow_file_key_node` TO 'iterflow_runtime'@'APP_HOST';

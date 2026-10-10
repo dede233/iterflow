@@ -1,5 +1,9 @@
 # IterFlow MySQL 5.7 适配交付记录
 
+2026-10-10 后续增量：用户授权保持两个 InnoDB 全局参数 OFF，另行本地适配。
+以下为原包历史交付事实；新包及验证以 [OFF/OFF 增量记录](mysql57-portable-parameters.md) 为准，
+不能把原包或原 CI PASS 当作新增实现已通过的证据。
+
 本次仅完成独立本地环境适配及部署包准备。没有连接远程 MySQL、操作服务器、切换网站、
 修改 Preview、合并/push master、创建 tag/Release 或改写历史。
 本地必要门禁和离线包验收全部通过，可以进入后续部署准备；远程兼容性仍需另行核实。

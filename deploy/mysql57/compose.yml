@@ -84,7 +84,7 @@ services:
     profiles: [ops]
     user: '${BACKUP_UID:-0}:${BACKUP_GID:-0}'
     entrypoint: [mysqldump, --defaults-extra-file=/run/secrets/mysql-client.cnf]
-    command: [--single-transaction, --no-tablespaces, --triggers, --hex-blob, '--set-gtid-purged=OFF', '${MYSQL_DATABASE_NAME:?database name required}']
+    command: [--single-transaction, --no-tablespaces, --routines, --triggers, --hex-blob, '--set-gtid-purged=OFF', '${MYSQL_DATABASE_NAME:?database name required}']
     volumes:
       - type: bind
         source: ./mysql-client.cnf

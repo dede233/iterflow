@@ -23,3 +23,5 @@ data/test-uploads/
 # Local Claude Code tooling (per-machine; never committed)
 .claude/
 data/mysql57-package-smoke/
+data/mysql57-test-uploads/
+data/mysql57-portable-uploads/

@@ -6,25 +6,28 @@ API 仍为 1.8.1 开发基线，本适配分支不是新的正式 tag/Release。
 
 包含 API、Web、Redis 与 MySQL 5.7.44 客户端镜像；Compose 不启动数据库服务器。
 数据库必须由管理员单独提供。API 使用低权限账号，迁移/seed 使用另一个受限账号。
-MySQL 双指针改为关系事实派生：API 字段不变，数据库生成列唯一键 + 外键 + 63 个写保护
+MySQL 双指针改为关系事实派生：API 字段不变，数据库生成列唯一键 + 外键 + 68 个写保护
 触发器保证基数、布尔/枚举及禁用检查绕过；历史关系保留。PostgreSQL 原迁移与路径保留。
 
 ## 部署前必须确认
 
 - 目标确为 Oracle MySQL 5.7，具体 patch/vendor；不能用 MariaDB 或未经验证版本代替已测 5.7.44。
-- 新库完全空（没有表/视图），默认 utf8mb4 / utf8mb4_bin；InnoDB、Barracuda、
-  innodb_large_prefix=ON、innodb_strict_mode=ON；空间、网络、端口和连接额度足够。
-- 迁移账号具有目标库 CREATE/ALTER/INDEX/REFERENCES/TRIGGER、DML、读 schema 元数据权限；
-  binary logging 开启时由 DBA 确认创建 trigger 的权限/服务器设置。不要自行授予运行账号 SUPER。
-- 运行账号只拥有 `runtime-grants.sql` 的 21 业务表 DML 和 Alembic SELECT，
-  没有 DDL/TRIGGER/GRANT/管理权限或其他继承授权；这些约束是数据库保护的部署条件。
+- 新库完全空（没有表/视图），默认 utf8mb4 / utf8mb4_bin；InnoDB、Barracuda。
+  全局 innodb_large_prefix / innodb_strict_mode 可为 OFF；应用和迁移连接必须成功设置
+  SESSION innodb_strict_mode=ON。空间、网络、端口和连接额度足够。
+- 迁移账号具有目标库 CREATE/ALTER/INDEX/REFERENCES/TRIGGER/CREATE ROUTINE/EXECUTE、DML、
+  读 schema 元数据权限；binary logging 开启时由 DBA 确认创建 trigger/function 的能力，
+  本路径预检要求 log_bin_trust_function_creators=ON。不要自行授予运行账号 SUPER。
+- 推荐运行账号只拥有 `runtime-grants.sql` 的 21 业务表 DML、Alembic 与键登记表 SELECT，
+  没有 DDL/TRIGGER/GRANT/管理权限或其他继承授权。用户已明确接受此次使用现有高权限
+  iterflow 账号的例外；它可删除数据库保护对象，不属于最小权限验证通过。
 - 保留触发器 DEFINER 账号及必要权限，不能在迁移后删除该账号。
 - 管理员提供数据库 hostname、database、迁移/运行账号、TLS 策略与 CA；真实密码只写服务器
   受保护文件。URL 中的用户名/密码必须 percent-encode，避免特殊字符改变连接含义。
 - Docker Engine 支持 linux/amd64，Compose >= 2.30（raw env_file），外部 HTTPS 反向代理和
   网站域名/ALLOWED_HOSTS/CORS 已确定；本包默认 Web/API 只监听 127.0.0.1。
 
-应用会设置会话 UTC、READ COMMITTED、严格 SQL mode 与完整唯一/外键检查。
+应用会设置会话 UTC、READ COMMITTED、innodb_strict_mode、严格 SQL mode 与完整唯一/外键检查。
 MySQL DATETIME(6) 保存 UTC，API 仍输出 ISO 8601 带时区。死锁/锁超时返回 409，需要重新读取
 后由调用者决定是否重试；服务不会自动重放发布写入。
 
@@ -64,7 +67,11 @@ curl --fail http://127.0.0.1:8080/
 先执行正式迁移，然后 seed；不使用 create_all、stamp head 或 PG 历史迁移。
 MySQL DDL 不原子：失败即停，保留现场；不要 stamp/盲目续跑。由 DBA 确认仅针对自己的空库
 清理失败初始化后重建。seed 只创建基础角色、权限和新管理员，首次登录必须改密。
-迁移后必须检查 63 个 trigger 与两个生成列唯一索引；runtime readiness 只用低权限检查。
+迁移后必须检查 mysql57_0002、68 个 trigger、键登记函数及完整唯一约束；runtime readiness
+只用低权限检查。长键保持原 500 字符/2000 字节范围，分成 512 字节二进制段，以
+UNIQUE(parent_id,segment) 确定路径，再以文件 leaf_id UNIQUE 保证完整键唯一；无哈希/前缀误判。
+登记节点不可修改或删除，文件删除后可复用路径；节点积累需要计入存储容量。
+旧的本地 mysql57_0001 安装可在停止全部写入、备份后正式 upgrade head；禁止在线升级或 stamp。
 
 维护重启使用 `./restart.sh`：先停止 Web/API，再重启 Redis，按健康依赖启动 API 和 Web。
 Web 的 Nginx 在启动时解析 API；不要在 API 尚未恢复时并行启动 Web。本地代理 DNS 曾在
@@ -90,8 +97,9 @@ sha256sum backup-new/database.sql backup-new/uploads.tar > backup-new/SHA256SUMS
 
 任何一条失败立即停止，不把失败/空文件视为备份。确认 API 重启健康并保存备份至独立存储。
 备份账号需要读取数据、SHOW VIEW/TRIGGER，以及该服务器上 mysqldump 所需的额外权限；
-`--single-transaction --no-tablespaces --triggers --hex-blob --set-gtid-purged=OFF` 保留表、数据与写保护。
-本迁移没有存储过程/函数或自定义 tablespace；因此备份不需要为它们授予全局权限。
+`--single-transaction --no-tablespaces --routines --triggers --hex-blob --set-gtid-purged=OFF`
+保留表、数据、键登记函数与写保护。MySQL 5.7 的 --routines 备份需要 mysql.proc SELECT，
+由 DBA 仅为受保护备份身份核实该权限；不授予应用运行账号。
 `--no-tablespaces` 避免 5.7.31 起额外的 PROCESS 要求，见 [MySQL mysqldump 文档](https://dev.mysql.com/doc/refman/5.7/en/mysqldump.html)。
 请先在目标环境验证备份权限，不能以能登录替代能备份。
 
@@ -109,10 +117,12 @@ sha256sum -c backup-new/SHA256SUMS
 
 ## 本地证据与边界
 
-本地关系证明 17 项、应用验收 43 项零跳过；含主链 15 步、CAS、并发转换/关联/迁版/发布、
+上一版本地关系证明 17 项、应用验收 43 项零跳过；含主链 15 步、CAS、并发转换/关联/迁版/发布、
 异常回滚、RBAC/DataScope、通知/审计、中文和日期、文件权限、三次重启与独立恢复。
 PostgreSQL 完整回归 375 passed / 1 S3 skip，PG-only 37 项零跳过；独立 S3 CI 通过。
-前端 320 tests、构建/契约/依赖审计通过，七项 branch CI 通过。
+前端 320 tests、构建/契约/依赖审计通过，上一版七项 branch CI 通过。
+本次 OFF/OFF 增量的本地结果见 docs/mysql57-portable-parameters.md；CI 已增加两种参数环境，
+新代码的 CI 结果须另行核实，不能沿用上一版 PASS。远程尚未验证这一增量。
 包的最终源 commit、镜像 ID/架构及额外启动验证见 manifest.json / verification.json。
 
 Apple Silicon 测试使用独立 QEMU x86_64 VM；旧 ARM VM + amd64 用户态模拟有退出 139 的历史

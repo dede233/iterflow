@@ -16,7 +16,7 @@ def main():
     if mysql:
         with engine.connect() as connection:
             tables = set(inspect(connection).get_table_names())
-            validate_mysql(connection, empty=not tables)
+            validate_mysql(connection, empty=not tables, allow_legacy=True)
     config = Config(str(root / ("alembic-mysql.ini" if mysql else "alembic.ini")))
     command.upgrade(config, "head")
     if mysql:

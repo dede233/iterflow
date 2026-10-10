@@ -42,8 +42,8 @@ from app.models.enums import (
 MYSQL = engine.dialect.name == "mysql"
 
 
-def identifier_type(length):
-    return ExactIdentifier(length) if MYSQL else String(length)
+def identifier_type(length, *, overflow_bytes=0):
+    return ExactIdentifier(length, overflow_bytes=overflow_bytes) if MYSQL else String(length)
 
 
 def timestamp_type():
@@ -438,7 +438,7 @@ class Notification(Base, AuditMixin):
 class FileObject(Base, AuditMixin):
     __tablename__ = "sys_file"
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    storage_key: Mapped[str] = mapped_column(identifier_type(500), unique=True)
+    storage_key: Mapped[str] = mapped_column(identifier_type(500, overflow_bytes=4), unique=True)
     original_name: Mapped[str] = mapped_column(String(255))
     mime_type: Mapped[str] = mapped_column(String(128))
     size: Mapped[int] = mapped_column(BigInteger)

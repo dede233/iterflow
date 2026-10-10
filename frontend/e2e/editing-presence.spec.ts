@@ -28,6 +28,7 @@ const data: Record<string, unknown> = {
     created_at: date, updated_at: date, updated_by: 1, revision: 1,
   },
   '/api/v1/requirements/2/feedbacks': [],
+      '/api/v1/requirements/2/collaborators': { revision: 1, owner: null, developers: [], designers: [], development_completions: [] },
   '/api/v1/versions/3': {
     id: 3, version_no: 'V-3', name: '版本标题', status: 'PLANNING', owner_id: null,
     planned_release_date: null, released_at: null, description: null,

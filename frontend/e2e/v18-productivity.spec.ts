@@ -22,6 +22,7 @@ async function fixture(page: Page, readRequirement = true, unlinked = false) {
     if (path === '/audits') return json({ items: [], total: 41, page: Number(query.page), size: 20 })
     if (path === '/feedbacks/1') return json({ ...feedback, main_requirement_id: unlinked ? null : 7 })
     if (['/feedbacks/1/attachments', '/feedbacks/1/comments', '/requirements/7/feedbacks'].includes(path)) return json([])
+    if (/^\/requirements\/[78]\/collaborators$/.test(path)) return json({ revision: 1, owner: null, developers: [], designers: [], development_completions: [] })
     if (path === '/requirements/7') return json(requirement(7))
     if (path === '/requirements/8') return json(requirement(8, 'DONE', 'P2'))
     if (path === '/requirements/99') return json({ code: 40400, message: '不存在或不可访问' }, 404)

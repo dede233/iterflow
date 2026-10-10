@@ -42,6 +42,7 @@ async function fixture(page: Page) {
       '/api/v1/feedbacks/1/comments': [],
       '/api/v1/requirements/2': requirement,
       '/api/v1/requirements/2/feedbacks': [],
+      '/api/v1/requirements/2/collaborators': { revision: 1, owner: null, developers: [], designers: [], development_completions: [] },
       '/api/v1/versions/3': version,
       '/api/v1/versions/3/requirements': {
         version_id: 3, items: [requirement],

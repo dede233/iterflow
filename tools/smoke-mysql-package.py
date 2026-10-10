@@ -455,6 +455,11 @@ try:
                     sign_in(admin_name, admin_password), admin_password
                 )
                 permissions = request("GET", "/roles/permissions", ah).json()
+                developer_role = next(
+                    role
+                    for role in request("GET", "/roles", ah).json()
+                    if role["code"] == "DEVELOPER" and role["is_system"]
+                )
                 role = request(
                     "POST",
                     "/roles",
@@ -475,7 +480,7 @@ try:
                         "username": "pkg-user",
                         "display_name": "包验收用户",
                         "password": user_password,
-                        "role_ids": [role["id"]],
+                        "role_ids": [role["id"], developer_role["id"]],
                     },
                 ).json()
                 h = change_password(sign_in("pkg-user", user_password), user_password)
@@ -545,7 +550,45 @@ try:
                     },
                 ).json()
                 r = request("GET", f"/requirements/{r['id']}", h).json()
-                for status in ("DEVELOPING", "TESTING", "DONE"):
+                r = request(
+                    "POST",
+                    f"/requirements/{r['id']}/start-stage",
+                    h,
+                    json={
+                        "status": "DEVELOPING",
+                        "revision": r["revision"],
+                        "user_ids": [user["id"]],
+                    },
+                ).json()
+                r = request(
+                    "PATCH",
+                    f"/requirements/{r['id']}/status",
+                    h,
+                    json={"status": "TESTING", "revision": r["revision"]},
+                ).json()
+                blocked = request(
+                    "PATCH",
+                    f"/requirements/{r['id']}/status",
+                    h,
+                    expected=409,
+                    json={"status": "DONE", "revision": r["revision"]},
+                ).json()
+                assert blocked["code"] == 40913
+                request(
+                    "POST",
+                    f"/requirements/{r['id']}/development-completion",
+                    ah,
+                    expected=403,
+                    json={"revision": r["revision"]},
+                )
+                request(
+                    "POST",
+                    f"/requirements/{r['id']}/development-completion",
+                    h,
+                    json={"revision": r["revision"]},
+                )
+                r = request("GET", f"/requirements/{r['id']}", h).json()
+                for status in ("DONE",):
                     r = request(
                         "PATCH",
                         f"/requirements/{r['id']}/status",

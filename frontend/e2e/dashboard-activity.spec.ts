@@ -39,6 +39,7 @@ async function login(page: Page, feedbackOnly = false) {
       acceptance_criteria: null, owner_id: null, current_version_id: null, revision: 1,
       created_by: 1, updated_by: 1, created_at: date, updated_at: date,
     } })
+    if (path === '/api/v1/requirements/123/collaborators') return route.fulfill({ json: { revision: 1, owner: null, developers: [], designers: [], development_completions: [] } })
     if (path === '/api/v1/requirements/123/feedbacks') return route.fulfill({ json: [] })
     throw new Error(`Unexpected ${route.request().method()} ${path}`)
   })

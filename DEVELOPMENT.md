@@ -1,5 +1,15 @@
 # DEVELOPMENT.md
 
+## 当前开发文档
+
+2026-10-11 协作版本文档入口：[用户操作手册](docs/user-manual.md)、[接口集成指南](docs/api-guide.md)、[全员开发确认与验收](docs/development-completion.md)、[线上升级记录](docs/collaboration-online-upgrade-2026-10-11.md)。当前契约为 `spec/openapi-development.yaml`；按阶段分工、可选设计、完成与发布全员确认门禁已部署 sx-kc.xyz:8443，实际源 commit 为 `2b37509`。本次没有合并 master 或创建正式 tag/Release；已发布历史契约和下述发布证据保持不变。
+
+当前追加[全员开发完成发布门禁](docs/development-completion.md)，该文档包含操作与验收；前述阶段记录保留为历史证据。
+
+需求协作已按用户要求追加可选设计阶段与按阶段分配，当前操作与门禁见 `docs/requirement-design-stage.md`。
+
+2026-10-10 用户授权的本地增量：一名总负责人、多名开发、多名设计及定向站内通知，见 `docs/requirement-collaboration.md`。开发契约仍为 `spec/openapi-development.yaml`；新增迁移不改历史发布快照。本地测试通过不构成线上部署事实。
+
 
 ## 项目命名
 

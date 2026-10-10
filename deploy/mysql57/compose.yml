@@ -1,0 +1,108 @@
+name: iterflow-mysql57
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: '10m'
+    max-file: '5'
+
+x-api: &api
+  image: ${API_IMAGE:?load the package images.env}
+  platform: linux/amd64
+  env_file:
+    - path: ./.env.runtime
+      format: raw
+  environment:
+    BUILD_SHA: ${BUILD_SHA:?source commit required}
+    LOCAL_STORAGE_PATH: /app/data/uploads
+  volumes:
+    - uploads:/app/data/uploads
+    - ./tls:/run/iterflow/tls:ro
+  security_opt: [no-new-privileges:true]
+  cap_drop: [ALL]
+  logging: *logging
+
+services:
+  migrate:
+    <<: *api
+    profiles: [init]
+    env_file:
+      - path: ./.env.migration
+        format: raw
+    command: [python, -m, app.cli.migrate]
+    restart: 'no'
+  seed:
+    <<: *api
+    profiles: [init]
+    env_file:
+      - path: ./.env.migration
+        format: raw
+    command: [python, -m, app.cli.seed]
+    restart: 'no'
+  redis:
+    image: ${REDIS_IMAGE:?load package Redis image}
+    platform: linux/amd64
+    command: [redis-server, --appendonly, 'yes']
+    volumes: [redisdata:/data]
+    restart: unless-stopped
+    security_opt: [no-new-privileges:true]
+    logging: *logging
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  api:
+    <<: *api
+    depends_on:
+      redis: {condition: service_healthy}
+    restart: unless-stopped
+    ports: ['127.0.0.1:${API_PORT:-8000}:8000']
+    healthcheck:
+      test: [CMD, python, -m, app.cli.healthcheck]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+  web:
+    image: ${WEB_IMAGE:?load package Web image}
+    platform: linux/amd64
+    ports: ['${WEB_BIND_HOST:-127.0.0.1}:${WEB_PORT:-8080}:8080']
+    depends_on:
+      api: {condition: service_healthy}
+    restart: unless-stopped
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    logging: *logging
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, 'http://127.0.0.1:8080/']
+      interval: 10s
+      timeout: 5s
+      retries: 30
+  client:
+    image: ${MYSQL_CLIENT_IMAGE:?load package MySQL client image}
+    platform: linux/amd64
+    profiles: [ops]
+    user: '${BACKUP_UID:-0}:${BACKUP_GID:-0}'
+    entrypoint: [mysqldump, --defaults-extra-file=/run/secrets/mysql-client.cnf]
+    command: [--single-transaction, --no-tablespaces, --routines, --triggers, --hex-blob, '--set-gtid-purged=OFF', '${MYSQL_DATABASE_NAME:?database name required}']
+    volumes:
+      - type: bind
+        source: ./mysql-client.cnf
+        target: /run/secrets/mysql-client.cnf
+        read_only: true
+        bind: {create_host_path: false}
+      - ./tls:/run/iterflow/tls:ro
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+  storage-backup:
+    image: ${API_IMAGE:?load package API image}
+    platform: linux/amd64
+    profiles: [ops]
+    entrypoint: [python, -c, "import sys,tarfile; t=tarfile.open(fileobj=sys.stdout.buffer,mode='w|'); t.add('/app/data/uploads',arcname='uploads'); t.close()"]
+    volumes: [uploads:/app/data/uploads:ro]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+
+volumes:
+  redisdata:
+  uploads:

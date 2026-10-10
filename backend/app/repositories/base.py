@@ -24,6 +24,15 @@ class BaseRepository[T]:
 
     def update_with_revision(self, entity_id: int, revision: int, values: dict) -> bool:
         model = cast(Any, self.model)
+        values = dict(values)
+        if self.db.get_bind().dialect.name == "mysql":
+            # MySQL has a single relationship fact. Relation services perform the
+            # relation mutation in this same transaction; CAS still locks/bump
+            # the parent. Derived pointers cannot be physical UPDATE targets.
+            if model.__tablename__ == "rd_requirement":
+                values.pop("current_version_id", None)
+            elif model.__tablename__ == "rd_feedback":
+                values.pop("main_requirement_id", None)
         id_column = model.id
         revision_column = model.revision
         result = cast(

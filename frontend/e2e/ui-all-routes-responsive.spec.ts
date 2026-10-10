@@ -68,6 +68,7 @@ const responses: Record<string, unknown> = {
   '/api/v1/requirements': pageOf(requirement),
   '/api/v1/requirements/2': requirement,
   '/api/v1/requirements/2/feedbacks': [],
+      '/api/v1/requirements/2/collaborators': { revision: 1, owner: null, developers: [], designers: [], development_completions: [] },
   '/api/v1/versions': pageOf(version),
   '/api/v1/versions/3': version,
   '/api/v1/versions/3/requirements': {

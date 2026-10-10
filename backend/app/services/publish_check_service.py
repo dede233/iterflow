@@ -1,6 +1,7 @@
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.entities import Version
+from app.models.entities import Requirement, RequirementParticipant, Version, VersionRequirement
 from app.models.enums import RequirementStatus, VersionStatus
 from app.repositories.version_repository import VersionRepository
 
@@ -20,7 +21,7 @@ class PublishCheckService:
         self.db = db
         self.repo = VersionRepository(db)
 
-    def evaluate(self, version: Version) -> dict:
+    def evaluate(self, version: Version, *, lock: bool = False) -> dict:
         checks: list[dict] = []
 
         version_ok = VersionStatus(version.status) == VersionStatus.READY
@@ -37,7 +38,22 @@ class PublishCheckService:
             }
         )
 
-        active = self.repo.active_requirements(version.id)
+        if lock:
+            active = list(
+                self.db.scalars(
+                    select(Requirement)
+                    .join(VersionRequirement, VersionRequirement.requirement_id == Requirement.id)
+                    .where(
+                        VersionRequirement.version_id == version.id,
+                        VersionRequirement.active.is_(True),
+                    )
+                    .order_by(Requirement.id)
+                    .with_for_update()
+                    .execution_options(populate_existing=True)
+                )
+            )
+        else:
+            active = self.repo.active_requirements(version.id)
         blocking = [
             r for r in active if RequirementStatus(r.status) != _PUBLISHABLE_REQUIREMENT_STATE
         ]
@@ -51,6 +67,39 @@ class PublishCheckService:
                 "blocking_requirements": [
                     {"id": r.id, "requirement_no": r.requirement_no, "status": str(r.status)}
                     for r in blocking
+                ],
+            }
+        )
+
+        participants_query = (
+            select(RequirementParticipant)
+            .where(
+                RequirementParticipant.requirement_id.in_([r.id for r in active]),
+                RequirementParticipant.discipline == "DEVELOPMENT",
+            )
+            .order_by(RequirementParticipant.requirement_id, RequirementParticipant.user_id)
+        )
+        if lock:
+            participants_query = participants_query.with_for_update().execution_options(
+                populate_existing=True
+            )
+        participants = list(self.db.scalars(participants_query))
+        unconfirmed = []
+        for requirement in active:
+            developers = [p for p in participants if p.requirement_id == requirement.id]
+            if not developers or any(p.completed_at is None for p in developers):
+                unconfirmed.append(requirement)
+        checks.append(
+            {
+                "type": "DEVELOPMENT_COMPLETION_CHECK",
+                "passed": not unconfirmed,
+                "message": "全部开发人员已本人确认完成"
+                if not unconfirmed
+                else f"存在 {len(unconfirmed)} 个需求未由全部开发人员确认完成。"
+                "未分配开发人员也不能发布",
+                "blocking_requirements": [
+                    {"id": r.id, "requirement_no": r.requirement_no, "status": str(r.status)}
+                    for r in unconfirmed
                 ],
             }
         )
@@ -70,7 +119,8 @@ class PublishCheckService:
 
     @staticmethod
     def blocking_requirements(result: dict) -> list[dict]:
+        blockers = {}
         for check in result["checks"]:
-            if check["type"] == "REQUIREMENT_STATUS_CHECK":
-                return check["blocking_requirements"]
-        return []
+            for requirement in check["blocking_requirements"]:
+                blockers[requirement["id"]] = requirement
+        return list(blockers.values())

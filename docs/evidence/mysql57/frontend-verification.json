@@ -1,0 +1,12 @@
+{
+  "vitest_files": 47,
+  "vitest_tests": 320,
+  "api_type_parity": "PASS",
+  "vue_typecheck": "PASS",
+  "vite_build": "PASS",
+  "bundle_gate": "PASS",
+  "largest_js_kib": 273.7,
+  "npm_audit": "0 vulnerabilities",
+  "npm_production_audit": "0 vulnerabilities",
+  "frontend_source_changes": false
+}

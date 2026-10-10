@@ -1,0 +1,9 @@
+.env.runtime
+.env.migration
+mysql-client.cnf
+images.env
+tls/*
+!tls/README.md
+*.sql
+!runtime-grants.sql
+*.tar

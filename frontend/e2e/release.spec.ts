@@ -74,6 +74,9 @@ test('Phase 7 real restricted users: presence, conflict, publish, notification a
   const adminToken = (await adminLogin.json()).access_token as string
   const permissions: { id: number; code: string; deprecated: boolean }[] = await api(request, adminToken, 'GET', '/roles/permissions')
   const suffix = randomUUID().slice(0, 8)
+  const roles: { id: number; code: string; is_system: boolean }[] = await api(request, adminToken, 'GET', '/roles')
+  const developerRole = roles.find(role => role.code === 'DEVELOPER' && role.is_system)!
+  expect(developerRole).toBeDefined()
   async function user(name: string, scope: 'SELF' | 'ALL', codes: string[]) {
     const role = await api(request, adminToken, 'POST', '/roles', {
       code: `P7_${name}_${suffix}`, name: `P7 ${name}`, data_scope: scope,
@@ -81,7 +84,8 @@ test('Phase 7 real restricted users: presence, conflict, publish, notification a
     })
     const password = randomUUID()
     const username = `p7-${name}-${suffix}`
-    const created = await api(request, adminToken, 'POST', '/users', { username, display_name: `P7 ${name}`, password, role_ids: [role.id] })
+    const roleIds = ['A', 'B'].includes(name) ? [role.id, developerRole.id] : [role.id]
+    const created = await api(request, adminToken, 'POST', '/users', { username, display_name: `P7 ${name}`, password, role_ids: roleIds })
     const pair = await request.post('/api/v1/auth/login', { data: { username, password } })
     expect(pair.status()).toBe(200)
     const changed = await api(request, (await pair.json()).access_token, 'POST', '/auth/change-password', {
@@ -210,7 +214,33 @@ test('Phase 7 real restricted users: presence, conflict, publish, notification a
     await pageA.getByRole('dialog', { name: '添加需求' }).getByRole('button', { name: '添加', exact: true }).click()
     expect((await relation).status()).toBe(200)
     await pageB.reload()
-    for (const label of ['开始开发', '提测', '完成']) await status(pageB, label, `/requirements/${requirement.id}`)
+    await pageB.getByRole('button', { name: '开始开发', exact: true }).click()
+    const stageDialog = pageB.getByRole('dialog', { name: '开始开发', exact: true })
+    for (const name of ['P7 A', 'P7 B']) {
+      await stageDialog.locator('.assignee-select input').fill(name)
+      await pageB.getByRole('option', { name, exact: true }).click()
+      await stageDialog.locator('.el-dialog__header').click()
+    }
+    const started = pageB.waitForResponse(r => r.url().endsWith(`/requirements/${requirement.id}/start-stage`) && r.request().method() === 'POST')
+    await stageDialog.getByRole('button', { name: '确定', exact: true }).click()
+    expect((await started).status()).toBe(200)
+    await expect(stageDialog).toHaveCount(0)
+    await status(pageB, '提测', `/requirements/${requirement.id}`)
+    await expect(pageB.getByRole('button', { name: '完成', exact: true })).toBeDisabled()
+    for (const developer of [pageA, pageB]) {
+      await developer.goto(`/#/requirements/${requirement.id}`)
+      // The second account still has the pre-confirmation revision; refresh before its own CAS write.
+      const rosterRead = developer.waitForResponse(r => r.url().endsWith(`/requirements/${requirement.id}/collaborators`) && r.request().method() === 'GET')
+      await developer.reload()
+      expect((await rosterRead).status()).toBe(200)
+      const confirmation = developer.waitForResponse(r => r.url().endsWith(`/requirements/${requirement.id}/development-completion`) && r.request().method() === 'POST')
+      await developer.getByRole('button', { name: '确认本人开发完成', exact: true }).click()
+      expect((await confirmation).status()).toBe(200)
+      if (developer === pageA) await expect(developer.getByRole('button', { name: '完成', exact: true })).toBeDisabled()
+    }
+    await expect(pageB.getByText('开发完成确认：2 / 2 人')).toBeVisible()
+    await status(pageB, '完成', `/requirements/${requirement.id}`)
+    await pageA.goto(`/#/versions/${version.id}`)
     for (const label of ['开始开发', '提测', '待发布']) await status(pageA, label, `/versions/${version.id}`)
     await pageA.getByRole('button', { name: '发布', exact: true }).click()
     const publishDialog = pageA.getByRole('dialog', { name: '发布版本' })
@@ -227,6 +257,12 @@ test('Phase 7 real restricted users: presence, conflict, publish, notification a
     await expect(pageA.getByText('发布检查未通过', { exact: true })).toBeVisible()
     await expect(pageA.getByRole('dialog', { name: '数据已被其他用户修改' })).toHaveCount(0)
     await expect(publishDialog).toBeVisible()
+    const reset = await api(request, a.token, 'GET', `/requirements/${requirement.id}/collaborators`)
+    expect(reset.development_completions.every((p: { completed_at: string | null }) => p.completed_at === null)).toBeTruthy()
+    for (const developer of [a, b]) {
+      const confirmed = await api(request, developer.token, 'POST', `/requirements/${requirement.id}/development-completion`, { revision: reopened.revision })
+      reopened = { ...reopened, revision: confirmed.revision }
+    }
     for (const next of ['TESTING', 'DONE']) reopened = await api(request, a.token, 'PATCH', `/requirements/${requirement.id}/status`, { status: next, revision: reopened.revision })
     await pageA.reload()
     await pageA.getByRole('button', { name: '发布', exact: true }).click()

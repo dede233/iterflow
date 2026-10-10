@@ -28,6 +28,7 @@ export const REQUIREMENT_STATUSES = [
   { value: 'DRAFT', label: '草稿' },
   { value: 'CONFIRMED', label: '已确认' },
   { value: 'PLANNED', label: '已排期' },
+  { value: 'DESIGNING', label: '设计中' },
   { value: 'DEVELOPING', label: '开发中' },
   { value: 'TESTING', label: '测试中' },
   { value: 'DONE', label: '已完成' },
@@ -46,6 +47,7 @@ export interface ReqStatusAction {
   target: ManualRequirementStatus
   label: string
   needsReason: boolean
+  startsStage?: boolean
 }
 
 // Human-settable transitions keyed by current status (mirrors backend).
@@ -60,7 +62,13 @@ const TRANSITIONS: Record<string, ReqStatusAction[]> = {
     { target: 'CANCELED', label: '取消', needsReason: false },
   ],
   PLANNED: [
-    { target: 'DEVELOPING', label: '开始开发', needsReason: false },
+    { target: 'DESIGNING', label: '开始设计', needsReason: false, startsStage: true },
+    { target: 'DEVELOPING', label: '开始开发', needsReason: false, startsStage: true },
+    { target: 'PAUSED', label: '暂停', needsReason: false },
+    { target: 'CANCELED', label: '取消', needsReason: false },
+  ],
+  DESIGNING: [
+    { target: 'DEVELOPING', label: '开始开发', needsReason: false, startsStage: true },
     { target: 'PAUSED', label: '暂停', needsReason: false },
     { target: 'CANCELED', label: '取消', needsReason: false },
   ],
@@ -75,6 +83,7 @@ const TRANSITIONS: Record<string, ReqStatusAction[]> = {
   ],
   DONE: [{ target: 'DEVELOPING', label: '重新开发', needsReason: true }],
   PAUSED: [
+    { target: 'DESIGNING', label: '恢复设计', needsReason: false },
     { target: 'CONFIRMED', label: '恢复到已确认', needsReason: false },
     { target: 'PLANNED', label: '恢复到已排期', needsReason: false },
     { target: 'DEVELOPING', label: '恢复开发', needsReason: false },
@@ -96,6 +105,7 @@ export function requirementStatusTagType(status: string): string {
       DRAFT: 'info',
       CONFIRMED: 'primary',
       PLANNED: 'primary',
+      DESIGNING: 'primary',
       DEVELOPING: 'primary',
       TESTING: 'warning',
       DONE: 'success',

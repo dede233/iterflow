@@ -1,0 +1,27 @@
+{
+  "scope": "isolated local only; no remote actions this change",
+  "host_architecture": "arm64",
+  "docker_context": "colima-iterflow-mysql57",
+  "emulation": "x86_64 QEMU TCG on arm64 Mac, 2 CPU / 3 GiB independent VM",
+  "container": "/iterflow-mysql57-portable-db",
+  "project": "iterflow-mysql57-portable",
+  "port": 57358,
+  "volume_names": [
+    "iterflow-mysql57-portable_portable-db"
+  ],
+  "mysql": {
+    "version": "5.7.44-log",
+    "vendor": "MySQL Community Server (GPL)",
+    "global_large_prefix": 0,
+    "global_innodb_strict": 0,
+    "session_innodb_strict": 1,
+    "global_sql_mode": "",
+    "session_sql_mode": "ONLY_FULL_GROUP_BY,STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION",
+    "global_timezone": "+08:00",
+    "session_timezone": "+00:00",
+    "log_bin": 1,
+    "trust_function_creators": 1
+  },
+  "mysql_image_id": "sha256:4bc6bc963e6d8443453676cae56536f4b8156d78bae03c0145cbe47c2aad73bb",
+  "remote_verified": false
+}

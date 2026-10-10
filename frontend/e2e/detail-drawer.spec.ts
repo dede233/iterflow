@@ -50,6 +50,7 @@ for (const width of [1280, 390]) {
             data_scope: 'ALL', role_ids: [1], permission_codes: ['*'],
           }
         } else if (path === '/notifications/unread-count') response = { unread_count: 0 }
+        else if (/^\/requirements\/[78]\/collaborators$/.test(path)) response = { revision: 1, owner: null, developers: [], designers: [], development_completions: [] }
         else if (path === '/systems') response = { systems: [], modules: [] }
         else if (path === entry.path) response = { items: [entry.item(7), entry.item(8)], total: 2, page: 2, page_size: 20 }
         else if (path === '/releases') response = { items: [], total: 0, page: 1, page_size: 20 }
@@ -111,6 +112,7 @@ for (const width of [1280, 390]) {
         const json = (body: unknown) => route.fulfill({ status: 200, json: body })
         if (path === '/auth/me') return json({ id: 1, username: 'admin', display_name: '管理员', status: 'ACTIVE', revision: 1, must_change_password: false, data_scope: 'ALL', role_ids: [1], permission_codes: ['*'] })
         if (path === '/notifications/unread-count') return json({ unread_count: 0 })
+        if (path === '/requirements/7/collaborators') return json({ revision: Number(item.revision), owner: null, developers: [], designers: [], development_completions: [] })
         if (path === '/systems') return json({ systems: [], modules: [] })
         if (path.startsWith('/editing/')) return json({ existing_editor: null })
         if (path === entry.path) {

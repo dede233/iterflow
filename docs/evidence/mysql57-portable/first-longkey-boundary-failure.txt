@@ -1,0 +1,10 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+________________ test_overlong_key_cannot_be_silently_truncated ________________
+tools/mysql57-portable/test_file_keys.py:155: in test_overlong_key_cannot_be_silently_truncated
+    with pytest.raises(DBAPIError):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE DBAPIError
+=========================== short test summary info ============================
+FAILED tools/mysql57-portable/test_file_keys.py::test_overlong_key_cannot_be_silently_truncated
+1 failed, 2 deselected in 0.61s

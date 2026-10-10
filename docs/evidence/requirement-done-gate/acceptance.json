@@ -1,0 +1,77 @@
+{
+  "scope": "Local DONE transition must have nonempty, fully personally confirmed development roster",
+  "branch": "codex/requirement-collaboration",
+  "implementation_base": "d0f9412f1bb5bda1303dcf9f13ac9838d1ef489b",
+  "mysql": {
+    "version": "5.7.44",
+    "first_full_run": {
+      "passed": 63,
+      "failed": 1,
+      "skipped": 0
+    },
+    "first_failure": "Backup/restore used default Docker context with a stopped namesake container; SQL tests used the dedicated MySQL VM",
+    "corrected_context": "colima-iterflow-mysql57",
+    "failed_test_retry": {
+      "passed": 1,
+      "deselected": 63,
+      "skipped": 0
+    },
+    "focused_completion_and_done": {
+      "passed": 3,
+      "deselected": 61,
+      "skipped": 0
+    },
+    "all_64_scenarios_covered": true
+  },
+  "postgres": {
+    "full_passed": 391,
+    "full_skipped": 1,
+    "skip_reason": "Existing optional S3 endpoint not configured",
+    "required_real_postgres_passed": 56,
+    "required_skipped": 0
+  },
+  "frontend": {
+    "passed": 335,
+    "files": 48,
+    "type_parity": "PASS",
+    "build": "PASS",
+    "bundle": "PASS",
+    "largest_js_kib": 273.7
+  },
+  "static": {
+    "ruff": "PASS",
+    "format": "PASS",
+    "mypy_files": 99,
+    "compileall": "PASS"
+  },
+  "browser": {
+    "result": "PASS",
+    "requirement_id": 14,
+    "checks": [
+      "0/2: product button disabled, product/admin API bypass 409, state/revision unchanged",
+      "1/2: partial confirmation still blocks DONE",
+      "2/2: product can mark DONE after both developers confirm themselves",
+      "Rework clears all acknowledgements and restores DONE gate"
+    ],
+    "pageerrors": []
+  },
+  "fresh_self_review": {
+    "result": "PASS",
+    "independent": false,
+    "checks": [
+      "Revision CAS precedes DONE completion read",
+      "Requirement parent lock held across check, audit and commit",
+      "Personal completion and roster changes serialize with DONE",
+      "Denied and injected failure writes roll back status/revision/audit/notifications",
+      "Frontend readiness fails closed during roster refresh/failure",
+      "Released schemas and migrations unchanged",
+      "Historical DONE records not silently rewritten"
+    ]
+  },
+  "database_migration": "None",
+  "remote_database_access": false,
+  "online_upgrade": false,
+  "branch_ci": "Not run",
+  "new_deployment_package": "Not built",
+  "logs": "data/done-gate-qa (local synthetic test artifacts, not committed)"
+}

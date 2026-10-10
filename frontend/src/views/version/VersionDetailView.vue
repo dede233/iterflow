@@ -551,9 +551,12 @@ onMounted(load)
     <!-- status dialog -->
     <el-dialog v-model="statusDialog" :title="currentAction?.label ?? '状态变更'" width="min(480px, 92vw)" destroy-on-close>
       <el-form label-position="top">
-        <el-form-item label="原因" :required="currentAction?.needsReason">
+        <el-form-item v-if="currentAction?.needsReason" label="原因" required>
           <el-input v-model="statusReason" type="textarea" :rows="3" />
         </el-form-item>
+        <p v-if="currentAction && !currentAction.needsReason">
+          确认将版本状态改为「{{ versionStatusLabel[currentAction.target] }}」？
+        </p>
       </el-form>
       <template #footer>
         <el-button @click="statusDialog = false">取消</el-button>

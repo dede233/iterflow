@@ -138,6 +138,32 @@ BASE_ROLES = {
             }
         ),
     ),
+    "DEVELOPER": BaseRoleDefinition(
+        name="开发人员",
+        data_scope=DataScope.SELF,
+        permissions=frozenset(
+            {
+                "dashboard.view",
+                "rd.requirement.view",
+                "rd.requirement.status",
+                "rd.version.view",
+                "rd.release.view",
+            }
+        ),
+    ),
+    "DESIGNER": BaseRoleDefinition(
+        name="设计人员",
+        data_scope=DataScope.SELF,
+        permissions=frozenset(
+            {
+                "dashboard.view",
+                "rd.requirement.view",
+                "rd.requirement.status",
+                "rd.version.view",
+                "rd.release.view",
+            }
+        ),
+    ),
     "SUPER_ADMIN": BaseRoleDefinition(
         name="超级管理员",
         data_scope=DataScope.ALL,

@@ -1,0 +1,179 @@
+import { mount, flushPromises } from '@vue/test-utils'
+import { beforeEach, expect, it, vi } from 'vitest'
+import ElementPlus from 'element-plus'
+const mocks = vi.hoisted(() => ({ read: vi.fn(), replace: vi.fn(), options: vi.fn(), latest: vi.fn(), can: vi.fn(), confirm: vi.fn(), userId: 2 }))
+vi.mock('@/api/requirementCollaboration', () => ({ confirmDevelopmentCompletion: mocks.confirm, getCollaborators: mocks.read, updateCollaboratorGroup: mocks.replace, listAssigneeOptions: mocks.options }))
+vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ user: { id: mocks.userId } }) }))
+vi.mock('@/api/requirements', () => ({ getRequirement: mocks.latest }))
+vi.mock('@/composables/usePermission', () => ({ usePermission: () => ({ can: mocks.can }) }))
+vi.mock('@/composables/useResponsive', () => ({ useResponsive: () => ({ isMobile: false }) }))
+import Panel from './RequirementCollaboratorsPanel.vue'
+import Selector from './RequirementAssigneeSelect.vue'
+import ConflictDialog from './RevisionConflictDialog.vue'
+const developer = { user_id: 2, display_name: '开发甲', can_develop: true, can_design: false }
+const designer = { user_id: 3, display_name: '设计乙', can_develop: false, can_design: true }
+const initial = { revision: 8, owner: null, developers: [developer], designers: [designer], development_completions: [{ user_id: 2, completed_at: null }] }
+beforeEach(() => {
+  vi.resetAllMocks()
+  mocks.userId = 2
+  mocks.confirm.mockResolvedValue({ ...initial, revision: 9, development_completions: [{ user_id: 2, completed_at: '2026-10-10T01:00:00Z' }] })
+  mocks.read.mockResolvedValue(initial)
+  mocks.replace.mockResolvedValue({ ...initial, revision: 9 })
+  mocks.options.mockResolvedValue({ items: [developer], total: 1, page: 1, page_size: 50 })
+  mocks.can.mockReturnValue(true)
+})
+async function panel(status = 'DEVELOPING') {
+  const wrapper = mount(Panel, { props: { requirementId: 42, revision: 8, status }, global: { plugins: [ElementPlus], directives: { loading: {} } }, attachTo: document.body })
+  await flushPromises()
+  return wrapper
+}
+it('shows participant names without granting assignment or user management', async () => {
+  mocks.can.mockReturnValue(false)
+  const wrapper = await panel()
+  expect(wrapper.text()).toContain('开发甲')
+  expect(wrapper.text()).toContain('设计乙')
+  expect(wrapper.text()).toContain('未分配')
+  expect(wrapper.text()).not.toContain('设置总负责人')
+  expect(mocks.options).not.toHaveBeenCalled()
+  wrapper.unmount()
+})
+it('submits only the owner with the fresh revision and preserves other duties', async () => {
+  const wrapper = await panel()
+  mocks.read.mockResolvedValue({ ...initial, revision: 10 })
+  await wrapper.findAll('button').find(b => b.text() === '设置总负责人')!.trigger('click')
+  await flushPromises()
+  const selectors = wrapper.findAllComponents(Selector)
+  expect(selectors).toHaveLength(1)
+  selectors[0]!.vm.$emit('update:modelValue', 7)
+  await flushPromises()
+  document.querySelectorAll<HTMLButtonElement>('button').forEach(b => { if (b.textContent?.trim() === '保存分工') b.click() })
+  await flushPromises()
+  expect(mocks.replace).toHaveBeenCalledWith(42, { kind: 'OWNER', revision: 10, owner_id: 7 })
+  expect(wrapper.emitted('updated')).toHaveLength(1)
+  wrapper.unmount()
+})
+it('shows a conflict without retrying or overwriting selected duties', async () => {
+  const wrapper = await panel()
+  await wrapper.findAll('button').find(b => b.text() === '设置总负责人')!.trigger('click')
+  await flushPromises()
+  mocks.replace.mockRejectedValue({ response: { status: 409, data: { code: 40910, data: { current_revision: 9, current_updated_at: '2026-10-10T01:00:00Z', current_updated_by: 7 } } } })
+  mocks.latest.mockResolvedValue({ title: '最新需求', status: 'CONFIRMED', priority: 'P1', revision: 9 })
+  document.querySelectorAll<HTMLButtonElement>('button').forEach(b => { if (b.textContent?.trim() === '保存分工') b.click() })
+  await flushPromises()
+  expect(wrapper.findComponent(ConflictDialog).props('visible')).toBe(true)
+  expect(mocks.replace).toHaveBeenCalledTimes(1)
+  expect(wrapper.emitted('updated')).toBeUndefined()
+  expect(wrapper.findAllComponents(Selector)[0]!.props('modelValue')).toBe(null)
+  wrapper.unmount()
+})
+it('keeps failed reads visible and allows retry', async () => {
+  mocks.read.mockRejectedValueOnce(new Error('network'))
+  const wrapper = await panel()
+  expect(wrapper.text()).toContain('协作人员加载失败')
+  await wrapper.findAll('button').find(b => b.text().includes('重试'))!.trigger('click')
+  await flushPromises()
+  expect(wrapper.text()).toContain('开发甲')
+  wrapper.unmount()
+})
+it('ignores stale autocomplete responses and paginates using the current keyword', async () => {
+  const deferred = () => { let resolve!: (value: any) => void; const promise = new Promise<any>(r => { resolve = r }); return { promise, resolve } }
+  const first = deferred(), second = deferred()
+  mocks.options.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise)
+  const wrapper = mount(Selector, { props: { modelValue: [], kind: 'DEVELOPER', selected: [] }, global: { plugins: [ElementPlus] } })
+  const remote = wrapper.findComponent({ name: 'ElSelect' }).props('remoteMethod') as (keyword: string) => Promise<void>
+  void remote('旧'); void remote('新')
+  second.resolve({ items: [developer], total: 51, page: 1, page_size: 50 })
+  await flushPromises()
+  first.resolve({ items: [designer], total: 1, page: 1, page_size: 50 })
+  await flushPromises()
+  expect(wrapper.findAllComponents({ name: 'ElOption' }).map(o => o.props('label'))).toEqual(['开发甲'])
+  mocks.options.mockResolvedValue({ items: [{ ...developer, user_id: 4, display_name: '开发乙' }], total: 51, page: 2, page_size: 50 })
+  await wrapper.findAll('button').find(b => b.text() === '加载更多候选人员')!.trigger('click')
+  await flushPromises()
+  expect(mocks.options).toHaveBeenLastCalledWith('DEVELOPER', '新', 2)
+  expect(wrapper.findAllComponents({ name: 'ElOption' }).map(o => o.props('label'))).toEqual(['开发甲', '开发乙'])
+  wrapper.unmount()
+})
+
+it('adjusts only designers in the design phase', async () => {
+  const wrapper = await panel('DESIGNING')
+  expect(wrapper.text()).not.toContain('调整开发人员')
+  await wrapper.findAll('button').find(b => b.text() === '调整设计人员')!.trigger('click')
+  await flushPromises()
+  const selectors = wrapper.findAllComponents(Selector)
+  expect(selectors).toHaveLength(1)
+  expect(selectors[0]!.props('kind')).toBe('DESIGNER')
+  document.querySelectorAll<HTMLButtonElement>('button').forEach(b => { if (b.textContent?.trim() === '保存分工') b.click() })
+  await flushPromises()
+  expect(mocks.replace).toHaveBeenCalledWith(42, { kind: 'DESIGN', revision: 8, user_ids: [3] })
+  wrapper.unmount()
+})
+it('does not send an empty active-stage roster', async () => {
+  const wrapper = await panel()
+  await wrapper.findAll('button').find(b => b.text() === '调整开发人员')!.trigger('click')
+  await flushPromises()
+  wrapper.findComponent(Selector).vm.$emit('update:modelValue', [])
+  await flushPromises()
+  document.querySelectorAll<HTMLButtonElement>('button').forEach(b => { if (b.textContent?.trim() === '保存分工') b.click() })
+  await flushPromises()
+  expect(mocks.replace).not.toHaveBeenCalled()
+  wrapper.unmount()
+})
+
+it('allows only a pending developer to confirm their own completion', async () => {
+  const wrapper = await panel()
+  expect(wrapper.text()).toContain('0 / 1 人')
+  await wrapper.findAll('button').find(b => b.text() === '确认本人开发完成')!.trigger('click')
+  await flushPromises()
+  expect(mocks.confirm).toHaveBeenCalledWith(42, 8)
+  expect(wrapper.text()).toContain('1 / 1 人')
+  expect(wrapper.text()).not.toContain('确认本人开发完成')
+  expect(wrapper.emitted('updated')).toHaveLength(1)
+  wrapper.unmount()
+})
+it('does not grant an administrator or designer the ability to confirm for someone else', async () => {
+  mocks.userId = 3
+  const wrapper = await panel()
+  expect(wrapper.text()).toContain('待确认')
+  expect(wrapper.text()).not.toContain('确认本人开发完成')
+  expect(mocks.confirm).not.toHaveBeenCalled()
+  wrapper.unmount()
+})
+it('keeps a stale completion conflict visible without retrying', async () => {
+  mocks.confirm.mockRejectedValue({ response: { status: 409, data: { code: 40910, data: { current_revision: 9 } } } })
+  mocks.latest.mockResolvedValue({ title: '并发确认', status: 'DEVELOPING', priority: 'P1', revision: 9 })
+  const wrapper = await panel()
+  await wrapper.findAll('button').find(b => b.text() === '确认本人开发完成')!.trigger('click')
+  await flushPromises()
+  expect(wrapper.findComponent(ConflictDialog).props('visible')).toBe(true)
+  expect(mocks.confirm).toHaveBeenCalledTimes(1)
+  expect(wrapper.text()).toContain('0 / 1 人')
+  wrapper.unmount()
+})
+
+it.each([
+  ['empty', { ...initial, developers: [], development_completions: [] }, false],
+  ['pending', initial, false],
+  ['missing confirmation', { ...initial, development_completions: [] }, false],
+  ['all confirmed', { ...initial, development_completions: [{ user_id: 2, completed_at: '2026-10-10T01:00:00Z' }] }, true],
+] as const)('reports completion readiness: %s', async (_label, roster, ready) => {
+  mocks.read.mockResolvedValue(roster)
+  const wrapper = await panel('TESTING')
+  expect(wrapper.emitted('completion-ready')?.at(-1)).toEqual([ready])
+  wrapper.unmount()
+})
+it('revokes completion readiness during a refresh and after a failed read', async () => {
+  mocks.read.mockResolvedValue({ ...initial, development_completions: [{ user_id: 2, completed_at: '2026-10-10T01:00:00Z' }] })
+  const wrapper = await panel('TESTING')
+  expect(wrapper.emitted('completion-ready')?.at(-1)).toEqual([true])
+  let reject!: (error: Error) => void
+  mocks.read.mockReturnValue(new Promise((_resolve, no) => { reject = no }))
+  await wrapper.setProps({ revision: 9 })
+  await flushPromises()
+  expect(wrapper.emitted('completion-ready')?.at(-1)).toEqual([false])
+  reject(new Error('network'))
+  await flushPromises()
+  expect(wrapper.emitted('completion-ready')?.at(-1)).toEqual([false])
+  expect(wrapper.text()).toContain('协作人员加载失败')
+  wrapper.unmount()
+})

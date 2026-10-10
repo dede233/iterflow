@@ -56,6 +56,41 @@
         }
       }
     },
+    "AssigneeOption": {
+      "title": "AssigneeOption",
+      "properties": {
+        "user_id": {
+          "title": "用户 ID"
+        },
+        "display_name": {
+          "title": "显示名称"
+        },
+        "can_develop": {
+          "title": "可分配开发职责"
+        },
+        "can_design": {
+          "title": "可分配设计职责"
+        }
+      }
+    },
+    "AssigneeOptionsPage": {
+      "title": "AssigneeOptionsPage",
+      "properties": {
+        "items": {
+          "title": "人员列表",
+          "items": {}
+        },
+        "total": {
+          "title": "人员总数"
+        },
+        "page": {
+          "title": "当前页码"
+        },
+        "page_size": {
+          "title": "每页条数"
+        }
+      }
+    },
     "AttachmentOut": {
       "title": "AttachmentOut",
       "description": "Business-facing attachment metadata. Never exposes storage_key/path.",
@@ -672,6 +707,29 @@
     },
     "DataScope": {
       "title": "DataScope"
+    },
+    "DeveloperCompletion": {
+      "title": "DeveloperCompletion",
+      "properties": {
+        "user_id": {
+          "title": "开发人员"
+        },
+        "completed_at": {
+          "title": "本人完成确认时间",
+          "anyOf": [
+            {},
+            {}
+          ]
+        }
+      }
+    },
+    "DevelopmentCompletionRequest": {
+      "title": "DevelopmentCompletionRequest",
+      "properties": {
+        "revision": {
+          "title": "数据版本"
+        }
+      }
     },
     "EditHeartbeat": {
       "title": "EditHeartbeat",
@@ -1413,6 +1471,78 @@
         }
       }
     },
+    "RequirementCollaboratorGroupUpdate": {
+      "title": "调整阶段分工",
+      "properties": {
+        "revision": {
+          "title": "数据版本"
+        },
+        "kind": {
+          "title": "分工类型"
+        },
+        "owner_id": {
+          "title": "总负责人",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "user_ids": {
+          "title": "参与人员",
+          "items": {}
+        }
+      }
+    },
+    "RequirementCollaboratorsOut": {
+      "title": "RequirementCollaboratorsOut",
+      "properties": {
+        "revision": {
+          "title": "修订号"
+        },
+        "owner": {
+          "title": "总负责人",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "developers": {
+          "title": "开发人员",
+          "items": {}
+        },
+        "designers": {
+          "title": "设计人员",
+          "items": {}
+        },
+        "development_completions": {
+          "title": "开发完成确认",
+          "items": {}
+        }
+      }
+    },
+    "RequirementCollaboratorsUpdate": {
+      "title": "RequirementCollaboratorsUpdate",
+      "properties": {
+        "revision": {
+          "title": "修订号"
+        },
+        "owner_id": {
+          "title": "总负责人 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "developer_ids": {
+          "title": "开发人员 ID 列表",
+          "items": {}
+        },
+        "designer_ids": {
+          "title": "设计人员 ID 列表",
+          "items": {}
+        }
+      }
+    },
     "RequirementCreate": {
       "title": "RequirementCreate",
       "properties": {
@@ -1574,6 +1704,21 @@
     },
     "RequirementSource": {
       "title": "RequirementSource"
+    },
+    "RequirementStageStart": {
+      "title": "开始需求阶段",
+      "properties": {
+        "revision": {
+          "title": "数据版本"
+        },
+        "status": {
+          "title": "阶段状态"
+        },
+        "user_ids": {
+          "title": "参与人员",
+          "items": {}
+        }
+      }
     },
     "RequirementStatus": {
       "title": "RequirementStatus"
@@ -2323,7 +2468,7 @@
           "Feedback"
         ],
         "summary": "编辑反馈",
-        "description": "必须携带 revision；过期 revision 返回 409。"
+        "description": "需要反馈编辑权限、数据范围和最新 revision；旧 revision 返回 409。CLOSED 仍可编辑保存，但保存不会重开；再次提交需另行重开到 NEW，填写非空原因，保留原编号与历史。"
       }
     },
     "/feedbacks/{feedback_id}/status": {
@@ -2332,7 +2477,7 @@
           "Feedback"
         ],
         "summary": "反馈状态变更",
-        "description": "集中式状态机；必须携带 revision；非法迁移返回 409；ManualFeedbackStatus 之外的值返回 422。"
+        "description": "集中式状态机、权限与数据范围检查；必须携带 revision，旧 revision 或非法迁移返回 409。受理无需 reason；重复需可见且非自身的 duplicate_of_id，无需 reason；无法复现、关闭和重开需非空 reason。CLOSED/DUPLICATE/CANNOT_REPRODUCE 可重开 NEW，重开重复反馈清除重复指向。事务产出状态不可人工设置，非法枚举返回 422。"
       }
     },
     "/feedbacks/{feedback_id}/attachments": {
@@ -2398,6 +2543,47 @@
         "description": "普通创建需要 rd.requirement.create。指定 version_id 与 version_revision 时还需要 rd.version.edit 和 rd.requirement.view。目标版本同时受 Version DataScope 限制。"
       }
     },
+    "/requirements/assignee-options": {
+      "get": {
+        "tags": [
+          "requirements"
+        ],
+        "summary": "选择需求协作人员",
+        "description": "需要 rd.requirement.edit。仅返回启用且具备需求查看权限的个人 ID、显示名和可分配职责，不公开联系方式或管理资料。开发候选需启用 DEVELOPER 或 DEVELOPMENT_LEAD 角色，设计候选需启用 DESIGNER 角色。"
+      }
+    },
+    "/requirements/{requirement_id}/collaborators": {
+      "get": {
+        "tags": [
+          "requirements"
+        ],
+        "summary": "查看需求协作人员",
+        "description": "需要需求查看权限及该需求数据范围。"
+      },
+      "put": {
+        "tags": [
+          "requirements"
+        ],
+        "summary": "分配需求协作人员",
+        "description": "需要 rd.requirement.edit 及该需求数据范围。原子替换总负责人、开发和设计人员；revision CAS，旧 revision 返回 409。有效人员必须启用且拥有需求查看权限；开发、设计需对应启用角色。失败时关联、通知与审计一起回滚。同人兼任不同职责只收到一条事件通知。"
+      },
+      "patch": {
+        "tags": [
+          "requirements"
+        ],
+        "summary": "单独调整负责人或当前阶段分工",
+        "description": "需要需求编辑权限及数据范围；kind OWNER 单独修改 owner_id，DEVELOPMENT 或 DESIGN 单独替换 user_ids，保留其他分工。设计仅在 DESIGNING 调整；开发可在 DEVELOPING/TESTING/DONE 调整且不能清空。保留人员的确认保留，新增或移除后重加人员待确认；已完成需求调整开发名单可能再次阻断发布。revision CAS、审计和通知原子提交。"
+      }
+    },
+    "/requirements/{requirement_id}/development-completion": {
+      "post": {
+        "tags": [
+          "requirements"
+        ],
+        "summary": "开发人员确认本人开发完成",
+        "description": "仅当前绑定、启用且具有开发资格的人员本人可确认；需要需求查看、状态权限与数据范围。请求体仅 revision，不能指定他人或管理员代确认。DEVELOPING/TESTING/DONE 可补充确认；每次进入开发清空确认，新增或重加人员待确认。DONE 与发布均要求非空开发名单、全部本人确认；确认本身不会自动推进 DONE。确认时间、revision CAS、审计和通知原子提交。"
+      }
+    },
     "/requirements/{requirement_id}": {
       "get": {
         "tags": [
@@ -2410,6 +2596,15 @@
           "Requirement"
         ],
         "summary": "编辑需求"
+      }
+    },
+    "/requirements/{requirement_id}/start-stage": {
+      "post": {
+        "tags": [
+          "requirements"
+        ],
+        "summary": "开始设计或开发并分配阶段人员",
+        "description": "同时需要需求编辑、状态权限及数据范围。仅允许 PLANNED 到 DESIGNING/DEVELOPING 或 DESIGNING 到 DEVELOPING；选择 1–100 名对应角色的启用且具备需求查看权限的人员，不允许重复。仅替换当前阶段分工，设计进入开发后保留设计分工。人员、状态、一次 revision CAS、审计、通知原子提交；进入 DEVELOPING 清空既有开发确认。"
       }
     },
     "/requirements/{requirement_id}/feedbacks": {
@@ -2426,7 +2621,8 @@
         "tags": [
           "Requirement"
         ],
-        "summary": "变更需求状态"
+        "summary": "变更需求状态",
+        "description": "进入 DONE 必须已分配至少一名开发人员且全部本人确认完成；未满足时返回业务冲突 409，状态、revision、审计和通知均不提交。旧 revision 仍返回 CAS 冲突。"
       }
     },
     "/versions": {
@@ -2455,7 +2651,8 @@
         "tags": [
           "Version"
         ],
-        "summary": "编辑版本"
+        "summary": "编辑版本",
+        "description": "需要版本编辑权限、数据范围和最新 revision。当前实现允许已发布版本修改 name、owner_id、planned_release_date、description；不修改版本号、状态、需求清单或已有 Release 的说明、结果与发布时间。基础信息修改写审计，旧 revision 返回 409；前端编辑页面提供名称、计划日期和说明。"
       }
     },
     "/versions/{version_id}/status": {
@@ -2507,7 +2704,7 @@
           "Version"
         ],
         "summary": "发布前检查",
-        "description": "运行与 publish 相同的前置检查；通过返回 200，未通过返回 409 并含 checks。"
+        "description": "运行与 publish 相同的前置检查；通过返回 200，未通过返回 409 并含 checks。 新增 DEVELOPMENT_COMPLETION_CHECK：每条有效需求至少一名开发人员且全部已本人确认；未确认的需求作为发布阻断项。"
       }
     },
     "/versions/{version_id}/publish": {
@@ -2516,7 +2713,7 @@
           "Version"
         ],
         "summary": "发布版本",
-        "description": "只允许 READY，且 V1.5 仅支持成功发布。Release(SUCCESS) + Version + DONE Requirement -> ONLINE + Feedback -> ONLINE 同一业务事务。"
+        "description": "需要发布权限及数据范围；版本必须 READY，全部有效关联需求 DONE，每条需求至少一名开发且全部本人确认。实际发布重新校验并锁定相关业务行。Release(SUCCESS)、Version、Requirement/Feedback ONLINE、通知和审计同一事务提交；中途异常全部回滚。重复发布返回 409；普通状态接口不能进入 RELEASED。"
       }
     },
     "/releases": {

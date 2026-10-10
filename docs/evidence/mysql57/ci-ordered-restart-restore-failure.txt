@@ -1,0 +1,184 @@
+mysql57	Real package startup, least privilege, main chain, restart and backup	﻿2026-10-09T17:35:07.9338863Z ##[group]Run python tools/smoke-mysql-package.py --bundle "$RUNNER_TEMP/iterflow-mysql57-package"
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:07.9339618Z ^[[36;1mpython tools/smoke-mysql-package.py --bundle "$RUNNER_TEMP/iterflow-mysql57-package"^[[0m
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:07.9402909Z shell: /usr/bin/bash -e {0}
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:07.9403162Z env:
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:07.9403439Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.15/x64
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:07.9403899Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib/pkgconfig
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:07.9404332Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:07.9404730Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:07.9405129Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:07.9405526Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:07.9405862Z ##[endgroup]
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:08.4777494Z  Network iterflow-mysql57-package-7a93b1dad3b9_default  Creating
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:08.5163725Z  Network iterflow-mysql57-package-7a93b1dad3b9_default  Created
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:08.5164980Z  Volume "iterflow-mysql57-package-7a93b1dad3b9_uploads"  Creating
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:08.5179191Z  Volume "iterflow-mysql57-package-7a93b1dad3b9_uploads"  Created
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:09.4552263Z {"version": "5.7.44", "vendor": "MySQL Community Server (GPL)", "table_count": 0, "scope": "read-only local/pre-deploy checks; full acceptance required separately"}
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:10.8959706Z INFO  [alembic.runtime.migration] Context impl MySQLImpl.
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:10.8960501Z INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:10.9018560Z INFO  [alembic.runtime.migration] Running upgrade  -> mysql57_0001, MySQL 5.7 standalone baseline; PostgreSQL revisions remain immutable.
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:12.5348252Z {"version": "5.7.44", "vendor": "MySQL Community Server (GPL)", "table_count": 22, "scope": "read-only local/pre-deploy checks; full acceptance required separately"}
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:13.9832830Z seed complete, admin=pkg-admin
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:14.2493968Z  Volume "iterflow-mysql57-package-7a93b1dad3b9_redisdata"  Creating
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:14.2509704Z  Volume "iterflow-mysql57-package-7a93b1dad3b9_redisdata"  Created
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:14.2517153Z  Container iterflow-mysql57-package-7a93b1dad3b9-redis-1  Creating
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:14.2754727Z  Container iterflow-mysql57-package-7a93b1dad3b9-redis-1  Created
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:14.2755606Z  Container iterflow-mysql57-package-7a93b1dad3b9-api-1  Creating
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:14.2860263Z  Container iterflow-mysql57-package-7a93b1dad3b9-api-1  Created
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:14.2897026Z  Container iterflow-mysql57-package-7a93b1dad3b9-web-1  Creating
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:14.2970312Z  Container iterflow-mysql57-package-7a93b1dad3b9-web-1  Created
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:14.2989629Z  Container iterflow-mysql57-package-7a93b1dad3b9-redis-1  Starting
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:14.4104990Z  Container iterflow-mysql57-package-7a93b1dad3b9-redis-1  Started
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:14.4105903Z  Container iterflow-mysql57-package-7a93b1dad3b9-redis-1  Waiting
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:19.9117210Z  Container iterflow-mysql57-package-7a93b1dad3b9-redis-1  Healthy
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:19.9118284Z  Container iterflow-mysql57-package-7a93b1dad3b9-api-1  Starting
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:20.0504411Z  Container iterflow-mysql57-package-7a93b1dad3b9-api-1  Started
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:20.0505016Z  Container iterflow-mysql57-package-7a93b1dad3b9-api-1  Waiting
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:31.0517858Z  Container iterflow-mysql57-package-7a93b1dad3b9-api-1  Healthy
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:31.0518567Z  Container iterflow-mysql57-package-7a93b1dad3b9-web-1  Starting
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:31.1850117Z  Container iterflow-mysql57-package-7a93b1dad3b9-web-1  Started
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:31.1852308Z  Container iterflow-mysql57-package-7a93b1dad3b9-web-1  Waiting
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:31.1862417Z  Container iterflow-mysql57-package-7a93b1dad3b9-redis-1  Waiting
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:31.1863558Z  Container iterflow-mysql57-package-7a93b1dad3b9-api-1  Waiting
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:31.6874329Z  Container iterflow-mysql57-package-7a93b1dad3b9-redis-1  Healthy
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:31.6882723Z  Container iterflow-mysql57-package-7a93b1dad3b9-api-1  Healthy
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:41.6868922Z  Container iterflow-mysql57-package-7a93b1dad3b9-web-1  Healthy
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:42.5437842Z  Container iterflow-mysql57-package-7a93b1dad3b9-web-1  Stopping
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:42.6579816Z  Container iterflow-mysql57-package-7a93b1dad3b9-web-1  Stopped
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:42.6580987Z  Container iterflow-mysql57-package-7a93b1dad3b9-api-1  Stopping
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:43.1285239Z  Container iterflow-mysql57-package-7a93b1dad3b9-api-1  Stopped
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:43.2125475Z  Container iterflow-mysql57-package-7a93b1dad3b9-redis-1  Restarting
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:43.4635450Z  Container iterflow-mysql57-package-7a93b1dad3b9-redis-1  Started
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:43.5590538Z  Container iterflow-mysql57-package-7a93b1dad3b9-redis-1  Running
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:43.5603988Z  Container iterflow-mysql57-package-7a93b1dad3b9-redis-1  Waiting
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:48.5616473Z  Container iterflow-mysql57-package-7a93b1dad3b9-redis-1  Healthy
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:48.5617234Z  Container iterflow-mysql57-package-7a93b1dad3b9-api-1  Starting
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:48.7023865Z  Container iterflow-mysql57-package-7a93b1dad3b9-api-1  Started
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:48.7024695Z  Container iterflow-mysql57-package-7a93b1dad3b9-api-1  Waiting
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:59.7036270Z  Container iterflow-mysql57-package-7a93b1dad3b9-api-1  Healthy
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:59.7037287Z  Container iterflow-mysql57-package-7a93b1dad3b9-web-1  Starting
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:59.8270685Z  Container iterflow-mysql57-package-7a93b1dad3b9-web-1  Started
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:59.8273005Z  Container iterflow-mysql57-package-7a93b1dad3b9-api-1  Waiting
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:59.8274040Z  Container iterflow-mysql57-package-7a93b1dad3b9-web-1  Waiting
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:35:59.8274738Z  Container iterflow-mysql57-package-7a93b1dad3b9-redis-1  Waiting
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:36:00.3288697Z  Container iterflow-mysql57-package-7a93b1dad3b9-redis-1  Healthy
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:36:00.3289660Z  Container iterflow-mysql57-package-7a93b1dad3b9-api-1  Healthy
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:36:10.3292029Z  Container iterflow-mysql57-package-7a93b1dad3b9-web-1  Healthy
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:36:10.4533496Z  Container iterflow-mysql57-package-7a93b1dad3b9-web-1  Stopping
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:36:10.5719498Z  Container iterflow-mysql57-package-7a93b1dad3b9-web-1  Stopped
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:36:10.5720851Z  Container iterflow-mysql57-package-7a93b1dad3b9-api-1  Stopping
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:36:11.0891777Z  Container iterflow-mysql57-package-7a93b1dad3b9-api-1  Stopped
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:36:11.1741313Z  Container iterflow-mysql57-package-7a93b1dad3b9-redis-1  Restarting
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:36:11.4220957Z  Container iterflow-mysql57-package-7a93b1dad3b9-redis-1  Started
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:36:11.5185283Z  Container iterflow-mysql57-package-7a93b1dad3b9-redis-1  Running
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:36:11.5196316Z  Container iterflow-mysql57-package-7a93b1dad3b9-redis-1  Waiting
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:36:16.5215099Z  Container iterflow-mysql57-package-7a93b1dad3b9-redis-1  Healthy
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:36:16.5216269Z  Container iterflow-mysql57-package-7a93b1dad3b9-api-1  Starting
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:36:16.7293332Z  Container iterflow-mysql57-package-7a93b1dad3b9-api-1  Started
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:36:16.7294247Z  Container iterflow-mysql57-package-7a93b1dad3b9-api-1  Waiting
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:36:27.7308649Z  Container iterflow-mysql57-package-7a93b1dad3b9-api-1  Healthy
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:36:27.7309714Z  Container iterflow-mysql57-package-7a93b1dad3b9-web-1  Starting
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:36:27.8527552Z  Container iterflow-mysql57-package-7a93b1dad3b9-web-1  Started
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:36:27.8528946Z  Container iterflow-mysql57-package-7a93b1dad3b9-web-1  Waiting
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:36:27.8530093Z  Container iterflow-mysql57-package-7a93b1dad3b9-redis-1  Waiting
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:36:27.8531436Z  Container iterflow-mysql57-package-7a93b1dad3b9-api-1  Waiting
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:36:28.3555500Z  Container iterflow-mysql57-package-7a93b1dad3b9-redis-1  Healthy
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:36:28.3561811Z  Container iterflow-mysql57-package-7a93b1dad3b9-api-1  Healthy
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:36:38.3539167Z  Container iterflow-mysql57-package-7a93b1dad3b9-web-1  Healthy
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:36:38.4869140Z  Container iterflow-mysql57-package-7a93b1dad3b9-web-1  Stopping
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:36:38.6064948Z  Container iterflow-mysql57-package-7a93b1dad3b9-web-1  Stopped
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:36:38.6066016Z  Container iterflow-mysql57-package-7a93b1dad3b9-api-1  Stopping
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:36:39.1004762Z  Container iterflow-mysql57-package-7a93b1dad3b9-api-1  Stopped
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:36:39.1862561Z  Container iterflow-mysql57-package-7a93b1dad3b9-redis-1  Restarting
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:36:39.4686452Z  Container iterflow-mysql57-package-7a93b1dad3b9-redis-1  Started
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:36:39.5742586Z  Container iterflow-mysql57-package-7a93b1dad3b9-redis-1  Running
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:36:39.5752577Z  Container iterflow-mysql57-package-7a93b1dad3b9-redis-1  Waiting
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:36:44.5769622Z  Container iterflow-mysql57-package-7a93b1dad3b9-redis-1  Healthy
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:36:44.5770580Z  Container iterflow-mysql57-package-7a93b1dad3b9-api-1  Starting
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:36:44.7192949Z  Container iterflow-mysql57-package-7a93b1dad3b9-api-1  Started
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:36:44.7194229Z  Container iterflow-mysql57-package-7a93b1dad3b9-api-1  Waiting
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:36:55.7208851Z  Container iterflow-mysql57-package-7a93b1dad3b9-api-1  Healthy
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:36:55.7209758Z  Container iterflow-mysql57-package-7a93b1dad3b9-web-1  Starting
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:36:55.8415536Z  Container iterflow-mysql57-package-7a93b1dad3b9-web-1  Started
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:36:55.8416502Z  Container iterflow-mysql57-package-7a93b1dad3b9-web-1  Waiting
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:36:55.8417306Z  Container iterflow-mysql57-package-7a93b1dad3b9-redis-1  Waiting
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:36:55.8417877Z  Container iterflow-mysql57-package-7a93b1dad3b9-api-1  Waiting
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:36:56.3433729Z  Container iterflow-mysql57-package-7a93b1dad3b9-redis-1  Healthy
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:36:56.3434416Z  Container iterflow-mysql57-package-7a93b1dad3b9-api-1  Healthy
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:06.3426541Z  Container iterflow-mysql57-package-7a93b1dad3b9-web-1  Healthy
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:06.4835295Z  Container iterflow-mysql57-package-7a93b1dad3b9-api-1  Stopping
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:06.9779260Z  Container iterflow-mysql57-package-7a93b1dad3b9-api-1  Stopped
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:07.9259973Z  Container iterflow-mysql57-package-7a93b1dad3b9-redis-1  Waiting
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:08.4277545Z  Container iterflow-mysql57-package-7a93b1dad3b9-redis-1  Healthy
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:08.4278522Z  Container iterflow-mysql57-package-7a93b1dad3b9-api-1  Starting
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:08.5639787Z  Container iterflow-mysql57-package-7a93b1dad3b9-api-1  Started
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:08.6761962Z  Container iterflow-mysql57-package-7a93b1dad3b9-redis-1  Running
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:08.6763114Z  Container iterflow-mysql57-package-7a93b1dad3b9-api-1  Running
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:08.6764082Z  Container iterflow-mysql57-package-7a93b1dad3b9-web-1  Running
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:08.6774636Z  Container iterflow-mysql57-package-7a93b1dad3b9-redis-1  Waiting
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:09.1795442Z  Container iterflow-mysql57-package-7a93b1dad3b9-redis-1  Healthy
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:09.1796595Z  Container iterflow-mysql57-package-7a93b1dad3b9-api-1  Waiting
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:19.6812759Z  Container iterflow-mysql57-package-7a93b1dad3b9-api-1  Healthy
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:19.6813484Z  Container iterflow-mysql57-package-7a93b1dad3b9-redis-1  Waiting
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:19.6814063Z  Container iterflow-mysql57-package-7a93b1dad3b9-api-1  Waiting
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:19.6814609Z  Container iterflow-mysql57-package-7a93b1dad3b9-web-1  Waiting
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:20.1832116Z  Container iterflow-mysql57-package-7a93b1dad3b9-web-1  Healthy
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:20.1833215Z  Container iterflow-mysql57-package-7a93b1dad3b9-redis-1  Healthy
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:20.1834011Z  Container iterflow-mysql57-package-7a93b1dad3b9-api-1  Healthy
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:20.2970914Z  Container iterflow-mysql57-package-7a93b1dad3b9-web-1  Stopping
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:20.4382811Z  Container iterflow-mysql57-package-7a93b1dad3b9-web-1  Stopped
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:20.4383725Z  Container iterflow-mysql57-package-7a93b1dad3b9-api-1  Stopping
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:20.9091440Z  Container iterflow-mysql57-package-7a93b1dad3b9-api-1  Stopped
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:20.9977463Z  Network iterflow-mysql57-package-7a93b1dad3b9-restore_default  Creating
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:21.0347618Z  Network iterflow-mysql57-package-7a93b1dad3b9-restore_default  Created
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:21.6840827Z  Volume "iterflow-mysql57-package-7a93b1dad3b9-restore_uploads"  Creating
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:21.6853026Z  Volume "iterflow-mysql57-package-7a93b1dad3b9-restore_uploads"  Created
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:21.9227320Z Traceback (most recent call last):
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:21.9237965Z   File "<string>", line 1, in <module>
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:21.9238808Z   File "/usr/local/lib/python3.12/tarfile.py", line 2323, in extractall
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:21.9239643Z     self._extract_one(tarinfo, path, set_attrs=not tarinfo.isdir(),
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:21.9240554Z   File "/usr/local/lib/python3.12/tarfile.py", line 2432, in _extract_one
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:21.9241463Z     self._handle_fatal_error(e)
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:21.9242155Z   File "/usr/local/lib/python3.12/tarfile.py", line 2426, in _extract_one
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:21.9244291Z     self._extract_member(tarinfo, os.path.join(path, tarinfo.name),
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:21.9249767Z   File "/usr/local/lib/python3.12/tarfile.py", line 2517, in _extract_member
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:21.9250533Z     self.makedir(tarinfo, targetpath)
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:21.9251259Z   File "/usr/local/lib/python3.12/tarfile.py", line 2549, in makedir
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:21.9254894Z     os.mkdir(targetpath)
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:21.9255505Z OSError: [Errno 30] Read-only file system: '/app/data/uploads/uploads'
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:21.9909423Z
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:22.0729275Z  Volume iterflow-mysql57-package-7a93b1dad3b9-restore_uploads  Removing
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:22.0741389Z  Network iterflow-mysql57-package-7a93b1dad3b9-restore_default  Removing
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:22.0745572Z  Volume iterflow-mysql57-package-7a93b1dad3b9-restore_uploads  Removed
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:22.1607840Z  Network iterflow-mysql57-package-7a93b1dad3b9-restore_default  Removed
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:22.3757729Z  Container iterflow-mysql57-package-7a93b1dad3b9-web-1  Stopping
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:22.3760723Z  Container iterflow-mysql57-package-7a93b1dad3b9-web-1  Stopped
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:22.3761969Z  Container iterflow-mysql57-package-7a93b1dad3b9-web-1  Removing
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:22.3809262Z  Container iterflow-mysql57-package-7a93b1dad3b9-web-1  Removed
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:22.3813344Z  Container iterflow-mysql57-package-7a93b1dad3b9-api-1  Stopping
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:22.3814004Z  Container iterflow-mysql57-package-7a93b1dad3b9-api-1  Stopped
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:22.3814664Z  Container iterflow-mysql57-package-7a93b1dad3b9-api-1  Removing
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:22.3861042Z  Container iterflow-mysql57-package-7a93b1dad3b9-api-1  Removed
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:22.3862809Z  Container iterflow-mysql57-package-7a93b1dad3b9-redis-1  Stopping
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:22.4845187Z  Container iterflow-mysql57-package-7a93b1dad3b9-redis-1  Stopped
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:22.4849434Z  Container iterflow-mysql57-package-7a93b1dad3b9-redis-1  Removing
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:22.4915543Z  Container iterflow-mysql57-package-7a93b1dad3b9-redis-1  Removed
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:22.4919814Z  Volume iterflow-mysql57-package-7a93b1dad3b9_redisdata  Removing
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:22.4922420Z  Volume iterflow-mysql57-package-7a93b1dad3b9_uploads  Removing
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:22.4925556Z  Network iterflow-mysql57-package-7a93b1dad3b9_default  Removing
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:22.4933647Z  Volume iterflow-mysql57-package-7a93b1dad3b9_redisdata  Removed
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:22.4942554Z  Volume iterflow-mysql57-package-7a93b1dad3b9_uploads  Removed
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:22.5912160Z  Network iterflow-mysql57-package-7a93b1dad3b9_default  Removed
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:22.6521427Z Traceback (most recent call last):
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:22.6522567Z   File "/home/runner/work/iterflow/iterflow/tools/smoke-mysql-package.py", line 573, in <module>
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:22.6523479Z     restored_proof = restore_package(
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:22.6523935Z                      ^^^^^^^^^^^^^^^^
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:22.6525234Z   File "/home/runner/work/iterflow/iterflow/tools/smoke-mysql-package.py", line 150, in restore_package
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:22.6526076Z     dc(
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:22.6526780Z   File "/home/runner/work/iterflow/iterflow/tools/smoke-mysql-package.py", line 124, in dc
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:22.6527718Z     return subprocess.run([*compose, *arguments], check=True, **kwargs)
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:22.6528384Z            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:22.6529228Z   File "/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/subprocess.py", line 571, in run
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:22.6699112Z     raise CalledProcessError(retcode, process.args,
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:22.6703830Z subprocess.CalledProcessError: Command '['docker', 'compose', '-p', 'iterflow-mysql57-package-7a93b1dad3b9-restore', '--env-file', '/home/runner/work/iterflow/iterflow/data/mysql57-package-smoke/isolated-xqw1wb8j/restore/images.env', '-f', '/home/runner/work/iterflow/iterflow/data/mysql57-package-smoke/isolated-xqw1wb8j/restore/compose.yml', '-f', '/home/runner/work/iterflow/iterflow/data/mysql57-package-smoke/isolated-xqw1wb8j/restore/test-network.yml', '--profile', 'ops', 'run', '--rm', '-T', '--entrypoint', 'python', '-v', 'iterflow-mysql57-package-7a93b1dad3b9-restore_uploads:/app/data/uploads', 'storage-backup', '-c', "import sys,tarfile; tarfile.open(fileobj=sys.stdin.buffer,mode='r|').extractall('/app/data',filter='data')"]' returned non-zero exit status 1.
+mysql57	Real package startup, least privilege, main chain, restart and backup	2026-10-09T17:37:22.7172836Z ##[error]Process completed with exit code 1.

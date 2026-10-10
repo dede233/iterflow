@@ -28,6 +28,7 @@ from app.models.entities import (
     Release,
     Requirement,
     RequirementFeedback,
+    RequirementParticipant,
     Role,
     RolePermission,
     User,
@@ -206,7 +207,7 @@ def test_full_v1_business_lifecycle_over_http_and_postgresql(
     assert planned_response.status_code == 200, planned_response.text
     current_requirement = planned_response.json()
     assert current_requirement["status"] == "PLANNED"
-    for status in ("DEVELOPING", "TESTING", "DONE"):
+    for status in ("DEVELOPING", "TESTING"):
         response = client.patch(
             f"/api/v1/requirements/{requirement['id']}/status",
             headers=headers,
@@ -214,6 +215,36 @@ def test_full_v1_business_lifecycle_over_http_and_postgresql(
         )
         assert response.status_code == 200, response.text
         current_requirement = response.json()
+
+    with Session(engine) as db:
+        developer_role = db.scalar(select(Role).where(Role.code == "DEVELOPER"))
+        if db.get(UserRole, (user_id, developer_role.id)) is None:
+            db.add(UserRole(user_id=user_id, role_id=developer_role.id))
+            db.commit()
+    roster = client.patch(
+        f"/api/v1/requirements/{requirement['id']}/collaborators",
+        headers=headers,
+        json={
+            "kind": "DEVELOPMENT",
+            "revision": current_requirement["revision"],
+            "user_ids": [user_id],
+        },
+    )
+    assert roster.status_code == 200, roster.text
+    completed = client.post(
+        f"/api/v1/requirements/{requirement['id']}/development-completion",
+        headers=headers,
+        json={"revision": roster.json()["revision"]},
+    )
+    assert completed.status_code == 200, completed.text
+
+    response = client.patch(
+        f"/api/v1/requirements/{requirement['id']}/status",
+        headers=headers,
+        json={"status": "DONE", "revision": completed.json()["revision"]},
+    )
+    assert response.status_code == 200, response.text
+    current_requirement = response.json()
 
     for status in ("DEVELOPING", "TESTING", "READY"):
         response = client.patch(
@@ -376,6 +407,14 @@ def test_concurrent_publish_has_one_http_winner_and_no_duplicate_side_effects(
                     is_primary=True,
                 ),
             ]
+        )
+        session.add(
+            RequirementParticipant(
+                requirement_id=requirement.id,
+                user_id=user_id,
+                discipline="DEVELOPMENT",
+                completed_at=datetime.now(UTC),
+            )
         )
         session.commit()
         version_id = version.id

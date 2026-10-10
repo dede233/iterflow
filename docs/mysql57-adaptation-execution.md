@@ -1,0 +1,182 @@
+# MySQL 5.7 本地适配执行记录
+
+基线 master：`a38081af9097f691c8289e9301951a0360ea0af7`。
+分支：`codex/mysql-57-adaptation`；工作目录：
+`/Users/xiaweiyi/Developer/worktrees/iterflow/mysql-57-adaptation`。
+本次授权覆盖 MySQL 驱动、独立迁移、兼容实现及测试；不延续历史发布授权。
+不操作远程数据库、服务器、Preview、master、历史迁移、tag 或 Release。
+
+## 阶段 0 — 最小关系保护验证
+
+本机 Docker Server 为 linux/arm64，MySQL 显式采用 `platform: linux/amd64` 模拟运行。
+镜像 mysql:5.7.44，registry digest：
+`sha256:4bc6bc963e6d8443453676cae56536f4b8156d78bae03c0145cbe47c2aad73bb`。
+新容器、端口 127.0.0.1:57357、新卷；临时测试库仅使用 `iterflow_proof_` 随机前缀。
+不使用或导入已有环境数据。测试密码在忽略的 `.env`（权限 600）。
+
+双向即时触发器方案被实测否决：
+
+1. 一致性 guard 使用普通 SELECT 时，REPEATABLE READ 旧快照能够让指针不一致的 UPDATE 提交。
+2. 改为 FOR UPDATE 当前读后，合法关系写入失败（MySQL 1442）；触发器链不得锁定原写入表。
+
+两个否决场景均保留为可重复证据测试，测试 PASS 表示确认该方案不可采用。
+
+通过的候选：MySQL 采用单一关系事实，`current_version_id` / `main_requirement_id`
+从有效/主关系实时派生；不存储第二份可写指针。关联仍为 RequirementFeedback /
+VersionRequirement，历史关系仍保留，业务基数和 API 字段语义不变。
+生成列把 true 的父 ID 映射到唯一键、false 映射 NULL；外键保护实体存在性，
+INSERT/UPDATE 触发器执行布尔域约束。所有表 InnoDB。
+PostgreSQL 继续保留实体指针列与提交时延迟检查，历史迁移不修改。
+
+保证差异是物理写法与检查时点，不是已提交关系保障：PG 允许事务内先写指针，
+提交时核对两份数据；MySQL 只有关联事实，派生指针无法单独赋值或出现背离。
+直接 SQL 写旧指针列失败，写只读投影失败；重复有效关系/无效外键/非法布尔值/
+覆盖生成列均被 DB 拒绝。合法多步迁移仍在同一个事务内，外部读者不见中间状态，
+异常回滚保留旧关系。ORM 必须使用 SQL 表达式派生属性，不能把 API 字段作为物理列更新。
+
+`tools/mysql57-proof/test_proof.py`：15 passed；初次执行 14 passed / 1 failed，
+原因是只读 VIEW 的预期错误码写成 1348，真实为 1288；修正断言后通过。
+证据：`docs/evidence/mysql57/phase0-pytest.txt`。
+
+Fresh Self-Review：完成，没有用 Service 检查代替 DB 约束；没有信任可伪造的会话标记。
+候选验证仅覆盖最小模型，尚不代表应用完成适配。阶段 1–4 未完成，禁止部署声明。
+
+## 阶段 1 — 独立迁移、驱动、类型与约束
+
+新增 PyMySQL 1.2.3（固定版本及 PyPI SHA256）；PostgreSQL 驱动保留。
+独立 `alembic-mysql.ini` / `mysql57_0001` 使用冻结的显式 DDL，21 张业务表；
+不调用 create_all，不 stamp，不修改任何 `alembic/versions/` 历史脚本。
+默认 Alembic 路径拒绝 MySQL URL，避免误运行 PostgreSQL 历史迁移。
+空库检查拒绝已有表/视图；MySQL 非事务 DDL 失败保留部分库，禁止自动 stamp/续跑。
+本地初次 FK DDL 失败库 `iterflow_mysql57_app` 保留；调整关系 FK 为 RESTRICT 后，
+新库 `iterflow_mysql57_app2` 迁移及 seed 通过，后续类型/防绕过增强在随机新库重验。
+仅 seed 基础角色、权限和新管理员，没有已有账号/附件/数据导入。
+
+MySQL 使用 JSON、UTC DATETIME(6)、utf8mb4；会话设置 UTC、READ COMMITTED、严格模式。
+布尔/枚举由 INSERT/UPDATE 触发器执行，不能依赖 5.7 不执行的 CHECK。
+所有业务表 INSERT/UPDATE/DELETE 触发器拒绝 foreign_key_checks/unique_checks=0 的写会话。
+运行账号必须无 DDL/TRIGGER 权限；迁移账号分离。运行 readiness 不要求 TRIGGER 权限，
+由迁移后预检检查所有 63 个写保护触发器，runtime 检查表集/head/关系唯一索引。
+
+自然唯一标识采用 VARBINARY + UTF-8 codec，保持 PostgreSQL 的大小写和尾空格精确相等；
+数据库触发器验证 UTF-8/字符数，文本搜索显式转字符类型。
+MySQL 关系 FK 使用 RESTRICT（生成列 base 列不支持 CASCADE）；较 PG 更严格地拒绝物理删除
+有关联的实体，历史关系保留。当前业务 API 不物理删除这些实体，移除/迁版行为保持。
+
+Fresh Self-Review：识别并补齐会话关闭外键/唯一检查的绕过；不依赖应用约定。
+目前迁移版本尚在本地开发，后续需要应用全量验收与 linux/amd64 镜像验证。
+
+## 阶段 2 — 事务与并发兼容
+
+MySQL 发布在同一事务内按 ID 锁定合格对象，以 status + revision 条件更新并核对 rowcount，
+随后只对实际更新的 ID 写审计和通知；PostgreSQL RETURNING 路径保持。
+CAS 更新仍使用 WHERE revision、成功 +1；只把 MySQL 派生指针交给关联事实，
+不会将 SQL 表达式作为物理 UPDATE 目标。
+MySQL 转需求先锁定反馈进行 current read，之后仍使用 revision CAS，防止并发 CREATE_NEW
+在验证旧 revision 前产生重复业务编号候选。
+死锁/锁超时/数据库约束冲突映射为 HTTP 409（40940），不自动重放业务写入。
+数据库异常不向响应暴露 SQL/连接凭据。
+
+真实 MySQL 应用验收当前 39 passed（含 13 个日期用例）；0 skipped。
+覆盖主链、Auth/首次改密/Refresh rotation/logout、创建角色/用户、RBAC/DataScope、中文字面搜索、
+文件上传/下载/删除、旧 revision 40910、多反馈归并/迁版历史、并发转换/迁版/发布、
+发布写入完成后的故障回滚、数据库枚举/布尔/指针/外键/唯一检查关闭绕过。
+对应证据：`docs/evidence/mysql57/mysql-acceptance.txt`。
+PostgreSQL 早期完整回归 375 passed、1 skipped（真实 S3 由单独门禁覆盖），
+后续最终代码仍须复跑；不宣称此结果已覆盖所有最终变更。
+Fresh Self-Review：发布候选读取与 UPDATE 均在同一事务内；未弱化 revision 或添加业务模型/状态。
+阶段 3 的持续运行、备份恢复、最终回归与 CI 尚未完成；阶段 4 尚未开始。
+
+## 阶段 3 — 回归、真实数据库 CI 与备份恢复
+
+新增真实死锁 1213、锁超时 1205 验证，均回滚并映射 40940；运行账号最小权限验证通过：
+21 业务表 DML + Alembic 表只读，不允许 DROP TRIGGER / TRUNCATE，关闭检查后的写入仍被拒绝。
+完整 15 步主链使用真实登录、新角色/新用户、首次改密、负责人/优先级与第二人旧 revision。
+隔离库 dump/restore 含触发器与本地附件，恢复后校验派生关系、附件授权读取和 63 个 guard。
+没有真实环境 restore，没有将测试数据放入交付物。
+
+最终 PostgreSQL 本地回归：375 passed / 1 skipped（真实 S3 单独 CI）；PG-only 37 passed / 0 skipped。
+前端：47 文件 / 320 tests、契约类型、构建、273.7 KiB 门禁、dev/prod audit 均 PASS。
+锁文件 hash 强制安装、pip check、生产依赖审计、Ruff / Mypy / 编译通过。
+历史 PostgreSQL migration 不变，Alembic upgrade/check PASS，当前契约与前端业务文件未改。
+
+本地旧 ARM Colima + amd64 用户态模拟曾有完整 42 passed / 0 skipped，含三次连续重启、
+独立备份恢复；新增最小权限用例单独 PASS。但最新完整运行为 39 passed / 1 failed / 4 errors：
+MySQL 容器在正常关机后的 entrypoint 阶段退出 139（非 OOM），后续数据库不可连接。
+健康检查 mysqladmin 也曾返回 139，尚无充分证据确定根因；不能用偶然通过覆盖该失败。
+失败日志/state 保留于 docs/evidence/mysql57/mysql-emulation-*。
+正在创建独立 x86_64 QEMU Colima profile，不更改/重启现有 default profile 或 Preview。
+完整本地重启门禁和 branch 七项 CI 尚未全部成立，阶段 4 未开始。
+
+Fresh Self-Review：独立 DDL 显式 ROW_FORMAT=DYNAMIC；预检增加 Barracuda/large_prefix，
+防止 5.7 较早配置导致唯一键截断；guard 不依赖 runtime TRIGGER 权限。
+CI 新增真实 5.7.44 与原六项并行门禁；构建 context 排除 host node_modules/venv/密钥配置。
+同一 Agent 的 Fresh Self-Review，不称为独立审查。当前保留环境阻断，不降低验收门禁。
+
+阶段 3 Fix Loop 1：CI run 37961859119 的真实 Linux amd64 MySQL 17 proof / 43 acceptance 全 PASS，
+重启恢复通过；backend/mysql57 两个 job 失败于同一类型错误（SQLAlchemy 2.1.4 推断 list[object]）。
+明确 helper 模型类型与 list[int]，本地升级开发依赖 SQLAlchemy 2.1.4 后 Mypy 98 文件 PASS；
+生产锁仍为 2.0.54，不更改生产依赖版本。首次 CI 日志完整保留，非基础设施重跑。
+
+阶段 3 完成：a07bd9ef94cf34559a8e604f24fafca56d8b9469 的七项 branch CI 全 PASS：
+https://github.com/dede233/iterflow/actions/runs/37962404820 。
+本地独立 colima-iterflow-mysql57 为 x86_64 QEMU TCG（Mac arm64、2 CPU、3 GiB），
+全新卷 mysql:5.7.44；17 proof PASS，43 acceptance PASS / 0 skipped（165.12s），
+三次连续重启及隔离数据库/附件 restore PASS。环境元数据及备份摘要见 local-environment.json、
+backup-restore.json。旧 default ARM 用户态模拟的 139 未宣称修复；当前改用独立 CPU 模拟 VM。
+
+首次 VM 初始化需要 lima-additional-guestagents；安装后 Docker 组权限需要该新 profile 重启。
+新镜像的 /etc/resolv.conf 指向不存在的 systemd stub，dnsmasq 无法启动；只在本任务 VM 内
+替换为 DHCP 实际下发的 192.168.5.2 DNS 并重启 dnsmasq。未改 default profile。
+MySQL 镜像从本地已缓存官方镜像 save/load 到新 VM，ID/amd64 与原镜像完全相同，未导入数据库。
+Fresh Self-Review 完成：主链、关系保护、CAS、事务、权限、通知和审计均保持；无规格冲突。
+阶段 4 开始，远程版本/TLS/权限/网络仍未核实，不代表服务器部署授权或远程兼容性已验证。
+
+## 阶段 4 — linux/amd64 冻结包与真实镜像验收
+
+新增 deploy/mysql57 的外部 MySQL 空库 Compose、分离 migration/runtime 配置模板、
+最小权限 SQL、受保护备份客户端、只读附件备份及 restart.sh。不启动服务器数据库，
+不带账号密码/JWT_SECRET/Token/测试库。构建器只 git archive 已提交源，排除私密配置与本地数据，
+显式构建 linux/amd64 API/Web，并选择官方 Redis/MySQL 客户端的 amd64 digest。
+四个镜像已 save/load 到独立 x86_64 VM，ID/架构与 manifest 一致。
+
+首次备份测试揭示两个实际权限问题：5.7.44 mysqldump 默认读取 tablespace 需额外权限，
+因此使用 --no-tablespaces；本基线没有 routine，无需 --routines 全局授权。
+CI 非 root 属主的 mode 600 客户端文件不能被 cap_drop=ALL 的容器 root 读取，
+因此备份服务显式使用配置文件属主 BACKUP_UID/GID。没有放宽文件权限或授予运行账号全局权限。
+83d4f05 首次 CI 失败证据保留；c14e8ea 的七项 CI 全 PASS（37965065800），
+但该次包测试还未包含实际包内附件恢复，因此没有据此结束最终验收。
+
+增强包验收包含三次重启、真实备份导入第二个新测试库、第二个测试附件卷、恢复后 HTTP
+授权下载、ONLINE/派生版本检查、63 guard 和恢复后再备份。9137a92 的 CI 揭示恢复工具
+继承 storage-backup 的只读挂载；run -v 没有覆盖 readonly。保留失败，修复为测试 override
+中独立 storage-restore 服务，只写新测试卷；包中的备份服务仍只读，不提供自动真实恢复。
+
+本地同时发现并行启动 Web/API 时，host 代理 DNS 把暂不存在的 api alias 解析为
+198.18.8.252（proof network 是 172.18.0.0/16），Nginx 缓存错误 IP 持续 502。
+证据见 proxy-dns-diagnosis.json、package-proxy-failure.txt；其他服务失败日志另行保留。
+restart.sh 改为停止 Web/API、重启 Redis、等待 API healthy 后启动 Web；不修改前端业务。
+readiness probe 只等待 502/503/504/transport 启动窗口；业务写入及持久化断言不重试。
+e319fd7 的三次重启通过，隔离恢复仍因旧工具 readonly 失败；完整日志保留。
+d0c3716 修复测试 helper 后重跑同一离线镜像包及新七项 CI：全部 PASS。
+CI run 37967917344；七项全 success，mysql57 的实际恢复门禁成功。
+本地 verification.json：15 步主链、低权限运行、三次重启、独立库/附件卷实际恢复、
+63 个 guard、恢复后再备份全部 PASS；每次代理 readiness 均首个 probe HTTP 200。
+
+Fresh Self-Review：构建输入 backend/frontend/deploy/mysql57 从 e319fd7 到最终测试工具修复不变；
+没有删除关系约束，PG 历史/当前契约/前端业务无差异。包四镜像 linux/amd64、配置没有秘密值，
+40 个独立镜像层、32,528 文件以及证据日志秘密扫描 PASS。独立 profile 仅额外挂载本工作目录
+忽略的 data 目录，私密测试配置 700/600，完成自动清理；没有挂载主仓库或旧环境数据。
+同一 Agent Fresh Self-Review；没有独立外审声明。最终包封装必须等待完整恢复和七项 CI PASS。
+
+阶段 4 完成：最终离线 tar 276,506,214 bytes，
+SHA256 `3700531f5d77b0693a15bf707d6084eff59155982d883c673594f5437ee637b7`。
+包路径与四镜像 ID 见 mysql57-delivery.md / package-delivery.json；SHA256SUMS 和 tar
+内容逐项验证 PASS，没有真实配置、测试 DB/附件或秘密值。主仓库 clean，master a38081a 未漂移，
+现有 Preview 健康且未重启/改变。后续只提交 imports 排序和交付记录/证据，再验证最终分支 CI；
+不合并 master、不创建 tag/Release、不操作服务器或远程库。
+
+最终 Fresh Self-Review：核心状态、主链、revision、事务、Release、RBAC/DataScope/文件权限、
+审计通知、有效/主关系唯一性和历史保留均保持，API/前端契约不变；无规格冲突。
+本地适配没有剩余阻断；未知远程 5.7 patch/vendor、TLS/网络/privilege/服务器条件仍为后续
+部署前门禁，不能宣称远程兼容性已验证或可直接上线。

@@ -12,6 +12,10 @@ from app.services.storage import create_configured_storage
 def check_database() -> None:
     with engine.connect() as connection:
         connection.execute(text("SELECT 1"))
+        if engine.dialect.name == "mysql":
+            from app.core.mysql_preflight import validate_mysql
+
+            validate_mysql(connection, inspect_triggers=False)
 
 
 def check_redis() -> None:
@@ -47,7 +51,7 @@ def check_storage() -> None:
 
 def readiness_status() -> tuple[bool, dict[str, str]]:
     checks: dict[str, Callable[[], None]] = {
-        "postgresql": check_database,
+        "mysql" if engine.dialect.name == "mysql" else "postgresql": check_database,
         "redis": check_redis,
         "storage": check_storage,
     }

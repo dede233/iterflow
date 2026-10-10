@@ -1,15 +1,20 @@
 from logging.config import fileConfig
 from alembic import context
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import engine_from_config, pool, event
 from app.core.config import get_settings
 from app.core.database import Base
+from app.core import database
 from app.models import entities  # noqa: F401
 
 config = context.config
-config.set_main_option("sqlalchemy.url", get_settings().database_url)
+config.set_main_option("sqlalchemy.url", get_settings().database_url.replace("%", "%%"))
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 target_metadata = Base.metadata
+mysql_path = "mysql_versions" in config.get_main_option("version_locations", "")
+mysql_url = get_settings().database_url.startswith("mysql+")
+if mysql_path != mysql_url:
+    raise RuntimeError("Select alembic-mysql.ini for MySQL; alembic.ini is PostgreSQL-only")
 
 
 def run_migrations_offline():
@@ -20,6 +25,8 @@ def run_migrations_offline():
 
 def run_migrations_online():
     connectable = engine_from_config(config.get_section(config.config_ini_section) or {}, prefix="sqlalchemy.", poolclass=pool.NullPool)
+    if mysql_url:
+        event.listen(connectable, "connect", database.configure_mysql)
     with connectable.connect() as connection:
         context.configure(connection=connection, target_metadata=target_metadata)
         with context.begin_transaction():

@@ -14,9 +14,11 @@ from app.core.database import get_db
 from app.core.security import create_access_token
 from app.main import app
 from app.models.entities import (
+    Notification,
     OperationLog,
     Permission,
     Requirement,
+    RequirementParticipant,
     Role,
     RolePermission,
     User,
@@ -53,14 +55,25 @@ def ver_api(tmp_path: Path) -> Iterator[Fixture]:
         UserRole.__table__,
         RolePermission.__table__,
         OperationLog.__table__,
+        Notification.__table__,
         Requirement.__table__,
+        RequirementParticipant.__table__,
         Version.__table__,
         VersionRequirement.__table__,
     ):
         table.create(engine)
 
     listeners = []
-    for model in (User, Role, Permission, OperationLog, Requirement, Version, VersionRequirement):
+    for model in (
+        User,
+        Role,
+        Permission,
+        OperationLog,
+        Notification,
+        Requirement,
+        Version,
+        VersionRequirement,
+    ):
         counter = iter(range(1, 100000))
 
         def assign_id(_mapper, _connection, target, *, _counter=counter):

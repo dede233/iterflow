@@ -1,4 +1,5 @@
 from collections.abc import Iterator
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -16,10 +17,12 @@ from app.models.entities import (
     BusinessModule,
     BusinessSystem,
     Feedback,
+    Notification,
     OperationLog,
     Permission,
     Requirement,
     RequirementFeedback,
+    RequirementParticipant,
     Role,
     RolePermission,
     User,
@@ -54,16 +57,27 @@ def req_api(tmp_path: Path) -> Iterator[Fixture]:
         UserRole.__table__,
         RolePermission.__table__,
         OperationLog.__table__,
+        Notification.__table__,
         BusinessSystem.__table__,
         BusinessModule.__table__,
         Feedback.__table__,
         Requirement.__table__,
+        RequirementParticipant.__table__,
         RequirementFeedback.__table__,
     ):
         table.create(engine)
 
     listeners = []
-    for model in (User, Role, Permission, OperationLog, Feedback, Requirement, RequirementFeedback):
+    for model in (
+        User,
+        Role,
+        Permission,
+        OperationLog,
+        Notification,
+        Feedback,
+        Requirement,
+        RequirementFeedback,
+    ):
         counter = iter(range(1, 100000))
 
         def assign_id(_mapper, _connection, target, *, _counter=counter):
@@ -255,6 +269,15 @@ def test_requirement_status_machine(req_api):
     r = status("PLANNED", r.json()["revision"])
     r = status("DEVELOPING", r.json()["revision"])
     r = status("TESTING", r.json()["revision"])
+    _session.add(
+        RequirementParticipant(
+            requirement_id=rid,
+            user_id=_ids["alice"],
+            discipline="DEVELOPMENT",
+            completed_at=datetime.now(UTC),
+        )
+    )
+    _session.commit()
     r = status("DONE", r.json()["revision"])
     assert r.status_code == 200 and r.json()["status"] == "DONE"
     # DONE -> DEVELOPING requires a reason.

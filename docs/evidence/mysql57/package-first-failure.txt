@@ -1,0 +1,93 @@
+ Volume iterflow-mysql57-package-869e07046ebb_uploads Creating
+ Network iterflow-mysql57-package-869e07046ebb_default Creating
+ Volume iterflow-mysql57-package-869e07046ebb_uploads Creating
+ Network iterflow-mysql57-package-869e07046ebb_default Creating
+ Volume iterflow-mysql57-package-869e07046ebb_uploads Created
+ Volume iterflow-mysql57-package-869e07046ebb_uploads Created
+ Network iterflow-mysql57-package-869e07046ebb_default Created
+ Network iterflow-mysql57-package-869e07046ebb_default Created
+ Container iterflow-mysql57-package-869e07046ebb-migrate-run-46decc72f8c1 Creating
+ Container iterflow-mysql57-package-869e07046ebb-migrate-run-46decc72f8c1 Created
+{"version": "5.7.44", "vendor": "MySQL Community Server (GPL)", "table_count": 0, "scope": "read-only local/pre-deploy checks; full acceptance required separately"}
+ Container iterflow-mysql57-package-869e07046ebb-migrate-run-c3460a1a2adf Creating
+ Container iterflow-mysql57-package-869e07046ebb-migrate-run-c3460a1a2adf Created
+INFO  [alembic.runtime.migration] Context impl MySQLImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> mysql57_0001, MySQL 5.7 standalone baseline; PostgreSQL revisions remain immutable.
+ Container iterflow-mysql57-package-869e07046ebb-migrate-run-785a8c305a02 Creating
+ Container iterflow-mysql57-package-869e07046ebb-migrate-run-785a8c305a02 Created
+{"version": "5.7.44", "vendor": "MySQL Community Server (GPL)", "table_count": 22, "scope": "read-only local/pre-deploy checks; full acceptance required separately"}
+ Container iterflow-mysql57-package-869e07046ebb-seed-run-8b84fa6be0ae Creating
+ Container iterflow-mysql57-package-869e07046ebb-seed-run-8b84fa6be0ae Created
+seed complete, admin=pkg-admin
+ Volume iterflow-mysql57-package-869e07046ebb_redisdata Creating
+ Volume iterflow-mysql57-package-869e07046ebb_redisdata Creating
+ Volume iterflow-mysql57-package-869e07046ebb_redisdata Created
+ Volume iterflow-mysql57-package-869e07046ebb_redisdata Created
+ Container iterflow-mysql57-package-869e07046ebb-redis-1 Creating
+ Container iterflow-mysql57-package-869e07046ebb-redis-1 Created
+ Container iterflow-mysql57-package-869e07046ebb-api-1 Creating
+ Container iterflow-mysql57-package-869e07046ebb-api-1 Created
+ Container iterflow-mysql57-package-869e07046ebb-web-1 Creating
+ Container iterflow-mysql57-package-869e07046ebb-web-1 Created
+ Container iterflow-mysql57-package-869e07046ebb-redis-1 Starting
+ Container iterflow-mysql57-package-869e07046ebb-redis-1 Started
+ Container iterflow-mysql57-package-869e07046ebb-redis-1 Waiting
+ Container iterflow-mysql57-package-869e07046ebb-redis-1 Healthy
+ Container iterflow-mysql57-package-869e07046ebb-api-1 Starting
+ Container iterflow-mysql57-package-869e07046ebb-api-1 Started
+ Container iterflow-mysql57-package-869e07046ebb-api-1 Waiting
+ Container iterflow-mysql57-package-869e07046ebb-api-1 Healthy
+ Container iterflow-mysql57-package-869e07046ebb-web-1 Starting
+ Container iterflow-mysql57-package-869e07046ebb-web-1 Started
+ Container iterflow-mysql57-package-869e07046ebb-api-1 Waiting
+ Container iterflow-mysql57-package-869e07046ebb-web-1 Waiting
+ Container iterflow-mysql57-package-869e07046ebb-redis-1 Waiting
+ Container iterflow-mysql57-package-869e07046ebb-api-1 Healthy
+ Container iterflow-mysql57-package-869e07046ebb-redis-1 Healthy
+ Container iterflow-mysql57-package-869e07046ebb-web-1 Healthy
+ Container iterflow-mysql57-package-869e07046ebb-redis-1 Restarting
+ Container iterflow-mysql57-package-869e07046ebb-api-1 Restarting
+ Container iterflow-mysql57-package-869e07046ebb-web-1 Restarting
+ Container iterflow-mysql57-package-869e07046ebb-web-1 Started
+ Container iterflow-mysql57-package-869e07046ebb-redis-1 Started
+ Container iterflow-mysql57-package-869e07046ebb-api-1 Started
+ Container iterflow-mysql57-package-869e07046ebb-api-1 Running
+ Container iterflow-mysql57-package-869e07046ebb-web-1 Running
+ Container iterflow-mysql57-package-869e07046ebb-redis-1 Running
+ Container iterflow-mysql57-package-869e07046ebb-redis-1 Waiting
+ Container iterflow-mysql57-package-869e07046ebb-redis-1 Healthy
+ Container iterflow-mysql57-package-869e07046ebb-api-1 Waiting
+ Container iterflow-mysql57-package-869e07046ebb-api-1 Healthy
+ Container iterflow-mysql57-package-869e07046ebb-web-1 Waiting
+ Container iterflow-mysql57-package-869e07046ebb-redis-1 Waiting
+ Container iterflow-mysql57-package-869e07046ebb-api-1 Waiting
+ Container iterflow-mysql57-package-869e07046ebb-redis-1 Healthy
+ Container iterflow-mysql57-package-869e07046ebb-web-1 Healthy
+ Container iterflow-mysql57-package-869e07046ebb-api-1 Healthy
+ Container iterflow-mysql57-package-869e07046ebb-web-1 Stopping
+ Container iterflow-mysql57-package-869e07046ebb-web-1 Stopped
+ Container iterflow-mysql57-package-869e07046ebb-web-1 Removing
+ Container iterflow-mysql57-package-869e07046ebb-web-1 Removed
+ Container iterflow-mysql57-package-869e07046ebb-api-1 Stopping
+ Container iterflow-mysql57-package-869e07046ebb-api-1 Stopped
+ Container iterflow-mysql57-package-869e07046ebb-api-1 Removing
+ Container iterflow-mysql57-package-869e07046ebb-api-1 Removed
+ Container iterflow-mysql57-package-869e07046ebb-redis-1 Stopping
+ Container iterflow-mysql57-package-869e07046ebb-redis-1 Stopped
+ Container iterflow-mysql57-package-869e07046ebb-redis-1 Removing
+ Container iterflow-mysql57-package-869e07046ebb-redis-1 Removed
+ Volume iterflow-mysql57-package-869e07046ebb_redisdata Removing
+ Volume iterflow-mysql57-package-869e07046ebb_uploads Removing
+ Network iterflow-mysql57-package-869e07046ebb_default Removing
+ Volume iterflow-mysql57-package-869e07046ebb_uploads Removed
+ Volume iterflow-mysql57-package-869e07046ebb_redisdata Removed
+ Network iterflow-mysql57-package-869e07046ebb_default Removed
+Traceback (most recent call last):
+  File "/Users/xiaweiyi/Developer/worktrees/iterflow/mysql-57-adaptation/tools/smoke-mysql-package.py", line 373, in <module>
+    assert request("GET", download, h).content == b"package attachment"
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/xiaweiyi/Developer/worktrees/iterflow/mysql-57-adaptation/tools/smoke-mysql-package.py", line 198, in request
+    assert response.status_code == expected, (
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: GET /files/1/download: HTTP 502

@@ -1,0 +1,31 @@
+name: iterflow-mysql57-portable
+services:
+  db:
+    image: mysql:5.7.44
+    platform: linux/amd64
+    container_name: iterflow-mysql57-portable-db
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?use isolated test configuration}
+      MYSQL_DATABASE: iterflow_mysql57_proof
+    ports:
+      - '127.0.0.1:57358:3306'
+    volumes:
+      - portable-db:/var/lib/mysql
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_bin
+      - --default-time-zone=+08:00
+      - --transaction-isolation=READ-COMMITTED
+      - --sql-mode=
+      - --innodb-large-prefix=OFF
+      - --innodb-strict-mode=OFF
+      - --log-bin=mysql-bin
+      - --server-id=57
+      - --log-bin-trust-function-creators=ON
+    healthcheck:
+      test: ['CMD-SHELL', 'MYSQL_PWD="$$MYSQL_ROOT_PASSWORD" mysqladmin ping -h 127.0.0.1 -uroot --silent']
+      interval: 3s
+      timeout: 3s
+      retries: 40
+volumes:
+  portable-db:

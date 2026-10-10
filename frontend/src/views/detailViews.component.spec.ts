@@ -139,6 +139,7 @@ const feedback: Feedback = {
 
 const elementStub = { template: '<div><slot /><slot name="footer" /></div>' }
 const stubs = {
+  RequirementCollaboratorsPanel: true,
   'el-alert': { template: '<div class="alert"><slot name="title" /><slot /></div>' },
   'el-button': {
     template: '<button v-bind="$attrs" @click="$emit(\'click\', $event)"><slot /></button>',

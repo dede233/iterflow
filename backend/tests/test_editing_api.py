@@ -13,6 +13,7 @@ from app.models.entities import (
     Feedback,
     Permission,
     Requirement,
+    RequirementParticipant,
     Role,
     RolePermission,
     User,
@@ -47,6 +48,7 @@ def editing_api() -> Iterator[tuple[TestClient, dict[str, dict[str, str]]]]:
         Feedback.__table__,
         Version.__table__,
         Requirement.__table__,
+        RequirementParticipant.__table__,
     ):
         table.create(engine)
 

@@ -82,12 +82,12 @@ def migration_schema() -> Iterator[tuple[object, URL, str]]:
         get_settings.cache_clear()
 
 
-def _upgrade_head(database_url: URL) -> None:
+def _upgrade_integrity(database_url: URL) -> None:
     previous = os.environ.get("DATABASE_URL")
     os.environ["DATABASE_URL"] = database_url.render_as_string(hide_password=False)
     get_settings.cache_clear()
     try:
-        command.upgrade(_alembic_config(), "head")
+        command.upgrade(_alembic_config(), "0004_integrity")
     finally:
         if previous is None:
             os.environ.pop("DATABASE_URL", None)
@@ -195,7 +195,7 @@ def _assert_commit_rejected(session: Session, operation: object) -> None:
 
 def test_integrity_migration_round_trip_and_database_constraints(migration_schema) -> None:
     engine, scoped_url, _schema = migration_schema
-    _upgrade_head(scoped_url)
+    _upgrade_integrity(scoped_url)
 
     with engine.connect() as connection:
         assert connection.scalar(text("SELECT version_num FROM alembic_version")) == (
@@ -292,7 +292,7 @@ def test_integrity_migration_round_trip_and_database_constraints(migration_schem
         assert connection.scalar(text("SELECT version_num FROM alembic_version")) == (
             "0003_role_system_flag"
         )
-    _upgrade_head(scoped_url)
+    _upgrade_integrity(scoped_url)
     with engine.connect() as connection:
         assert connection.scalar(text("SELECT version_num FROM alembic_version")) == (
             "0004_integrity"
@@ -338,7 +338,7 @@ def test_migration_refuses_to_guess_existing_mirror_data(migration_schema) -> No
         version_id = version.id
 
     with pytest.raises(RuntimeError, match="current_version_id disagrees"):
-        _upgrade_head(scoped_url)
+        _upgrade_integrity(scoped_url)
 
     with Session(engine) as session:
         requirement = session.get(Requirement, requirement_id)

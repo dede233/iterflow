@@ -37,6 +37,7 @@ from app.schemas.version import (
 )
 from app.services.audit_service import AuditService
 from app.services.publish_check_service import PublishCheckService
+from app.services.requirement_collaboration_service import RequirementCollaborationService
 from app.services.revision_conflict import revision_conflict_data
 
 # Version states in which the requirement set is frozen (V1.5 §freeze).
@@ -295,7 +296,8 @@ class VersionService:
         self._ensure_mutable(version)
 
         previous_current_version_id = requirement.current_version_id
-        requirement.current_version_id = version_id
+        if self.db.get_bind().dialect.name != "mysql":
+            requirement.current_version_id = version_id
         requirement.status = self._planned_status(requirement.status)
         self.db.add(
             VersionRequirement(
@@ -365,6 +367,9 @@ class VersionService:
             after_version_id=version_id,
         )
         self._bump_version_revision(version, payload.version_revision, operator_id)
+        RequirementCollaborationService(self.db).notify(
+            requirement, operator_id, "版本清单已更新", "请查看最新版本归属和需求状态。"
+        )
         self.db.commit()
         self.db.refresh(version)
         return version
@@ -419,6 +424,9 @@ class VersionService:
             reason=payload.reason,
         )
         self._bump_version_revision(version, payload.version_revision, operator_id)
+        RequirementCollaborationService(self.db).notify(
+            requirement, operator_id, "版本清单已更新", "请查看最新版本归属和需求状态。"
+        )
         self.db.commit()
         self.db.refresh(version)
         return version
@@ -512,6 +520,9 @@ class VersionService:
         self._bump_version_revision(target, payload.version_revision, operator_id)
         if old_version is not None:
             self._bump_version_revision(old_version, old_version.revision, operator_id)
+        RequirementCollaborationService(self.db).notify(
+            requirement, operator_id, "已迁移版本", "请查看新的版本归属。"
+        )
         self.db.commit()
         self.db.refresh(target)
         return target
@@ -529,14 +540,19 @@ class VersionService:
         """
         # Row-lock the version so concurrent publishes serialise (the atomic
         # conditional UPDATE below is the definitive guard; SQLite ignores the lock).
-        version = self.db.scalar(select(Version).where(Version.id == version_id).with_for_update())
+        version = self.db.scalar(
+            select(Version)
+            .where(Version.id == version_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
         if not version:
             raise NotFoundError("版本不存在")
         if version.revision != payload.revision:
             raise self._version_conflict(version_id)
 
         # Centralized pre-publish checks (same checks as POST /publish/check).
-        check = PublishCheckService(self.db).evaluate(version)
+        check = PublishCheckService(self.db).evaluate(version, lock=True)
         if not check["passed"]:
             raise AppError(
                 40923,
@@ -591,21 +607,30 @@ class VersionService:
         online_requirement_ids: list[int] = []
         online_feedback_ids: list[int] = []
         if requirement_ids:
-            online_requirement_ids = list(
-                self.db.scalars(
-                    update(Requirement)
-                    .where(
-                        Requirement.id.in_(requirement_ids),
-                        Requirement.status == RequirementStatus.DONE,
-                    )
-                    .values(
-                        status=RequirementStatus.ONLINE,
-                        updated_by=operator_id,
-                        revision=Requirement.revision + 1,
-                    )
-                    .returning(Requirement.id)
-                ).all()
-            )
+            if self.db.get_bind().dialect.name == "mysql":
+                online_requirement_ids = self._mysql_online_ids(
+                    Requirement,
+                    requirement_ids,
+                    RequirementStatus.DONE,
+                    RequirementStatus.ONLINE,
+                    operator_id,
+                )
+            else:
+                online_requirement_ids = list(
+                    self.db.scalars(
+                        update(Requirement)
+                        .where(
+                            Requirement.id.in_(requirement_ids),
+                            Requirement.status == RequirementStatus.DONE,
+                        )
+                        .values(
+                            status=RequirementStatus.ONLINE,
+                            updated_by=operator_id,
+                            revision=Requirement.revision + 1,
+                        )
+                        .returning(Requirement.id)
+                    ).all()
+                )
             for rid in online_requirement_ids:
                 self.audit.log(
                     "REQUIREMENT",
@@ -622,21 +647,30 @@ class VersionService:
                 ).all()
                 if feedback_ids:
                     # Only feedbacks still awaiting release (REQUIREMENT_LINKED) go ONLINE.
-                    online_feedback_ids = list(
-                        self.db.scalars(
-                            update(Feedback)
-                            .where(
-                                Feedback.id.in_(feedback_ids),
-                                Feedback.status == FeedbackStatus.REQUIREMENT_LINKED,
-                            )
-                            .values(
-                                status=FeedbackStatus.ONLINE,
-                                updated_by=operator_id,
-                                revision=Feedback.revision + 1,
-                            )
-                            .returning(Feedback.id)
-                        ).all()
-                    )
+                    if self.db.get_bind().dialect.name == "mysql":
+                        online_feedback_ids = self._mysql_online_ids(
+                            Feedback,
+                            list(feedback_ids),
+                            FeedbackStatus.REQUIREMENT_LINKED,
+                            FeedbackStatus.ONLINE,
+                            operator_id,
+                        )
+                    else:
+                        online_feedback_ids = list(
+                            self.db.scalars(
+                                update(Feedback)
+                                .where(
+                                    Feedback.id.in_(feedback_ids),
+                                    Feedback.status == FeedbackStatus.REQUIREMENT_LINKED,
+                                )
+                                .values(
+                                    status=FeedbackStatus.ONLINE,
+                                    updated_by=operator_id,
+                                    revision=Feedback.revision + 1,
+                                )
+                                .returning(Feedback.id)
+                            ).all()
+                        )
                     for feedback in self.db.scalars(
                         select(Feedback).where(Feedback.id.in_(online_feedback_ids))
                     ).all():
@@ -670,6 +704,12 @@ class VersionService:
             "RELEASE_CREATE",
             after={"version_id": version.id, "result": ReleaseResult.SUCCESS},
         )
+        for requirement in self.db.scalars(
+            select(Requirement).where(Requirement.id.in_(online_requirement_ids))
+        ):
+            RequirementCollaborationService(self.db).notify(
+                requirement, operator_id, "已上线", f"已随版本 {version.version_no} 成功发布。"
+            )
         self.db.commit()
         self.db.refresh(release)
         return {
@@ -678,3 +718,28 @@ class VersionService:
             "released_requirement_ids": online_requirement_ids,
             "online_feedback_ids": online_feedback_ids,
         }
+
+    def _mysql_online_ids(
+        self, model: type[Requirement] | type[Feedback], candidates, before, after, operator_id
+    ) -> list[int]:
+        """Replace RETURNING with current reads and CAS under transaction row locks."""
+        rows = self.db.execute(
+            select(model.id, model.revision)
+            .where(model.id.in_(candidates), model.status == before)
+            .order_by(model.id)
+            .with_for_update()
+        ).all()
+        ids: list[int] = []
+        for entity_id, revision in rows:
+            result = self.db.execute(
+                update(model)
+                .where(model.id == entity_id, model.revision == revision, model.status == before)
+                .values(status=after, updated_by=operator_id, revision=model.revision + 1)
+                .execution_options(synchronize_session=False)
+            )
+            if cast(CursorResult[Any], result).rowcount != 1:
+                raise ConflictError("发布对象已被其他事务修改")
+            ids.append(entity_id)
+        # ORM identity-map objects used for notifications must reflect actual DB updates.
+        self.db.expire_all()
+        return ids

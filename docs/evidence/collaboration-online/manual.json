@@ -1,0 +1,14 @@
+{
+  "pages": 6,
+  "render_and_every_page_visual_review": "PASS",
+  "artifacts": {
+    "IterFlow操作手册-线上协作快照.docx": {
+      "bytes": 45141,
+      "sha256": "1cebd2a85806d6297790d423d44446e42f37595620f03caa76da82a6026eea7a"
+    },
+    "IterFlow操作手册-线上协作快照.pdf": {
+      "bytes": 445559,
+      "sha256": "6daa1977166b602ab7f62b37e19e9c234c65ff11a031a347451a29c7bd33a840"
+    }
+  }
+}

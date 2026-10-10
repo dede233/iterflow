@@ -278,9 +278,12 @@ onMounted(load)
         <el-form-item v-if="currentAction?.startsStage" :label="currentAction.target === 'DESIGNING' ? '设计人员' : '开发人员'" required>
           <RequirementAssigneeSelect v-model="stagePeople" :kind="currentAction.target === 'DESIGNING' ? 'DESIGNER' : 'DEVELOPER'" :selected="stageSelected" />
         </el-form-item>
-        <el-form-item v-else label="原因" :required="currentAction?.needsReason">
+        <el-form-item v-else-if="currentAction?.needsReason" label="原因" required>
           <el-input v-model="statusReason" type="textarea" :rows="3" />
         </el-form-item>
+        <p v-if="currentAction && !currentAction.startsStage && !currentAction.needsReason">
+          确认将需求状态改为「{{ requirementStatusLabel[currentAction.target] }}」？
+        </p>
       </el-form>
       <template #footer>
         <el-button :disabled="statusSubmitting" @click="statusDialog = false">取消</el-button>

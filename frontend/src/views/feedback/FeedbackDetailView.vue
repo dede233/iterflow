@@ -473,9 +473,12 @@ onMounted(async () => {
         <el-form-item v-if="currentAction?.needsDuplicate" label="重复目标反馈 ID" required>
           <ScopedObjectSelector v-model="statusForm.duplicate_of_id" kind="feedback" :allowed="can('rd.feedback.view')" :active="statusDialog" :disabled="statusSubmitting" :exclude-id="feedbackId" />
         </el-form-item>
-        <el-form-item label="原因" :required="currentAction?.needsReason">
+        <el-form-item v-if="currentAction?.needsReason" label="原因" required>
           <el-input v-model="statusForm.reason" type="textarea" :rows="3" />
         </el-form-item>
+        <p v-if="currentAction && !currentAction.needsReason && !currentAction.needsDuplicate">
+          确认将反馈状态改为「{{ feedbackStatusLabel[currentAction.target] }}」？
+        </p>
       </el-form>
       <template #footer>
         <el-button @click="statusDialog = false">取消</el-button>

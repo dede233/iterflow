@@ -1,6 +1,6 @@
 # IterFlow 当前接口集成指南
 
-更新日期：2026-10-10。对应未发布开发契约 `spec/openapi-development.yaml` 和本地协作分支，线上是否支持新增接口须先核对部署版本。历史发布契约保持不变；本指南不构成上线验收。用户操作见 [操作手册](user-manual.md)。
+更新日期：2026-10-11。对应开发契约 `spec/openapi-development.yaml`，线上 sx-kc.xyz:8443 已部署源 commit `2b37509`，含协作人员、按阶段分配、本人开发确认以及完成和发布门禁。历史发布契约保持不变；本次为用户授权的分支快照部署，未创建新的正式 tag/Release。部署证据见 [线上升级记录](collaboration-online-upgrade-2026-10-11.md)。用户操作见 [操作手册](user-manual.md)。
 
 ## 访问和权限
 
@@ -90,4 +90,4 @@ npm run check:bundle
 
 Word 手册由 `tools/build-user-manual.py` 从 `docs/user-manual.md` 生成，再通过 DOCX 渲染工具检查每页并导出 PDF。修改手册正文时应重新生成两种交付文件。
 
-当前协作迁移为 PostgreSQL `0007_development_completion` / MySQL `mysql57_0005`。既有库用相应 Alembic upgrade head 升级，不重复 seed；MySQL 正式迁移后执行 mysql_preflight。新增功能尚需新 CI、部署包验收、受保护的升级前备份和授权部署，不能用文档同步替代这些门禁。
+当前协作迁移为 PostgreSQL `0007_development_completion` / MySQL `mysql57_0005`。既有库用相应 Alembic upgrade head 升级，不重复 seed；MySQL 正式迁移后执行 mysql_preflight。本次已完成新 CI、实际部署包验收、受保护的升级前后备份和授权部署；具体环境与验收边界见线上升级记录。后续新增功能须重新执行对应门禁。

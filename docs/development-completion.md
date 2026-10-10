@@ -1,6 +1,6 @@
 # 全员开发完成确认与完成及发布门禁
 
-2026-10-10 用户批准本地增量：开发人员必须分别点击完成，全部确认后才能发布。该规则追加到按需设计与按阶段分工流程，不改变 Feedback → Requirement → Version → Publish → Release 主链。线上尚未升级。
+2026-10-10 用户批准本地增量：开发人员必须分别点击完成，全部确认后才能发布。该规则追加到按需设计与按阶段分工流程，不改变 Feedback → Requirement → Version → Publish → Release 主链。后续已于 2026-10-11 升级线上，实际范围见 [线上升级记录](collaboration-online-upgrade-2026-10-11.md)。
 
 当前统一文档入口：[操作手册](user-manual.md)、[接口集成指南](api-guide.md)。下述分阶段验收保留为历史证据。
 
@@ -63,3 +63,7 @@ Fresh Self-Review 由同一 Agent 执行，不称为独立终审。当前未 pus
 PostgreSQL 全量 391 passed，1 项既有可选 S3 未配置而跳过；真实 PostgreSQL 专项 56 passed、零跳过。前端 335 passed；契约类型一致性、构建、bundle、Ruff/format、Mypy 99 文件、compileall 通过。多账号浏览器覆盖产品/管理员 API 绕过 409、0/2 与 1/2 禁止完成、2/2 才能完成、返工清空确认及 390/768/1280 视口。双数据库还验证失败不增 revision/审计/通知、注入异常全回滚、旧 revision 40910，以及 DONE 与名单变更并发串行。
 
 证据：[验收结果](evidence/requirement-done-gate/acceptance.json)。Fresh Self-Review 为同一 Agent 复查；本次没有 push、branch CI、新部署包或线上升级。完整首次失败与后续测试日志留在本地 `data/done-gate-qa/`，不打包测试数据或凭据。
+
+## 2026-10-11 线上升级收口
+
+源 commit `2b37509` 的八项 Branch CI 及实际 linux/amd64 包验收通过后，按用户授权升级 sx-kc.xyz:8443。追加 MySQL 0003–0005；原记录摘要相同，未 seed、清空账号或代确认。升级前后数据库与附件备份均校验，重启、健康及只读页面验收通过。详细范围、首次失败修正、环境与备份路径见 [线上升级记录](collaboration-online-upgrade-2026-10-11.md)。上文各次本地验收事实保留。

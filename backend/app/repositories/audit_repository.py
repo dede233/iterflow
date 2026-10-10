@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.models.entities import Feedback, OperationLog, Release, Requirement, User, Version
 from app.models.enums import DataScope
+from app.repositories.requirement_repository import RequirementRepository
 
 
 class AuditRepository:
@@ -47,11 +48,7 @@ class AuditRepository:
             )
 
         if "REQUIREMENT" in entity_types:
-            predicate = (
-                true()
-                if all_scope
-                else or_(Requirement.owner_id == user_id, Requirement.created_by == user_id)
-            )
+            predicate = true() if all_scope else RequirementRepository.self_criterion(user_id)
             branches.append(
                 and_(
                     OperationLog.entity_type == "REQUIREMENT",

@@ -1132,6 +1132,157 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /requirements/assignee-options:
+    get:
+      tags:
+      - requirements
+      summary: 选择需求协作人员
+      operationId: assignee_options_api_v1_requirements_assignee_options_get
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: keyword
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 100
+          - type: 'null'
+          title: Keyword
+      - name: kind
+        in: query
+        required: false
+        schema:
+          enum:
+          - OWNER
+          - DEVELOPER
+          - DESIGNER
+          type: string
+          default: OWNER
+          title: Kind
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssigneeOptionsPage'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: 需要 rd.requirement.edit。仅返回启用且具备需求查看权限的个人 ID、显示名和可分配职责，不公开联系方式或管理资料。开发候选需启用 DEVELOPER
+        或 DEVELOPMENT_LEAD 角色，设计候选需启用 DESIGNER 角色。
+  /requirements/{requirement_id}/collaborators:
+    get:
+      tags:
+      - requirements
+      summary: 查看需求协作人员
+      operationId: get_collaborators_api_v1_requirements__requirement_id__collaborators_get
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: requirement_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Requirement Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RequirementCollaboratorsOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: 需要需求查看权限及该需求数据范围。
+    put:
+      tags:
+      - requirements
+      summary: 分配需求协作人员
+      operationId: replace_collaborators_api_v1_requirements__requirement_id__collaborators_put
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: requirement_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Requirement Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequirementCollaboratorsUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RequirementCollaboratorsOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: 需要 rd.requirement.edit 及该需求数据范围。原子替换总负责人、开发和设计人员；revision CAS，旧 revision 返回 409。有效人员必须启用且拥有需求查看权限；开发、设计需对应启用角色。失败时关联、通知与审计一起回滚。同人兼任不同职责只收到一条事件通知。
   /requirements/{requirement_id}:
     get:
       tags:
@@ -3494,6 +3645,50 @@ components:
       - revision
       - version_revision
       title: AddRequirementRequest
+    AssigneeOption:
+      properties:
+        user_id:
+          type: integer
+          title: 用户 ID
+        display_name:
+          type: string
+          title: 显示名称
+        can_develop:
+          type: boolean
+          title: 可分配开发职责
+        can_design:
+          type: boolean
+          title: 可分配设计职责
+      type: object
+      required:
+      - user_id
+      - display_name
+      - can_develop
+      - can_design
+      title: AssigneeOption
+    AssigneeOptionsPage:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/AssigneeOption'
+          type: array
+          title: 人员列表
+        total:
+          type: integer
+          title: 人员总数
+        page:
+          type: integer
+          title: 当前页码
+        page_size:
+          type: integer
+          title: 每页条数
+      type: object
+      required:
+      - items
+      - total
+      - page
+      - page_size
+      title: AssigneeOptionsPage
     AttachmentOut:
       properties:
         file_id:
@@ -5153,6 +5348,67 @@ components:
       - revision
       - version_revision
       title: RemoveRequirementRequest
+    RequirementCollaboratorsOut:
+      properties:
+        revision:
+          type: integer
+          title: 修订号
+        owner:
+          anyOf:
+          - $ref: '#/components/schemas/AssigneeOption'
+          - type: 'null'
+          title: 总负责人
+        developers:
+          items:
+            $ref: '#/components/schemas/AssigneeOption'
+          type: array
+          title: 开发人员
+        designers:
+          items:
+            $ref: '#/components/schemas/AssigneeOption'
+          type: array
+          title: 设计人员
+      type: object
+      required:
+      - revision
+      - owner
+      - developers
+      - designers
+      title: RequirementCollaboratorsOut
+    RequirementCollaboratorsUpdate:
+      properties:
+        revision:
+          type: integer
+          minimum: 1.0
+          title: 修订号
+        owner_id:
+          anyOf:
+          - type: integer
+            exclusiveMinimum: 0.0
+          - type: 'null'
+          title: 总负责人 ID
+        developer_ids:
+          items:
+            type: integer
+            exclusiveMinimum: 0.0
+          type: array
+          maxItems: 100
+          title: 开发人员 ID 列表
+        designer_ids:
+          items:
+            type: integer
+            exclusiveMinimum: 0.0
+          type: array
+          maxItems: 100
+          title: 设计人员 ID 列表
+      additionalProperties: false
+      type: object
+      required:
+      - revision
+      - owner_id
+      - developer_ids
+      - designer_ids
+      title: RequirementCollaboratorsUpdate
     RequirementCreate:
       properties:
         title:

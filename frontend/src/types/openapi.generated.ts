@@ -334,6 +334,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/requirements/assignee-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 选择需求协作人员
+         * @description 需要 rd.requirement.edit。仅返回启用且具备需求查看权限的个人 ID、显示名和可分配职责，不公开联系方式或管理资料。开发候选需启用 DEVELOPER 或 DEVELOPMENT_LEAD 角色，设计候选需启用 DESIGNER 角色。
+         */
+        get: operations["assignee_options_api_v1_requirements_assignee_options_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/requirements/{requirement_id}/collaborators": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查看需求协作人员
+         * @description 需要需求查看权限及该需求数据范围。
+         */
+        get: operations["get_collaborators_api_v1_requirements__requirement_id__collaborators_get"];
+        /**
+         * 分配需求协作人员
+         * @description 需要 rd.requirement.edit 及该需求数据范围。原子替换总负责人、开发和设计人员；revision CAS，旧 revision 返回 409。有效人员必须启用且拥有需求查看权限；开发、设计需对应启用角色。失败时关联、通知与审计一起回滚。同人兼任不同职责只收到一条事件通知。
+         */
+        put: operations["replace_collaborators_api_v1_requirements__requirement_id__collaborators_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/requirements/{requirement_id}": {
         parameters: {
             query?: never;
@@ -1087,6 +1131,28 @@ export interface components {
              * @description 目标版本的乐观锁修订号；版本内容变更时用于并发校验。
              */
             version_revision: number;
+        };
+        /** AssigneeOption */
+        AssigneeOption: {
+            /** 用户 ID */
+            user_id: number;
+            /** 显示名称 */
+            display_name: string;
+            /** 可分配开发职责 */
+            can_develop: boolean;
+            /** 可分配设计职责 */
+            can_design: boolean;
+        };
+        /** AssigneeOptionsPage */
+        AssigneeOptionsPage: {
+            /** 人员列表 */
+            items: components["schemas"]["AssigneeOption"][];
+            /** 人员总数 */
+            total: number;
+            /** 当前页码 */
+            page: number;
+            /** 每页条数 */
+            page_size: number;
         };
         /**
          * AttachmentOut
@@ -1986,6 +2052,28 @@ export interface components {
             version_revision: number;
             /** 操作原因 */
             reason?: string | null;
+        };
+        /** RequirementCollaboratorsOut */
+        RequirementCollaboratorsOut: {
+            /** 修订号 */
+            revision: number;
+            /** 总负责人 */
+            owner: components["schemas"]["AssigneeOption"] | null;
+            /** 开发人员 */
+            developers: components["schemas"]["AssigneeOption"][];
+            /** 设计人员 */
+            designers: components["schemas"]["AssigneeOption"][];
+        };
+        /** RequirementCollaboratorsUpdate */
+        RequirementCollaboratorsUpdate: {
+            /** 修订号 */
+            revision: number;
+            /** 总负责人 ID */
+            owner_id: number | null;
+            /** 开发人员 ID 列表 */
+            developer_ids: number[];
+            /** 设计人员 ID 列表 */
+            designer_ids: number[];
         };
         /** RequirementCreate */
         RequirementCreate: {
@@ -3596,6 +3684,159 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    assignee_options_api_v1_requirements_assignee_options_get: {
+        parameters: {
+            query?: {
+                keyword?: string | null;
+                kind?: "OWNER" | "DEVELOPER" | "DESIGNER";
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssigneeOptionsPage"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_collaborators_api_v1_requirements__requirement_id__collaborators_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requirement_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RequirementCollaboratorsOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    replace_collaborators_api_v1_requirements__requirement_id__collaborators_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requirement_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequirementCollaboratorsUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RequirementCollaboratorsOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Validation Error */

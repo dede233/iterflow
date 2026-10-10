@@ -1,5 +1,16 @@
 # IterFlow Tasks
 
+## 2026-10-10 需求开发、设计协作（本地）
+
+用户确认保留一名总负责人，可绑定多名开发、多名设计；本轮仅本地实现与验收，范围见 `docs/requirement-collaboration.md`。以下增量不改变历史发布范围记录。
+
+- [x] 开发契约、分工关联、两类基础角色及双数据库追加迁移。
+- [x] revision CAS、SELF/RBAC、事务审计和定向站内通知。
+- [x] 需求详情分配界面与 PC/Tablet/Mobile 验收。
+- [x] 真实 MySQL 5.7、PostgreSQL 回归、迁移和独立备份恢复。
+- [x] Fresh Self-Review 与操作说明。
+- [ ] Branch CI、外部审查、新部署包及线上升级（未执行）。
+
 > 本次正式发布目标为 `v1.8.1`，Hotfix 外部独立终审 PASS，用户已授权 Final Release + Cloudflare Preview Resume。正式发布成立条件为新的 Release Branch / Final Master 六项 CI PASS、annotated v1.8.1 tag 与正式 GitHub Release；发布事实以最终 master commit、标签和 Release 为准，不提前记录 tag SHA。发布 base：`df9e1ba1a5ee1a4c763098d8e180250f409bedd3`；包、FastAPI、health、Frontend 与当前契约元数据同步 1.8.1，当前契约 `spec/openapi-v1.8.1.yaml`，API shape 不变。v1.8.0 及更早正式标签/Release/契约不可变；本轮只发布已审查的共享 PageHeader 平板响应式修复，随后将正式版本合入独立 Preview 并恢复验收，不部署 Production。证据见 `docs/v1.8.1-release-readiness.md`。
 
 ## V1.8 — Version Workspace & Main-Chain Productivity

@@ -18,7 +18,20 @@ from app.schemas.requirement import (
     RequirementUpdate,
 )
 from app.services.audit_service import AuditService
+from app.services.requirement_collaboration_service import RequirementCollaborationService
 from app.services.revision_conflict import revision_conflict_data
+
+STATUS_LABELS = {
+    RequirementStatus.DRAFT: "草稿",
+    RequirementStatus.CONFIRMED: "已确认",
+    RequirementStatus.PLANNED: "已排期",
+    RequirementStatus.DEVELOPING: "开发中",
+    RequirementStatus.TESTING: "测试中",
+    RequirementStatus.DONE: "已完成",
+    RequirementStatus.ONLINE: "已上线",
+    RequirementStatus.PAUSED: "已暂停",
+    RequirementStatus.CANCELED: "已取消",
+}
 
 ALLOWED_TRANSITIONS: dict[RequirementStatus, set[ManualRequirementStatus]] = {
     RequirementStatus.DRAFT: {
@@ -101,6 +114,10 @@ class RequirementService:
             "CREATE",
             after={"requirement_no": item.requirement_no},
         )
+        if item.owner_id is not None:
+            RequirementCollaborationService(self.db).notify(
+                item, operator_id, "已分配", "你已成为该需求的总负责人。"
+            )
         self.db.commit()
         self.db.refresh(item)
         return item
@@ -133,6 +150,10 @@ class RequirementService:
             before=before_values,
             after=after_values,
         )
+        if "owner_id" in values and before_values["owner_id"] != values["owner_id"]:
+            RequirementCollaborationService(self.db).notify(
+                current, operator_id, "负责人已更新", "请查看最新负责人分工。"
+            )
         self.db.commit()
         updated = self.repo.get(requirement_id)
         assert updated is not None
@@ -184,6 +205,13 @@ class RequirementService:
             "STATUS_CHANGE",
             before={"status": previous_status},
             after={"status": payload.status, "reason": payload.reason},
+        )
+        RequirementCollaborationService(self.db).notify(
+            current,
+            operator_id,
+            "状态已更新",
+            f"{STATUS_LABELS[RequirementStatus(previous_status)]} → "
+            f"{STATUS_LABELS[RequirementStatus(payload.status.value)]}。请查看需求详情。",
         )
         self.db.commit()
         updated = self.repo.get(requirement_id)

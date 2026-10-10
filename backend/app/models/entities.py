@@ -6,6 +6,7 @@ from sqlalchemy import (
     JSON,
     BigInteger,
     Boolean,
+    CheckConstraint,
     Computed,
     Date,
     DateTime,
@@ -247,6 +248,21 @@ class Requirement(Base, AuditMixin):
         )
     description: Mapped[str] = mapped_column(Text)
     acceptance_criteria: Mapped[str | None] = mapped_column(Text)
+
+
+class RequirementParticipant(Base):
+    __tablename__ = "rd_requirement_participant"
+    __table_args__ = (
+        CheckConstraint("discipline IN ('DEVELOPMENT', 'DESIGN')", name="participant_discipline"),
+        Index("ix_requirement_participant_user", "user_id"),
+    )
+    requirement_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("rd_requirement.id", ondelete="RESTRICT"), primary_key=True
+    )
+    user_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("sys_user.id", ondelete="RESTRICT"), primary_key=True
+    )
+    discipline: Mapped[str] = mapped_column(String(11), primary_key=True)
 
 
 class Feedback(Base, AuditMixin):

@@ -1,3 +1,5 @@
+from typing import Literal
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
@@ -11,7 +13,10 @@ from app.repositories.requirement_repository import RequirementRepository
 from app.repositories.user_repository import UserRepository
 from app.repositories.version_repository import VersionRepository
 from app.schemas.requirement import (
+    AssigneeOptionsPage,
     LinkedFeedbackOut,
+    RequirementCollaboratorsOut,
+    RequirementCollaboratorsUpdate,
     RequirementCreate,
     RequirementOut,
     RequirementPage,
@@ -19,6 +24,7 @@ from app.schemas.requirement import (
     RequirementUpdate,
 )
 from app.services.feedback_service import FeedbackService
+from app.services.requirement_collaboration_service import RequirementCollaborationService
 from app.services.requirement_service import RequirementService
 
 router = APIRouter(prefix="/requirements", tags=["requirements"])
@@ -96,6 +102,38 @@ def create_requirement(
     scope = UserRepository(db).data_scope(user.id)
     _ensure_scoped_version(db, user, payload.version_id)
     return RequirementService(db).create(payload, user.id, viewer_scope=scope)
+
+
+@router.get("/assignee-options", response_model=AssigneeOptionsPage)
+def assignee_options(
+    keyword: str | None = Query(None, max_length=100),
+    kind: Literal["OWNER", "DEVELOPER", "DESIGNER"] = "OWNER",
+    page: int = Query(1, ge=1),
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("rd.requirement.edit")),
+):
+    return RequirementCollaborationService(db).options(keyword, page, kind)
+
+
+@router.get("/{requirement_id}/collaborators", response_model=RequirementCollaboratorsOut)
+def get_collaborators(
+    requirement_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("rd.requirement.view")),
+):
+    item = _scoped_requirement_or_404(db, user, requirement_id)
+    return RequirementCollaborationService(db).read(item)
+
+
+@router.put("/{requirement_id}/collaborators", response_model=RequirementCollaboratorsOut)
+def replace_collaborators(
+    requirement_id: int,
+    payload: RequirementCollaboratorsUpdate,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("rd.requirement.edit")),
+):
+    _scoped_requirement_or_404(db, user, requirement_id)
+    return RequirementCollaborationService(db).replace(requirement_id, payload, user.id)
 
 
 @router.get("/{requirement_id}", response_model=RequirementOut)

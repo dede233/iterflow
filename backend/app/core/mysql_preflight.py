@@ -79,16 +79,19 @@ def validate_mysql(
         from app.models import entities  # noqa: F401
 
         head = connection.scalar(text("SELECT version_num FROM alembic_version"))
-        legacy = head == "mysql57_0001" and allow_legacy
+        legacy = head in {"mysql57_0001", "mysql57_0002"} and allow_legacy
+        if head != "mysql57_0003" and not legacy:
+            raise RuntimeError("MySQL Alembic head is missing or unsupported")
         portable = "iterflow_file_key_node" in tables
-        expected_tables = set(Base.metadata.tables) | {"alembic_version"}
+        business_tables = set(Base.metadata.tables)
+        if legacy:
+            business_tables.remove("rd_requirement_participant")
+        expected_tables = business_tables | {"alembic_version"}
         if portable:
             expected_tables.add("iterflow_file_key_node")
         if tables != expected_tables:
             raise RuntimeError("Initialized schema table set differs from the MySQL baseline")
-        if head != "mysql57_0002" and not legacy:
-            raise RuntimeError("MySQL Alembic head is missing or unsupported")
-        if not portable and not legacy:
+        if not portable and head != "mysql57_0001":
             raise RuntimeError("Exact file storage key registry is missing")
         if inspect_triggers:
             triggers = set(
@@ -101,7 +104,7 @@ def validate_mysql(
             )
             expected = {
                 f"domain_{table}_{event}"
-                for table in Base.metadata.tables
+                for table in business_tables
                 for event in ("insert", "update", "delete")
             }
             if portable:

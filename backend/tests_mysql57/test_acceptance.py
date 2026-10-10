@@ -37,7 +37,10 @@ from app.models.entities import (
     Release,
     Requirement,
     RequirementFeedback,
+    RequirementParticipant,
+    Role,
     User,
+    UserRole,
     Version,
     VersionRequirement,
 )
@@ -926,6 +929,22 @@ def test_mysql_restart_and_isolated_backup_restore(mysql_api, monkeypatch, tmp_p
 
     client, engine, _, headers = mysql_api
     ids = ready(mysql_api)
+    with Session(engine) as db:
+        developer = db.scalar(select(Role).where(Role.code == "DEVELOPER"))
+        db.add(UserRole(user_id=mysql_api[2], role_id=developer.id))
+        db.commit()
+    current = client.get(f"/api/v1/requirements/{ids['requirement']}", headers=headers).json()
+    assigned = client.put(
+        f"/api/v1/requirements/{ids['requirement']}/collaborators",
+        headers=headers,
+        json={
+            "revision": current["revision"],
+            "owner_id": mysql_api[2],
+            "developer_ids": [mysql_api[2]],
+            "designer_ids": [],
+        },
+    )
+    assert assigned.status_code == 200, assigned.text
     upload = client.post(
         f"/api/v1/feedbacks/{ids['feedback']}/attachments",
         headers=headers,
@@ -1009,6 +1028,9 @@ def test_mysql_restart_and_isolated_backup_restore(mysql_api, monkeypatch, tmp_p
             assert session.get(Feedback, ids["feedback"]).main_requirement_id == ids["requirement"]
             assert session.scalar(select(func.count(User.id))) == 1
             assert session.scalar(select(func.count(VersionRequirement.id))) == 1
+            assert session.scalar(select(func.count()).select_from(RequirementParticipant)) == 1
+            participant = session.scalar(select(RequirementParticipant))
+            assert participant.user_id == mysql_api[2] and participant.discipline == "DEVELOPMENT"
         monkeypatch.setattr(
             database,
             "SessionLocal",
@@ -1042,7 +1064,7 @@ def test_mysql_restart_and_isolated_backup_restore(mysql_api, monkeypatch, tmp_p
                 "--routines --triggers --hex-blob --set-gtid-purged=OFF " + restored,
             ]
         )
-        evidence = BACKEND.parent / "docs/evidence/mysql57-portable"
+        evidence = BACKEND.parent / "docs/evidence/requirement-collaboration"
         evidence.mkdir(parents=True, exist_ok=True)
         (
             evidence / ("backup-restore.json" if PORTABLE else "standard-backup-restore.json")
@@ -1061,7 +1083,7 @@ def test_mysql_restart_and_isolated_backup_restore(mysql_api, monkeypatch, tmp_p
                     ).hexdigest(),
                     "restart_persistence": True,
                     "successful_consecutive_restarts": 3,
-                    "restored_guard_triggers": 68,
+                    "restored_guard_triggers": 71,
                     "profile": TEST_PROJECT,
                     "restored_function_upload": True,
                 },
@@ -1080,7 +1102,7 @@ def test_mysql_preflight_requires_empty_or_verified_schema(mysql_api):
 
     with mysql_api[1].connect() as connection:
         result = validate_mysql(connection)
-        assert result["table_count"] == 23
+        assert result["table_count"] == 24
         with pytest.raises(RuntimeError, match="empty"):
             validate_mysql(connection, empty=True)
         connection.execute(text("DROP TRIGGER domain_sys_user_insert"))
@@ -1188,7 +1210,7 @@ def test_mysql_runtime_principal_cannot_remove_database_protection(mysql_api, mo
     event.listen(runtime, "connect", database.configure_mysql)
     try:
         with runtime.connect() as connection:
-            assert validate_mysql(connection, inspect_triggers=False)["table_count"] == 23
+            assert validate_mysql(connection, inspect_triggers=False)["table_count"] == 24
             with pytest.raises(DBAPIError):
                 connection.execute(text("DROP TRIGGER domain_sys_user_insert"))
             with pytest.raises(DBAPIError):
@@ -1399,7 +1421,7 @@ def test_mysql_upgrade_legacy_0001_preserves_full_keys(monkeypatch):
         monkeypatch.setattr(migrate, "engine", engine)
         migrate.main()
         with engine.connect() as c:
-            assert validate_mysql(c)["table_count"] == 23
+            assert validate_mysql(c)["table_count"] == 24
         with Session(engine) as session:
             assert set(session.scalars(select(FileObject.storage_key))) == set(keys)
     finally:

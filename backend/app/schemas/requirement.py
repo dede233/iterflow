@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Self
+from typing import Annotated, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -99,3 +99,39 @@ class LinkedFeedbackOut(BaseModel):
     title: str
     status: str
     is_primary: bool
+
+
+class AssigneeOption(BaseModel):
+    user_id: int
+    display_name: str
+    can_develop: bool
+    can_design: bool
+
+
+class AssigneeOptionsPage(BaseModel):
+    items: list[AssigneeOption]
+    total: int
+    page: int
+    page_size: int
+
+
+class RequirementCollaboratorsOut(BaseModel):
+    revision: int
+    owner: AssigneeOption | None
+    developers: list[AssigneeOption]
+    designers: list[AssigneeOption]
+
+
+class RequirementCollaboratorsUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    revision: int = Field(ge=1)
+    owner_id: Annotated[int, Field(gt=0)] | None
+    developer_ids: list[Annotated[int, Field(gt=0)]] = Field(max_length=100)
+    designer_ids: list[Annotated[int, Field(gt=0)]] = Field(max_length=100)
+
+    @model_validator(mode="after")
+    def unique_participants(self) -> Self:
+        for ids in (self.developer_ids, self.designer_ids):
+            if len(ids) != len(set(ids)):
+                raise ValueError("同一职责不能重复分配同一人员")
+        return self

@@ -56,6 +56,41 @@
         }
       }
     },
+    "AssigneeOption": {
+      "title": "AssigneeOption",
+      "properties": {
+        "user_id": {
+          "title": "用户 ID"
+        },
+        "display_name": {
+          "title": "显示名称"
+        },
+        "can_develop": {
+          "title": "可分配开发职责"
+        },
+        "can_design": {
+          "title": "可分配设计职责"
+        }
+      }
+    },
+    "AssigneeOptionsPage": {
+      "title": "AssigneeOptionsPage",
+      "properties": {
+        "items": {
+          "title": "人员列表",
+          "items": {}
+        },
+        "total": {
+          "title": "人员总数"
+        },
+        "page": {
+          "title": "当前页码"
+        },
+        "page_size": {
+          "title": "每页条数"
+        }
+      }
+    },
     "AttachmentOut": {
       "title": "AttachmentOut",
       "description": "Business-facing attachment metadata. Never exposes storage_key/path.",
@@ -1413,6 +1448,52 @@
         }
       }
     },
+    "RequirementCollaboratorsOut": {
+      "title": "RequirementCollaboratorsOut",
+      "properties": {
+        "revision": {
+          "title": "修订号"
+        },
+        "owner": {
+          "title": "总负责人",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "developers": {
+          "title": "开发人员",
+          "items": {}
+        },
+        "designers": {
+          "title": "设计人员",
+          "items": {}
+        }
+      }
+    },
+    "RequirementCollaboratorsUpdate": {
+      "title": "RequirementCollaboratorsUpdate",
+      "properties": {
+        "revision": {
+          "title": "修订号"
+        },
+        "owner_id": {
+          "title": "总负责人 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "developer_ids": {
+          "title": "开发人员 ID 列表",
+          "items": {}
+        },
+        "designer_ids": {
+          "title": "设计人员 ID 列表",
+          "items": {}
+        }
+      }
+    },
     "RequirementCreate": {
       "title": "RequirementCreate",
       "properties": {
@@ -2396,6 +2477,31 @@
         ],
         "summary": "直接新建正式需求",
         "description": "普通创建需要 rd.requirement.create。指定 version_id 与 version_revision 时还需要 rd.version.edit 和 rd.requirement.view。目标版本同时受 Version DataScope 限制。"
+      }
+    },
+    "/requirements/assignee-options": {
+      "get": {
+        "tags": [
+          "requirements"
+        ],
+        "summary": "选择需求协作人员",
+        "description": "需要 rd.requirement.edit。仅返回启用且具备需求查看权限的个人 ID、显示名和可分配职责，不公开联系方式或管理资料。开发候选需启用 DEVELOPER 或 DEVELOPMENT_LEAD 角色，设计候选需启用 DESIGNER 角色。"
+      }
+    },
+    "/requirements/{requirement_id}/collaborators": {
+      "get": {
+        "tags": [
+          "requirements"
+        ],
+        "summary": "查看需求协作人员",
+        "description": "需要需求查看权限及该需求数据范围。"
+      },
+      "put": {
+        "tags": [
+          "requirements"
+        ],
+        "summary": "分配需求协作人员",
+        "description": "需要 rd.requirement.edit 及该需求数据范围。原子替换总负责人、开发和设计人员；revision CAS，旧 revision 返回 409。有效人员必须启用且拥有需求查看权限；开发、设计需对应启用角色。失败时关联、通知与审计一起回滚。同人兼任不同职责只收到一条事件通知。"
       }
     },
     "/requirements/{requirement_id}": {

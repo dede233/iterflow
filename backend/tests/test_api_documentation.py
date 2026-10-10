@@ -176,6 +176,16 @@ def test_bundled_chinese_labels_match_the_active_contract():
     assert bundled == documentation_labels(current)
     released = yaml.safe_load((root / "spec/openapi-v1.8.1.yaml").read_text())
     current["paths"].pop("/docs/openapi")
+    # The collaboration increment is approved; all earlier API shapes remain frozen.
+    current["paths"].pop("/requirements/assignee-options")
+    current["paths"].pop("/requirements/{requirement_id}/collaborators")
+    for name in (
+        "AssigneeOption",
+        "AssigneeOptionsPage",
+        "RequirementCollaboratorsOut",
+        "RequirementCollaboratorsUpdate",
+    ):
+        current["components"]["schemas"].pop(name)
     current["components"]["schemas"]["AuthMe"]["properties"].pop("can_view_api_docs")
     current["info"] = released["info"]
     for document in (current, released):

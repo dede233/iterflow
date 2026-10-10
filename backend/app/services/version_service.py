@@ -37,6 +37,7 @@ from app.schemas.version import (
 )
 from app.services.audit_service import AuditService
 from app.services.publish_check_service import PublishCheckService
+from app.services.requirement_collaboration_service import RequirementCollaborationService
 from app.services.revision_conflict import revision_conflict_data
 
 # Version states in which the requirement set is frozen (V1.5 §freeze).
@@ -366,6 +367,9 @@ class VersionService:
             after_version_id=version_id,
         )
         self._bump_version_revision(version, payload.version_revision, operator_id)
+        RequirementCollaborationService(self.db).notify(
+            requirement, operator_id, "版本清单已更新", "请查看最新版本归属和需求状态。"
+        )
         self.db.commit()
         self.db.refresh(version)
         return version
@@ -420,6 +424,9 @@ class VersionService:
             reason=payload.reason,
         )
         self._bump_version_revision(version, payload.version_revision, operator_id)
+        RequirementCollaborationService(self.db).notify(
+            requirement, operator_id, "版本清单已更新", "请查看最新版本归属和需求状态。"
+        )
         self.db.commit()
         self.db.refresh(version)
         return version
@@ -513,6 +520,9 @@ class VersionService:
         self._bump_version_revision(target, payload.version_revision, operator_id)
         if old_version is not None:
             self._bump_version_revision(old_version, old_version.revision, operator_id)
+        RequirementCollaborationService(self.db).notify(
+            requirement, operator_id, "已迁移版本", "请查看新的版本归属。"
+        )
         self.db.commit()
         self.db.refresh(target)
         return target
@@ -689,6 +699,12 @@ class VersionService:
             "RELEASE_CREATE",
             after={"version_id": version.id, "result": ReleaseResult.SUCCESS},
         )
+        for requirement in self.db.scalars(
+            select(Requirement).where(Requirement.id.in_(online_requirement_ids))
+        ):
+            RequirementCollaborationService(self.db).notify(
+                requirement, operator_id, "已上线", f"已随版本 {version.version_no} 成功发布。"
+            )
         self.db.commit()
         self.db.refresh(release)
         return {

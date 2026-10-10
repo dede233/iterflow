@@ -12,9 +12,15 @@ from app.core.exceptions import ConflictError, NotFoundError
 from app.models.entities import (
     BusinessModule,
     BusinessSystem,
+    Notification,
     OperationLog,
+    Permission,
     Requirement,
+    RequirementParticipant,
+    Role,
+    RolePermission,
     User,
+    UserRole,
     Version,
     VersionRequirement,
 )
@@ -32,11 +38,17 @@ from app.services.version_service import VersionService
 POSTGRES_URL = os.getenv("ITERFLOW_TEST_POSTGRES_URL")
 POSTGRES_TABLES = [
     User.__table__,
+    Role.__table__,
+    Permission.__table__,
+    RolePermission.__table__,
+    UserRole.__table__,
+    Notification.__table__,
     BusinessSystem.__table__,
     BusinessModule.__table__,
     OperationLog.__table__,
     Version.__table__,
     Requirement.__table__,
+    RequirementParticipant.__table__,
     VersionRequirement.__table__,
 ]
 

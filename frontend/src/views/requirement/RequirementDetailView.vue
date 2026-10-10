@@ -9,6 +9,7 @@ import {
   updateRequirement,
 } from '@/api/requirements'
 import ScopedRelationLink from '@/components/ScopedRelationLink.vue'
+import RequirementCollaboratorsPanel from '@/components/RequirementCollaboratorsPanel.vue'
 import { useDetailNavigation } from '@/composables/useDetailNavigation'
 import { usePermission } from '@/composables/usePermission'
 import { useEditingPresence } from '@/composables/useEditingPresence'
@@ -202,6 +203,7 @@ onMounted(load)
         </template>
       </PageHeader>
 
+      <RequirementCollaboratorsPanel :requirement-id="item.id" :revision="item.revision" @updated="emit('updated'); load()" />
       <div class="detail-grid">
       <SectionCard title="需求详情" description="范围与验收标准" class="detail-main">
         <el-descriptions :column="isMobile ? 1 : 2">
@@ -307,7 +309,7 @@ onMounted(load)
 
 <style scoped>
 .back-link { color: var(--if-brand-500); align-self: center; }
-.detail-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(250px, 300px); align-items: start; gap: var(--if-space-4); }
+.detail-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(250px, 300px); align-items: start; gap: var(--if-space-4); margin-top: var(--if-space-4); }
 .detail-main, .detail-side { min-width: 0; }
 .detail-grid > .detail-main + .detail-side { margin-top: 0; }
 .detail-main :deep(.el-descriptions__content) { overflow-wrap: anywhere; }

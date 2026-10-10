@@ -150,3 +150,30 @@ it('keeps a stale completion conflict visible without retrying', async () => {
   expect(wrapper.text()).toContain('0 / 1 人')
   wrapper.unmount()
 })
+
+it.each([
+  ['empty', { ...initial, developers: [], development_completions: [] }, false],
+  ['pending', initial, false],
+  ['missing confirmation', { ...initial, development_completions: [] }, false],
+  ['all confirmed', { ...initial, development_completions: [{ user_id: 2, completed_at: '2026-10-10T01:00:00Z' }] }, true],
+] as const)('reports completion readiness: %s', async (_label, roster, ready) => {
+  mocks.read.mockResolvedValue(roster)
+  const wrapper = await panel('TESTING')
+  expect(wrapper.emitted('completion-ready')?.at(-1)).toEqual([ready])
+  wrapper.unmount()
+})
+it('revokes completion readiness during a refresh and after a failed read', async () => {
+  mocks.read.mockResolvedValue({ ...initial, development_completions: [{ user_id: 2, completed_at: '2026-10-10T01:00:00Z' }] })
+  const wrapper = await panel('TESTING')
+  expect(wrapper.emitted('completion-ready')?.at(-1)).toEqual([true])
+  let reject!: (error: Error) => void
+  mocks.read.mockReturnValue(new Promise((_resolve, no) => { reject = no }))
+  await wrapper.setProps({ revision: 9 })
+  await flushPromises()
+  expect(wrapper.emitted('completion-ready')?.at(-1)).toEqual([false])
+  reject(new Error('network'))
+  await flushPromises()
+  expect(wrapper.emitted('completion-ready')?.at(-1)).toEqual([false])
+  expect(wrapper.text()).toContain('协作人员加载失败')
+  wrapper.unmount()
+})

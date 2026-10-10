@@ -232,6 +232,10 @@ def update_requirement(
 
 @router.patch(
     "/{requirement_id}/status",
+    description=(
+        "进入 DONE 必须已分配至少一名开发人员且全部本人确认完成；未满足时返回业务冲突 409，"  # noqa: RUF001
+        "状态、revision、审计和通知均不提交。旧 revision 仍返回 CAS 冲突。"
+    ),
     response_model=RequirementOut,
     responses=api_revision_conflict_responses(404, 409),
 )

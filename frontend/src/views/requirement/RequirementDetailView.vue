@@ -81,6 +81,7 @@ const stagePeople = ref<number[]>([])
 const stageSelected = ref<AssigneeOption[]>([])
 const stageRevision = ref(1)
 const openingStage = ref(false)
+const developmentReady = ref(false)
 
 async function openStatusDialog(action: ReqStatusAction): Promise<void> {
   if (openingStage.value) return
@@ -214,7 +215,8 @@ onMounted(load)
         <el-button
           v-for="action in statusActions"
           :key="action.target"
-          :disabled="openingStage"
+          :disabled="openingStage || (action.target === 'DONE' && !developmentReady)"
+          :title="action.target === 'DONE' && !developmentReady ? '需至少一名开发人员，且全部本人确认完成；确认后刷新需求' : undefined"
           type="primary"
           plain
           @click="openStatusDialog(action)"
@@ -224,7 +226,7 @@ onMounted(load)
         </template>
       </PageHeader>
 
-      <RequirementCollaboratorsPanel :requirement-id="item.id" :revision="item.revision" :status="item.status" @updated="emit('updated'); load()" />
+      <RequirementCollaboratorsPanel :requirement-id="item.id" :revision="item.revision" :status="item.status" @completion-ready="developmentReady = $event" @updated="emit('updated'); load()" />
       <div class="detail-grid">
       <SectionCard title="需求详情" description="范围与验收标准" class="detail-main">
         <el-descriptions :column="isMobile ? 1 : 2">

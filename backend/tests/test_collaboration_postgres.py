@@ -13,6 +13,8 @@ from collaboration_acceptance import (
     exercise_database_guards,
     exercise_design_blocks_publish,
     exercise_design_stage,
+    exercise_done_gate,
+    exercise_done_roster_serialization,
     exercise_invalid_and_rollback,
     exercise_publish_and_status_rollback,
     exercise_publish_roster_serialization,
@@ -118,3 +120,11 @@ def test_development_completion_rollback_and_race(collaboration_pg, monkeypatch)
 
 def test_publish_serializes_development_roster(collaboration_pg, monkeypatch):
     exercise_publish_roster_serialization(collaboration_pg, monkeypatch)
+
+
+def test_done_requires_all_developers(collaboration_pg, monkeypatch):
+    exercise_done_gate(collaboration_pg, monkeypatch)
+
+
+def test_done_serializes_roster(collaboration_pg, monkeypatch):
+    exercise_done_roster_serialization(collaboration_pg, monkeypatch)

@@ -234,7 +234,7 @@ def test_mysql_full_lifecycle(mysql_api):
     assert planned_response.status_code == 200, planned_response.text
     current_requirement = planned_response.json()
     assert current_requirement["status"] == "PLANNED"
-    for status in ("DEVELOPING", "TESTING", "DONE"):
+    for status in ("DEVELOPING", "TESTING"):
         response = client.patch(
             f"/api/v1/requirements/{requirement['id']}/status",
             headers=headers,
@@ -242,15 +242,6 @@ def test_mysql_full_lifecycle(mysql_api):
         )
         assert response.status_code == 200, response.text
         current_requirement = response.json()
-
-    for status in ("DEVELOPING", "TESTING", "READY"):
-        response = client.patch(
-            f"/api/v1/versions/{version['id']}/status",
-            headers=headers,
-            json={"status": status, "revision": version["revision"]},
-        )
-        assert response.status_code == 200, response.text
-        version = response.json()
 
     with Session(engine) as db:
         developer_role = db.scalar(select(Role).where(Role.code == "DEVELOPER"))
@@ -273,6 +264,23 @@ def test_mysql_full_lifecycle(mysql_api):
         json={"revision": roster.json()["revision"]},
     )
     assert completed.status_code == 200, completed.text
+
+    response = client.patch(
+        f"/api/v1/requirements/{requirement['id']}/status",
+        headers=headers,
+        json={"status": "DONE", "revision": completed.json()["revision"]},
+    )
+    assert response.status_code == 200, response.text
+    current_requirement = response.json()
+
+    for status in ("DEVELOPING", "TESTING", "READY"):
+        response = client.patch(
+            f"/api/v1/versions/{version['id']}/status",
+            headers=headers,
+            json={"status": status, "revision": version["revision"]},
+        )
+        assert response.status_code == 200, response.text
+        version = response.json()
 
     publish_check = client.post(f"/api/v1/versions/{version['id']}/publish/check", headers=headers)
     assert publish_check.status_code == 200, publish_check.text

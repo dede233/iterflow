@@ -48,6 +48,26 @@ class RequirementCollaborationService:
     def __init__(self, db: Session):
         self.db = db
 
+    def require_development_completed(self, requirement_id: int) -> None:
+        # The caller holds the requirement parent lock acquired by revision CAS.
+        # Current reads serialize with personal confirmations and roster changes.
+        developers = list(
+            self.db.scalars(
+                select(RequirementParticipant)
+                .where(
+                    RequirementParticipant.requirement_id == requirement_id,
+                    RequirementParticipant.discipline == "DEVELOPMENT",
+                )
+                .order_by(RequirementParticipant.user_id)
+                .with_for_update()
+                .execution_options(populate_existing=True)
+            )
+        )
+        if not developers:
+            raise AppError(40913, "尚未分配开发人员，不能将需求标记为已完成", 409)  # noqa: RUF001
+        if any(developer.completed_at is None for developer in developers):
+            raise AppError(40913, "开发人员尚未全部本人确认完成，不能将需求标记为已完成", 409)  # noqa: RUF001
+
     def _option(self, user: User) -> AssigneeOption:
         roles = set(
             self.db.scalars(

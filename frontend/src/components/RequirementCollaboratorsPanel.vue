@@ -12,7 +12,7 @@ import SectionCard from '@/components/ui/SectionCard.vue'
 import RevisionConflictDialog from '@/components/RevisionConflictDialog.vue'
 import RequirementAssigneeSelect from '@/components/RequirementAssigneeSelect.vue'
 const props = defineProps<{ requirementId: number; revision: number; status: string }>()
-const emit = defineEmits<{ updated: [] }>()
+const emit = defineEmits<{ updated: []; 'completion-ready': [ready: boolean] }>()
 const { can } = usePermission()
 const auth = useAuthStore()
 const { isMobile } = useResponsive()
@@ -27,6 +27,8 @@ const completionStages = ['DEVELOPING', 'TESTING', 'DONE']
 const myCompletion = computed(() => data.value?.development_completions.find(p => p.user_id === auth.user?.id))
 const canConfirm = computed(() => can('rd.requirement.status') && completionStages.includes(props.status) && myCompletion.value?.completed_at === null)
 const completedCount = computed(() => data.value?.development_completions.filter(p => p.completed_at !== null).length ?? 0)
+const completionReady = computed(() => !!data.value?.developers.length && data.value.developers.every(developer => data.value?.development_completions.some(p => p.user_id === developer.user_id && p.completed_at !== null)))
+watch(() => !loading.value && !failed.value && completionReady.value, ready => emit('completion-ready', ready), { immediate: true })
 async function confirmMine(): Promise<void> {
   if (saving.value || !canConfirm.value || !data.value) return
   const revision = data.value.revision
@@ -92,9 +94,9 @@ watch(() => [props.requirementId, props.revision], load)
           </el-tag>
         </li></ul>
         <el-button v-if="canConfirm" type="primary" :loading="saving" :disabled="loading" @click="confirmMine">确认本人开发完成</el-button>
-        <p v-if="completionStages.includes(status)" class="hint">每名开发人员需本人确认完成，全部确认后才能发布。退回开发会清空此前确认。</p>
+        <p v-if="completionStages.includes(status)" class="hint">每名开发人员需本人确认完成，全部确认后才能将需求标记为已完成并发布。退回开发会清空此前确认。</p>
       </div>
-      <p v-else-if="completionStages.includes(status)" class="hint">尚未分配开发人员，将阻止发布；请先调整开发人员。</p>
+      <p v-else-if="completionStages.includes(status)" class="hint">尚未分配开发人员，不能将需求标记为已完成或发布；请先调整开发人员。</p>
       <div v-if="can('rd.requirement.edit')" class="assignment-actions">
         <el-button :disabled="loading || saving" @click="open('OWNER')">设置总负责人</el-button>
         <el-button v-if="status === 'DESIGNING'" :disabled="loading || saving" @click="open('DESIGN')">调整设计人员</el-button>

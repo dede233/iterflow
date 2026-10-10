@@ -300,6 +300,9 @@ def exercise_publish_and_status_rollback(fixture, monkeypatch):
     )
     assert attached.status_code == 200, attached.text
     for state in ["DEVELOPING", "TESTING", "DONE"]:
+        if state == "DONE":
+            for developer in ["ceshi002", "ceshi003"]:
+                assert confirm_member(client, req["id"], tokens[developer]).status_code == 200
         current = client.get(path, headers=tokens["ceshi002"]).json()
         assert (
             client.patch(
@@ -320,9 +323,6 @@ def exercise_publish_and_status_rollback(fixture, monkeypatch):
             ).status_code
             == 200
         )
-    for developer in ["ceshi002", "ceshi003"]:
-        completed = confirm_member(client, req["id"], tokens[developer])
-        assert completed.status_code == 200, completed.text
     current = client.get(vpath, headers=admin).json()
     with Session(engine) as db:
         before = db.scalar(select(func.count(Notification.id)))
@@ -826,7 +826,7 @@ def completion_team(fixture):
         },
     )
     assert started.status_code == 200, started.text
-    for status in ["TESTING", "DONE"]:
+    for status in ["TESTING"]:
         req = client.get(f"/api/v1/requirements/{req['id']}", headers=admin).json()
         result = client.patch(
             f"/api/v1/requirements/{req['id']}/status",
@@ -905,6 +905,7 @@ def exercise_completion_gate(fixture):
     assert confirm_member(client, req["id"], tokens["ceshi002"]).status_code == 409
     assert client.post(vpath + "/publish", headers=admin, json=body).status_code == 409
     assert confirm_member(client, req["id"], tokens["ceshi003"]).status_code == 200
+    mark_done(client, req["id"], tokens["ceshi001"])
     assert client.post(vpath + "/publish/check", headers=admin).status_code == 200
     # Returning to development invalidates every acknowledgement atomically.
     current = client.get(path, headers=admin).json()
@@ -976,21 +977,29 @@ def exercise_completion_gate(fixture):
                 {"rid": req["id"]},
             )
         db.rollback()
-    for status in ["TESTING", "DONE"]:
-        current = client.get(path, headers=admin).json()
-        assert (
-            client.patch(
-                path + "/status",
-                headers=admin,
-                json={"revision": current["revision"], "status": status},
-            ).status_code
-            == 200
-        )
+    current = client.get(path, headers=admin).json()
+    assert (
+        client.patch(
+            path + "/status",
+            headers=admin,
+            json={"revision": current["revision"], "status": "TESTING"},
+        ).status_code
+        == 200
+    )
+    assert (
+        client.patch(
+            path + "/status",
+            headers=admin,
+            json={"revision": current["revision"] + 1, "status": "DONE"},
+        ).status_code
+        == 409
+    )
     assert client.post(vpath + "/publish", headers=admin, json=body).status_code == 409
     with Session(engine) as db:
         assert db.scalar(select(func.count()).select_from(Release)) == 0
         assert db.get(Version, version["id"]).status == "READY"
     assert confirm_member(client, req["id"], tokens["ceshi003"]).status_code == 200
+    mark_done(client, req["id"], tokens["ceshi001"])
     published = client.post(vpath + "/publish", headers=admin, json=body)
     assert published.status_code == 200, published.text
     assert confirm_member(client, req["id"], tokens["ceshi002"]).status_code == 409
@@ -1107,6 +1116,7 @@ def exercise_publish_roster_serialization(fixture, monkeypatch):
     people, tokens, req, version = completion_team(fixture)
     for name in ["ceshi002", "ceshi003"]:
         assert confirm_member(client, req["id"], tokens[name]).status_code == 200
+    mark_done(client, req["id"], tokens["ceshi001"])
     path = f"/api/v1/requirements/{req['id']}"
     vpath = f"/api/v1/versions/{version['id']}"
     current = client.get(path, headers=admin).json()
@@ -1163,3 +1173,179 @@ def exercise_publish_roster_serialization(fixture, monkeypatch):
     roster = client.get(path + "/collaborators", headers=admin).json()
     assert len(roster["developers"]) == 2
     assert all(p["completed_at"] is not None for p in roster["development_completions"])
+
+
+def mark_done(client, req_id, header):
+    path = f"/api/v1/requirements/{req_id}"
+    req = client.get(path, headers=header).json()
+    result = client.patch(
+        path + "/status", headers=header, json={"revision": req["revision"], "status": "DONE"}
+    )
+    assert result.status_code == 200, result.text
+    return result.json()
+
+
+def exercise_done_gate(fixture, monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    client, engine, _, admin = fixture
+    _people, tokens, req, _ = completion_team(fixture)
+    path = f"/api/v1/requirements/{req['id']}"
+
+    def counts():
+        with Session(engine) as db:
+            return (
+                db.scalar(select(func.count(Notification.id))),
+                db.scalar(select(func.count(OperationLog.id))),
+            )
+
+    def blocked(header):
+        before = client.get(path, headers=admin).json()
+        before_counts = counts()
+        response = client.patch(
+            path + "/status",
+            headers=header,
+            json={"revision": before["revision"], "status": "DONE"},
+        )
+        assert response.status_code == 409, response.text
+        assert response.json()["code"] == 40913
+        assert client.get(path, headers=admin).json() == before
+        assert counts() == before_counts
+
+    # Neither product nor wildcard administrator can bypass zero/partial confirmations.
+    blocked(tokens["ceshi001"])
+    blocked(admin)
+    assert confirm_member(client, req["id"], tokens["ceshi002"]).status_code == 200
+    blocked(tokens["ceshi001"])
+    blocked(admin)
+    stale = client.get(path, headers=admin).json()["revision"]
+    assert confirm_member(client, req["id"], tokens["ceshi003"]).status_code == 200
+    response = client.patch(
+        path + "/status", headers=tokens["ceshi001"], json={"revision": stale, "status": "DONE"}
+    )
+    assert response.status_code == 409 and response.json()["code"] == 40910
+    before = client.get(path, headers=admin).json()
+    before_counts = counts()
+    original = RequirementCollaborationService.notify
+
+    def fail(self, *args, **kwargs):
+        original(self, *args, **kwargs)
+        raise RuntimeError("injected after DONE status, audit and notification writes")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(RequirementCollaborationService, "notify", fail)
+        with TestClient(app, raise_server_exceptions=False) as failing:
+            assert (
+                failing.patch(
+                    path + "/status",
+                    headers=tokens["ceshi001"],
+                    json={"revision": before["revision"], "status": "DONE"},
+                ).status_code
+                == 500
+            )
+    assert client.get(path, headers=admin).json() == before
+    assert counts() == before_counts
+    done = mark_done(client, req["id"], tokens["ceshi001"])
+    assert done["status"] == "DONE" and done["revision"] == before["revision"] + 1
+    # Rework removes acknowledgements and re-enables the same gate.
+    assert (
+        client.patch(
+            path + "/status",
+            headers=admin,
+            json={"revision": done["revision"], "status": "DEVELOPING", "reason": "返工后重新确认"},
+        ).status_code
+        == 200
+    )
+    current = client.get(path, headers=admin).json()
+    assert (
+        client.patch(
+            path + "/status",
+            headers=admin,
+            json={"revision": current["revision"], "status": "TESTING"},
+        ).status_code
+        == 200
+    )
+    blocked(tokens["ceshi001"])
+    # A pre-existing unassigned TESTING row cannot be marked DONE through the API.
+    with engine.begin() as db:
+        from sqlalchemy import delete
+
+        db.execute(
+            delete(RequirementParticipant).where(
+                RequirementParticipant.requirement_id == req["id"],
+                RequirementParticipant.discipline == "DEVELOPMENT",
+            )
+        )
+    blocked(admin)
+
+
+def exercise_done_roster_serialization(fixture, monkeypatch):
+    from concurrent.futures import TimeoutError
+    from threading import Event
+
+    client, engine, _, admin = fixture
+    people, tokens, req, _ = completion_team(fixture)
+    for name in ["ceshi002", "ceshi003"]:
+        assert confirm_member(client, req["id"], tokens[name]).status_code == 200
+    path = f"/api/v1/requirements/{req['id']}"
+    current = client.get(path, headers=admin).json()
+    locked, proceed, attempting = Event(), Event(), Event()
+    original = RequirementCollaborationService.require_development_completed
+
+    def pause(self, rid):
+        original(self, rid)
+        locked.set()
+        assert proceed.wait(10)
+
+    def complete():
+        return client.patch(
+            path + "/status",
+            headers=tokens["ceshi001"],
+            json={"revision": current["revision"], "status": "DONE"},
+        )
+
+    def edit():
+        attempting.set()
+        return client.patch(
+            path + "/collaborators",
+            headers=admin,
+            json={
+                "revision": current["revision"],
+                "kind": "DEVELOPMENT",
+                "user_ids": [people["ceshi002"]],
+            },
+        )
+
+    with monkeypatch.context() as patch:
+        patch.setattr(RequirementCollaborationService, "require_development_completed", pause)
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            done = pool.submit(complete)
+            assert locked.wait(10)
+            writer = pool.submit(edit)
+            assert attempting.wait(10)
+            try:
+                writer.result(timeout=0.2)
+                raise AssertionError("roster write bypassed DONE parent lock")
+            except TimeoutError:
+                pass
+            finally:
+                proceed.set()
+            assert done.result(timeout=10).status_code == 200
+            assert writer.result(timeout=10).status_code == 409
+    with Session(engine) as db:
+        assert db.get(Requirement, req["id"]).status == "DONE"
+        assert (
+            len(
+                list(
+                    db.scalars(
+                        select(RequirementParticipant).where(
+                            RequirementParticipant.requirement_id == req["id"],
+                            RequirementParticipant.discipline == "DEVELOPMENT",
+                        )
+                    )
+                )
+            )
+            == 2
+        )

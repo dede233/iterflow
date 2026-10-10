@@ -1,4 +1,5 @@
 from collections.abc import Iterator
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -268,6 +269,15 @@ def test_requirement_status_machine(req_api):
     r = status("PLANNED", r.json()["revision"])
     r = status("DEVELOPING", r.json()["revision"])
     r = status("TESTING", r.json()["revision"])
+    _session.add(
+        RequirementParticipant(
+            requirement_id=rid,
+            user_id=_ids["alice"],
+            discipline="DEVELOPMENT",
+            completed_at=datetime.now(UTC),
+        )
+    )
+    _session.commit()
     r = status("DONE", r.json()["revision"])
     assert r.status_code == 200 and r.json()["status"] == "DONE"
     # DONE -> DEVELOPING requires a reason.

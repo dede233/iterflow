@@ -467,7 +467,10 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** 变更需求状态 */
+        /**
+         * 变更需求状态
+         * @description 进入 DONE 必须已分配至少一名开发人员且全部本人确认完成；未满足时返回业务冲突 409，状态、revision、审计和通知均不提交。旧 revision 仍返回 CAS 冲突。
+         */
         patch: operations["change_status_api_v1_requirements__requirement_id__status_patch"];
         trace?: never;
     };

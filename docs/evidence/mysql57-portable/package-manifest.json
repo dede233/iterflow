@@ -1,0 +1,50 @@
+{
+  "source_commit": "a147f4cf8da002a55097f6b58d2261d740d9e2bc",
+  "platform": "linux/amd64",
+  "images": [
+    {
+      "tag": "iterflow-api:mysql57-a147f4cf8da0",
+      "id": "sha256:423e3a26e4b45860a3e57e36e2526d49e28e22865833f28067e8b6f2e5a9d8c8",
+      "architecture": "amd64",
+      "os": "linux",
+      "registry_digests": [
+        "iterflow-api@sha256:423e3a26e4b45860a3e57e36e2526d49e28e22865833f28067e8b6f2e5a9d8c8"
+      ],
+      "size": 93187652
+    },
+    {
+      "tag": "iterflow-web:mysql57-a147f4cf8da0",
+      "id": "sha256:e5319f7ddc3c7aad32d4ab8bd12b0e9714e7ffc4eaea66d66262b732bbcf34af",
+      "architecture": "amd64",
+      "os": "linux",
+      "registry_digests": [
+        "iterflow-web@sha256:e5319f7ddc3c7aad32d4ab8bd12b0e9714e7ffc4eaea66d66262b732bbcf34af"
+      ],
+      "size": 23043574
+    },
+    {
+      "tag": "iterflow-mysql57-redis:8.2.2-amd64",
+      "id": "sha256:3f835dae62fe5012baf5a768293967c93bc09cf9e848d415351dfba04ee87537",
+      "architecture": "amd64",
+      "os": "linux",
+      "registry_digests": [
+        "iterflow-mysql57-redis@sha256:3f835dae62fe5012baf5a768293967c93bc09cf9e848d415351dfba04ee87537",
+        "redis@sha256:3f835dae62fe5012baf5a768293967c93bc09cf9e848d415351dfba04ee87537"
+      ],
+      "size": 27493963
+    },
+    {
+      "tag": "iterflow-mysql57-client:5.7.44-amd64",
+      "id": "sha256:dab0a802b44617303694fb17d166501de279c3031ddeb28c56ecf7fcab5ef0da",
+      "architecture": "amd64",
+      "os": "linux",
+      "registry_digests": [
+        "iterflow-mysql57-client@sha256:dab0a802b44617303694fb17d166501de279c3031ddeb28c56ecf7fcab5ef0da",
+        "mysql@sha256:dab0a802b44617303694fb17d166501de279c3031ddeb28c56ecf7fcab5ef0da"
+      ],
+      "size": 137908880
+    }
+  ],
+  "offline_images": true,
+  "remote_verified": false
+}

@@ -1,0 +1,15 @@
+{
+  "bundle_directory": "/Users/xiaweiyi/Developer/backups/iterflow/mysql57-package/2026-10-10/iterflow-mysql57-a147f4c-portable-linux-amd64",
+  "archive": "/Users/xiaweiyi/Developer/backups/iterflow/mysql57-package/2026-10-10/iterflow-mysql57-a147f4c-portable-linux-amd64.tar.gz",
+  "archive_bytes": 276513274,
+  "archive_sha256": "b458f3abc8e842e8d0a0e47fd449cf30b503781e427bc6b5afd68878125dcf99",
+  "source_commit": "a147f4cf8da002a55097f6b58d2261d740d9e2bc",
+  "validation_commit": "e5f6771d211f7670ac9e74b2e00d30b4e7a3688c",
+  "platform": "linux/amd64",
+  "images_count": 4,
+  "payload_files": 19,
+  "payload_sha256_verified": true,
+  "blank_credential_templates": true,
+  "no_test_data_or_real_config_files": true,
+  "remote_verified": false
+}

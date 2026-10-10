@@ -4,6 +4,23 @@
 `innodb_strict_mode` 全局参数。此次不操作应用服务器或远程数据库。
 原交付包仍是历史测试产物，不能直接用于 OFF/OFF；本增量必须重新验证及构建。
 
+分支 `codex/mysql-57-adaptation`，工作目录
+`/Users/xiaweiyi/Developer/worktrees/iterflow/mysql-57-adaptation`；master 基线
+`a38081af9097f691c8289e9301951a0360ea0af7`。没有合并/push master、创建 tag/Release 或改写历史。
+
+本增量主要修改文件：
+
+| 范围 | 文件 |
+| --- | --- |
+| 连接与类型 | backend/app/core/database.py、db_types.py、mysql_preflight.py；models/entities.py；cli/migrate.py |
+| 迁移与数据库保护 | backend/alembic/mysql_file_keys.py；mysql_versions/mysql57_0001.py、mysql57_0002_portable_file_keys.py |
+| 实测 | backend/tests_mysql57/test_acceptance.py；tools/mysql57-portable/；run-mysql-tests.py；smoke-mysql-package.py |
+| CI 与部署 | .github/workflows/ci.yml；deploy/mysql57/README.md、compose.yml、runtime-grants.sql |
+| 记录 | docs/evidence/mysql57-portable/、本报告、原交付记录的历史范围提示、.gitignore |
+
+完整修改清单以 `git diff --name-status a38081af9097f691c8289e9301951a0360ea0af7 HEAD`
+为准；该命令同时包含原始 MySQL 适配。已发布 PG 迁移、当前/历史契约与 frontend/src 不变。
+
 ## 实现
 
 - 所有 API、迁移、seed、应用预检连接设置 SESSION innodb_strict_mode=ON，同时保持严格
@@ -32,6 +49,22 @@
   不把该例外记为最小权限通过，也不保证抵御该账号 DROP/TRUNCATE 保护对象。
 - 备份加入 --routines，连同节点、leaf、触发器及附件保存。MySQL 5.7 的备份身份需要
   mysql.proc SELECT；该权限不授予应用运行身份。必须保留函数/触发器 DEFINER 身份与权限。
+
+## 关系保护与 PostgreSQL 的保证差异
+
+本增量延续已验证的 MySQL 单一关系事实方案：两个条件唯一索引由 STORED 生成列
+`IF(is_primary=1,feedback_id,NULL)` / `IF(active=1,requirement_id,NULL)` 加 UNIQUE 实施；
+主需求和当前版本 API 指针由关系派生，不能通过直接 SQL 写第二份指针制造背离。
+合法历史行映射为 NULL，可以共存；FK、原 63 个值域/写保护 guard 及新增 5 个文件键 guard
+拒绝非法关系、枚举和禁用检查后的写入。不是把 PG 提交时触发器机械改为 MySQL 行触发器，
+也不依赖 Service 的 commit 前检查替代数据库保护。
+
+PostgreSQL 保留存储指针与提交时延迟核对；MySQL 使用派生指针和即时唯一/FK约束，
+物理表示与检查时点不同，已提交关系一致性、历史保留及事务原子性没有降低。
+直接 SQL 写旧指针列在 MySQL 被拒绝；直接 SQL 的操作顺序必须符合即时约束。
+API、领域实体关系、状态迁移、revision CAS 与发布语义不变，15 步主链及并发/回滚实测通过。
+MySQL DDL 不具备 PG 的事务回滚保证：迁移失败必须停下保留现场；已有 0001 只允许停写升级。
+详细原方案及失败候选证据见 [原关系保护交付记录](mysql57-delivery.md#关系一致性保证与-postgresql-差异)。
 
 ## 本地环境和命令
 
@@ -92,3 +125,52 @@ Alembic 会在初始迁移前创建空 alembic_version（仅迁移内部允许�
 已观察远程字符集/排序规则尚不符合，但本次没有修改或连接该远程环境。
 
 证据目录：`docs/evidence/mysql57-portable/`；部署模板说明：`deploy/mysql57/README.md`。
+
+## 新 linux/amd64 离线包
+
+- 镜像与部署模板冻结源：`a147f4cf8da002a55097f6b58d2261d740d9e2bc`。
+- 实际本地包验收工具：`e5f6771d211f7670ac9e74b2e00d30b4e7a3688c`。该增量仅改测试端口和文档；
+  backend/frontend/deploy/mysql57 三个构建输入 tree 与包源相同。
+- 工具增量的八项 CI 全 PASS：[run 38025118713](https://github.com/dede233/iterflow/actions/runs/38025118713)。
+- 离线 images.tar 加载到独立 x86_64 VM 后实际运行：正式空库迁移与 seed、低权限账号、
+  15 步主链、旧 revision 409、通知/审计/文件权限、三次重启、第二个新库和附件卷恢复、
+  恢复后新文件上传/下载/删除、68 guards 与再备份，全 PASS。全局仍 OFF/OFF。
+- 完整 VERSION() 为 5.7.44-log，见 local-test-environment.json；verification.json 中
+  mysql_version 记录产品基础版本 5.7.44。remote_verified=false。
+- 本轮临时包测试库、账号及卷已清理；原 API/Web/Redis、PostgreSQL、Preview 保持健康。
+
+包目录：`/Users/xiaweiyi/Developer/backups/iterflow/mysql57-package/2026-10-10/iterflow-mysql57-a147f4c-portable-linux-amd64`。
+离线压缩包同名 `.tar.gz`，校验值见同目录 `.tar.gz.sha256`；包内 `SHA256SUMS` 校验所有有效载荷。
+
+| 镜像 tag | 镜像 ID（全部 linux/amd64） |
+| --- | --- |
+| `iterflow-api:mysql57-a147f4cf8da0` | `sha256:423e3a26e4b45860a3e57e36e2526d49e28e22865833f28067e8b6f2e5a9d8c8` |
+| `iterflow-web:mysql57-a147f4cf8da0` | `sha256:e5319f7ddc3c7aad32d4ab8bd12b0e9714e7ffc4eaea66d66262b732bbcf34af` |
+| `iterflow-mysql57-redis:8.2.2-amd64` | `sha256:3f835dae62fe5012baf5a768293967c93bc09cf9e848d415351dfba04ee87537` |
+| `iterflow-mysql57-client:5.7.44-amd64` | `sha256:dab0a802b44617303694fb17d166501de279c3031ddeb28c56ecf7fcab5ef0da` |
+
+本地复现新包验收（保留已有页面）：
+
+```bash
+DOCKER_CONTEXT=colima-iterflow-mysql57 .venv/bin/python tools/smoke-mysql-package.py \
+  --portable --api-port 57430 --web-port 57480 \
+  --bundle /Users/xiaweiyi/Developer/backups/iterflow/mysql57-package/2026-10-10/iterflow-mysql57-a147f4c-portable-linux-amd64
+```
+
+正式启动、迁移、备份及隔离恢复命令见包内 README.md；本轮没有远程执行这些命令。
+包只含四镜像、部署/空白配置模板、校验清单和验证记录，不含测试 dump、附件或密码/Token/JWT_SECRET 值。
+
+## 后续部署条件与剩余门禁
+
+本地适配与包准备通过，可以进入部署前核实；不能据此宣称远程适配完成或可以上线。
+本次没有连接远程库、操作服务器或切换网站。两个全局参数无需作为本次方案的必改项；
+目标库仍需满足 utf8mb4/utf8mb4_bin、会话严格模式、创建函数/触发器及保留 DEFINER 的条件。
+
+后续还须在已授权的目标环境：确认空库与字符集/排序规则；用新包执行只读预检并核实
+迁移/备份权限、会话设置及函数创建条件；确定站点域名、HTTPS、反向代理、ALLOWED_HOSTS/CORS
+和备份位置；由用户在受保护文件填写生产专用秘密；正式迁移后仅 seed 新管理员，
+不导入任何测试账号或数据；完成实际远程主链、权限、附件、重启与备份验收。
+现有高权限 iterflow 账号是用户接受的例外，仍需保留保护对象及 DEFINER，不将其称为最小权限部署。
+
+压缩包最终 SHA256：`b458f3abc8e842e8d0a0e47fd449cf30b503781e427bc6b5afd68878125dcf99`（276513274 bytes）。
+包内 LOCAL_VALIDATION.md 不含自身压缩包 hash，避免自引用；以包外校验文件为准。

@@ -229,6 +229,10 @@ test('Phase 7 real restricted users: presence, conflict, publish, notification a
     await expect(pageB.getByRole('button', { name: '完成', exact: true })).toBeDisabled()
     for (const developer of [pageA, pageB]) {
       await developer.goto(`/#/requirements/${requirement.id}`)
+      // The second account still has the pre-confirmation revision; refresh before its own CAS write.
+      const rosterRead = developer.waitForResponse(r => r.url().endsWith(`/requirements/${requirement.id}/collaborators`) && r.request().method() === 'GET')
+      await developer.reload()
+      expect((await rosterRead).status()).toBe(200)
       const confirmation = developer.waitForResponse(r => r.url().endsWith(`/requirements/${requirement.id}/development-completion`) && r.request().method() === 'POST')
       await developer.getByRole('button', { name: '确认本人开发完成', exact: true }).click()
       expect((await confirmation).status()).toBe(200)

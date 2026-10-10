@@ -253,7 +253,7 @@ def restore_package(stage, dump, files, headers, requirement_id, file_id):
                 "SELECT COUNT(*) FROM information_schema.triggers WHERE trigger_schema=%s",
                 (restored,),
             )[0][0]
-            == 71
+            == 73
         )
         dc("stop", "api")
         post_dump = dc(
@@ -261,7 +261,7 @@ def restore_package(stage, dump, files, headers, requirement_id, file_id):
         ).stdout
         return {
             "package_isolated_restore": True,
-            "restored_guard_triggers": 71,
+            "restored_guard_triggers": 73,
             "restored_function_runtime_upload": True,
             "package_post_restore_backup_sha256": hashlib.sha256(post_dump).hexdigest(),
         }

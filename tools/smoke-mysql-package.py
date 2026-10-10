@@ -6,6 +6,7 @@ import json
 import os
 import secrets
 import shutil
+import socket
 import subprocess
 import tempfile
 import time
@@ -21,7 +22,23 @@ root = Path(__file__).resolve().parents[1]
 parser = argparse.ArgumentParser()
 parser.add_argument("--bundle", type=Path, required=True)
 parser.add_argument("--portable", action="store_true")
+parser.add_argument("--api-port", type=int, default=57300)
+parser.add_argument("--web-port", type=int, default=57380)
 args = parser.parse_args()
+ports = (args.api_port, args.api_port + 1, args.web_port, args.web_port + 1)
+if len(set(ports)) != 4 or not all(1024 <= port <= 65535 for port in ports):
+    parser.error(
+        "Require four distinct nonprivileged API/Web and adjacent restore ports"
+    )
+# Refuse a conflict before creating any test database or Compose resources.
+for port in ports:
+    with socket.socket() as probe:
+        try:
+            probe.bind(("127.0.0.1", port))
+        except OSError:
+            parser.error(
+                f"Local test port {port} is occupied; choose another port pair"
+            )
 bundle = args.bundle.resolve()
 manifest = json.loads((bundle / "manifest.json").read_text())
 container = (
@@ -52,6 +69,12 @@ proof = {
         ["git", "rev-parse", "HEAD"], cwd=root, text=True
     ).strip(),
     "proxy_readiness_probes": [],
+    "local_ports": {
+        "api": args.api_port,
+        "web": args.web_port,
+        "restore_api": args.api_port + 1,
+        "restore_web": args.web_port + 1,
+    },
 }
 
 
@@ -107,8 +130,8 @@ def restore_package(stage, dump, files, headers, requirement_id, file_id):
         path.write_text(
             path.read_text()
             .replace(db_name, restored)
-            .replace("API_PORT=57300", "API_PORT=57301")
-            .replace("WEB_PORT=57380", "WEB_PORT=57381")
+            .replace(f"API_PORT={args.api_port}\n", f"API_PORT={args.api_port + 1}\n")
+            .replace(f"WEB_PORT={args.web_port}\n", f"WEB_PORT={args.web_port + 1}\n")
         )
     # A restore helper belongs only to this disposable test project. The shipped
     # backup service keeps its read-only attachment mount; `compose run -v` does
@@ -187,7 +210,9 @@ def restore_package(stage, dump, files, headers, requirement_id, file_id):
             "app.cli.mysql_preflight",
         )
         dc("up", "-d", "--wait", "--wait-timeout", "300", "redis", "api", "web")
-        with httpx.Client(base_url="http://127.0.0.1:57381", timeout=30) as client:
+        with httpx.Client(
+            base_url=f"http://127.0.0.1:{args.web_port + 1}", timeout=30
+        ) as client:
             download = f"/api/v1/files/{file_id}/download"
             assert client.get(download).status_code == 401
             assert (
@@ -278,9 +303,9 @@ try:
         image_env = image_env.replace(
             "MYSQL_DATABASE_NAME=iterflow", "MYSQL_DATABASE_NAME=" + db_name
         )
-        image_env = image_env.replace("API_PORT=8000", "API_PORT=57300").replace(
-            "WEB_PORT=8080", "WEB_PORT=57380"
-        )
+        image_env = image_env.replace(
+            "API_PORT=8000\n", f"API_PORT={args.api_port}\n"
+        ).replace("WEB_PORT=8080\n", f"WEB_PORT={args.web_port}\n")
         image_env += f"BACKUP_UID={os.getuid()}\nBACKUP_GID={os.getgid()}\n"
         (stage / "images.env").write_text(image_env)
         common = (
@@ -386,10 +411,15 @@ try:
             ):
                 assert sql(f"SELECT COUNT(*) FROM `{db_name}`.`{table}`")[0][0] == 0
             dc("up", "-d", "--wait", "--wait-timeout", "300", "redis", "api", "web")
-            with httpx.Client(base_url="http://127.0.0.1:57380", timeout=30) as client:
+            with httpx.Client(
+                base_url=f"http://127.0.0.1:{args.web_port}", timeout=30
+            ) as client:
                 assert client.get("/").status_code == 200
-                assert httpx.get("http://127.0.0.1:57300/ready").status_code == 200
-                health = httpx.get("http://127.0.0.1:57300/health").json()
+                assert (
+                    httpx.get(f"http://127.0.0.1:{args.api_port}/ready").status_code
+                    == 200
+                )
+                health = httpx.get(f"http://127.0.0.1:{args.api_port}/health").json()
                 assert health["build_sha"] == manifest["source_commit"]
 
                 def request(method, path, headers=None, expected=200, **kwargs):

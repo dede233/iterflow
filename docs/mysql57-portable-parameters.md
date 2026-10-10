@@ -67,7 +67,16 @@ DOCKER_CONTEXT=colima-iterflow-mysql57 .venv/bin/python tools/run-mysql-tests.py
 PG Alembic upgrade/check、Ruff/Mypy、前端 320 tests、构建、契约类型及 bundle 门禁通过。
 ON 配置复跑 48 passed / 0 skipped；关系证明复跑 17 passed。
 最终预检/文件/低权限/严格会话/恢复重点回归 7 passed，恢复后新增文件上传与删除另测 1 passed。
-新增 CI 与新包验收结果后续记录，不沿用旧包 CI PASS。
+源代码 a147f4cf8da002a55097f6b58d2261d740d9e2bc 的八项 CI 全 PASS：
+[run 38024618587](https://github.com/dede233/iterflow/actions/runs/38024618587)。
+两种 MySQL 配置各 48 passed / 0 skipped，且分别通过实际 amd64 镜像启动、主链、重启、
+备份恢复与恢复后函数写入。原六项门禁保留，浏览器 161 passed；后端 job 的 S3 skip
+由独立 s3 job 实际执行，不能把该单 job 记为零跳过。
+新离线包的本地验收结果另行记录，不沿用旧包 PASS。
+
+新包本地 smoke 可用 `--api-port 57430 --web-port 57480`，恢复使用相邻的 57431/57481。
+脚本先核实四个端口可用，冲突即在创建测试库之前退出；实测拒绝已占用的 57300，
+保留原本地 API/Web。该工具增量经 Ruff、编译和 Fresh Self-Review。
 
 Fresh Self-Review 为同一 Agent 的重新审查，不能称为 independent review。
 确认完整键没有哈希/前缀碰撞问题，旧快照用 current read 防绕过，函数不拆事务；

@@ -1,5 +1,7 @@
 # DEVELOPMENT.md
 
+需求协作已按用户要求追加可选设计阶段与按阶段分配，当前操作与门禁见 `docs/requirement-design-stage.md`。
+
 2026-10-10 用户授权的本地增量：一名总负责人、多名开发、多名设计及定向站内通知，见 `docs/requirement-collaboration.md`。开发契约仍为 `spec/openapi-development.yaml`；新增迁移不改历史发布快照。本地测试通过不构成线上部署事实。
 
 

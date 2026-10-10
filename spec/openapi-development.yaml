@@ -1283,6 +1283,61 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       description: 需要 rd.requirement.edit 及该需求数据范围。原子替换总负责人、开发和设计人员；revision CAS，旧 revision 返回 409。有效人员必须启用且拥有需求查看权限；开发、设计需对应启用角色。失败时关联、通知与审计一起回滚。同人兼任不同职责只收到一条事件通知。
+    patch:
+      tags:
+      - requirements
+      summary: 单独调整负责人或当前阶段分工
+      operationId: update_collaborator_group_api_v1_requirements__requirement_id__collaborators_patch
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: requirement_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Requirement Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequirementCollaboratorGroupUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RequirementCollaboratorsOut'
+        '409':
+          description: revision CAS 冲突 (40910) 或该操作的业务冲突
+          content:
+            application/json:
+              schema:
+                anyOf:
+                - $ref: '#/components/schemas/RevisionConflictResponse'
+                - $ref: '#/components/schemas/ErrorResponse'
+                title: Response 409 Update Collaborator Group Api V1 Requirements  Requirement Id  Collaborators
+                  Patch
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /requirements/{requirement_id}:
     get:
       tags:
@@ -1365,6 +1420,61 @@ paths:
                 - $ref: '#/components/schemas/RevisionConflictResponse'
                 - $ref: '#/components/schemas/ErrorResponse'
                 title: Response 409 Update Requirement Api V1 Requirements  Requirement Id  Patch
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /requirements/{requirement_id}/start-stage:
+    post:
+      tags:
+      - requirements
+      summary: 开始设计或开发并分配阶段人员
+      operationId: start_stage_api_v1_requirements__requirement_id__start_stage_post
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: requirement_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Requirement Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequirementStageStart'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RequirementOut'
+        '409':
+          description: revision CAS 冲突 (40910) 或该操作的业务冲突
+          content:
+            application/json:
+              schema:
+                anyOf:
+                - $ref: '#/components/schemas/RevisionConflictResponse'
+                - $ref: '#/components/schemas/ErrorResponse'
+                title: Response 409 Start Stage Api V1 Requirements  Requirement Id  Start Stage Post
         '422':
           description: Validation Error
           content:
@@ -4987,6 +5097,7 @@ components:
       - DRAFT
       - CONFIRMED
       - PLANNED
+      - DESIGNING
       - DEVELOPING
       - TESTING
       - DONE
@@ -5348,6 +5459,38 @@ components:
       - revision
       - version_revision
       title: RemoveRequirementRequest
+    RequirementCollaboratorGroupUpdate:
+      properties:
+        revision:
+          type: integer
+          minimum: 1.0
+          title: 数据版本
+        kind:
+          type: string
+          enum:
+          - OWNER
+          - DEVELOPMENT
+          - DESIGN
+          title: 分工类型
+        owner_id:
+          anyOf:
+          - type: integer
+            exclusiveMinimum: 0.0
+          - type: 'null'
+          title: 总负责人
+        user_ids:
+          items:
+            type: integer
+            exclusiveMinimum: 0.0
+          type: array
+          maxItems: 100
+          title: 参与人员
+      additionalProperties: false
+      type: object
+      required:
+      - revision
+      - kind
+      title: 调整阶段分工
     RequirementCollaboratorsOut:
       properties:
         revision:
@@ -5584,12 +5727,40 @@ components:
       - DIRECT
       - FEEDBACK
       title: RequirementSource
+    RequirementStageStart:
+      properties:
+        revision:
+          type: integer
+          minimum: 1.0
+          title: 数据版本
+        status:
+          type: string
+          enum:
+          - DESIGNING
+          - DEVELOPING
+          title: 阶段状态
+        user_ids:
+          items:
+            type: integer
+            exclusiveMinimum: 0.0
+          type: array
+          maxItems: 100
+          minItems: 1
+          title: 参与人员
+      additionalProperties: false
+      type: object
+      required:
+      - revision
+      - status
+      - user_ids
+      title: 开始需求阶段
     RequirementStatus:
       type: string
       enum:
       - DRAFT
       - CONFIRMED
       - PLANNED
+      - DESIGNING
       - DEVELOPING
       - TESTING
       - DONE

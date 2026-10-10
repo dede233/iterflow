@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.core.exceptions import AppError, ConflictError, NotFoundError
 from app.core.ids import next_business_no
-from app.models.entities import Requirement, Version
+from app.models.entities import Requirement, RequirementParticipant, Version
 from app.models.enums import (
     DataScope,
     ManualRequirementStatus,
@@ -14,6 +14,7 @@ from app.models.enums import (
 from app.repositories.requirement_repository import RequirementRepository
 from app.schemas.requirement import (
     RequirementCreate,
+    RequirementStageStart,
     RequirementStatusChange,
     RequirementUpdate,
 )
@@ -25,6 +26,7 @@ STATUS_LABELS = {
     RequirementStatus.DRAFT: "草稿",
     RequirementStatus.CONFIRMED: "已确认",
     RequirementStatus.PLANNED: "已排期",
+    RequirementStatus.DESIGNING: "设计中",
     RequirementStatus.DEVELOPING: "开发中",
     RequirementStatus.TESTING: "测试中",
     RequirementStatus.DONE: "已完成",
@@ -44,6 +46,12 @@ ALLOWED_TRANSITIONS: dict[RequirementStatus, set[ManualRequirementStatus]] = {
         ManualRequirementStatus.CANCELED,
     },
     RequirementStatus.PLANNED: {
+        ManualRequirementStatus.DESIGNING,
+        ManualRequirementStatus.DEVELOPING,
+        ManualRequirementStatus.PAUSED,
+        ManualRequirementStatus.CANCELED,
+    },
+    RequirementStatus.DESIGNING: {
         ManualRequirementStatus.DEVELOPING,
         ManualRequirementStatus.PAUSED,
         ManualRequirementStatus.CANCELED,
@@ -59,6 +67,7 @@ ALLOWED_TRANSITIONS: dict[RequirementStatus, set[ManualRequirementStatus]] = {
     },
     RequirementStatus.DONE: {ManualRequirementStatus.DEVELOPING},
     RequirementStatus.PAUSED: {
+        ManualRequirementStatus.DESIGNING,
         ManualRequirementStatus.CONFIRMED,
         ManualRequirementStatus.PLANNED,
         ManualRequirementStatus.DEVELOPING,
@@ -74,6 +83,33 @@ class RequirementService:
         self.db = db
         self.repo = RequirementRepository(db)
         self.audit = AuditService(db)
+
+    def start_stage(
+        self, requirement_id: int, payload: RequirementStageStart, operator_id: int
+    ) -> Requirement:
+        current = self.db.scalar(
+            select(Requirement).where(Requirement.id == requirement_id).with_for_update()
+        )
+        if current is None:
+            raise NotFoundError("需求不存在")
+        if current.revision != payload.revision:
+            raise ConflictError("需求已被其他用户修改", revision_conflict_data(current))
+        allowed = (
+            {RequirementStatus.PLANNED}
+            if payload.status == "DESIGNING"
+            else {RequirementStatus.PLANNED, RequirementStatus.DESIGNING}
+        )
+        if current.status not in allowed:
+            raise ConflictError("当前状态不能开始该阶段")
+        kind = "DESIGN" if payload.status == "DESIGNING" else "DEVELOPMENT"
+        RequirementCollaborationService(self.db).apply_members(current, kind, payload.user_ids)
+        return self.change_status(
+            requirement_id,
+            RequirementStatusChange(
+                revision=payload.revision, status=ManualRequirementStatus(payload.status)
+            ),
+            operator_id,
+        )
 
     def create(
         self,
@@ -172,6 +208,25 @@ class RequirementService:
         previous_status = current.status
         if payload.status not in ALLOWED_TRANSITIONS[current_status]:
             raise AppError(40911, f"不允许从 {current.status} 变更为 {payload.status}", 409)
+        if payload.status == ManualRequirementStatus.DESIGNING or (
+            current_status == RequirementStatus.DESIGNING
+            and payload.status == ManualRequirementStatus.DEVELOPING
+        ):
+            kind = (
+                "DESIGN" if payload.status == ManualRequirementStatus.DESIGNING else "DEVELOPMENT"
+            )
+            if (
+                self.db.scalar(
+                    select(RequirementParticipant.user_id)
+                    .where(
+                        RequirementParticipant.requirement_id == requirement_id,
+                        RequirementParticipant.discipline == kind,
+                    )
+                    .limit(1)
+                )
+                is None
+            ):
+                raise ConflictError("请先选择阶段人员再开始该阶段")
         if (
             current.status == RequirementStatus.DONE
             and payload.status == ManualRequirementStatus.DEVELOPING
@@ -212,6 +267,14 @@ class RequirementService:
             "状态已更新",
             f"{STATUS_LABELS[RequirementStatus(previous_status)]} → "
             f"{STATUS_LABELS[RequirementStatus(payload.status.value)]}。请查看需求详情。",
+            discipline=(
+                "DESIGN"
+                if payload.status == ManualRequirementStatus.DESIGNING
+                else "DEVELOPMENT"
+                if payload.status
+                in {ManualRequirementStatus.DEVELOPING, ManualRequirementStatus.TESTING}
+                else None
+            ),
         )
         self.db.commit()
         updated = self.repo.get(requirement_id)

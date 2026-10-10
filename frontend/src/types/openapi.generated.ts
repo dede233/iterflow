@@ -375,7 +375,8 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /** 单独调整负责人或当前阶段分工 */
+        patch: operations["update_collaborator_group_api_v1_requirements__requirement_id__collaborators_patch"];
         trace?: never;
     };
     "/requirements/{requirement_id}": {
@@ -394,6 +395,23 @@ export interface paths {
         head?: never;
         /** 编辑需求 */
         patch: operations["update_requirement_api_v1_requirements__requirement_id__patch"];
+        trace?: never;
+    };
+    "/requirements/{requirement_id}/start-stage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 开始设计或开发并分配阶段人员 */
+        post: operations["start_stage_api_v1_requirements__requirement_id__start_stage_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/requirements/{requirement_id}/feedbacks": {
@@ -1849,7 +1867,7 @@ export interface components {
          * ManualRequirementStatus
          * @enum {string}
          */
-        ManualRequirementStatus: "DRAFT" | "CONFIRMED" | "PLANNED" | "DEVELOPING" | "TESTING" | "DONE" | "PAUSED" | "CANCELED";
+        ManualRequirementStatus: "DRAFT" | "CONFIRMED" | "PLANNED" | "DESIGNING" | "DEVELOPING" | "TESTING" | "DONE" | "PAUSED" | "CANCELED";
         /**
          * ManualVersionStatus
          * @enum {string}
@@ -2053,6 +2071,20 @@ export interface components {
             /** 操作原因 */
             reason?: string | null;
         };
+        /** 调整阶段分工 */
+        RequirementCollaboratorGroupUpdate: {
+            /** 数据版本 */
+            revision: number;
+            /**
+             * 分工类型
+             * @enum {string}
+             */
+            kind: "OWNER" | "DEVELOPMENT" | "DESIGN";
+            /** 总负责人 */
+            owner_id?: number | null;
+            /** 参与人员 */
+            user_ids?: number[];
+        };
         /** RequirementCollaboratorsOut */
         RequirementCollaboratorsOut: {
             /** 修订号 */
@@ -2166,11 +2198,23 @@ export interface components {
          * @enum {string}
          */
         RequirementSource: "DIRECT" | "FEEDBACK";
+        /** 开始需求阶段 */
+        RequirementStageStart: {
+            /** 数据版本 */
+            revision: number;
+            /**
+             * 阶段状态
+             * @enum {string}
+             */
+            status: "DESIGNING" | "DEVELOPING";
+            /** 参与人员 */
+            user_ids: number[];
+        };
         /**
          * RequirementStatus
          * @enum {string}
          */
-        RequirementStatus: "DRAFT" | "CONFIRMED" | "PLANNED" | "DEVELOPING" | "TESTING" | "DONE" | "ONLINE" | "PAUSED" | "CANCELED";
+        RequirementStatus: "DRAFT" | "CONFIRMED" | "PLANNED" | "DESIGNING" | "DEVELOPING" | "TESTING" | "DONE" | "ONLINE" | "PAUSED" | "CANCELED";
         /** RequirementStatusChange */
         RequirementStatusChange: {
             /** 需求状态 */
@@ -3850,6 +3894,68 @@ export interface operations {
             };
         };
     };
+    update_collaborator_group_api_v1_requirements__requirement_id__collaborators_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requirement_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequirementCollaboratorGroupUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RequirementCollaboratorsOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description revision CAS 冲突 (40910) 或该操作的业务冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_requirement_api_v1_requirements__requirement_id__get: {
         parameters: {
             query?: never;
@@ -3943,6 +4049,68 @@ export interface operations {
             };
             /** @description 资源不存在或不在当前数据范围 */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description revision CAS 冲突 (40910) 或该操作的业务冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_stage_api_v1_requirements__requirement_id__start_stage_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requirement_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequirementStageStart"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RequirementOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

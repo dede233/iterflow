@@ -15,11 +15,13 @@ from app.repositories.version_repository import VersionRepository
 from app.schemas.requirement import (
     AssigneeOptionsPage,
     LinkedFeedbackOut,
+    RequirementCollaboratorGroupUpdate,
     RequirementCollaboratorsOut,
     RequirementCollaboratorsUpdate,
     RequirementCreate,
     RequirementOut,
     RequirementPage,
+    RequirementStageStart,
     RequirementStatusChange,
     RequirementUpdate,
 )
@@ -143,6 +145,36 @@ def get_requirement(
     user: User = Depends(require_permission("rd.requirement.view")),
 ):
     return _scoped_requirement_or_404(db, user, requirement_id)
+
+
+@router.post(
+    "/{requirement_id}/start-stage",
+    response_model=RequirementOut,
+    responses=api_revision_conflict_responses(),
+)
+def start_stage(
+    requirement_id: int,
+    payload: RequirementStageStart,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_all_permissions("rd.requirement.edit", "rd.requirement.status")),
+):
+    _scoped_requirement_or_404(db, user, requirement_id)
+    return RequirementService(db).start_stage(requirement_id, payload, user.id)
+
+
+@router.patch(
+    "/{requirement_id}/collaborators",
+    response_model=RequirementCollaboratorsOut,
+    responses=api_revision_conflict_responses(),
+)
+def update_collaborator_group(
+    requirement_id: int,
+    payload: RequirementCollaboratorGroupUpdate,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("rd.requirement.edit")),
+):
+    _scoped_requirement_or_404(db, user, requirement_id)
+    return RequirementCollaborationService(db).replace_group(requirement_id, payload, user.id)
 
 
 @router.get("/{requirement_id}/feedbacks", response_model=list[LinkedFeedbackOut])

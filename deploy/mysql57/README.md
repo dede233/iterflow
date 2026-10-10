@@ -4,9 +4,9 @@
 测试过；远程版本、供应商、TLS、网络和权限未核实。当前未操作服务器/远程数据库。
 API 仍为 1.8.1 开发基线，本适配分支不是新的正式 tag/Release。
 
-2026-10-10 需求协作本地增量将 head 升为 mysql57_0003，并增加分工表与两类角色。
+2026-10-10 需求协作及可选设计阶段本地增量将 head 升为 mysql57_0004，并增加分工表与两类角色。
 新部署包尚未构建验收，不能沿用旧包的验证结论；现有数据库升级说明见
-`docs/requirement-collaboration.md`。线上环境尚未应用此次增量。
+`docs/requirement-design-stage.md`。线上环境尚未应用此次增量。
 
 包含 API、Web、Redis 与 MySQL 5.7.44 客户端镜像；Compose 不启动数据库服务器。
 数据库必须由管理员单独提供。API 使用低权限账号，迁移/seed 使用另一个受限账号。
@@ -71,7 +71,7 @@ curl --fail http://127.0.0.1:8080/
 先执行正式迁移，然后 seed；不使用 create_all、stamp head 或 PG 历史迁移。
 MySQL DDL 不原子：失败即停，保留现场；不要 stamp/盲目续跑。由 DBA 确认仅针对自己的空库
 清理失败初始化后重建。seed 只创建基础角色、权限和新管理员，首次登录必须改密。
-迁移后必须检查 mysql57_0003、71 个 trigger、键登记函数及完整唯一约束；runtime readiness
+迁移后必须检查 mysql57_0004、71 个 trigger、键登记函数及完整唯一约束；runtime readiness
 只用低权限检查。长键保持原 500 字符/2000 字节范围，分成 512 字节二进制段，以
 UNIQUE(parent_id,segment) 确定路径，再以文件 leaf_id UNIQUE 保证完整键唯一；无哈希/前缀误判。
 登记节点不可修改或删除，文件删除后可复用路径；节点积累需要计入存储容量。

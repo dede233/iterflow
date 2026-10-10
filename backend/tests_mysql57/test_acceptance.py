@@ -932,6 +932,8 @@ def test_mysql_restart_and_isolated_backup_restore(mysql_api, monkeypatch, tmp_p
     with Session(engine) as db:
         developer = db.scalar(select(Role).where(Role.code == "DEVELOPER"))
         db.add(UserRole(user_id=mysql_api[2], role_id=developer.id))
+        designer = db.scalar(select(Role).where(Role.code == "DESIGNER"))
+        db.add(UserRole(user_id=mysql_api[2], role_id=designer.id))
         db.commit()
     current = client.get(f"/api/v1/requirements/{ids['requirement']}", headers=headers).json()
     assigned = client.put(
@@ -945,6 +947,30 @@ def test_mysql_restart_and_isolated_backup_restore(mysql_api, monkeypatch, tmp_p
         },
     )
     assert assigned.status_code == 200, assigned.text
+    design = client.post(
+        "/api/v1/requirements",
+        headers=headers,
+        json={
+            "title": "设计阶段备份恢复需求",
+            "requirement_type": "FEATURE",
+            "description": "独立恢复验收",
+        },
+    ).json()
+    for state in ("CONFIRMED", "PLANNED"):
+        result = client.patch(
+            f"/api/v1/requirements/{design['id']}/status",
+            headers=headers,
+            json={"revision": design["revision"], "status": state},
+        )
+        assert result.status_code == 200, result.text
+        design = result.json()
+    result = client.post(
+        f"/api/v1/requirements/{design['id']}/start-stage",
+        headers=headers,
+        json={"revision": design["revision"], "status": "DESIGNING", "user_ids": [mysql_api[2]]},
+    )
+    assert result.status_code == 200, result.text
+    design = result.json()
     upload = client.post(
         f"/api/v1/feedbacks/{ids['feedback']}/attachments",
         headers=headers,
@@ -1028,9 +1054,14 @@ def test_mysql_restart_and_isolated_backup_restore(mysql_api, monkeypatch, tmp_p
             assert session.get(Feedback, ids["feedback"]).main_requirement_id == ids["requirement"]
             assert session.scalar(select(func.count(User.id))) == 1
             assert session.scalar(select(func.count(VersionRequirement.id))) == 1
-            assert session.scalar(select(func.count()).select_from(RequirementParticipant)) == 1
+            assert session.scalar(select(func.count()).select_from(RequirementParticipant)) == 2
             participant = session.scalar(select(RequirementParticipant))
             assert participant.user_id == mysql_api[2] and participant.discipline == "DEVELOPMENT"
+            assert session.get(Requirement, design["id"]).status == "DESIGNING"
+            assert (
+                session.get(RequirementParticipant, (design["id"], mysql_api[2], "DESIGN"))
+                is not None
+            )
         monkeypatch.setattr(
             database,
             "SessionLocal",
@@ -1041,6 +1072,17 @@ def test_mysql_restart_and_isolated_backup_restore(mysql_api, monkeypatch, tmp_p
         assert (
             client.get(download, headers=headers).content == b"isolated mysql57 backup attachment"
         )
+        stage_after_restore = client.post(
+            f"/api/v1/requirements/{design['id']}/start-stage",
+            headers=headers,
+            json={
+                "revision": design["revision"],
+                "status": "DEVELOPING",
+                "user_ids": [mysql_api[2]],
+            },
+        )
+        assert stage_after_restore.status_code == 200, stage_after_restore.text
+        assert stage_after_restore.json()["status"] == "DEVELOPING"
         after_restore = client.post(
             "/api/v1/files",
             headers=headers,
@@ -1064,7 +1106,7 @@ def test_mysql_restart_and_isolated_backup_restore(mysql_api, monkeypatch, tmp_p
                 "--routines --triggers --hex-blob --set-gtid-purged=OFF " + restored,
             ]
         )
-        evidence = BACKEND.parent / "docs/evidence/requirement-collaboration"
+        evidence = BACKEND.parent / "docs/evidence/requirement-design-stage"
         evidence.mkdir(parents=True, exist_ok=True)
         (
             evidence / ("backup-restore.json" if PORTABLE else "standard-backup-restore.json")
@@ -1086,6 +1128,8 @@ def test_mysql_restart_and_isolated_backup_restore(mysql_api, monkeypatch, tmp_p
                     "restored_guard_triggers": 71,
                     "profile": TEST_PROJECT,
                     "restored_function_upload": True,
+                    "design_state_and_roster_restored": True,
+                    "stage_transition_after_restore": True,
                 },
                 indent=2,
             )

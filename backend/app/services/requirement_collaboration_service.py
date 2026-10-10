@@ -12,12 +12,13 @@ from app.models.entities import (
     User,
     UserRole,
 )
-from app.models.enums import NotificationType, UserStatus
+from app.models.enums import NotificationType, RequirementStatus, UserStatus
 from app.repositories.requirement_repository import RequirementRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.requirement import (
     AssigneeOption,
     AssigneeOptionsPage,
+    RequirementCollaboratorGroupUpdate,
     RequirementCollaboratorsOut,
     RequirementCollaboratorsUpdate,
 )
@@ -97,6 +98,108 @@ class RequirementCollaborationService:
             designers=[self._option(u) for kind, u in rows if kind == "DESIGN"],
         )
 
+    def apply_members(self, requirement: Requirement, kind: str, ids: list[int]) -> None:
+        users = self.db.scalars(
+            select(User)
+            .where(User.id.in_(ids), User.status == UserStatus.ACTIVE, eligible_user_criterion())
+            .order_by(User.id)
+            .with_for_update()
+        ).all()
+        if len(users) != len(ids):
+            raise AppError(42212, "阶段人员必须是启用且具备需求查看权限的账号", 422)
+        options = [self._option(u) for u in users]
+        if kind == "DEVELOPMENT" and any(not u.can_develop for u in options):
+            raise AppError(42212, "请选择具备开发人员或研发负责人角色的账号", 422)
+        if kind == "DESIGN" and any(not u.can_design for u in options):
+            raise AppError(42212, "请选择具备设计人员角色的账号", 422)
+        before = self.read(requirement).model_dump()
+        self.db.execute(
+            delete(RequirementParticipant).where(
+                RequirementParticipant.requirement_id == requirement.id,
+                RequirementParticipant.discipline == kind,
+            )
+        )
+        self.db.add_all(
+            RequirementParticipant(requirement_id=requirement.id, user_id=uid, discipline=kind)
+            for uid in ids
+        )
+        self.db.flush()
+        AuditService(self.db).log(
+            "REQUIREMENT",
+            requirement.id,
+            "ASSIGN_" + kind,
+            before=before,
+            after=self.read(requirement).model_dump(),
+        )
+
+    def replace_group(
+        self, requirement_id: int, payload: RequirementCollaboratorGroupUpdate, operator_id: int
+    ) -> RequirementCollaboratorsOut:
+        requirement = self.db.scalar(
+            select(Requirement).where(Requirement.id == requirement_id).with_for_update()
+        )
+        if requirement is None:
+            raise NotFoundError("需求不存在")
+        if requirement.revision != payload.revision:
+            raise ConflictError("需求已被其他用户修改", revision_conflict_data(requirement))
+        if payload.kind == "OWNER":
+            if (
+                payload.owner_id is not None
+                and self.db.scalar(
+                    select(User.id)
+                    .where(
+                        User.id == payload.owner_id,
+                        User.status == UserStatus.ACTIVE,
+                        eligible_user_criterion(),
+                    )
+                    .with_for_update()
+                )
+                is None
+            ):
+                raise AppError(42212, "总负责人必须是启用且具备需求查看权限的账号", 422)
+            before = self.read(requirement).model_dump()
+            if not RequirementRepository(self.db).update_with_revision(
+                requirement_id,
+                payload.revision,
+                {"owner_id": payload.owner_id, "updated_by": operator_id},
+            ):
+                raise ConflictError("需求已被其他用户修改", revision_conflict_data(requirement))
+            self.db.refresh(requirement)
+            AuditService(self.db).log(
+                "REQUIREMENT",
+                requirement_id,
+                "ASSIGN_OWNER",
+                before=before,
+                after=self.read(requirement).model_dump(),
+            )
+            self.notify(requirement, operator_id, "负责人已更新", "请查看最新总负责人。")
+            self.db.commit()
+            return self.read(requirement)
+        allowed = (
+            {RequirementStatus.DESIGNING}
+            if payload.kind == "DESIGN"
+            else {RequirementStatus.DEVELOPING, RequirementStatus.TESTING, RequirementStatus.DONE}
+        )
+        if requirement.status not in allowed:
+            raise ConflictError("请在对应设计或开发阶段调整人员")
+        if not payload.user_ids:
+            raise AppError(42212, "当前阶段至少需要一名参与人员", 422)
+        self.apply_members(requirement, payload.kind, payload.user_ids)
+        if not RequirementRepository(self.db).update_with_revision(
+            requirement_id, payload.revision, {"updated_by": operator_id}
+        ):
+            raise ConflictError("需求已被其他用户修改", revision_conflict_data(requirement))
+        self.db.refresh(requirement)
+        self.notify(
+            requirement,
+            operator_id,
+            "阶段分工已更新",
+            "请查看当前阶段的人员分工。",
+            discipline=payload.kind,
+        )
+        self.db.commit()
+        return self.read(requirement)
+
     def replace(
         self, requirement_id: int, payload: RequirementCollaboratorsUpdate, operator_id: int
     ) -> RequirementCollaboratorsOut:
@@ -109,6 +212,8 @@ class RequirementCollaborationService:
             raise ConflictError(
                 "需求已被其他用户修改。请刷新后重试", revision_conflict_data(requirement)
             )
+        if requirement.status == RequirementStatus.DESIGNING and not payload.designer_ids:
+            raise AppError(42212, "设计阶段至少保留一名设计人员", 422)
         ids = set(payload.developer_ids + payload.designer_ids)
         if payload.owner_id is not None:
             ids.add(payload.owner_id)
@@ -168,11 +273,20 @@ class RequirementCollaborationService:
         self.db.commit()
         return result
 
-    def notify(self, requirement: Requirement, operator_id: int, title: str, content: str) -> None:
+    def notify(
+        self,
+        requirement: Requirement,
+        operator_id: int,
+        title: str,
+        content: str,
+        *,
+        discipline: str | None = None,
+    ) -> None:
         recipients = set(
             self.db.scalars(
                 select(RequirementParticipant.user_id).where(
-                    RequirementParticipant.requirement_id == requirement.id
+                    RequirementParticipant.requirement_id == requirement.id,
+                    *([RequirementParticipant.discipline == discipline] if discipline else []),
                 )
             )
         )

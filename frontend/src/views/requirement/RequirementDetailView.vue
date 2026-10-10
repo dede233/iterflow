@@ -9,6 +9,8 @@ import {
   updateRequirement,
 } from '@/api/requirements'
 import ScopedRelationLink from '@/components/ScopedRelationLink.vue'
+import RequirementAssigneeSelect from '@/components/RequirementAssigneeSelect.vue'
+import { getCollaborators, startRequirementStage, type AssigneeOption } from '@/api/requirementCollaboration'
 import RequirementCollaboratorsPanel from '@/components/RequirementCollaboratorsPanel.vue'
 import { useDetailNavigation } from '@/composables/useDetailNavigation'
 import { usePermission } from '@/composables/usePermission'
@@ -67,7 +69,7 @@ const canEdit = computed(() => can('rd.requirement.edit'))
 const canChangeStatus = computed(() => can('rd.requirement.status'))
 const canViewFeedbacks = computed(() => can('rd.feedback.view'))
 const statusActions = computed<ReqStatusAction[]>(() =>
-  item.value ? availableRequirementStatusActions(item.value.status, canChangeStatus.value) : [],
+  item.value ? availableRequirementStatusActions(item.value.status, canChangeStatus.value).filter(a => !a.startsStage || canEdit.value) : [],
 )
 
 // --- status dialog ---
@@ -75,8 +77,23 @@ const statusDialog = ref(false)
 const statusSubmitting = ref(false)
 const currentAction = ref<ReqStatusAction | null>(null)
 const statusReason = ref('')
+const stagePeople = ref<number[]>([])
+const stageSelected = ref<AssigneeOption[]>([])
+const stageRevision = ref(1)
+const openingStage = ref(false)
 
-function openStatusDialog(action: ReqStatusAction): void {
+async function openStatusDialog(action: ReqStatusAction): Promise<void> {
+  if (openingStage.value) return
+  if (action.startsStage) {
+    openingStage.value = true
+    try {
+      const roster = await getCollaborators(id)
+      stageSelected.value = action.target === 'DESIGNING' ? roster.designers : roster.developers
+      stagePeople.value = stageSelected.value.map(u => u.user_id)
+      stageRevision.value = roster.revision
+    } catch { ElMessage.error('阶段人员加载失败，请重试'); return }
+    finally { openingStage.value = false }
+  }
   currentAction.value = action
   statusReason.value = ''
   statusDialog.value = true
@@ -91,7 +108,10 @@ async function submitStatus(): Promise<void> {
   }
   statusSubmitting.value = true
   try {
-    await changeRequirementStatus(
+    if (action.startsStage) {
+      if (!stagePeople.value.length) { ElMessage.warning('请至少选择一名阶段人员'); return }
+      await startRequirementStage(id, { status: action.target as 'DESIGNING' | 'DEVELOPING', revision: stageRevision.value, user_ids: [...stagePeople.value] })
+    } else await changeRequirementStatus(
       item.value.id,
       action.target,
       item.value.revision,
@@ -102,7 +122,7 @@ async function submitStatus(): Promise<void> {
     statusDialog.value = false
     await load()
   } catch (error) {
-    await showConflict(error, item.value.revision, () => { statusDialog.value = false })
+    await showConflict(error, action.startsStage ? stageRevision.value : item.value.revision, () => { statusDialog.value = false })
   } finally {
     statusSubmitting.value = false
   }
@@ -194,6 +214,7 @@ onMounted(load)
         <el-button
           v-for="action in statusActions"
           :key="action.target"
+          :disabled="openingStage"
           type="primary"
           plain
           @click="openStatusDialog(action)"
@@ -203,7 +224,7 @@ onMounted(load)
         </template>
       </PageHeader>
 
-      <RequirementCollaboratorsPanel :requirement-id="item.id" :revision="item.revision" @updated="emit('updated'); load()" />
+      <RequirementCollaboratorsPanel :requirement-id="item.id" :revision="item.revision" :status="item.status" @updated="emit('updated'); load()" />
       <div class="detail-grid">
       <SectionCard title="需求详情" description="范围与验收标准" class="detail-main">
         <el-descriptions :column="isMobile ? 1 : 2">
@@ -247,15 +268,22 @@ onMounted(load)
       v-model="statusDialog"
       :title="currentAction?.label ?? '状态变更'"
       width="min(480px, 92vw)"
+      :fullscreen="isMobile"
+      :close-on-click-modal="false"
+      :close-on-press-escape="!statusSubmitting"
+      :show-close="!statusSubmitting"
       destroy-on-close
     >
       <el-form label-position="top">
-        <el-form-item label="原因" :required="currentAction?.needsReason">
+        <el-form-item v-if="currentAction?.startsStage" :label="currentAction.target === 'DESIGNING' ? '设计人员' : '开发人员'" required>
+          <RequirementAssigneeSelect v-model="stagePeople" :kind="currentAction.target === 'DESIGNING' ? 'DESIGNER' : 'DEVELOPER'" :selected="stageSelected" />
+        </el-form-item>
+        <el-form-item v-else label="原因" :required="currentAction?.needsReason">
           <el-input v-model="statusReason" type="textarea" :rows="3" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="statusDialog = false">取消</el-button>
+        <el-button :disabled="statusSubmitting" @click="statusDialog = false">取消</el-button>
         <el-button type="primary" :loading="statusSubmitting" @click="submitStatus">确定</el-button>
       </template>
     </el-dialog>

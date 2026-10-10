@@ -178,8 +178,11 @@ def test_bundled_chinese_labels_match_the_active_contract():
     current["paths"].pop("/docs/openapi")
     # The collaboration increment is approved; all earlier API shapes remain frozen.
     current["paths"].pop("/requirements/assignee-options")
+    current["paths"].pop("/requirements/{requirement_id}/start-stage")
     current["paths"].pop("/requirements/{requirement_id}/collaborators")
     for name in (
+        "RequirementStageStart",
+        "RequirementCollaboratorGroupUpdate",
         "AssigneeOption",
         "AssigneeOptionsPage",
         "RequirementCollaboratorsOut",
@@ -187,6 +190,8 @@ def test_bundled_chinese_labels_match_the_active_contract():
     ):
         current["components"]["schemas"].pop(name)
     current["components"]["schemas"]["AuthMe"]["properties"].pop("can_view_api_docs")
+    for name in ("RequirementStatus", "ManualRequirementStatus"):
+        current["components"]["schemas"][name]["enum"].remove("DESIGNING")
     current["info"] = released["info"]
     for document in (current, released):
         for schema in document["components"]["schemas"].values():

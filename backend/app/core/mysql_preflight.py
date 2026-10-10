@@ -79,12 +79,12 @@ def validate_mysql(
         from app.models import entities  # noqa: F401
 
         head = connection.scalar(text("SELECT version_num FROM alembic_version"))
-        legacy = head in {"mysql57_0001", "mysql57_0002"} and allow_legacy
-        if head != "mysql57_0003" and not legacy:
+        legacy = head in {"mysql57_0001", "mysql57_0002", "mysql57_0003"} and allow_legacy
+        if head != "mysql57_0004" and not legacy:
             raise RuntimeError("MySQL Alembic head is missing or unsupported")
         portable = "iterflow_file_key_node" in tables
         business_tables = set(Base.metadata.tables)
-        if legacy:
+        if head in {"mysql57_0001", "mysql57_0002"}:
             business_tables.remove("rd_requirement_participant")
         expected_tables = business_tables | {"alembic_version"}
         if portable:

@@ -31,9 +31,18 @@ CLOSED            -> NEW        (重开; 需 reason)
 - 所有写操作提交 `revision`，旧 `revision` 返回 409（乐观锁，禁止静默覆盖）。
 
 ## Requirement
-DRAFT -> CONFIRMED -> PLANNED -> DEVELOPING -> TESTING -> DONE -> ONLINE
+DRAFT -> CONFIRMED -> PLANNED -> [DESIGNING] -> DEVELOPING -> TESTING -> DONE -> ONLINE
 
-旁路：CONFIRMED/PLANNED/DEVELOPING/TESTING 可进入 PAUSED；DRAFT/CONFIRMED/PLANNED/PAUSED 可按规则取消。
+2026-10-10 用户授权增加可选设计阶段：PLANNED 可进入 DESIGNING，也可直接进入 DEVELOPING。
+DESIGNING 可进入 DEVELOPING、PAUSED、CANCELED；PAUSED 允许恢复 DESIGNING。
+
+开始设计/开发使用 `POST /requirements/{id}/start-stage`，仅具备需求编辑和状态权限且数据范围可见的操作者可执行。
+该接口要求至少一名对应角色的启用参与人员，人员分工、状态、一次 revision CAS、审计和定向站内通知原子提交。
+设计阶段开始时选择设计人员，开发阶段开始时选择开发人员；设计分工在开发后保留。
+普通状态接口进入 DESIGNING，或从 DESIGNING 进入 DEVELOPING 时，也必须已有对应分工。
+既有 PLANNED -> DEVELOPING 普通状态 API 保持兼容，不强制改写历史需求或已有客户端；新前端使用阶段接口选择人员。
+
+旁路：CONFIRMED/PLANNED/DESIGNING/DEVELOPING/TESTING 可进入 PAUSED；DRAFT/CONFIRMED/PLANNED/DESIGNING/PAUSED 可按规则取消。
 
 - `ONLINE` 只能由成功发布事务自动产生，普通状态接口禁止设置。
 - `DONE -> DEVELOPING` 仅在所属 Version 尚未发布时允许，必须填写原因并写审计日志。

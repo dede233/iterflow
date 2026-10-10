@@ -78,7 +78,7 @@ def test_collaboration_existing_postgres_upgrade(monkeypatch, collision):
             command.check(cfg)
             with engine.connect() as db:
                 assert db.scalar(text("SELECT version_num FROM alembic_version")) == (
-                    "0005_requirement_collaboration"
+                    "0006_requirement_design_stage"
                 )
             with Session(engine) as db:
                 assert set(db.scalars(select(Role.code))) == {"DEVELOPER", "DESIGNER"}

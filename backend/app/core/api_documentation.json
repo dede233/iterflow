@@ -1448,6 +1448,28 @@
         }
       }
     },
+    "RequirementCollaboratorGroupUpdate": {
+      "title": "调整阶段分工",
+      "properties": {
+        "revision": {
+          "title": "数据版本"
+        },
+        "kind": {
+          "title": "分工类型"
+        },
+        "owner_id": {
+          "title": "总负责人",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "user_ids": {
+          "title": "参与人员",
+          "items": {}
+        }
+      }
+    },
     "RequirementCollaboratorsOut": {
       "title": "RequirementCollaboratorsOut",
       "properties": {
@@ -1655,6 +1677,21 @@
     },
     "RequirementSource": {
       "title": "RequirementSource"
+    },
+    "RequirementStageStart": {
+      "title": "开始需求阶段",
+      "properties": {
+        "revision": {
+          "title": "数据版本"
+        },
+        "status": {
+          "title": "阶段状态"
+        },
+        "user_ids": {
+          "title": "参与人员",
+          "items": {}
+        }
+      }
     },
     "RequirementStatus": {
       "title": "RequirementStatus"
@@ -2502,6 +2539,12 @@
         ],
         "summary": "分配需求协作人员",
         "description": "需要 rd.requirement.edit 及该需求数据范围。原子替换总负责人、开发和设计人员；revision CAS，旧 revision 返回 409。有效人员必须启用且拥有需求查看权限；开发、设计需对应启用角色。失败时关联、通知与审计一起回滚。同人兼任不同职责只收到一条事件通知。"
+      },
+      "patch": {
+        "tags": [
+          "requirements"
+        ],
+        "summary": "单独调整负责人或当前阶段分工"
       }
     },
     "/requirements/{requirement_id}": {
@@ -2516,6 +2559,14 @@
           "Requirement"
         ],
         "summary": "编辑需求"
+      }
+    },
+    "/requirements/{requirement_id}/start-stage": {
+      "post": {
+        "tags": [
+          "requirements"
+        ],
+        "summary": "开始设计或开发并分配阶段人员"
       }
     },
     "/requirements/{requirement_id}/feedbacks": {

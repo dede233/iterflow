@@ -194,8 +194,8 @@ def exercise_invalid_and_rollback(fixture, monkeypatch):
         body = {"revision": 1, "owner_id": None, "developer_ids": [], "designer_ids": []} | patch
         assert client.put(path, headers=tokens["ceshi001"], json=body).status_code == 422
 
-    def fail_after_notifications(self, *args):
-        original(self, *args)
+    def fail_after_notifications(self, *args, **kwargs):
+        original(self, *args, **kwargs)
         raise RuntimeError("injected after notification writes")
 
     original = RequirementCollaborationService.notify
@@ -257,8 +257,8 @@ def exercise_publish_and_status_rollback(fixture, monkeypatch):
     path = f"/api/v1/requirements/{req['id']}"
     original = RequirementCollaborationService.notify
 
-    def fail(self, *args):
-        original(self, *args)
+    def fail(self, *args, **kwargs):
+        original(self, *args, **kwargs)
         raise RuntimeError("injected notification failure")
 
     with monkeypatch.context() as patched:
@@ -483,3 +483,304 @@ def exercise_database_guards(fixture):
                         db.execute(text(f"SET SESSION {flag}=1"))
     with Session(engine) as db:
         assert db.scalar(select(func.count()).select_from(RequirementParticipant)) == 4
+
+
+def grant_stage_lead(fixture, user_id):
+    client, _, _, admin = fixture
+    roles = {r["code"]: r["id"] for r in client.get("/api/v1/roles", headers=admin).json()}
+    user = client.get(f"/api/v1/users/{user_id}", headers=admin).json()
+    result = client.put(
+        f"/api/v1/users/{user_id}/roles",
+        headers=admin,
+        json={
+            "revision": user["revision"],
+            "role_ids": [roles["PRODUCT_MANAGER"], roles["DEVELOPMENT_LEAD"]],
+        },
+    )
+    assert result.status_code == 200, result.text
+
+
+def planned_requirement(client, token, req):
+    for status in ["CONFIRMED", "PLANNED"]:
+        result = client.patch(
+            f"/api/v1/requirements/{req['id']}/status",
+            headers=token,
+            json={"revision": req["revision"], "status": status},
+        )
+        assert result.status_code == 200, result.text
+        req = result.json()
+    return req
+
+
+def exercise_design_stage(fixture):
+    import pytest
+    from sqlalchemy import text
+    from sqlalchemy.exc import DBAPIError
+
+    client, engine, _, _ = fixture
+    people, tokens, req = setup_team(fixture)
+    grant_stage_lead(fixture, people["ceshi001"])
+    path = f"/api/v1/requirements/{req['id']}"
+    assert (
+        client.patch(
+            path + "/collaborators",
+            headers=tokens["ceshi001"],
+            json={"revision": 1, "kind": "DESIGN", "user_ids": [people["ceshi004"]]},
+        ).status_code
+        == 409
+    )
+    req = planned_requirement(client, tokens["ceshi001"], req)
+    payload = {
+        "revision": req["revision"],
+        "status": "DESIGNING",
+        "user_ids": [people["ceshi003"], people["ceshi004"]],
+    }
+    assert (
+        client.patch(
+            path + "/status",
+            headers=tokens["ceshi001"],
+            json={"revision": req["revision"], "status": "DESIGNING"},
+        ).status_code
+        == 409
+    )
+    for ids in [[], [people["ceshi002"]], [people["ceshi004"]] * 2, [999999]]:
+        assert (
+            client.post(
+                path + "/start-stage", headers=tokens["ceshi001"], json={**payload, "user_ids": ids}
+            ).status_code
+            == 422
+        )
+    started = client.post(path + "/start-stage", headers=tokens["ceshi001"], json=payload)
+    assert started.status_code == 200, started.text
+    req = started.json()
+    assert req["status"] == "DESIGNING" and req["revision"] == 4
+    roster = client.get(path + "/collaborators", headers=tokens["ceshi001"]).json()
+    assert len(roster["designers"]) == 2 and not roster["developers"]
+    assert (
+        client.post(path + "/start-stage", headers=tokens["ceshi001"], json=payload).status_code
+        == 409
+    )
+    assert client.get(path, headers=tokens["ceshi004"]).status_code == 200
+    assert (
+        client.post(
+            path + "/start-stage",
+            headers=tokens["ceshi004"],
+            json={"revision": 4, "status": "DEVELOPING", "user_ids": [people["ceshi002"]]},
+        ).status_code
+        == 403
+    )
+    assert (
+        client.patch(
+            path + "/status",
+            headers=tokens["ceshi004"],
+            json={"revision": 4, "status": "DEVELOPING"},
+        ).status_code
+        == 409
+    )
+    with Session(engine) as db:
+        assert (
+            db.scalar(
+                select(func.count(Notification.id)).where(
+                    Notification.user_id == people["ceshi004"]
+                )
+            )
+            == 1
+        )
+    developer = client.post(
+        path + "/start-stage",
+        headers=tokens["ceshi001"],
+        json={
+            "revision": 4,
+            "status": "DEVELOPING",
+            "user_ids": [people["ceshi002"], people["ceshi003"]],
+        },
+    )
+    assert developer.status_code == 200, developer.text
+    assert developer.json()["revision"] == 5
+    roster = client.get(path + "/collaborators", headers=tokens["ceshi001"]).json()
+    assert len(roster["designers"]) == 2 and len(roster["developers"]) == 2
+    assert (
+        client.patch(
+            path + "/collaborators",
+            headers=tokens["ceshi001"],
+            json={"revision": 5, "kind": "DESIGN", "user_ids": [people["ceshi004"]]},
+        ).status_code
+        == 409
+    )
+    with Session(engine) as db:
+        assert (
+            db.scalar(
+                select(func.count(Notification.id)).where(
+                    Notification.user_id == people["ceshi004"]
+                )
+            )
+            == 1
+        )
+        assert (
+            db.scalar(
+                select(func.count(Notification.id)).where(
+                    Notification.user_id == people["ceshi002"]
+                )
+            )
+            == 1
+        )
+    owner_change = client.patch(
+        path + "/collaborators",
+        headers=tokens["ceshi001"],
+        json={"revision": 5, "kind": "OWNER", "owner_id": people["ceshi001"]},
+    )
+    assert owner_change.status_code == 200, owner_change.text
+    assert owner_change.json()["revision"] == 6
+    assert len(owner_change.json()["designers"]) == 2
+    assert len(owner_change.json()["developers"]) == 2
+    assert (
+        client.patch(
+            path + "/collaborators",
+            headers=tokens["ceshi001"],
+            json={"revision": 5, "kind": "OWNER", "owner_id": None},
+        ).status_code
+        == 409
+    )
+    adjusted = client.patch(
+        path + "/collaborators",
+        headers=tokens["ceshi001"],
+        json={"revision": 6, "kind": "DEVELOPMENT", "user_ids": [people["ceshi003"]]},
+    )
+    assert adjusted.status_code == 200, adjusted.text
+    assert len(adjusted.json()["designers"]) == 2 and len(adjusted.json()["developers"]) == 1
+    # Design can be skipped; development participants are still chosen at stage start.
+    second = client.post(
+        "/api/v1/requirements",
+        headers=tokens["ceshi001"],
+        json={
+            "title": "无需设计的后端需求",
+            "requirement_type": "TECH",
+            "description": "直接开发",
+        },
+    ).json()
+    second = planned_requirement(client, tokens["ceshi001"], second)
+    skip = client.post(
+        f"/api/v1/requirements/{second['id']}/start-stage",
+        headers=tokens["ceshi001"],
+        json={
+            "revision": second["revision"],
+            "status": "DEVELOPING",
+            "user_ids": [people["ceshi002"]],
+        },
+    )
+    assert skip.status_code == 200, skip.text
+    assert not client.get(
+        f"/api/v1/requirements/{second['id']}/collaborators", headers=tokens["ceshi001"]
+    ).json()["designers"]
+    # Effective SQL enum checks expanded; all original guards remain enforced.
+    with engine.begin() as db:
+        db.execute(
+            text("UPDATE rd_requirement SET status='DESIGNING' WHERE id=:id"), {"id": req["id"]}
+        )
+    for statement in ["status='DESIGNING '", "source='BAD'"]:
+        with engine.connect() as db:
+            with pytest.raises(DBAPIError):
+                db.execute(
+                    text(f"UPDATE rd_requirement SET {statement} WHERE id=:id"), {"id": req["id"]}
+                )
+            db.rollback()
+
+
+def exercise_stage_rollback_and_race(fixture, monkeypatch):
+    client, engine, _, _ = fixture
+    people, tokens, req = setup_team(fixture)
+    grant_stage_lead(fixture, people["ceshi001"])
+    req = planned_requirement(client, tokens["ceshi001"], req)
+    path = f"/api/v1/requirements/{req['id']}/start-stage"
+    payload = {"revision": 3, "status": "DESIGNING", "user_ids": [people["ceshi004"]]}
+    original = RequirementCollaborationService.notify
+
+    def fail(self, *args, **kwargs):
+        original(self, *args, **kwargs)
+        raise RuntimeError("injected after stage and notification writes")
+
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    with monkeypatch.context() as patched:
+        patched.setattr(RequirementCollaborationService, "notify", fail)
+        with TestClient(app, raise_server_exceptions=False) as no_raise:
+            assert no_raise.post(path, headers=tokens["ceshi001"], json=payload).status_code == 500
+    with Session(engine) as db:
+        saved = db.get(Requirement, req["id"])
+        assert saved.status == "PLANNED" and saved.revision == 3
+        assert db.scalar(select(func.count()).select_from(RequirementParticipant)) == 0
+        assert db.scalar(select(func.count()).select_from(Notification)) == 0
+        assert (
+            db.scalar(
+                select(func.count(OperationLog.id)).where(OperationLog.action == "ASSIGN_DESIGN")
+            )
+            == 0
+        )
+    barrier = Barrier(2)
+
+    def start(p):
+        barrier.wait(timeout=10)
+        return client.post(path, headers=tokens["ceshi001"], json=p).status_code
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        outcomes = list(
+            pool.map(
+                start,
+                [
+                    payload,
+                    {"revision": 3, "status": "DEVELOPING", "user_ids": [people["ceshi002"]]},
+                ],
+            )
+        )
+    assert sorted(outcomes) == [200, 409]
+    with Session(engine) as db:
+        saved = db.get(Requirement, req["id"])
+        assert saved.revision == 4
+        kinds = set(db.scalars(select(RequirementParticipant.discipline)))
+        assert kinds == ({"DESIGN"} if saved.status == "DESIGNING" else {"DEVELOPMENT"})
+
+
+def exercise_design_blocks_publish(fixture):
+    from app.models.entities import Release, Version
+
+    client, engine, _, admin = fixture
+    people, tokens, req = setup_team(fixture)
+    grant_stage_lead(fixture, people["ceshi001"])
+    version = client.post(
+        "/api/v1/versions",
+        headers=admin,
+        json={"version_no": "DESIGN-BLOCK", "name": "设计不能提前发布"},
+    ).json()
+    attached = client.post(
+        f"/api/v1/versions/{version['id']}/requirements",
+        headers=admin,
+        json={"requirement_id": req["id"], "revision": 1, "version_revision": 1},
+    )
+    assert attached.status_code == 200, attached.text
+    stage = client.post(
+        f"/api/v1/requirements/{req['id']}/start-stage",
+        headers=tokens["ceshi001"],
+        json={"revision": 2, "status": "DESIGNING", "user_ids": [people["ceshi004"]]},
+    )
+    assert stage.status_code == 200, stage.text
+    # Explicit fixture creates a READY version with an incomplete requirement,
+    # proving publish rechecks blockers independently of version status UI.
+    with Session(engine) as db:
+        db.get(Version, version["id"]).status = "READY"
+        db.commit()
+    result = client.post(
+        f"/api/v1/versions/{version['id']}/publish",
+        headers=admin,
+        json={
+            "revision": 2,
+            "released_at": "2026-10-10T10:00:00Z",
+            "release_notes": "不能发布设计中需求",
+        },
+    )
+    assert result.status_code == 409, result.text
+    with Session(engine) as db:
+        assert db.scalar(select(func.count()).select_from(Release)) == 0
+        assert db.get(Requirement, req["id"]).status == "DESIGNING"
+        assert db.get(Version, version["id"]).status == "READY"

@@ -37,6 +37,7 @@ class DashboardRepository:
         {
             RequirementStatus.CONFIRMED,
             RequirementStatus.PLANNED,
+            RequirementStatus.DESIGNING,
             RequirementStatus.DEVELOPING,
             RequirementStatus.TESTING,
         }

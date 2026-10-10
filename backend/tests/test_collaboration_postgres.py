@@ -9,9 +9,12 @@ from collaboration_acceptance import (
     exercise_assignment_scope_and_notifications,
     exercise_concurrent_assignment,
     exercise_database_guards,
+    exercise_design_blocks_publish,
+    exercise_design_stage,
     exercise_invalid_and_rollback,
     exercise_publish_and_status_rollback,
     exercise_role_revocation,
+    exercise_stage_rollback_and_race,
 )
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, select, text
@@ -88,3 +91,15 @@ def test_collaboration_revocation_postgres(collaboration_pg):
 
 def test_collaboration_database_guards_postgres(collaboration_pg):
     exercise_database_guards(collaboration_pg)
+
+
+def test_design_stage_flow(collaboration_pg):
+    exercise_design_stage(collaboration_pg)
+
+
+def test_design_stage_rollback_and_race(collaboration_pg, monkeypatch):
+    exercise_stage_rollback_and_race(collaboration_pg, monkeypatch)
+
+
+def test_design_stage_blocks_publish(collaboration_pg):
+    exercise_design_blocks_publish(collaboration_pg)

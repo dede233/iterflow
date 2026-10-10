@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Annotated, Self
+from typing import Annotated, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -134,4 +134,36 @@ class RequirementCollaboratorsUpdate(BaseModel):
         for ids in (self.developer_ids, self.designer_ids):
             if len(ids) != len(set(ids)):
                 raise ValueError("同一职责不能重复分配同一人员")
+        return self
+
+
+class RequirementStageStart(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    revision: int = Field(ge=1)
+    status: Literal["DESIGNING", "DEVELOPING"]
+    user_ids: list[Annotated[int, Field(gt=0)]] = Field(min_length=1, max_length=100)
+
+    @model_validator(mode="after")
+    def unique_members(self) -> Self:
+        if len(self.user_ids) != len(set(self.user_ids)):
+            raise ValueError("阶段人员不能重复")
+        return self
+
+
+class RequirementCollaboratorGroupUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    revision: int = Field(ge=1)
+    kind: Literal["OWNER", "DEVELOPMENT", "DESIGN"]
+    owner_id: Annotated[int, Field(gt=0)] | None = None
+    user_ids: list[Annotated[int, Field(gt=0)]] = Field(default_factory=list, max_length=100)
+
+    @model_validator(mode="after")
+    def valid_group(self) -> Self:
+        if len(self.user_ids) != len(set(self.user_ids)):
+            raise ValueError("人员不能重复")
+        if self.kind == "OWNER":
+            if "owner_id" not in self.model_fields_set or self.user_ids:
+                raise ValueError("负责人操作必须只提交 owner_id")
+        elif "owner_id" in self.model_fields_set:
+            raise ValueError("阶段分工不能修改总负责人")
         return self

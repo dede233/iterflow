@@ -79,7 +79,7 @@ def test_mysql_existing_upgrade_preserves_accounts_and_checks_role_collision(
         else:
             command.upgrade(cfg, "head")
             with engine.connect() as db:
-                assert db.scalar(text("SELECT version_num FROM alembic_version")) == "mysql57_0003"
+                assert db.scalar(text("SELECT version_num FROM alembic_version")) == "mysql57_0004"
                 assert (
                     db.scalar(
                         text(

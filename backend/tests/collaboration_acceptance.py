@@ -320,6 +320,9 @@ def exercise_publish_and_status_rollback(fixture, monkeypatch):
             ).status_code
             == 200
         )
+    for developer in ["ceshi002", "ceshi003"]:
+        completed = confirm_member(client, req["id"], tokens[developer])
+        assert completed.status_code == 200, completed.text
     current = client.get(vpath, headers=admin).json()
     with Session(engine) as db:
         before = db.scalar(select(func.count(Notification.id)))
@@ -438,16 +441,25 @@ def exercise_database_guards(fixture):
     client, engine, _, _ = fixture
     people, tokens, req = setup_team(fixture)
     assert assign(client, tokens["ceshi001"], req, people).status_code == 200
+    insert = "INSERT INTO rd_requirement_participant (requirement_id,user_id,discipline) "
     bad_statements = [
-        ("INSERT INTO rd_requirement_participant VALUES (:req, :user, 'DESIGN ')", 1644, "23514"),
         (
-            "INSERT INTO rd_requirement_participant VALUES (:req, :user, 'development')",
+            insert + "VALUES (:req, :user, 'DESIGN ')",
             1644,
             "23514",
         ),
-        ("INSERT INTO rd_requirement_participant VALUES (:req, 999999, 'DESIGN')", 1452, "23503"),
         (
-            "INSERT INTO rd_requirement_participant VALUES (:req, :user, 'DEVELOPMENT')",
+            insert + "VALUES (:req, :user, 'development')",
+            1644,
+            "23514",
+        ),
+        (
+            insert + "VALUES (:req, 999999, 'DESIGN')",
+            1452,
+            "23503",
+        ),
+        (
+            insert + "VALUES (:req, :user, 'DEVELOPMENT')",
             1062,
             "23505",
         ),
@@ -464,7 +476,7 @@ def exercise_database_guards(fixture):
     if engine.dialect.name == "mysql":
         for flag in ["foreign_key_checks", "unique_checks"]:
             for mutation in [
-                "INSERT INTO rd_requirement_participant VALUES (:req,:user,'DESIGN')",
+                insert + "VALUES (:req,:user,'DESIGN')",
                 "UPDATE rd_requirement_participant SET discipline='DESIGN' "
                 "WHERE requirement_id=:req AND user_id=:user",
                 "DELETE FROM rd_requirement_participant "
@@ -784,3 +796,370 @@ def exercise_design_blocks_publish(fixture):
         assert db.scalar(select(func.count()).select_from(Release)) == 0
         assert db.get(Requirement, req["id"]).status == "DESIGNING"
         assert db.get(Version, version["id"]).status == "READY"
+
+
+def completion_team(fixture):
+    client, _engine, _, admin = fixture
+    people, tokens, req = setup_team(fixture)
+    grant_stage_lead(fixture, people["ceshi001"])
+    version = client.post(
+        "/api/v1/versions", headers=admin, json={"version_no": "COMPLETE-1", "name": "全员确认"}
+    ).json()
+    attached = client.post(
+        f"/api/v1/versions/{version['id']}/requirements",
+        headers=admin,
+        json={
+            "requirement_id": req["id"],
+            "revision": req["revision"],
+            "version_revision": version["revision"],
+        },
+    )
+    assert attached.status_code == 200, attached.text
+    req = client.get(f"/api/v1/requirements/{req['id']}", headers=admin).json()
+    started = client.post(
+        f"/api/v1/requirements/{req['id']}/start-stage",
+        headers=tokens["ceshi001"],
+        json={
+            "revision": req["revision"],
+            "status": "DEVELOPING",
+            "user_ids": [people["ceshi002"], people["ceshi003"]],
+        },
+    )
+    assert started.status_code == 200, started.text
+    for status in ["TESTING", "DONE"]:
+        req = client.get(f"/api/v1/requirements/{req['id']}", headers=admin).json()
+        result = client.patch(
+            f"/api/v1/requirements/{req['id']}/status",
+            headers=admin,
+            json={"revision": req["revision"], "status": status},
+        )
+        assert result.status_code == 200, result.text
+    for status in ["DEVELOPING", "TESTING", "READY"]:
+        version = client.get(f"/api/v1/versions/{version['id']}", headers=admin).json()
+        result = client.patch(
+            f"/api/v1/versions/{version['id']}/status",
+            headers=admin,
+            json={"revision": version["revision"], "status": status},
+        )
+        assert result.status_code == 200, result.text
+    return people, tokens, req, version
+
+
+def confirm_member(client, req_id, headers):
+    current = client.get(f"/api/v1/requirements/{req_id}", headers=headers).json()
+    return client.post(
+        f"/api/v1/requirements/{req_id}/development-completion",
+        headers=headers,
+        json={"revision": current["revision"]},
+    )
+
+
+def exercise_completion_gate(fixture):
+    import pytest
+    from sqlalchemy import text
+    from sqlalchemy.exc import DBAPIError
+
+    from app.models.entities import Release, Version
+
+    client, engine, _, admin = fixture
+    people, tokens, req, version = completion_team(fixture)
+    path = f"/api/v1/requirements/{req['id']}"
+    vpath = f"/api/v1/versions/{version['id']}"
+    version = client.get(vpath, headers=admin).json()
+    body = {
+        "revision": version["revision"],
+        "released_at": "2026-10-10T10:00:00Z",
+        "release_notes": "全员确认门禁",
+    }
+    for header, expected in [(admin, 403), (tokens["ceshi001"], 403), (tokens["ceshi005"], 403)]:
+        current = client.get(path, headers=admin).json()
+        assert (
+            client.post(
+                path + "/development-completion",
+                headers=header,
+                json={"revision": current["revision"]},
+            ).status_code
+            == expected
+        )
+    current = client.get(path, headers=admin).json()
+    assert (
+        client.post(
+            path + "/development-completion",
+            headers=tokens["ceshi002"],
+            json={"revision": current["revision"], "user_id": people["ceshi003"]},
+        ).status_code
+        == 422
+    )
+    blocked = client.post(vpath + "/publish/check", headers=admin)
+    assert blocked.status_code == 409
+    assert any(
+        c["type"] == "DEVELOPMENT_COMPLETION_CHECK" and not c["passed"]
+        for c in blocked.json()["data"]["checks"]
+    )
+    assert client.post(vpath + "/publish", headers=admin, json=body).status_code == 409
+    first = confirm_member(client, req["id"], tokens["ceshi002"])
+    assert first.status_code == 200, first.text
+    values = first.json()["development_completions"]
+    assert [v["completed_at"] is not None for v in values] == [True, False]
+    assert values[0]["completed_at"].endswith("Z")
+    assert confirm_member(client, req["id"], tokens["ceshi002"]).status_code == 409
+    assert client.post(vpath + "/publish", headers=admin, json=body).status_code == 409
+    assert confirm_member(client, req["id"], tokens["ceshi003"]).status_code == 200
+    assert client.post(vpath + "/publish/check", headers=admin).status_code == 200
+    # Returning to development invalidates every acknowledgement atomically.
+    current = client.get(path, headers=admin).json()
+    rework = client.patch(
+        path + "/status",
+        headers=admin,
+        json={"revision": current["revision"], "status": "DEVELOPING", "reason": "返工重新验证"},
+    )
+    assert rework.status_code == 200, rework.text
+    assert all(
+        v["completed_at"] is None
+        for v in client.get(path + "/collaborators", headers=admin).json()[
+            "development_completions"
+        ]
+    )
+    assert confirm_member(client, req["id"], tokens["ceshi002"]).status_code == 200
+    # Group and legacy PUT keep confirmations for unchanged members.
+    # Removing and readding a developer must not resurrect their confirmation.
+    current = client.get(path, headers=admin).json()
+    group = client.patch(
+        path + "/collaborators",
+        headers=admin,
+        json={
+            "revision": current["revision"],
+            "kind": "DEVELOPMENT",
+            "user_ids": [people["ceshi002"]],
+        },
+    )
+    assert (
+        group.status_code == 200
+        and group.json()["development_completions"][0]["completed_at"] is not None
+    )
+    full = client.put(
+        path + "/collaborators",
+        headers=admin,
+        json={
+            "revision": group.json()["revision"],
+            "owner_id": None,
+            "developer_ids": [people["ceshi002"], people["ceshi003"]],
+            "designer_ids": [people["ceshi004"]],
+        },
+    )
+    assert full.status_code == 200, full.text
+    assert [v["completed_at"] is not None for v in full.json()["development_completions"]] == [
+        True,
+        False,
+    ]
+    assert (
+        client.put(
+            path + "/collaborators",
+            headers=admin,
+            json={
+                "revision": full.json()["revision"],
+                "owner_id": None,
+                "developer_ids": [],
+                "designer_ids": [],
+            },
+        ).status_code
+        == 422
+    )
+    assert confirm_member(client, req["id"], tokens["ceshi004"]).status_code == 403
+    with engine.connect() as db:
+        with pytest.raises(DBAPIError):
+            db.execute(
+                text(
+                    "UPDATE rd_requirement_participant SET completed_at=CURRENT_TIMESTAMP "
+                    "WHERE requirement_id=:rid AND discipline='DESIGN'"
+                ),
+                {"rid": req["id"]},
+            )
+        db.rollback()
+    for status in ["TESTING", "DONE"]:
+        current = client.get(path, headers=admin).json()
+        assert (
+            client.patch(
+                path + "/status",
+                headers=admin,
+                json={"revision": current["revision"], "status": status},
+            ).status_code
+            == 200
+        )
+    assert client.post(vpath + "/publish", headers=admin, json=body).status_code == 409
+    with Session(engine) as db:
+        assert db.scalar(select(func.count()).select_from(Release)) == 0
+        assert db.get(Version, version["id"]).status == "READY"
+    assert confirm_member(client, req["id"], tokens["ceshi003"]).status_code == 200
+    published = client.post(vpath + "/publish", headers=admin, json=body)
+    assert published.status_code == 200, published.text
+    assert confirm_member(client, req["id"], tokens["ceshi002"]).status_code == 409
+    assert client.post(vpath + "/publish", headers=admin, json=body).status_code == 409
+    with Session(engine) as db:
+        assert db.scalar(select(func.count()).select_from(Release)) == 1
+        assert db.get(Requirement, req["id"]).status == "ONLINE"
+        assert (
+            db.scalar(
+                select(func.count())
+                .select_from(OperationLog)
+                .where(OperationLog.action == "CONFIRM_DEVELOPMENT_COMPLETION")
+            )
+            == 4
+        )
+        assert (
+            db.scalar(
+                select(func.count())
+                .select_from(OperationLog)
+                .where(OperationLog.action == "RESET_DEVELOPMENT_COMPLETION")
+            )
+            == 1
+        )
+    # A legacy DONE record with no developers is never implicitly approved.
+    from app.services.publish_check_service import PublishCheckService
+
+    with Session(engine) as db:
+        check = PublishCheckService(db).evaluate(db.get(Version, version["id"]))
+        assert any(
+            c["type"] == "DEVELOPMENT_COMPLETION_CHECK" and c["passed"] for c in check["checks"]
+        )
+    with engine.begin() as db:
+        db.execute(
+            text(
+                "DELETE FROM rd_requirement_participant "
+                "WHERE requirement_id=:rid AND discipline='DEVELOPMENT'"
+            ),
+            {"rid": req["id"]},
+        )
+    with Session(engine) as db:
+        check = PublishCheckService(db).evaluate(db.get(Version, version["id"]))
+        assert any(
+            c["type"] == "DEVELOPMENT_COMPLETION_CHECK" and not c["passed"] for c in check["checks"]
+        )
+
+
+def exercise_completion_rollback_and_race(fixture, monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    client, engine, _, admin = fixture
+    people, tokens, req, _ = completion_team(fixture)
+    path = f"/api/v1/requirements/{req['id']}"
+    current = client.get(path, headers=admin).json()
+    before = current["revision"]
+    with Session(engine) as db:
+        notifications_before = db.scalar(select(func.count()).select_from(Notification))
+    original = RequirementCollaborationService.notify
+
+    def fail(self, *args, **kwargs):
+        original(self, *args, **kwargs)
+        raise RuntimeError("after confirmation, audit and notification writes")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(RequirementCollaborationService, "notify", fail)
+        with TestClient(app, raise_server_exceptions=False) as failing:
+            assert (
+                failing.post(
+                    path + "/development-completion",
+                    headers=tokens["ceshi002"],
+                    json={"revision": before},
+                ).status_code
+                == 500
+            )
+    with Session(engine) as db:
+        assert db.get(Requirement, req["id"]).revision == before
+        assert db.scalar(select(func.count()).select_from(Notification)) == notifications_before
+        assert all(at is None for at in db.scalars(select(RequirementParticipant.completed_at)))
+        assert (
+            db.scalar(
+                select(func.count())
+                .select_from(OperationLog)
+                .where(OperationLog.action == "CONFIRM_DEVELOPMENT_COMPLETION")
+            )
+            == 0
+        )
+    barrier = Barrier(2)
+
+    def confirm(name):
+        barrier.wait(timeout=10)
+        return client.post(
+            path + "/development-completion", headers=tokens[name], json={"revision": before}
+        ).status_code
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        assert sorted(pool.map(confirm, ["ceshi002", "ceshi003"])) == [200, 409]
+    roster = client.get(path + "/collaborators", headers=admin).json()
+    assert sum(p["completed_at"] is not None for p in roster["development_completions"]) == 1
+    pending = next(
+        p["user_id"] for p in roster["development_completions"] if p["completed_at"] is None
+    )
+    name = next(n for n, uid in people.items() if uid == pending)
+    assert confirm_member(client, req["id"], tokens[name]).status_code == 200
+
+
+def exercise_publish_roster_serialization(fixture, monkeypatch):
+    from concurrent.futures import TimeoutError
+    from threading import Event
+
+    from app.services.publish_check_service import PublishCheckService
+
+    client, _engine, _, admin = fixture
+    people, tokens, req, version = completion_team(fixture)
+    for name in ["ceshi002", "ceshi003"]:
+        assert confirm_member(client, req["id"], tokens[name]).status_code == 200
+    path = f"/api/v1/requirements/{req['id']}"
+    vpath = f"/api/v1/versions/{version['id']}"
+    current = client.get(path, headers=admin).json()
+    version = client.get(vpath, headers=admin).json()
+    locked, proceed, attempting = Event(), Event(), Event()
+    original = PublishCheckService.evaluate
+
+    def pause(self, version, *, lock=False):
+        result = original(self, version, lock=lock)
+        if lock:
+            locked.set()
+            assert proceed.wait(10)
+        return result
+
+    def publish():
+        return client.post(
+            vpath + "/publish",
+            headers=admin,
+            json={
+                "revision": version["revision"],
+                "released_at": "2026-10-10T10:00:00Z",
+                "release_notes": "并发分工不可绕过",
+            },
+        )
+
+    def edit():
+        attempting.set()
+        return client.patch(
+            path + "/collaborators",
+            headers=admin,
+            json={
+                "revision": current["revision"],
+                "kind": "DEVELOPMENT",
+                "user_ids": [people["ceshi002"]],
+            },
+        )
+
+    with monkeypatch.context() as patch:
+        patch.setattr(PublishCheckService, "evaluate", pause)
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            pub = pool.submit(publish)
+            assert locked.wait(10)
+            writer = pool.submit(edit)
+            assert attempting.wait(10)
+            try:
+                writer.result(timeout=0.2)
+                raise AssertionError("assignment bypassed publish requirement locks")
+            except TimeoutError:
+                pass
+            finally:
+                proceed.set()
+            assert pub.result(timeout=10).status_code == 200
+            assert writer.result(timeout=10).status_code == 409
+    roster = client.get(path + "/collaborators", headers=admin).json()
+    assert len(roster["developers"]) == 2
+    assert all(p["completed_at"] is not None for p in roster["development_completions"])

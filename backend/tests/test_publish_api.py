@@ -83,7 +83,6 @@ def pub_api(tmp_path: Path) -> Iterator[Fixture]:
         OperationLog,
         Feedback,
         Requirement,
-        RequirementParticipant,
         Version,
         VersionRequirement,
         RequirementFeedback,
@@ -194,6 +193,14 @@ def _seed_ready_version(
                 requirement_id=requirement.id, feedback_id=feedback.id, is_primary=True
             ),
         ]
+    )
+    session.add(
+        RequirementParticipant(
+            requirement_id=requirement.id,
+            user_id=boss_id,
+            discipline="DEVELOPMENT",
+            completed_at=datetime.now(UTC),
+        )
     )
     session.commit()
     return {"version": version.id, "requirement": requirement.id, "feedback": feedback.id}
@@ -362,6 +369,7 @@ def test_publish_check_passes_when_ready_and_all_done(pub_api):
     assert types == {
         "VERSION_STATUS_CHECK": True,
         "REQUIREMENT_STATUS_CHECK": True,
+        "DEVELOPMENT_COMPLETION_CHECK": True,
         "PERMISSION_CHECK": True,
     }
 

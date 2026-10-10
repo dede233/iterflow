@@ -708,6 +708,29 @@
     "DataScope": {
       "title": "DataScope"
     },
+    "DeveloperCompletion": {
+      "title": "DeveloperCompletion",
+      "properties": {
+        "user_id": {
+          "title": "开发人员"
+        },
+        "completed_at": {
+          "title": "本人完成确认时间",
+          "anyOf": [
+            {},
+            {}
+          ]
+        }
+      }
+    },
+    "DevelopmentCompletionRequest": {
+      "title": "DevelopmentCompletionRequest",
+      "properties": {
+        "revision": {
+          "title": "数据版本"
+        }
+      }
+    },
     "EditHeartbeat": {
       "title": "EditHeartbeat",
       "properties": {
@@ -1489,6 +1512,10 @@
         },
         "designers": {
           "title": "设计人员",
+          "items": {}
+        },
+        "development_completions": {
+          "title": "开发完成确认",
           "items": {}
         }
       }
@@ -2547,6 +2574,15 @@
         "summary": "单独调整负责人或当前阶段分工"
       }
     },
+    "/requirements/{requirement_id}/development-completion": {
+      "post": {
+        "tags": [
+          "requirements"
+        ],
+        "summary": "开发人员确认本人开发完成",
+        "description": "仅当前绑定的启用开发人员本人可确认。需要需求查看、状态权限与数据范围。开发、测试、完成阶段允许补充确认；返工清空确认；新增开发人员待确认。全部开发人员确认是发布必要门禁，空名单也阻断。revision CAS、确认时间、审计及通知原子提交；管理员不能代确认。"
+      }
+    },
     "/requirements/{requirement_id}": {
       "get": {
         "tags": [
@@ -2664,7 +2700,7 @@
           "Version"
         ],
         "summary": "发布前检查",
-        "description": "运行与 publish 相同的前置检查；通过返回 200，未通过返回 409 并含 checks。"
+        "description": "运行与 publish 相同的前置检查；通过返回 200，未通过返回 409 并含 checks。 新增 DEVELOPMENT_COMPLETION_CHECK：每条有效需求至少一名开发人员且全部已本人确认；未确认的需求作为发布阻断项。"
       }
     },
     "/versions/{version_id}/publish": {

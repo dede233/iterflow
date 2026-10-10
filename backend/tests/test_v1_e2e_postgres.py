@@ -28,6 +28,7 @@ from app.models.entities import (
     Release,
     Requirement,
     RequirementFeedback,
+    RequirementParticipant,
     Role,
     RolePermission,
     User,
@@ -224,6 +225,28 @@ def test_full_v1_business_lifecycle_over_http_and_postgresql(
         assert response.status_code == 200, response.text
         version = response.json()
 
+    with Session(engine) as db:
+        developer_role = db.scalar(select(Role).where(Role.code == "DEVELOPER"))
+        if db.get(UserRole, (user_id, developer_role.id)) is None:
+            db.add(UserRole(user_id=user_id, role_id=developer_role.id))
+            db.commit()
+    roster = client.patch(
+        f"/api/v1/requirements/{requirement['id']}/collaborators",
+        headers=headers,
+        json={
+            "kind": "DEVELOPMENT",
+            "revision": current_requirement["revision"],
+            "user_ids": [user_id],
+        },
+    )
+    assert roster.status_code == 200, roster.text
+    completed = client.post(
+        f"/api/v1/requirements/{requirement['id']}/development-completion",
+        headers=headers,
+        json={"revision": roster.json()["revision"]},
+    )
+    assert completed.status_code == 200, completed.text
+
     publish_check = client.post(f"/api/v1/versions/{version['id']}/publish/check", headers=headers)
     assert publish_check.status_code == 200, publish_check.text
     assert publish_check.json()["passed"] is True
@@ -376,6 +399,14 @@ def test_concurrent_publish_has_one_http_winner_and_no_duplicate_side_effects(
                     is_primary=True,
                 ),
             ]
+        )
+        session.add(
+            RequirementParticipant(
+                requirement_id=requirement.id,
+                user_id=user_id,
+                discipline="DEVELOPMENT",
+                completed_at=datetime.now(UTC),
+            )
         )
         session.commit()
         version_id = version.id

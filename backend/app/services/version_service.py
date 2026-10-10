@@ -540,14 +540,19 @@ class VersionService:
         """
         # Row-lock the version so concurrent publishes serialise (the atomic
         # conditional UPDATE below is the definitive guard; SQLite ignores the lock).
-        version = self.db.scalar(select(Version).where(Version.id == version_id).with_for_update())
+        version = self.db.scalar(
+            select(Version)
+            .where(Version.id == version_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
         if not version:
             raise NotFoundError("版本不存在")
         if version.revision != payload.revision:
             raise self._version_conflict(version_id)
 
         # Centralized pre-publish checks (same checks as POST /publish/check).
-        check = PublishCheckService(self.db).evaluate(version)
+        check = PublishCheckService(self.db).evaluate(version, lock=True)
         if not check["passed"]:
             raise AppError(
                 40923,

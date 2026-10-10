@@ -254,6 +254,9 @@ class RequirementParticipant(Base):
     __tablename__ = "rd_requirement_participant"
     __table_args__ = (
         CheckConstraint("discipline IN ('DEVELOPMENT', 'DESIGN')", name="participant_discipline"),
+        CheckConstraint(
+            "completed_at IS NULL OR discipline = 'DEVELOPMENT'", name="participant_completion"
+        ),
         Index("ix_requirement_participant_user", "user_id"),
     )
     requirement_id: Mapped[int] = mapped_column(
@@ -263,6 +266,7 @@ class RequirementParticipant(Base):
         BigInteger, ForeignKey("sys_user.id", ondelete="RESTRICT"), primary_key=True
     )
     discipline: Mapped[str] = mapped_column(String(11), primary_key=True)
+    completed_at: Mapped[datetime | None] = mapped_column(timestamp_type(), nullable=True)
 
 
 class Feedback(Base, AuditMixin):

@@ -1,5 +1,7 @@
 # IterFlow Tasks
 
+当前追加[全员开发完成发布门禁](docs/development-completion.md)，该文档包含操作与验收；前述阶段记录保留为历史证据。
+
 ## 2026-10-10 需求开发、设计协作（本地）
 
 后续用户确认设计可按需跳过，追加 DESIGNING 与阶段分配；当前增量见 `docs/requirement-design-stage.md`，线上未升级。

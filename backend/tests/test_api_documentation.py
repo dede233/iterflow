@@ -177,10 +177,16 @@ def test_bundled_chinese_labels_match_the_active_contract():
     released = yaml.safe_load((root / "spec/openapi-v1.8.1.yaml").read_text())
     current["paths"].pop("/docs/openapi")
     # The collaboration increment is approved; all earlier API shapes remain frozen.
+    current["paths"].pop("/requirements/{requirement_id}/development-completion")
+    current["paths"]["/versions/{version_id}/publish/check"]["post"]["description"] = released[
+        "paths"
+    ]["/versions/{version_id}/publish/check"]["post"]["description"]
     current["paths"].pop("/requirements/assignee-options")
     current["paths"].pop("/requirements/{requirement_id}/start-stage")
     current["paths"].pop("/requirements/{requirement_id}/collaborators")
     for name in (
+        "DevelopmentCompletionRequest",
+        "DeveloperCompletion",
         "RequirementStageStart",
         "RequirementCollaboratorGroupUpdate",
         "AssigneeOption",

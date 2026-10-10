@@ -252,6 +252,28 @@ def test_mysql_full_lifecycle(mysql_api):
         assert response.status_code == 200, response.text
         version = response.json()
 
+    with Session(engine) as db:
+        developer_role = db.scalar(select(Role).where(Role.code == "DEVELOPER"))
+        if db.get(UserRole, (user_id, developer_role.id)) is None:
+            db.add(UserRole(user_id=user_id, role_id=developer_role.id))
+            db.commit()
+    roster = client.patch(
+        f"/api/v1/requirements/{requirement['id']}/collaborators",
+        headers=headers,
+        json={
+            "kind": "DEVELOPMENT",
+            "revision": current_requirement["revision"],
+            "user_ids": [user_id],
+        },
+    )
+    assert roster.status_code == 200, roster.text
+    completed = client.post(
+        f"/api/v1/requirements/{requirement['id']}/development-completion",
+        headers=headers,
+        json={"revision": roster.json()["revision"]},
+    )
+    assert completed.status_code == 200, completed.text
+
     publish_check = client.post(f"/api/v1/versions/{version['id']}/publish/check", headers=headers)
     assert publish_check.status_code == 200, publish_check.text
     assert publish_check.json()["passed"] is True
@@ -934,6 +956,9 @@ def test_mysql_restart_and_isolated_backup_restore(mysql_api, monkeypatch, tmp_p
         db.add(UserRole(user_id=mysql_api[2], role_id=developer.id))
         designer = db.scalar(select(Role).where(Role.code == "DESIGNER"))
         db.add(UserRole(user_id=mysql_api[2], role_id=designer.id))
+        db.get(
+            RequirementParticipant, (ids["requirement"], mysql_api[2], "DEVELOPMENT")
+        ).completed_at = None
         db.commit()
     current = client.get(f"/api/v1/requirements/{ids['requirement']}", headers=headers).json()
     assigned = client.put(
@@ -947,6 +972,13 @@ def test_mysql_restart_and_isolated_backup_restore(mysql_api, monkeypatch, tmp_p
         },
     )
     assert assigned.status_code == 200, assigned.text
+    confirmation = client.post(
+        f"/api/v1/requirements/{ids['requirement']}/development-completion",
+        headers=headers,
+        json={"revision": assigned.json()["revision"]},
+    )
+    assert confirmation.status_code == 200, confirmation.text
+    saved_confirmation = confirmation.json()["development_completions"][0]["completed_at"]
     design = client.post(
         "/api/v1/requirements",
         headers=headers,
@@ -1057,6 +1089,8 @@ def test_mysql_restart_and_isolated_backup_restore(mysql_api, monkeypatch, tmp_p
             assert session.scalar(select(func.count()).select_from(RequirementParticipant)) == 2
             participant = session.scalar(select(RequirementParticipant))
             assert participant.user_id == mysql_api[2] and participant.discipline == "DEVELOPMENT"
+            assert participant.completed_at is not None
+            assert participant.completed_at.isoformat().replace("+00:00", "Z") == saved_confirmation
             assert session.get(Requirement, design["id"]).status == "DESIGNING"
             assert (
                 session.get(RequirementParticipant, (design["id"], mysql_api[2], "DESIGN"))
@@ -1106,7 +1140,7 @@ def test_mysql_restart_and_isolated_backup_restore(mysql_api, monkeypatch, tmp_p
                 "--routines --triggers --hex-blob --set-gtid-purged=OFF " + restored,
             ]
         )
-        evidence = BACKEND.parent / "docs/evidence/requirement-design-stage"
+        evidence = BACKEND.parent / "docs/evidence/development-completion"
         evidence.mkdir(parents=True, exist_ok=True)
         (
             evidence / ("backup-restore.json" if PORTABLE else "standard-backup-restore.json")
@@ -1125,10 +1159,11 @@ def test_mysql_restart_and_isolated_backup_restore(mysql_api, monkeypatch, tmp_p
                     ).hexdigest(),
                     "restart_persistence": True,
                     "successful_consecutive_restarts": 3,
-                    "restored_guard_triggers": 71,
+                    "restored_guard_triggers": 73,
                     "profile": TEST_PROJECT,
                     "restored_function_upload": True,
                     "design_state_and_roster_restored": True,
+                    "developer_completion_restored": True,
                     "stage_transition_after_restore": True,
                 },
                 indent=2,

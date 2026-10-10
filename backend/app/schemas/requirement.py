@@ -115,11 +115,22 @@ class AssigneeOptionsPage(BaseModel):
     page_size: int
 
 
+class DevelopmentCompletionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    revision: int = Field(ge=1)
+
+
+class DeveloperCompletion(BaseModel):
+    user_id: int
+    completed_at: datetime | None
+
+
 class RequirementCollaboratorsOut(BaseModel):
     revision: int
     owner: AssigneeOption | None
     developers: list[AssigneeOption]
     designers: list[AssigneeOption]
+    development_completions: list[DeveloperCompletion]
 
 
 class RequirementCollaboratorsUpdate(BaseModel):

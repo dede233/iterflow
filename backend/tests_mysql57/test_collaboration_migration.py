@@ -77,9 +77,30 @@ def test_mysql_existing_upgrade_preserves_accounts_and_checks_role_collision(
                 role = db.scalar(select(Role).where(Role.code == "DEVELOPER"))
                 assert role.name == "既有自定义角色" and not role.enabled and not role.is_system
         else:
+            command.upgrade(cfg, "mysql57_0004")
+            with engine.begin() as db:
+                db.execute(
+                    text(
+                        "INSERT INTO rd_requirement_participant "
+                        "(requirement_id,user_id,discipline) "
+                        "VALUES (:rid,:uid,'DEVELOPMENT')"
+                    ),
+                    {"rid": rid, "uid": uid},
+                )
             command.upgrade(cfg, "head")
             with engine.connect() as db:
-                assert db.scalar(text("SELECT version_num FROM alembic_version")) == "mysql57_0004"
+                row = db.execute(
+                    text(
+                        "SELECT user_id,discipline,completed_at FROM rd_requirement_participant "
+                        "WHERE requirement_id=:rid"
+                    ),
+                    {"rid": rid},
+                ).one()
+                assert row == (uid, "DEVELOPMENT", None), (
+                    "Upgrade must not auto-confirm existing developers"
+                )
+            with engine.connect() as db:
+                assert db.scalar(text("SELECT version_num FROM alembic_version")) == "mysql57_0005"
                 assert (
                     db.scalar(
                         text(
@@ -87,7 +108,7 @@ def test_mysql_existing_upgrade_preserves_accounts_and_checks_role_collision(
                             "WHERE trigger_schema=DATABASE()"
                         )
                     )
-                    == 71
+                    == 73
                 )
             with Session(engine) as db:
                 assert set(db.scalars(select(Role.code))) == {"DEVELOPER", "DESIGNER"}

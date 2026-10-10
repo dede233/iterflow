@@ -1,11 +1,14 @@
 from collaboration_acceptance import (
     exercise_assignment_scope_and_notifications,
+    exercise_completion_gate,
+    exercise_completion_rollback_and_race,
     exercise_concurrent_assignment,
     exercise_database_guards,
     exercise_design_blocks_publish,
     exercise_design_stage,
     exercise_invalid_and_rollback,
     exercise_publish_and_status_rollback,
+    exercise_publish_roster_serialization,
     exercise_role_revocation,
     exercise_stage_rollback_and_race,
 )
@@ -46,3 +49,15 @@ def test_design_stage_rollback_and_race(mysql_api, monkeypatch):
 
 def test_design_stage_blocks_publish(mysql_api):
     exercise_design_blocks_publish(mysql_api)
+
+
+def test_development_completion_gate(mysql_api):
+    exercise_completion_gate(mysql_api)
+
+
+def test_development_completion_rollback_and_race(mysql_api, monkeypatch):
+    exercise_completion_rollback_and_race(mysql_api, monkeypatch)
+
+
+def test_publish_serializes_development_roster(mysql_api, monkeypatch):
+    exercise_publish_roster_serialization(mysql_api, monkeypatch)

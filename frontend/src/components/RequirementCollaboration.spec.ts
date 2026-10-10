@@ -1,8 +1,9 @@
 import { mount, flushPromises } from '@vue/test-utils'
 import { beforeEach, expect, it, vi } from 'vitest'
 import ElementPlus from 'element-plus'
-const mocks = vi.hoisted(() => ({ read: vi.fn(), replace: vi.fn(), options: vi.fn(), latest: vi.fn(), can: vi.fn() }))
-vi.mock('@/api/requirementCollaboration', () => ({ getCollaborators: mocks.read, updateCollaboratorGroup: mocks.replace, listAssigneeOptions: mocks.options }))
+const mocks = vi.hoisted(() => ({ read: vi.fn(), replace: vi.fn(), options: vi.fn(), latest: vi.fn(), can: vi.fn(), confirm: vi.fn(), userId: 2 }))
+vi.mock('@/api/requirementCollaboration', () => ({ confirmDevelopmentCompletion: mocks.confirm, getCollaborators: mocks.read, updateCollaboratorGroup: mocks.replace, listAssigneeOptions: mocks.options }))
+vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ user: { id: mocks.userId } }) }))
 vi.mock('@/api/requirements', () => ({ getRequirement: mocks.latest }))
 vi.mock('@/composables/usePermission', () => ({ usePermission: () => ({ can: mocks.can }) }))
 vi.mock('@/composables/useResponsive', () => ({ useResponsive: () => ({ isMobile: false }) }))
@@ -11,9 +12,11 @@ import Selector from './RequirementAssigneeSelect.vue'
 import ConflictDialog from './RevisionConflictDialog.vue'
 const developer = { user_id: 2, display_name: '开发甲', can_develop: true, can_design: false }
 const designer = { user_id: 3, display_name: '设计乙', can_develop: false, can_design: true }
-const initial = { revision: 8, owner: null, developers: [developer], designers: [designer] }
+const initial = { revision: 8, owner: null, developers: [developer], designers: [designer], development_completions: [{ user_id: 2, completed_at: null }] }
 beforeEach(() => {
   vi.resetAllMocks()
+  mocks.userId = 2
+  mocks.confirm.mockResolvedValue({ ...initial, revision: 9, development_completions: [{ user_id: 2, completed_at: '2026-10-10T01:00:00Z' }] })
   mocks.read.mockResolvedValue(initial)
   mocks.replace.mockResolvedValue({ ...initial, revision: 9 })
   mocks.options.mockResolvedValue({ items: [developer], total: 1, page: 1, page_size: 50 })
@@ -114,5 +117,36 @@ it('does not send an empty active-stage roster', async () => {
   document.querySelectorAll<HTMLButtonElement>('button').forEach(b => { if (b.textContent?.trim() === '保存分工') b.click() })
   await flushPromises()
   expect(mocks.replace).not.toHaveBeenCalled()
+  wrapper.unmount()
+})
+
+it('allows only a pending developer to confirm their own completion', async () => {
+  const wrapper = await panel()
+  expect(wrapper.text()).toContain('0 / 1 人')
+  await wrapper.findAll('button').find(b => b.text() === '确认本人开发完成')!.trigger('click')
+  await flushPromises()
+  expect(mocks.confirm).toHaveBeenCalledWith(42, 8)
+  expect(wrapper.text()).toContain('1 / 1 人')
+  expect(wrapper.text()).not.toContain('确认本人开发完成')
+  expect(wrapper.emitted('updated')).toHaveLength(1)
+  wrapper.unmount()
+})
+it('does not grant an administrator or designer the ability to confirm for someone else', async () => {
+  mocks.userId = 3
+  const wrapper = await panel()
+  expect(wrapper.text()).toContain('待确认')
+  expect(wrapper.text()).not.toContain('确认本人开发完成')
+  expect(mocks.confirm).not.toHaveBeenCalled()
+  wrapper.unmount()
+})
+it('keeps a stale completion conflict visible without retrying', async () => {
+  mocks.confirm.mockRejectedValue({ response: { status: 409, data: { code: 40910, data: { current_revision: 9 } } } })
+  mocks.latest.mockResolvedValue({ title: '并发确认', status: 'DEVELOPING', priority: 'P1', revision: 9 })
+  const wrapper = await panel()
+  await wrapper.findAll('button').find(b => b.text() === '确认本人开发完成')!.trigger('click')
+  await flushPromises()
+  expect(wrapper.findComponent(ConflictDialog).props('visible')).toBe(true)
+  expect(mocks.confirm).toHaveBeenCalledTimes(1)
+  expect(wrapper.text()).toContain('0 / 1 人')
   wrapper.unmount()
 })

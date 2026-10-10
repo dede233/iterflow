@@ -47,6 +47,13 @@ DESIGNING 可进入 DEVELOPING、PAUSED、CANCELED；PAUSED 允许恢复 DESIGNI
 - `ONLINE` 只能由成功发布事务自动产生，普通状态接口禁止设置。
 - `DONE -> DEVELOPING` 仅在所属 Version 尚未发布时允许，必须填写原因并写审计日志。
 
+2026-10-10 用户授权全员开发完成确认：状态 DONE 与开发人员本人确认是两项独立条件。
+开发、测试、完成阶段，绑定的启用且具备开发资格的人员可确认本人完成；总负责人/管理员不能代确认。
+每次进入 DEVELOPING（包括恢复开发、退回开发）清空全部既有确认，并写审计；新增或移除后再加入的人员待确认。
+未变更分工的人员确认保留；禁止用空开发名单绕过门禁。既有需求不自动确认。
+Version 发布要求每条有效关联需求至少一名开发人员，且全部本人确认完成；原 READY、DONE、权限门禁仍然成立。
+详见 `docs/development-completion.md`。
+
 ## Version
 PLANNING -> DEVELOPING -> TESTING -> READY -> RELEASED
 

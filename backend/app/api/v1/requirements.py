@@ -14,6 +14,7 @@ from app.repositories.user_repository import UserRepository
 from app.repositories.version_repository import VersionRepository
 from app.schemas.requirement import (
     AssigneeOptionsPage,
+    DevelopmentCompletionRequest,
     LinkedFeedbackOut,
     RequirementCollaboratorGroupUpdate,
     RequirementCollaboratorsOut,
@@ -136,6 +137,21 @@ def replace_collaborators(
 ):
     _scoped_requirement_or_404(db, user, requirement_id)
     return RequirementCollaborationService(db).replace(requirement_id, payload, user.id)
+
+
+@router.post(
+    "/{requirement_id}/development-completion",
+    response_model=RequirementCollaboratorsOut,
+    responses=api_revision_conflict_responses(),
+)
+def confirm_development(
+    requirement_id: int,
+    payload: DevelopmentCompletionRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_all_permissions("rd.requirement.view", "rd.requirement.status")),
+):
+    _scoped_requirement_or_404(db, user, requirement_id)
+    return RequirementCollaborationService(db).confirm_development(requirement_id, payload, user.id)
 
 
 @router.get("/{requirement_id}", response_model=RequirementOut)

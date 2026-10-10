@@ -379,6 +379,26 @@ export interface paths {
         patch: operations["update_collaborator_group_api_v1_requirements__requirement_id__collaborators_patch"];
         trace?: never;
     };
+    "/requirements/{requirement_id}/development-completion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 开发人员确认本人开发完成
+         * @description 仅当前绑定的启用开发人员本人可确认。需要需求查看、状态权限与数据范围。开发、测试、完成阶段允许补充确认；返工清空确认；新增开发人员待确认。全部开发人员确认是发布必要门禁，空名单也阻断。revision CAS、确认时间、审计及通知原子提交；管理员不能代确认。
+         */
+        post: operations["confirm_development_api_v1_requirements__requirement_id__development_completion_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/requirements/{requirement_id}": {
         parameters: {
             query?: never;
@@ -585,7 +605,7 @@ export interface paths {
         put?: never;
         /**
          * 发布前检查
-         * @description 运行与 publish 相同的前置检查；通过返回 200，未通过返回 409 并含 checks。
+         * @description 运行与 publish 相同的前置检查；通过返回 200，未通过返回 409 并含 checks。 新增 DEVELOPMENT_COMPLETION_CHECK：每条有效需求至少一名开发人员且全部已本人确认；未确认的需求作为发布阻断项。
          */
         post: operations["check_version_publish_api_v1_versions__version_id__publish_check_post"];
         delete?: never;
@@ -1587,6 +1607,18 @@ export interface components {
          * @enum {string}
          */
         DataScope: "SELF" | "TEAM" | "ALL";
+        /** DeveloperCompletion */
+        DeveloperCompletion: {
+            /** 开发人员 */
+            user_id: number;
+            /** 本人完成确认时间 */
+            completed_at: string | null;
+        };
+        /** DevelopmentCompletionRequest */
+        DevelopmentCompletionRequest: {
+            /** 数据版本 */
+            revision: number;
+        };
         /** EditHeartbeat */
         EditHeartbeat: {
             /** 业务对象类型 */
@@ -2095,6 +2127,8 @@ export interface components {
             developers: components["schemas"]["AssigneeOption"][];
             /** 设计人员 */
             designers: components["schemas"]["AssigneeOption"][];
+            /** 开发完成确认 */
+            development_completions: components["schemas"]["DeveloperCompletion"][];
         };
         /** RequirementCollaboratorsUpdate */
         RequirementCollaboratorsUpdate: {
@@ -3906,6 +3940,68 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["RequirementCollaboratorGroupUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RequirementCollaboratorsOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description revision CAS 冲突 (40910) 或该操作的业务冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    confirm_development_api_v1_requirements__requirement_id__development_completion_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requirement_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DevelopmentCompletionRequest"];
             };
         };
         responses: {

@@ -14,3 +14,6 @@ export const updateCollaboratorGroup = (id: number, payload: components['schemas
   api.patch<Collaborators>(`/requirements/${id}/collaborators`, payload, { skipRevisionConflictAlert: true }).then(r => r.data)
 export const startRequirementStage = (id: number, payload: components['schemas']['RequirementStageStart']) =>
   api.post<components['schemas']['RequirementOut']>(`/requirements/${id}/start-stage`, payload, { skipRevisionConflictAlert: true }).then(r => r.data)
+
+export const confirmDevelopmentCompletion = (id: number, revision: number) =>
+  api.post<Collaborators>(`/requirements/${id}/development-completion`, { revision }, { skipRevisionConflictAlert: true }).then(r => r.data)

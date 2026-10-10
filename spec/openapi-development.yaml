@@ -1338,6 +1338,64 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /requirements/{requirement_id}/development-completion:
+    post:
+      tags:
+      - requirements
+      summary: 开发人员确认本人开发完成
+      operationId: confirm_development_api_v1_requirements__requirement_id__development_completion_post
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: requirement_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Requirement Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DevelopmentCompletionRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RequirementCollaboratorsOut'
+        '409':
+          description: revision CAS 冲突 (40910) 或该操作的业务冲突
+          content:
+            application/json:
+              schema:
+                anyOf:
+                - $ref: '#/components/schemas/RevisionConflictResponse'
+                - $ref: '#/components/schemas/ErrorResponse'
+                title: Response 409 Confirm Development Api V1 Requirements  Requirement Id  Development
+                  Completion Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: 仅当前绑定的启用开发人员本人可确认。需要需求查看、状态权限与数据范围。开发、测试、完成阶段允许补充确认；返工清空确认；新增开发人员待确认。全部开发人员确认是发布必要门禁，空名单也阻断。revision
+        CAS、确认时间、审计及通知原子提交；管理员不能代确认。
   /requirements/{requirement_id}:
     get:
       tags:
@@ -2187,7 +2245,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-      description: 运行与 publish 相同的前置检查；通过返回 200，未通过返回 409 并含 checks。
+      description: 运行与 publish 相同的前置检查；通过返回 200，未通过返回 409 并含 checks。 新增 DEVELOPMENT_COMPLETION_CHECK：每条有效需求至少一名开发人员且全部已本人确认；未确认的需求作为发布阻断项。
   /versions/{version_id}/publish:
     post:
       tags:
@@ -4567,6 +4625,33 @@ components:
       - TEAM
       - ALL
       title: DataScope
+    DeveloperCompletion:
+      properties:
+        user_id:
+          type: integer
+          title: 开发人员
+        completed_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: 本人完成确认时间
+      type: object
+      required:
+      - user_id
+      - completed_at
+      title: DeveloperCompletion
+    DevelopmentCompletionRequest:
+      properties:
+        revision:
+          type: integer
+          minimum: 1.0
+          title: 数据版本
+      additionalProperties: false
+      type: object
+      required:
+      - revision
+      title: DevelopmentCompletionRequest
     EditHeartbeat:
       properties:
         entity_type:
@@ -5511,12 +5596,18 @@ components:
             $ref: '#/components/schemas/AssigneeOption'
           type: array
           title: 设计人员
+        development_completions:
+          items:
+            $ref: '#/components/schemas/DeveloperCompletion'
+          type: array
+          title: 开发完成确认
       type: object
       required:
       - revision
       - owner
       - developers
       - designers
+      - development_completions
       title: RequirementCollaboratorsOut
     RequirementCollaboratorsUpdate:
       properties:

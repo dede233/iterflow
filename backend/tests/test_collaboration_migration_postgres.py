@@ -74,11 +74,32 @@ def test_collaboration_existing_postgres_upgrade(monkeypatch, collision):
                 role = db.scalar(select(Role).where(Role.code == "DEVELOPER"))
                 assert role.name == "既有自定义角色" and not role.enabled and not role.is_system
         else:
+            command.upgrade(cfg, "0006_requirement_design_stage")
+            with engine.begin() as db:
+                db.execute(
+                    text(
+                        "INSERT INTO rd_requirement_participant "
+                        "(requirement_id,user_id,discipline) "
+                        "VALUES (:rid,:uid,'DEVELOPMENT')"
+                    ),
+                    {"rid": rid, "uid": uid},
+                )
             command.upgrade(cfg, "head")
+            with engine.connect() as db:
+                row = db.execute(
+                    text(
+                        "SELECT user_id,discipline,completed_at FROM rd_requirement_participant "
+                        "WHERE requirement_id=:rid"
+                    ),
+                    {"rid": rid},
+                ).one()
+                assert row == (uid, "DEVELOPMENT", None), (
+                    "Upgrade must not auto-confirm existing developers"
+                )
             command.check(cfg)
             with engine.connect() as db:
                 assert db.scalar(text("SELECT version_num FROM alembic_version")) == (
-                    "0006_requirement_design_stage"
+                    "0007_development_completion"
                 )
             with Session(engine) as db:
                 assert set(db.scalars(select(Role.code))) == {"DEVELOPER", "DESIGNER"}

@@ -254,6 +254,8 @@ class RequirementService:
                 "需求状态已被其他用户修改",
                 revision_conflict_data(self.repo.get(requirement_id)),
             )
+        if payload.status == ManualRequirementStatus.DEVELOPING:
+            RequirementCollaborationService(self.db).reset_development(requirement_id)
         self.audit.log(
             "REQUIREMENT",
             requirement_id,

@@ -18,6 +18,7 @@ from app.models.entities import (
     Release,
     Requirement,
     RequirementFeedback,
+    RequirementParticipant,
     Role,
     RolePermission,
     User,
@@ -69,6 +70,12 @@ def ready_chain(engine, user_id):
         db.flush()
         db.add_all(
             [
+                RequirementParticipant(
+                    requirement_id=requirement.id,
+                    user_id=user_id,
+                    discipline="DEVELOPMENT",
+                    completed_at=datetime.now(UTC),
+                ),
                 RequirementFeedback(requirement_id=requirement.id, feedback_id=feedback.id),
                 VersionRequirement(version_id=version.id, requirement_id=requirement.id),
             ]

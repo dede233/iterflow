@@ -1,4 +1,6 @@
-from sqlalchemy import delete, exists, func, select
+from datetime import UTC, datetime
+
+from sqlalchemy import delete, exists, func, select, update
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import AppError, ConflictError, NotFoundError
@@ -18,6 +20,8 @@ from app.repositories.user_repository import UserRepository
 from app.schemas.requirement import (
     AssigneeOption,
     AssigneeOptionsPage,
+    DeveloperCompletion,
+    DevelopmentCompletionRequest,
     RequirementCollaboratorGroupUpdate,
     RequirementCollaboratorsOut,
     RequirementCollaboratorsUpdate,
@@ -85,7 +89,7 @@ class RequirementCollaborationService:
 
     def read(self, requirement: Requirement) -> RequirementCollaboratorsOut:
         rows = self.db.execute(
-            select(RequirementParticipant.discipline, User)
+            select(RequirementParticipant.discipline, RequirementParticipant.completed_at, User)
             .join(User, User.id == RequirementParticipant.user_id)
             .where(RequirementParticipant.requirement_id == requirement.id)
             .order_by(User.id)
@@ -94,8 +98,13 @@ class RequirementCollaborationService:
         return RequirementCollaboratorsOut(
             revision=requirement.revision,
             owner=self._option(owner) if owner else None,
-            developers=[self._option(u) for kind, u in rows if kind == "DEVELOPMENT"],
-            designers=[self._option(u) for kind, u in rows if kind == "DESIGN"],
+            developers=[self._option(u) for kind, _, u in rows if kind == "DEVELOPMENT"],
+            designers=[self._option(u) for kind, _, u in rows if kind == "DESIGN"],
+            development_completions=[
+                DeveloperCompletion(user_id=u.id, completed_at=at)
+                for kind, at, u in rows
+                if kind == "DEVELOPMENT"
+            ],
         )
 
     def apply_members(self, requirement: Requirement, kind: str, ids: list[int]) -> None:
@@ -112,7 +121,15 @@ class RequirementCollaborationService:
             raise AppError(42212, "请选择具备开发人员或研发负责人角色的账号", 422)
         if kind == "DESIGN" and any(not u.can_design for u in options):
             raise AppError(42212, "请选择具备设计人员角色的账号", 422)
-        before = self.read(requirement).model_dump()
+        before = self.read(requirement).model_dump(mode="json")
+        completions = dict(
+            self.db.execute(
+                select(RequirementParticipant.user_id, RequirementParticipant.completed_at).where(
+                    RequirementParticipant.requirement_id == requirement.id,
+                    RequirementParticipant.discipline == kind,
+                )
+            ).all()
+        )
         self.db.execute(
             delete(RequirementParticipant).where(
                 RequirementParticipant.requirement_id == requirement.id,
@@ -120,7 +137,12 @@ class RequirementCollaborationService:
             )
         )
         self.db.add_all(
-            RequirementParticipant(requirement_id=requirement.id, user_id=uid, discipline=kind)
+            RequirementParticipant(
+                requirement_id=requirement.id,
+                user_id=uid,
+                discipline=kind,
+                completed_at=completions.get(uid),
+            )
             for uid in ids
         )
         self.db.flush()
@@ -129,14 +151,17 @@ class RequirementCollaborationService:
             requirement.id,
             "ASSIGN_" + kind,
             before=before,
-            after=self.read(requirement).model_dump(),
+            after=self.read(requirement).model_dump(mode="json"),
         )
 
     def replace_group(
         self, requirement_id: int, payload: RequirementCollaboratorGroupUpdate, operator_id: int
     ) -> RequirementCollaboratorsOut:
         requirement = self.db.scalar(
-            select(Requirement).where(Requirement.id == requirement_id).with_for_update()
+            select(Requirement)
+            .where(Requirement.id == requirement_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
         )
         if requirement is None:
             raise NotFoundError("需求不存在")
@@ -157,7 +182,7 @@ class RequirementCollaborationService:
                 is None
             ):
                 raise AppError(42212, "总负责人必须是启用且具备需求查看权限的账号", 422)
-            before = self.read(requirement).model_dump()
+            before = self.read(requirement).model_dump(mode="json")
             if not RequirementRepository(self.db).update_with_revision(
                 requirement_id,
                 payload.revision,
@@ -170,7 +195,7 @@ class RequirementCollaborationService:
                 requirement_id,
                 "ASSIGN_OWNER",
                 before=before,
-                after=self.read(requirement).model_dump(),
+                after=self.read(requirement).model_dump(mode="json"),
             )
             self.notify(requirement, operator_id, "负责人已更新", "请查看最新总负责人。")
             self.db.commit()
@@ -204,7 +229,10 @@ class RequirementCollaborationService:
         self, requirement_id: int, payload: RequirementCollaboratorsUpdate, operator_id: int
     ) -> RequirementCollaboratorsOut:
         requirement = self.db.scalar(
-            select(Requirement).where(Requirement.id == requirement_id).with_for_update()
+            select(Requirement)
+            .where(Requirement.id == requirement_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
         )
         if requirement is None:
             raise NotFoundError("需求不存在")
@@ -212,6 +240,14 @@ class RequirementCollaborationService:
             raise ConflictError(
                 "需求已被其他用户修改。请刷新后重试", revision_conflict_data(requirement)
             )
+        if requirement.status in {RequirementStatus.ONLINE, RequirementStatus.CANCELED}:
+            raise ConflictError("终态需求不能重新分配协作人员")
+        if (
+            requirement.status
+            in {RequirementStatus.DEVELOPING, RequirementStatus.TESTING, RequirementStatus.DONE}
+            and not payload.developer_ids
+        ):
+            raise AppError(42212, "开发阶段至少保留一名开发人员", 422)
         if requirement.status == RequirementStatus.DESIGNING and not payload.designer_ids:
             raise AppError(42212, "设计阶段至少保留一名设计人员", 422)
         ids = set(payload.developer_ids + payload.designer_ids)
@@ -235,7 +271,15 @@ class RequirementCollaborationService:
             raise AppError(42212, "开发人员需要启用的开发人员或研发负责人角色", 422)
         if any(not options[uid].can_design for uid in payload.designer_ids):
             raise AppError(42212, "设计人员需要启用的设计人员角色", 422)
-        before = self.read(requirement).model_dump()
+        before = self.read(requirement).model_dump(mode="json")
+        completions = {
+            (p.user_id, p.discipline): p.completed_at
+            for p in self.db.scalars(
+                select(RequirementParticipant).where(
+                    RequirementParticipant.requirement_id == requirement_id
+                )
+            )
+        }
         if not RequirementRepository(self.db).update_with_revision(
             requirement_id,
             payload.revision,
@@ -252,7 +296,12 @@ class RequirementCollaborationService:
             )
         )
         self.db.add_all(
-            RequirementParticipant(requirement_id=requirement_id, user_id=uid, discipline=kind)
+            RequirementParticipant(
+                requirement_id=requirement_id,
+                user_id=uid,
+                discipline=kind,
+                completed_at=completions.get((uid, kind)),
+            )
             for kind, members in [
                 ("DEVELOPMENT", payload.developer_ids),
                 ("DESIGN", payload.designer_ids),
@@ -267,11 +316,99 @@ class RequirementCollaborationService:
             requirement_id,
             "ASSIGN_COLLABORATORS",
             before=before,
-            after=result.model_dump(),
+            after=result.model_dump(mode="json"),
         )
         self.notify(requirement, operator_id, "协作分工已更新", "请查看总负责人、开发和设计分工。")
         self.db.commit()
         return result
+
+    def reset_development(self, requirement_id: int) -> None:
+        before = list(
+            self.db.execute(
+                select(RequirementParticipant.user_id, RequirementParticipant.completed_at).where(
+                    RequirementParticipant.requirement_id == requirement_id,
+                    RequirementParticipant.discipline == "DEVELOPMENT",
+                    RequirementParticipant.completed_at.is_not(None),
+                )
+            ).all()
+        )
+        self.db.execute(
+            update(RequirementParticipant)
+            .where(
+                RequirementParticipant.requirement_id == requirement_id,
+                RequirementParticipant.discipline == "DEVELOPMENT",
+            )
+            .values(completed_at=None)
+        )
+        if before:
+            AuditService(self.db).log(
+                "REQUIREMENT",
+                requirement_id,
+                "RESET_DEVELOPMENT_COMPLETION",
+                before={
+                    "confirmations": [
+                        {"user_id": uid, "completed_at": at.isoformat() if at is not None else None}
+                        for uid, at in before
+                    ]
+                },
+                after={"completed": False},
+            )
+
+    def confirm_development(
+        self, requirement_id: int, payload: DevelopmentCompletionRequest, operator_id: int
+    ) -> RequirementCollaboratorsOut:
+        requirement = self.db.scalar(
+            select(Requirement)
+            .where(Requirement.id == requirement_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        if requirement is None:
+            raise NotFoundError("需求不存在")
+        if requirement.revision != payload.revision:
+            raise ConflictError("需求已被其他用户修改", revision_conflict_data(requirement))
+        participant = self.db.get(
+            RequirementParticipant, (requirement_id, operator_id, "DEVELOPMENT")
+        )
+        user = self.db.get(User, operator_id)
+        if (
+            participant is None
+            or user is None
+            or user.status != UserStatus.ACTIVE
+            or not self._option(user).can_develop
+        ):
+            raise AppError(40300, "只能确认本人绑定的开发工作。不能代确认", 403)
+        if requirement.status not in {
+            RequirementStatus.DEVELOPING,
+            RequirementStatus.TESTING,
+            RequirementStatus.DONE,
+        }:
+            raise ConflictError("仅开发、测试或完成阶段可以确认开发完成")
+        if participant.completed_at is not None:
+            raise ConflictError("本人已确认完成。无需重复确认")
+        if not RequirementRepository(self.db).update_with_revision(
+            requirement_id, payload.revision, {"updated_by": operator_id}
+        ):
+            raise ConflictError("需求已被其他用户修改", revision_conflict_data(requirement))
+        participant.completed_at = datetime.now(UTC)
+        self.db.flush()
+        self.db.refresh(requirement)
+        AuditService(self.db).log(
+            "REQUIREMENT",
+            requirement_id,
+            "CONFIRM_DEVELOPMENT_COMPLETION",
+            before={"user_id": operator_id, "completed_at": None},
+            after={"user_id": operator_id, "completed_at": participant.completed_at.isoformat()},
+        )
+        self.notify(
+            requirement,
+            operator_id,
+            "开发人员已确认完成",
+            f"{user.display_name} 已确认本人开发完成。全部开发人员确认后才可发布。",
+            discipline="DEVELOPMENT",
+        )
+        self.db.commit()
+        return self.read(requirement)
 
     def notify(
         self,

@@ -133,6 +133,8 @@ Redis 的“正在编辑”标记只用于提示，不是强制排他锁。建�
 
 2026-10-10 用户批准本地需求协作增量：保留一名总负责人、多名开发/设计，人员按阶段选择，并增加可选 DESIGNING（设计中）。PLANNED 可进入 DESIGNING 或直接 DEVELOPING；详细规则与 API 兼容边界以更新后的 `spec/status-machines.md`、`spec/openapi-development.yaml` 和 `docs/requirement-design-stage.md` 为准。这是既有需求状态机的明确授权增量；不改变 Publish/Release、CAS、核心实体关系及 RBAC，不自动授权线上升级或历史发布重写。
 
+2026-10-10 用户进一步明确授权：绑定的每名开发人员本人确认完成后才可发布。新增发布门禁、个人确认和双数据库追加迁移，规则见 `docs/development-completion.md`；不自动授权服务器操作。
+
 禁止在 Controller / Router 内散落业务状态判断。
 
 - 状态迁移规则必须集中在 Service / domain policy 中。

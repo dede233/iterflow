@@ -1,18 +1,20 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { getCollaborators, updateCollaboratorGroup, type Collaborators } from '@/api/requirementCollaboration'
+import { getCollaborators, updateCollaboratorGroup, confirmDevelopmentCompletion, type Collaborators } from '@/api/requirementCollaboration'
 import { getRequirement } from '@/api/requirements'
 import { useRevisionConflict } from '@/composables/useRevisionConflict'
 import { requirementConflictSummary } from '@/utils/revisionSummaries'
 import { usePermission } from '@/composables/usePermission'
 import { useResponsive } from '@/composables/useResponsive'
+import { useAuthStore } from '@/stores/auth'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import RevisionConflictDialog from '@/components/RevisionConflictDialog.vue'
 import RequirementAssigneeSelect from '@/components/RequirementAssigneeSelect.vue'
 const props = defineProps<{ requirementId: number; revision: number; status: string }>()
 const emit = defineEmits<{ updated: [] }>()
 const { can } = usePermission()
+const auth = useAuthStore()
 const { isMobile } = useResponsive()
 const conflict = useRevisionConflict()
 const data = ref<Collaborators | null>(null)
@@ -21,6 +23,22 @@ const loading = ref(false)
 const dialog = ref(false)
 const saving = ref(false)
 const form = reactive({ kind: 'OWNER' as 'OWNER' | 'DEVELOPMENT' | 'DESIGN', owner_id: null as number | null, user_ids: [] as number[], revision: 1 })
+const completionStages = ['DEVELOPING', 'TESTING', 'DONE']
+const myCompletion = computed(() => data.value?.development_completions.find(p => p.user_id === auth.user?.id))
+const canConfirm = computed(() => can('rd.requirement.status') && completionStages.includes(props.status) && myCompletion.value?.completed_at === null)
+const completedCount = computed(() => data.value?.development_completions.filter(p => p.completed_at !== null).length ?? 0)
+async function confirmMine(): Promise<void> {
+  if (saving.value || !canConfirm.value || !data.value) return
+  const revision = data.value.revision
+  saving.value = true
+  try {
+    data.value = await confirmDevelopmentCompletion(props.requirementId, revision)
+    ElMessage.success('已确认本人开发完成')
+    emit('updated')
+  } catch (error) {
+    await conflict.show(error, revision, { entityLabel: '需求', getLatest: () => getRequirement(props.requirementId), summarize: requirementConflictSummary, apply: async () => { emit('updated'); await load() } })
+  } finally { saving.value = false }
+}
 let generation = 0
 async function load(): Promise<void> {
   const run = ++generation
@@ -65,6 +83,18 @@ watch(() => [props.requirementId, props.revision], load)
         <template v-if="data.designers.length || status === 'DESIGNING'"><dt>设计人员</dt><dd>{{ data.designers.map(p => p.display_name).join('、') || '未分配' }}</dd></template>
         <template v-if="data.developers.length || ['DEVELOPING','TESTING','DONE','ONLINE'].includes(status)"><dt>开发人员</dt><dd>{{ data.developers.map(p => p.display_name).join('、') || '未分配' }}</dd></template>
       </dl>
+      <div v-if="data.developers.length" class="completion-list">
+        <p>开发完成确认：{{ completedCount }} / {{ data.developers.length }} 人</p>
+        <ul><li v-for="developer in data.developers" :key="developer.user_id">
+          <span>{{ developer.display_name }}</span>
+          <el-tag :type="data.development_completions.find(p => p.user_id === developer.user_id)?.completed_at ? 'success' : 'info'">
+            {{ data.development_completions.find(p => p.user_id === developer.user_id)?.completed_at ? '已完成' : '待确认' }}
+          </el-tag>
+        </li></ul>
+        <el-button v-if="canConfirm" type="primary" :loading="saving" :disabled="loading" @click="confirmMine">确认本人开发完成</el-button>
+        <p v-if="completionStages.includes(status)" class="hint">每名开发人员需本人确认完成，全部确认后才能发布。退回开发会清空此前确认。</p>
+      </div>
+      <p v-else-if="completionStages.includes(status)" class="hint">尚未分配开发人员，将阻止发布；请先调整开发人员。</p>
       <div v-if="can('rd.requirement.edit')" class="assignment-actions">
         <el-button :disabled="loading || saving" @click="open('OWNER')">设置总负责人</el-button>
         <el-button v-if="status === 'DESIGNING'" :disabled="loading || saving" @click="open('DESIGN')">调整设计人员</el-button>
@@ -87,6 +117,9 @@ watch(() => [props.requirementId, props.revision], load)
 .collaborators dt { color: var(--if-text-2); }
 .collaborators dd { margin: 0; overflow-wrap: anywhere; }
 .hint { color: var(--if-text-2); font-size: 13px; }
+.completion-list { margin-bottom: 16px; }
+.completion-list ul { list-style: none; padding: 0; }
+.completion-list li { display: flex; gap: 12px; justify-content: space-between; margin: 8px 0; overflow-wrap: anywhere; }
 .assignment-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .assignment-actions :deep(.el-button + .el-button) { margin-left: 0; }
 </style>

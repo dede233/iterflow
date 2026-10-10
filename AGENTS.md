@@ -32,6 +32,8 @@ Redis 服务：iterflow-redis
 本文件是“需求与版本管理系统”仓库内所有开发 Agent、代码生成工具和人工开发者的最高优先级工程说明之一。
 进入仓库后应先阅读本文件，再阅读 `DEVELOPMENT.md`、`TASKS.md`、`docs/` 与 `spec/`。
 
+2026-10-11 当前开发主线：用户已明确授权将 MySQL 5.7 适配和需求协作分支合入并推送 master，合并记录见 `docs/master-merge-2026-10-11.md`。当前开发契约为 `spec/openapi-development.yaml`，保留 PostgreSQL 路径；本次仅同步 Git 主线与文档，不重新部署服务器或操作数据库，不创建 tag/Release。以下 V1.8.1 正式发布说明及各版本授权章节保留为历史记录，不代表本次又进行正式发布。
+
 版本状态：本次正式发布目标为 `v1.8.1`，Hotfix 外部独立终审 PASS，用户已授权 Final Release + Cloudflare Preview Resume。正式发布成立条件为新的 Release Branch / Final Master 六项 CI PASS、annotated v1.8.1 tag 与正式 GitHub Release；发布事实以最终 master commit、标签和 Release 为准，不提前记录 tag SHA。发布 base：`df9e1ba1a5ee1a4c763098d8e180250f409bedd3`；包、FastAPI、health、Frontend 与当前契约元数据同步 1.8.1，当前契约 `spec/openapi-v1.8.1.yaml`，API shape 不变。v1.8.0 及更早正式标签/Release/契约不可变；本轮只发布已审查的共享 PageHeader 平板响应式修复，随后将正式版本合入独立 Preview 并恢复验收，不部署 Production。证据见 `docs/v1.8.1-release-readiness.md`。
 
 ## 1. 规格优先级

@@ -2,7 +2,7 @@
 
 ## 当前开发文档
 
-2026-10-10 本地协作开发快照的文档入口：[用户操作手册](docs/user-manual.md)、[接口集成指南](docs/api-guide.md)、[全员开发确认与验收](docs/development-completion.md)。当前契约为 `spec/openapi-development.yaml`；按阶段分工、可选设计、需求完成与发布全员确认门禁属于未发布增量，不因文档同步而表示已部署线上。已发布历史契约和下述发布证据保持不变。
+2026-10-11 当前开发文档入口：[用户操作手册](docs/user-manual.md)、[接口集成指南](docs/api-guide.md)、[全员开发确认与验收](docs/development-completion.md)、[线上升级记录](docs/collaboration-online-upgrade-2026-10-11.md)、[主分支合并记录](docs/master-merge-2026-10-11.md)。MySQL 5.7 适配与协作功能已合入 master；当前开发契约为 `spec/openapi-development.yaml`。线上 sx-kc.xyz:8443 运行源 commit `2b37509`，后续主线合并未再次部署服务器。以下 V1.8.1 发布说明保留为历史记录，已发布契约、tag 与 Release 保持不变。
 
 本次正式发布目标为 `v1.8.1`，Hotfix 外部独立终审 PASS，用户已授权 Final Release + Cloudflare Preview Resume。正式发布成立条件为新的 Release Branch / Final Master 六项 CI PASS、annotated v1.8.1 tag 与正式 GitHub Release；发布事实以最终 master commit、标签和 Release 为准，不提前记录 tag SHA。发布 base：`df9e1ba1a5ee1a4c763098d8e180250f409bedd3`；包、FastAPI、health、Frontend 与当前契约元数据同步 1.8.1，当前契约 `spec/openapi-v1.8.1.yaml`，API shape 不变。v1.8.0 及更早正式标签/Release/契约不可变；本轮只发布已审查的共享 PageHeader 平板响应式修复，随后将正式版本合入独立 Preview 并恢复验收，不部署 Production。证据见 `docs/v1.8.1-release-readiness.md`。
 

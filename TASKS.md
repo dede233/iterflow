@@ -2,7 +2,7 @@
 
 ## 当前开发文档
 
-2026-10-11 协作版本文档入口：[用户操作手册](docs/user-manual.md)、[接口集成指南](docs/api-guide.md)、[全员开发确认与验收](docs/development-completion.md)、[线上升级记录](docs/collaboration-online-upgrade-2026-10-11.md)。当前契约为 `spec/openapi-development.yaml`；按阶段分工、可选设计、完成与发布全员确认门禁已部署 sx-kc.xyz:8443，实际源 commit 为 `2b37509`。本次没有合并 master 或创建正式 tag/Release；已发布历史契约和下述发布证据保持不变。
+2026-10-11 协作版本文档入口：[用户操作手册](docs/user-manual.md)、[接口集成指南](docs/api-guide.md)、[全员开发确认与验收](docs/development-completion.md)、[线上升级记录](docs/collaboration-online-upgrade-2026-10-11.md)、[主分支合并记录](docs/master-merge-2026-10-11.md)。当前契约为 `spec/openapi-development.yaml`；按阶段分工、可选设计、完成与发布全员确认门禁已部署 sx-kc.xyz:8443，实际源 commit 为 `2b37509`。随后按用户授权合入 master；本次未创建新的正式 tag/Release，已发布历史契约和下述发布证据保持不变。
 
 当前追加[全员开发完成发布门禁](docs/development-completion.md)，该文档包含操作与验收；前述阶段记录保留为历史证据。
 
@@ -18,6 +18,7 @@
 - [x] 真实 MySQL 5.7、PostgreSQL 回归、迁移和独立备份恢复。
 - [x] Fresh Self-Review 与操作说明。
 - [x] 2026-10-11 Branch 八项 CI、新 amd64 包、线上追加迁移与双份备份验收。
+- [x] 2026-10-11 最新分支八项 CI 全通过后，no-ff 合并 29 个提交并进行文档收口；最终 master CI 以合并记录中的 Checks 入口实际结果为准。
 - [ ] 本轮未执行外部独立审查；Fresh Self-Review 为同一 Agent 复查。
 
 > 本次正式发布目标为 `v1.8.1`，Hotfix 外部独立终审 PASS，用户已授权 Final Release + Cloudflare Preview Resume。正式发布成立条件为新的 Release Branch / Final Master 六项 CI PASS、annotated v1.8.1 tag 与正式 GitHub Release；发布事实以最终 master commit、标签和 Release 为准，不提前记录 tag SHA。发布 base：`df9e1ba1a5ee1a4c763098d8e180250f409bedd3`；包、FastAPI、health、Frontend 与当前契约元数据同步 1.8.1，当前契约 `spec/openapi-v1.8.1.yaml`，API shape 不变。v1.8.0 及更早正式标签/Release/契约不可变；本轮只发布已审查的共享 PageHeader 平板响应式修复，随后将正式版本合入独立 Preview 并恢复验收，不部署 Production。证据见 `docs/v1.8.1-release-readiness.md`。

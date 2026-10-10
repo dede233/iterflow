@@ -206,7 +206,7 @@ export interface paths {
         head?: never;
         /**
          * 编辑反馈
-         * @description 必须携带 revision；过期 revision 返回 409。
+         * @description 需要反馈编辑权限、数据范围和最新 revision；旧 revision 返回 409。CLOSED 仍可编辑保存，但保存不会重开；再次提交需另行重开到 NEW，填写非空原因，保留原编号与历史。
          */
         patch: operations["update_feedback_api_v1_feedbacks__feedback_id__patch"];
         trace?: never;
@@ -226,7 +226,7 @@ export interface paths {
         head?: never;
         /**
          * 反馈状态变更
-         * @description 集中式状态机；必须携带 revision；非法迁移返回 409；ManualFeedbackStatus 之外的值返回 422。
+         * @description 集中式状态机、权限与数据范围检查；必须携带 revision，旧 revision 或非法迁移返回 409。受理无需 reason；重复需可见且非自身的 duplicate_of_id，无需 reason；无法复现、关闭和重开需非空 reason。CLOSED/DUPLICATE/CANNOT_REPRODUCE 可重开 NEW，重开重复反馈清除重复指向。事务产出状态不可人工设置，非法枚举返回 422。
          */
         patch: operations["change_feedback_status_api_v1_feedbacks__feedback_id__status_patch"];
         trace?: never;
@@ -375,7 +375,10 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** 单独调整负责人或当前阶段分工 */
+        /**
+         * 单独调整负责人或当前阶段分工
+         * @description 需要需求编辑权限及数据范围；kind OWNER 单独修改 owner_id，DEVELOPMENT 或 DESIGN 单独替换 user_ids，保留其他分工。设计仅在 DESIGNING 调整；开发可在 DEVELOPING/TESTING/DONE 调整且不能清空。保留人员的确认保留，新增或移除后重加人员待确认；已完成需求调整开发名单可能再次阻断发布。revision CAS、审计和通知原子提交。
+         */
         patch: operations["update_collaborator_group_api_v1_requirements__requirement_id__collaborators_patch"];
         trace?: never;
     };
@@ -390,7 +393,7 @@ export interface paths {
         put?: never;
         /**
          * 开发人员确认本人开发完成
-         * @description 仅当前绑定的启用开发人员本人可确认。需要需求查看、状态权限与数据范围。开发、测试、完成阶段允许补充确认；返工清空确认；新增开发人员待确认。全部开发人员确认是发布必要门禁，空名单也阻断。revision CAS、确认时间、审计及通知原子提交；管理员不能代确认。
+         * @description 仅当前绑定、启用且具有开发资格的人员本人可确认；需要需求查看、状态权限与数据范围。请求体仅 revision，不能指定他人或管理员代确认。DEVELOPING/TESTING/DONE 可补充确认；每次进入开发清空确认，新增或重加人员待确认。DONE 与发布均要求非空开发名单、全部本人确认；确认本身不会自动推进 DONE。确认时间、revision CAS、审计和通知原子提交。
          */
         post: operations["confirm_development_api_v1_requirements__requirement_id__development_completion_post"];
         delete?: never;
@@ -426,7 +429,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** 开始设计或开发并分配阶段人员 */
+        /**
+         * 开始设计或开发并分配阶段人员
+         * @description 同时需要需求编辑、状态权限及数据范围。仅允许 PLANNED 到 DESIGNING/DEVELOPING 或 DESIGNING 到 DEVELOPING；选择 1–100 名对应角色的启用且具备需求查看权限的人员，不允许重复。仅替换当前阶段分工，设计进入开发后保留设计分工。人员、状态、一次 revision CAS、审计、通知原子提交；进入 DEVELOPING 清空既有开发确认。
+         */
         post: operations["start_stage_api_v1_requirements__requirement_id__start_stage_post"];
         delete?: never;
         options?: never;
@@ -509,7 +515,10 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** 编辑版本 */
+        /**
+         * 编辑版本
+         * @description 需要版本编辑权限、数据范围和最新 revision。当前实现允许已发布版本修改 name、owner_id、planned_release_date、description；不修改版本号、状态、需求清单或已有 Release 的说明、结果与发布时间。基础信息修改写审计，旧 revision 返回 409；前端编辑页面提供名称、计划日期和说明。
+         */
         patch: operations["update_version_api_v1_versions__version_id__patch"];
         trace?: never;
     };
@@ -628,7 +637,7 @@ export interface paths {
         put?: never;
         /**
          * 发布版本
-         * @description 只允许 READY，且 V1.5 仅支持成功发布。Release(SUCCESS) + Version + DONE Requirement -> ONLINE + Feedback -> ONLINE 同一业务事务。
+         * @description 需要发布权限及数据范围；版本必须 READY，全部有效关联需求 DONE，每条需求至少一名开发且全部本人确认。实际发布重新校验并锁定相关业务行。Release(SUCCESS)、Version、Requirement/Feedback ONLINE、通知和审计同一事务提交；中途异常全部回滚。重复发布返回 409；普通状态接口不能进入 RELEASED。
          */
         post: operations["publish_version_api_v1_versions__version_id__publish_post"];
         delete?: never;

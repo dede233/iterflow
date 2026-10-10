@@ -61,6 +61,7 @@ PLANNING -> DEVELOPING -> TESTING -> READY -> RELEASED
 - `READY -> TESTING` 允许退回，但必须填写原因并写审计日志。
 - V1.5 MVP 仅支持成功发布；发布固定生成 `Release.result = SUCCESS`。
 - `RELEASED` 为终态。发布必须通过独立事务执行 Release + Version + Requirement + Feedback + Notification 同步。
+- 终态限制状态与有效需求清单；当前版本基础信息编辑仍允许修改名称、负责人、计划日期、描述，须权限、范围、revision CAS 与审计。已有 Release 记录不被此编辑改写。用户操作见 `docs/user-manual.md`。
 
 ## Concurrency
 关键对象写操作必须提交 `revision`。旧 revision 写入返回 HTTP 409，禁止静默覆盖。

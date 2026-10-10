@@ -1,5 +1,7 @@
 # 迭程 IterFlow 生产运维手册（Phase 8.3）
 
+当前用户操作以 [操作手册](user-manual.md) 为准，接口见 [集成指南](api-guide.md)。本文件保留原阶段/运维基线；本地协作增量尚未因本次文档同步部署线上。
+
 ## 首次安装
 
 要求 Docker Engine、Compose v2、可靠的 PostgreSQL/Redis 卷、备份存储与前置 HTTPS 代理。复制根目录 `.env.example` 为 `deploy/.env`（Compose 文件位于 `deploy/`，默认从其项目目录读取环境文件），权限设为仅部署用户可读。填写 `POSTGRES_PASSWORD`、Docker 网络内的 `DATABASE_URL`、`REDIS_URL`、至少 32 字节随机 `JWT_SECRET`、`INIT_ADMIN_USERNAME` 和 20 位以上随机 `INIT_ADMIN_PASSWORD`。生产设置 `APP_ENV=production`、实际 `ALLOWED_HOSTS`、`TRUST_PROXY_HEADERS=true`、`ENABLE_API_DOCS=false`、`BUILD_SHA` 为部署提交 SHA；同源部署可令 `CORS_ORIGINS` 为空。不可配置通配 Host 或带凭据的通配 CORS。配置 `WEB_BIND_HOST=127.0.0.1`，由 HTTPS 反向代理向外提供服务；**不得直接公开纯 HTTP 8080 端口**。本阶段不签发 TLS 证书。

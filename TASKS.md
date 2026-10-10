@@ -1,5 +1,9 @@
 # IterFlow Tasks
 
+## 当前开发文档
+
+2026-10-10 本地协作开发快照的文档入口：[用户操作手册](docs/user-manual.md)、[接口集成指南](docs/api-guide.md)、[全员开发确认与验收](docs/development-completion.md)。当前契约为 `spec/openapi-development.yaml`；按阶段分工、可选设计、需求完成与发布全员确认门禁属于未发布增量，不因文档同步而表示已部署线上。已发布历史契约和下述发布证据保持不变。
+
 当前追加[全员开发完成发布门禁](docs/development-completion.md)，该文档包含操作与验收；前述阶段记录保留为历史证据。
 
 ## 2026-10-10 需求开发、设计协作（本地）

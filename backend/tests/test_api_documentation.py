@@ -178,16 +178,13 @@ def test_bundled_chinese_labels_match_the_active_contract():
     current["paths"].pop("/docs/openapi")
     # The collaboration increment is approved; all earlier API shapes remain frozen.
     current["paths"].pop("/requirements/{requirement_id}/development-completion")
-    done_description = current["paths"]["/requirements/{requirement_id}/status"]["patch"].pop(
+    done_description = current["paths"]["/requirements/{requirement_id}/status"]["patch"][
         "description"
-    )
+    ]
     assert done_description == (
         "进入 DONE 必须已分配至少一名开发人员且全部本人确认完成；未满足时返回业务冲突 409，"  # noqa: RUF001
         "状态、revision、审计和通知均不提交。旧 revision 仍返回 CAS 冲突。"
     )
-    current["paths"]["/versions/{version_id}/publish/check"]["post"]["description"] = released[
-        "paths"
-    ]["/versions/{version_id}/publish/check"]["post"]["description"]
     current["paths"].pop("/requirements/assignee-options")
     current["paths"].pop("/requirements/{requirement_id}/start-stage")
     current["paths"].pop("/requirements/{requirement_id}/collaborators")
@@ -207,6 +204,12 @@ def test_bundled_chinese_labels_match_the_active_contract():
         current["components"]["schemas"][name]["enum"].remove("DESIGNING")
     current["info"] = released["info"]
     for document in (current, released):
+        # Approved prose updates are mutable; request/response and security shapes remain checked.
+        for operations in document["paths"].values():
+            for operation in operations.values():
+                if isinstance(operation, dict):
+                    operation.pop("summary", None)
+                    operation.pop("description", None)
         for schema in document["components"]["schemas"].values():
             remove_schema_annotations(schema)
     assert current == released

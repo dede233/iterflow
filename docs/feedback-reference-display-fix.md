@@ -38,3 +38,10 @@ Fresh Self-Review 由实施 Agent 完成，不称为独立评审：逐一核对�
 Native Safari 使用既有产品账号核对反馈4的完整页和列表抽屉，三处名称均正确显示。独立环境保留，等待用户查看完成后清理；新增派生镜像精确名称保存于服务器 `state.reference_display_images`，应一并按验收项目标签核对后移除。
 
 服务器保护回执：`/opt/iterflow/acceptance-evidence/iterflow-acceptance-20261012-753ebd/reference-display-deployment.json`。该更新仅适用于8444独立验收，8443仍使用既有生产版本；本次不构成正式发布或远程RDS写入验收。
+
+
+## 测试环境保留（覆盖原清理安排）
+
+2026-10-12，用户查看后要求保留现有测试环境。8444入口、独立数据库/Redis/附件、现有测试账号及数据继续保留；查看完成不再触发清理。服务器 `state.retention.keep=true` 并维持 `cleanup_hold`，后续删除需要用户新的明确指令。保留记录为该验收项目证据目录中的 `retention-request.json`，项目目录增加 `RETENTION.md`。8443生产保持原样。
+
+本次仅更改保留及清理计划，没有设置服务器重启后的自动恢复或定期备份。长期运行仍需完善这两项；不将临时Nginx进程及runtime防火墙规则宣称为持久化入口。测试库与生产库不自动同步，不把测试账号或数据转为生产数据。

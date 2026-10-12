@@ -32,6 +32,8 @@ Redis 服务：iterflow-redis
 本文件是“需求与版本管理系统”仓库内所有开发 Agent、代码生成工具和人工开发者的最高优先级工程说明之一。
 进入仓库后应先阅读本文件，再阅读 `DEVELOPMENT.md`、`TASKS.md`、`docs/` 与 `spec/`。
 
+2026-10-12 用户进一步授权合并反馈名称分支并配置保留测试环境的开机恢复。no-ff合并及后续恢复配置见 `docs/master-merge-and-autorecovery-2026-10-12.md`，最终master需自身八项CI和双远端SHA核验通过。本次不新增tag/Release，不再次更新正式应用或重启整台服务器；历史部署与发布记录保留。
+
 2026-10-12 用户确认后续部署顺序：保留 `https://sx-kc.xyz:8444` 独立测试环境，后续更新先在该环境完成验收，通过后再按当次更新授权范围更新 `https://sx-kc.xyz:8443` 正式环境。必要门禁或测试验收未通过时不得更新正式环境。测试账号、数据库及附件与正式环境隔离，不导入生产；未经用户新的明确移除指令不得清理测试环境。流程和当前基础设施限制见 `docs/test-environment-workflow.md`；本次记录不构成立即部署正式环境或新的 tag/Release 授权。
 
 2026-10-11 当前开发主线：用户已明确授权将 MySQL 5.7 适配和需求协作分支合入并推送 master，合并记录见 `docs/master-merge-2026-10-11.md`。当前开发契约为 `spec/openapi-development.yaml`，保留 PostgreSQL 路径；本次仅同步 Git 主线与文档，不重新部署服务器或操作数据库，不创建 tag/Release。以下 V1.8.1 正式发布说明及各版本授权章节保留为历史记录，不代表本次又进行正式发布。

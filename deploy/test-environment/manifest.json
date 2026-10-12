@@ -1,0 +1,7 @@
+{
+  "iterflow-test-stack.service": "5f7d19781d9c8517e3b13ceaf40eb05fcc72a79804caa0523dc4cc577f032d9a",
+  "autorecovery.py": "e7a621d7ce08ddd306da8ce410a144773f2854483cb03162b017b43204b819b2",
+  "review-nginx.template": "be764c26ad0db4af1060071e83a31372d6cb103fd2d6ee349ad6fec1e3705654",
+  "iterflow-test-nginx.service": "da9bb146cd8350614a6ee643a02fbb14749fbcadab9ba5d7d8d48d08a11ea6de",
+  "install-autorecovery.py": "335e398cd2525d3a3df12db48149ad25b06748b553fa06314f354c0fae7da159"
+}

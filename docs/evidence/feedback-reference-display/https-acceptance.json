@@ -1,0 +1,36 @@
+{
+  "scope": "independent HTTPS 8444 only",
+  "status": "PASS",
+  "accounts": [
+    {
+      "username": "ceshi006",
+      "detail_http": 200,
+      "labels": {
+        "submitter_display_name": "验收提交人",
+        "system_name": "中文验收系统",
+        "module_name": "中文验收模块"
+      },
+      "system_catalog_http_matches_existing_permission": 403,
+      "management_apis_still_forbidden": true
+    },
+    {
+      "username": "ceshi012",
+      "detail_http": 200,
+      "labels": {
+        "submitter_display_name": "验收提交人",
+        "system_name": "中文验收系统",
+        "module_name": "中文验收模块"
+      },
+      "system_catalog_http_matches_existing_permission": 200,
+      "management_apis_still_forbidden": true
+    },
+    {
+      "username": "ceshi013",
+      "detail_http": 404,
+      "system_catalog_http_matches_existing_permission": 200,
+      "management_apis_still_forbidden": true
+    }
+  ],
+  "frontend_current_assets": true,
+  "invalid_host_rejected": true
+}

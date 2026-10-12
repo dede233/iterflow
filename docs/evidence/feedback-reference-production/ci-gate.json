@@ -1,0 +1,48 @@
+{
+  "headSha": "e4c6f8d5942e14cfcdc294cd50f965a8c1d3f939",
+  "status": "completed",
+  "conclusion": "success",
+  "url": "https://github.com/dede233/iterflow/actions/runs/38232487301",
+  "jobs": [
+    {
+      "name": "docker_smoke",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "backup_restore",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "s3",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "backend",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "browser_smoke",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "mysql57 (standard)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "frontend",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "mysql57 (portable)",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ]
+}

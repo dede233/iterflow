@@ -200,6 +200,12 @@ def test_bundled_chinese_labels_match_the_active_contract():
     ):
         current["components"]["schemas"].pop(name)
     current["components"]["schemas"]["AuthMe"]["properties"].pop("can_view_api_docs")
+    # Feedback labels are an additive projection of already authorized references.
+    feedback = current["components"]["schemas"]["FeedbackOut"]
+    for field in ("submitter_display_name", "system_name", "module_name"):
+        assert field not in feedback["required"]
+        assert feedback["properties"][field]["anyOf"] == [{"type": "string"}, {"type": "null"}]
+        feedback["properties"].pop(field)
     for name in ("RequirementStatus", "ManualRequirementStatus"):
         current["components"]["schemas"][name]["enum"].remove("DESIGNING")
     current["info"] = released["info"]

@@ -320,16 +320,6 @@ async function submitComment(): Promise<void> {
   }
 }
 
-function systemName(id: number | null | undefined): string {
-  if (!id) return '-'
-  return systems.value.find((s) => s.id === id)?.name ?? `#${id}`
-}
-
-function moduleName(id: number | null | undefined): string {
-  if (!id) return '-'
-  return modules.value.find((m) => m.id === id)?.name ?? `#${id}`
-}
-
 async function load(): Promise<void> {
   loading.value = true
   failed.value = false
@@ -392,8 +382,8 @@ onMounted(async () => {
           <el-descriptions-item label="紧急程度">
             {{ feedbackUrgencyLabel[item.urgency] ?? item.urgency }}
           </el-descriptions-item>
-          <el-descriptions-item label="所属系统">{{ systemName(item.system_id) }}</el-descriptions-item>
-          <el-descriptions-item label="所属模块">{{ moduleName(item.module_id) }}</el-descriptions-item>
+          <el-descriptions-item label="所属系统">{{ item.system_name || (item.system_id == null ? '-' : '未知系统') }}</el-descriptions-item>
+          <el-descriptions-item label="所属模块">{{ item.module_name || (item.module_id == null ? '-' : '未知模块') }}</el-descriptions-item>
           <el-descriptions-item label="详细描述" :span="isMobile ? 1 : 2">
             <div class="multiline">{{ item.description }}</div>
           </el-descriptions-item>
@@ -412,7 +402,7 @@ onMounted(async () => {
         <dl class="side-fields">
           <div><dt>关联需求</dt><dd><ScopedRelationLink kind="requirement" :id="item.main_requirement_id" :return-to="backTo" :parent-identity="String(item.id)" /></dd></div>
           <div v-if="item.duplicate_of_id"><dt>重复于</dt><dd><ScopedRelationLink kind="feedback" :id="item.duplicate_of_id" :return-to="backTo" :parent-identity="String(item.id)" /></dd></div>
-          <div><dt>提交人</dt><dd>#{{ item.submitter_id }}</dd></div>
+          <div><dt>提交人</dt><dd>{{ item.submitter_display_name || '未知用户' }}</dd></div>
           <div><dt>创建时间</dt><dd>{{ formatLocalDateTime(item.created_at) }}</dd></div>
           <div><dt>更新时间</dt><dd>{{ formatLocalDateTime(item.updated_at) }}</dd></div>
         </dl>

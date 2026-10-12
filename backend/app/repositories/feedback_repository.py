@@ -1,7 +1,7 @@
 from sqlalchemy import ColumnElement, func, or_, select
 from sqlalchemy.orm import Session
 
-from app.models.entities import Feedback
+from app.models.entities import BusinessModule, BusinessSystem, Feedback, User
 from app.models.enums import DataScope, FeedbackStatus, FeedbackType, FeedbackUrgency
 from app.repositories.base import BaseRepository
 
@@ -9,6 +9,22 @@ from app.repositories.base import BaseRepository
 class FeedbackRepository(BaseRepository[Feedback]):
     def __init__(self, db: Session):
         super().__init__(db, Feedback)
+
+    def display_names(
+        self, feedback_ids: list[int]
+    ) -> dict[int, tuple[str | None, str | None, str | None]]:
+        """Read only labels belonging to the feedbacks already authorized by the caller."""
+        if not feedback_ids:
+            return {}
+        rows = self.db.execute(
+            select(Feedback.id, User.display_name, BusinessSystem.name, BusinessModule.name)
+            .select_from(Feedback)
+            .outerjoin(User, User.id == Feedback.submitter_id)
+            .outerjoin(BusinessSystem, BusinessSystem.id == Feedback.system_id)
+            .outerjoin(BusinessModule, BusinessModule.id == Feedback.module_id)
+            .where(Feedback.id.in_(feedback_ids))
+        ).all()
+        return {row[0]: (row[1], row[2], row[3]) for row in rows}
 
     def get_scoped(self, entity_id: int, user_id: int, data_scope: DataScope) -> Feedback | None:
         stmt = select(Feedback).where(Feedback.id == entity_id)

@@ -1718,6 +1718,21 @@ export interface components {
         };
         /** FeedbackOut */
         FeedbackOut: {
+            /**
+             * 提交人显示名称
+             * @description 当前反馈提交人的显示名称；仅随已授权的反馈返回，不提供用户管理信息。
+             */
+            submitter_display_name?: string | null;
+            /**
+             * 所属系统名称
+             * @description 当前反馈关联的系统名称，包括已停用的历史关联。
+             */
+            system_name?: string | null;
+            /**
+             * 所属模块名称
+             * @description 当前反馈关联的模块名称，包括已停用的历史关联。
+             */
+            module_name?: string | null;
             /** 反馈 ID */
             id: number;
             /** 反馈编号 */

@@ -2,6 +2,11 @@
 
 ## 当前开发文档
 
+2026-10-12 用户确认：[测试环境保留与更新流程](docs/test-environment-workflow.md)。8444继续保留，后续先测试验收再更新8443。
+
+- [x] 记录环境隔离、保留保护及测试先行的部署规则。
+- [ ] 配置测试环境重启自动恢复和定期备份；本次未执行。
+
 2026-10-11 协作版本文档入口：[用户操作手册](docs/user-manual.md)、[接口集成指南](docs/api-guide.md)、[全员开发确认与验收](docs/development-completion.md)、[线上升级记录](docs/collaboration-online-upgrade-2026-10-11.md)、[主分支合并记录](docs/master-merge-2026-10-11.md)。当前契约为 `spec/openapi-development.yaml`；按阶段分工、可选设计、完成与发布全员确认门禁已部署 sx-kc.xyz:8443，实际源 commit 为 `2b37509`。随后按用户授权合入 master；本次未创建新的正式 tag/Release，已发布历史契约和下述发布证据保持不变。
 
 当前追加[全员开发完成发布门禁](docs/development-completion.md)，该文档包含操作与验收；前述阶段记录保留为历史证据。

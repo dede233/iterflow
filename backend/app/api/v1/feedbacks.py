@@ -82,7 +82,12 @@ def list_feedbacks(
         module_id=module_id,
         keyword=normalized_keyword,
     )
-    return {"items": items, "page": page, "page_size": page_size, "total": total}
+    return {
+        "items": FeedbackService(db).to_outputs(items),
+        "page": page,
+        "page_size": page_size,
+        "total": total,
+    }
 
 
 @router.post("", response_model=FeedbackOut)
@@ -91,7 +96,8 @@ def create_feedback(
     db: Session = Depends(get_db),
     user: User = Depends(require_permission("rd.feedback.create")),
 ):
-    return FeedbackService(db).create(payload, user.id)
+    service = FeedbackService(db)
+    return service.to_output(service.create(payload, user.id))
 
 
 @router.get("/{feedback_id}", response_model=FeedbackOut)
@@ -100,7 +106,7 @@ def get_feedback(
     db: Session = Depends(get_db),
     user: User = Depends(require_permission("rd.feedback.view")),
 ):
-    return _scoped_feedback_or_404(db, user, feedback_id)
+    return FeedbackService(db).to_output(_scoped_feedback_or_404(db, user, feedback_id))
 
 
 @router.patch(
@@ -115,7 +121,8 @@ def update_feedback(
     user: User = Depends(require_permission("rd.feedback.edit")),
 ):
     _scoped_feedback_or_404(db, user, feedback_id)
-    return FeedbackService(db).update(feedback_id, payload, user.id)
+    service = FeedbackService(db)
+    return service.to_output(service.update(feedback_id, payload, user.id))
 
 
 @router.patch(
@@ -131,8 +138,9 @@ def change_feedback_status(
 ):
     _scoped_feedback_or_404(db, user, feedback_id)
     scope = UserRepository(db).data_scope(user.id)
-    return FeedbackService(db).change_status(
-        feedback_id, payload, user.id, viewer_scope=scope, viewer_id=user.id
+    service = FeedbackService(db)
+    return service.to_output(
+        service.change_status(feedback_id, payload, user.id, viewer_scope=scope, viewer_id=user.id)
     )
 
 

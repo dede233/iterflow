@@ -1,6 +1,6 @@
 # IterFlow 当前接口集成指南
 
-更新日期：2026-10-11。对应开发契约 `spec/openapi-development.yaml`，线上 sx-kc.xyz:8443 已部署源 commit `2b37509`，含协作人员、按阶段分配、本人开发确认以及完成和发布门禁。历史发布契约保持不变；本次为用户授权的分支快照部署，未创建新的正式 tag/Release。部署证据见 [线上升级记录](collaboration-online-upgrade-2026-10-11.md)。用户操作见 [操作手册](user-manual.md)。
+更新日期：2026-10-12。对应开发契约 `spec/openapi-development.yaml`，线上 sx-kc.xyz:8443 已部署产品源 commit `3fe3a42`，含协作人员、按阶段分配、本人开发确认以及完成和发布门禁，并修复反馈提交人、系统和模块名称展示。历史发布契约保持不变；本次为用户授权的分支快照部署，未创建新的正式 tag/Release。部署证据见 [正式更新记录](feedback-reference-production-upgrade-2026-10-12.md)，先前协作功能升级见 [历史记录](collaboration-online-upgrade-2026-10-11.md)。用户操作见 [操作手册](user-manual.md)。
 
 ## 访问和权限
 
@@ -9,6 +9,12 @@
 受保护文档为 `GET /api/v1/docs/openapi`，桌面系统设置、手机我的中可进入并搜索、下载。仅启用的系统 `SUPER_ADMIN` 或 `DEVELOPMENT_LEAD` 可读；普通开发、设计、产品以及自定义同名角色不能代替。生产公共 Swagger/OpenAPI 关闭。读取文档会记审计，响应 private/no-store。
 
 业务接口分别检查权限码及 DataScope。SELF 下开发、设计参与关系提供需求可见性，不自动授予权限，也不自动扩展版本范围。开始阶段需同时 `rd.requirement.edit`、`rd.requirement.status`；产品基础角色仅有前者，按实际职责配置角色组合。
+
+## 反馈关联名称
+
+当前开发契约的 `FeedbackOut` 增加可空的 `submitter_display_name`、`system_name`、`module_name`。反馈列表、详情、创建、编辑及状态更新响应统一返回关联名称；ID 字段继续用于业务关联，前端详情及抽屉使用名称展示。
+
+服务先执行原有反馈权限及 DataScope 校验，再批量读取这些反馈对应的三个名称。查看名称不要求用户目录或系统管理权限，也不会开放这些管理接口、邮箱或账号详情。已停用的账号、系统及模块仍能展示历史关联名称；名称随当前关联记录变化，不是创建时快照。没有系统或模块显示“－”，异常缺失名称显示“未知用户/系统/模块”。该修复无数据库迁移、权限或状态机变更，已通过8444独立验收并更新到8443，部署事实见上文记录。验证记录见 [反馈关联名称修复](feedback-reference-display-fix.md)。
 
 ## 阶段和人员接口
 

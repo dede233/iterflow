@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   startEditing: vi.fn(),
   endEditing: vi.fn(),
   getFeedback: vi.fn(),
+  listSystems: vi.fn(),
   listFeedbackAttachments: vi.fn(),
   listFeedbackComments: vi.fn(),
   convertFeedback: vi.fn(),
@@ -52,6 +53,7 @@ vi.mock('@/api/versions', () => ({
   updateVersion: mocks.updateVersion,
 }))
 vi.mock('@/api/releases', () => ({ listReleases: mocks.listReleases }))
+vi.mock('@/api/systems', () => ({ listSystems: mocks.listSystems }))
 vi.mock('@/api/requirements', () => ({
   changeRequirementStatus: vi.fn(),
   createRequirement: mocks.createRequirement,
@@ -215,12 +217,37 @@ beforeEach(() => {
   mocks.endEditing.mockResolvedValue({ ok: true })
   mocks.editingHeartbeat.mockResolvedValue({ ok: true, existing_editor: null })
   mocks.getFeedback.mockResolvedValue(feedback)
+  mocks.listSystems.mockResolvedValue({ systems: [], modules: [] })
   mocks.listFeedbackAttachments.mockResolvedValue([])
   mocks.listFeedbackComments.mockResolvedValue([])
   mocks.convertFeedback.mockResolvedValue(requirement)
 })
 
 describe('detail views enforce permission-aware loading in mounted components', () => {
+  it('shows feedback reference names without directory permissions in full and embedded detail', async () => {
+    permissionSet('rd.feedback.view')
+    mocks.getFeedback.mockResolvedValue({
+      ...feedback,
+      submitter_id: 13,
+      submitter_display_name: '提交人张三 <img src=x>',
+      system_id: 1,
+      system_name: '中文历史系统',
+      module_id: 2,
+      module_name: '中文历史模块',
+    })
+    for (const props of [{}, { embedded: true, embeddedId: 7 }]) {
+      const wrapper = mount(FeedbackDetailView, { props, global: { stubs, directives: { loading: {} } } })
+      await flushPromises()
+      expect(wrapper.text()).toContain('提交人张三 <img src=x>')
+      expect(wrapper.text()).toContain('中文历史系统')
+      expect(wrapper.text()).toContain('中文历史模块')
+      expect(wrapper.text()).not.toContain('#13')
+      expect(wrapper.find('img[src="x"]').exists()).toBe(false)
+      expect(mocks.listSystems).not.toHaveBeenCalled()
+      wrapper.unmount()
+    }
+  })
+
   it('keeps Version visible without fetching or rendering unauthorized child sections', async () => {
     permissionSet('rd.version.view')
     const wrapper = mount(VersionDetailView, { global: { stubs, directives: { loading: {} } } })

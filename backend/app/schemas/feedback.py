@@ -57,6 +57,9 @@ class FeedbackStatusChange(BaseModel):
 
 class FeedbackOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
+    submitter_display_name: str | None = None
+    system_name: str | None = None
+    module_name: str | None = None
     id: int
     feedback_no: str
     title: str

@@ -136,7 +136,7 @@ onMounted(load)
 
 <template>
   <section class="page">
-    <PageHeader title="系统与模块" description="维护反馈和需求可选择的业务系统与所属模块。" eyebrow="系统设置">
+    <PageHeader title="业务系统" description="维护反馈和需求可选择的业务系统与所属模块。" eyebrow="系统设置">
       <template #actions><el-button type="primary" @click="openCreateSystem">创建系统</el-button></template>
     </PageHeader>
     <ErrorState v-if="failed" title="系统设置加载失败" description="请检查网络后重试。" retry-label="重新加载" @retry="load" />

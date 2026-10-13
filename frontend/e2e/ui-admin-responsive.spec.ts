@@ -54,12 +54,12 @@ test('admin lists fit the five release viewports', async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     for (const [path, heading, content] of [
       ['/admin/audits', '审计中心', '变更状态'],
-      ['/admin/systems', '系统与模块', '暂无系统，先创建一个业务系统'],
+      ['/admin/systems', '业务系统', '暂无系统，先创建一个业务系统'],
       ['/system/users', '用户管理', '项目负责人'],
       ['/admin/roles', '角色与权限', '项目管理员'],
     ]) {
       await page.goto(`/#${path}`)
-      await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible()
+      await expect(page.getByRole('heading', { name: heading, level: 1, exact: true })).toBeVisible()
       await expect(page.getByText(content, { exact: true }).first()).toBeVisible()
       const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth)
       expect(scrollWidth, `${path} at ${width}px`).toBeLessThanOrEqual(width + 1)

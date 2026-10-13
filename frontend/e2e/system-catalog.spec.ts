@@ -75,7 +75,7 @@ test('administrator configures a system and module for the feedback form', async
   })
 
   await page.goto('/#/admin/systems')
-  await expect(page.getByRole('heading', { name: '系统与模块' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '业务系统', level: 1, exact: true })).toBeVisible()
   await page.getByRole('button', { name: '创建系统' }).click()
   let dialog = page.getByRole('dialog')
   await dialog.getByPlaceholder('如 ITERFLOW').fill('ITERFLOW')

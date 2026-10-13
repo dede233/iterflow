@@ -49,7 +49,7 @@ const groups = computed<NavigationGroup[]>(() => [
     label: '系统设置',
     items: [
       { to: '/admin/audits', label: '审计中心', icon: 'audit', permission: 'sys.audit.view' },
-      { to: '/admin/systems', label: '系统与模块', icon: 'system', permission: 'sys.system.manage', requiresAllScope: true },
+      { to: '/admin/systems', label: '业务系统', icon: 'system', permission: 'sys.system.manage', requiresAllScope: true },
       { to: '/system/users', label: '用户管理', icon: 'users', permission: 'sys.user.view' },
       { to: '/admin/roles', label: '角色管理', icon: 'shield', permission: ['sys.role.view', 'sys.role.manage'], requiresAllScope: true },
       { to: '/admin/api-docs', label: '接口文档', icon: 'requirement', requiresApiDocsAccess: true },

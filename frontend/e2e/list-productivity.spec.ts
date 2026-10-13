@@ -99,9 +99,11 @@ for (const width of [375, 390, 768, 1280, 1440]) {
         await expect(page.getByRole('button', { name: '查看详情', exact: true })).toBeVisible()
         await expect(page.getByRole('button', { name: '查看版本', exact: true })).toHaveCount(0)
         await page.getByRole('button', { name: '查看详情', exact: true }).click()
-        await expect(page).toHaveURL(/\/#\/releases\/77\?return_to=%2Freleases%3Fversion_id%3D42$/)
+        await expect(page).toHaveURL(/\/#\/releases\?version_id=42$/)
         await expect(page.getByText('版本 #42', { exact: true })).toBeVisible()
         await expect(page.getByRole('heading', { name: '发布记录详情', exact: true })).toBeVisible()
+        await page.getByRole('dialog', { name: '发布记录详情', exact: true }).getByRole('button', { name: '新标签/全屏直达', exact: true }).click()
+        await expect(page).toHaveURL(/\/#\/releases\/77\?return_to=%2Freleases%3Fversion_id%3D42$/)
       }
       expect(state.unexpected).toEqual([])
     })

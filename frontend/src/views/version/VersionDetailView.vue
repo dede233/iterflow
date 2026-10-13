@@ -13,6 +13,7 @@ import {
   removeVersionRequirement,
   updateVersion,
 } from '@/api/versions'
+import ReleaseVersionDrawer from '@/components/ReleaseVersionDrawer.vue'
 import { listReleases } from '@/api/releases'
 import { getRequirement } from '@/api/requirements'
 import ScopedObjectSelector from '@/components/ScopedObjectSelector.vue'
@@ -48,11 +49,11 @@ import type {
   VersionStats,
 } from '@/types/domain'
 
-const props = defineProps<{ embedded?: boolean; embeddedId?: number }>()
-const emit = defineEmits<{ updated: []; close: [] }>()
+const props = defineProps<{ embedded?: boolean; embeddedId?: number; returnTo?: string }>()
+const emit = defineEmits<{ updated: []; close: []; 'open-release': [id: number] }>()
 const route = useRoute()
 const router = useRouter()
-const { backTo, related } = useDetailNavigation('/versions')
+const { backTo, related } = useDetailNavigation('/versions', () => props.returnTo)
 const { can } = usePermission()
 const { isMobile } = useResponsive()
 const id = Number(props.embedded ? props.embeddedId : route.params.id)
@@ -111,6 +112,13 @@ const filteredRequirements = computed(() => filterVersionWorklist(requirements.v
 const visibleStats = computed(() => visibleWorklistStats(requirements.value))
 function resetWorklist(): void { worklistFilters.keyword = ''; worklistFilters.status = ''; worklistFilters.priority = '' }
 const releases = ref<ReleaseItem[]>([])
+const releaseDrawer = ref(false)
+const activeReleaseId = ref<number | null>(null)
+function openRelease(releaseId: number): void {
+  if (!canViewReleases.value) return
+  if (props.embedded) emit('open-release', releaseId)
+  else { activeReleaseId.value = releaseId; releaseDrawer.value = true }
+}
 const loading = ref(false)
 const failed = ref(false)
 
@@ -395,7 +403,8 @@ onMounted(load)
           <StatusTag :status="item.status" :label="versionStatusLabel[item.status]" :type="versionStatusTagType(item.status)" />
         </template>
         <template #actions>
-        <RouterLink class="back-link" :to="backTo" @click="props.embedded && emit('close')">返回列表</RouterLink>
+        <el-button v-if="embedded" link @click="emit('close')">关闭详情</el-button>
+        <RouterLink v-else class="back-link" :to="backTo">返回列表</RouterLink>
         <el-button v-if="canEdit" @click="openEdit">编辑</el-button>
         <el-button v-if="canPublish" type="primary" @click="openPublish">发布</el-button>
         <el-button
@@ -491,12 +500,14 @@ onMounted(load)
             <span class="release-time">{{ formatLocalDateTime(r.released_at) }}</span>
             <StatusTag :status="r.result" :label="r.result === 'SUCCESS' ? '成功' : r.result" size="sm" />
             <span class="release-notes">{{ r.release_notes }}</span>
-            <RouterLink class="back-link" :to="related(`/releases/${r.id}`)">查看发布详情</RouterLink>
+            <el-button link type="primary" @click="openRelease(r.id)">查看发布详情</el-button>
           </li>
         </ul>
         <EmptyState v-else description="尚无发布记录" compact />
       </SectionCard>
     </template>
+
+    <ReleaseVersionDrawer v-if="!embedded" v-model="releaseDrawer" kind="release" :id="activeReleaseId" :return-to="backTo" @updated="load" />
 
     <!-- publish dialog -->
     <el-dialog v-model="publishDialog" title="发布版本" width="min(520px, 92vw)" destroy-on-close>

@@ -4,20 +4,20 @@ import { createMemoryHistory, createRouter } from 'vue-router'
 import { expect, it } from 'vitest'
 import { useDetailNavigation } from './useDetailNavigation'
 
-async function navigation(path: string, defaultList: string) {
+async function navigation(path: string, defaultList: string, returnTo?: () => string | undefined) {
   const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/:pathMatch(.*)*', component: { template: '<div />' } }] })
   await router.push(path)
   let state!: ReturnType<typeof useDetailNavigation>
   const wrapper = mount(defineComponent({ setup() {
-    state = useDetailNavigation(defaultList)
+    state = useDetailNavigation(defaultList, returnTo)
     return () => null
   } }), { global: { plugins: [router] } })
   return { state, router, wrapper }
 }
 
-it.each(['/feedbacks', '/requirements', '/versions'])('embedded %s navigation preserves only applied list fields', async path => {
+it.each(['/feedbacks', '/requirements', '/versions', '/releases'])('embedded %s navigation preserves only applied list fields', async path => {
   const { state, wrapper } = await navigation(`${path}?page=2&keyword=context&unknown=drop&return_to=https://evil.test`, path)
-  expect(state.backTo.value).toBe(`${path}?page=2&keyword=context`)
+  expect(state.backTo.value).toBe(`${path}?page=2${path === '/releases' ? '' : '&keyword=context'}`)
   expect(state.related('/requirements/7')).toBe(`/requirements/7?return_to=${encodeURIComponent(state.backTo.value)}`)
   wrapper.unmount()
 })
@@ -36,5 +36,15 @@ it('standalone details preserve safe return context and react to navigation', as
 it.each(['//evil.test', '/feedbacks?return_to=/versions', '/feedbacks?page=2&page=3'])('standalone details reject unsafe return target %s', async target => {
   const { state, wrapper } = await navigation(`/versions/7?return_to=${encodeURIComponent(target)}`, '/versions')
   expect(state.backTo.value).toBe('/versions')
+  wrapper.unmount()
+})
+
+it.each([
+  ['/releases?page=2&version_id=456', '/releases?page=2&version_id=456'],
+  ['https://evil.test', '/versions'],
+  ['/releases?return_to=/versions', '/versions'],
+])('cross-detail return context %s stays sanitized', async (returnTo, expected) => {
+  const { state, wrapper } = await navigation('/releases/123', '/versions', () => returnTo)
+  expect(state.backTo.value).toBe(expected)
   wrapper.unmount()
 })

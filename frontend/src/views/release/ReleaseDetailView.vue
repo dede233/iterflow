@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import ReleaseVersionDrawer from '@/components/ReleaseVersionDrawer.vue'
 import { getRelease } from '@/api/releases'
 import { getVersion } from '@/api/versions'
 import { useDetailNavigation } from '@/composables/useDetailNavigation'
@@ -13,8 +14,16 @@ import StatusTag from '@/components/StatusTag.vue'
 import { formatLocalDateTime } from '@/utils/dates'
 import type { ReleaseItem } from '@/types/domain'
 
+const props = defineProps<{ embedded?: boolean; embeddedId?: number; returnTo?: string }>()
+const emit = defineEmits<{ close: []; 'open-version': [id: number] }>()
+const versionDrawer = ref(false)
+function openVersion(): void {
+  if (!item.value || !canViewVersion.value || !versionLabel.value) return
+  if (props.embedded) emit('open-version', item.value.version_id)
+  else versionDrawer.value = true
+}
 const route = useRoute()
-const { backTo, related } = useDetailNavigation('/releases')
+const { backTo } = useDetailNavigation('/releases', () => props.returnTo)
 const { can } = usePermission()
 const canViewVersion = computed(() => can('rd.version.view'))
 const item = ref<ReleaseItem | null>(null)
@@ -29,7 +38,7 @@ async function load(): Promise<void> {
   item.value = null
   error.value = null
   loading.value = true
-  const id = Number(route.params.id)
+  const id = Number(props.embedded ? props.embeddedId : route.params.id)
   try {
     if (!Number.isSafeInteger(id) || id <= 0) {
       error.value = 'missing'
@@ -60,7 +69,7 @@ watch(() => [item.value?.version_id, canViewVersion.value] as const, async ([id,
   }
 })
 
-watch(() => route.params.id, load, { immediate: true })
+watch(() => props.embedded ? props.embeddedId : route.params.id, () => { versionDrawer.value = false; void load() }, { immediate: true })
 onBeforeUnmount(() => { releaseSequence++; versionSequence++ })
 
 const fields = computed(() => item.value ? [
@@ -76,7 +85,7 @@ const fields = computed(() => item.value ? [
 <template>
   <section v-loading="loading" class="page release-detail" aria-label="发布记录详情">
     <PageHeader title="发布记录详情" :eyebrow="item ? `Release #${item.id}` : '发布'" description="查看实际发布结果与说明。">
-      <template #actions><RouterLink class="back-link" :to="backTo">返回发布记录</RouterLink></template>
+      <template #actions><el-button v-if="embedded" link @click="emit('close')">关闭详情</el-button><RouterLink v-else class="back-link" :to="backTo">返回发布记录</RouterLink></template>
     </PageHeader>
     <ErrorState v-if="error === 'missing'" title="发布记录不存在或不可访问" description="请返回发布记录列表。" />
     <ErrorState v-else-if="error === 'failed'" title="发布记录加载失败" description="请检查网络后重试。" retry-label="重新加载" @retry="load" />
@@ -84,7 +93,7 @@ const fields = computed(() => item.value ? [
       <SectionCard title="发布信息" description="发布记录为只读历史信息。">
         <InfoGrid :items="fields">
           <template #version>
-            <RouterLink v-if="canViewVersion && versionLabel" class="version-link" :to="related(`/versions/${item.version_id}`)">版本 #{{ item.version_id }}</RouterLink>
+            <el-button v-if="canViewVersion && versionLabel" link type="primary" class="version-link" @click="openVersion">版本 #{{ item.version_id }}</el-button>
             <span v-else>版本 #{{ item.version_id }}</span>
             <div v-if="versionLabel" class="version-label">{{ versionLabel }}</div>
           </template>
@@ -94,6 +103,7 @@ const fields = computed(() => item.value ? [
       <SectionCard title="发布说明"><p class="release-notes">{{ item.release_notes }}</p></SectionCard>
       <SectionCard title="回滚说明"><p class="release-notes">{{ item.rollback_notes ?? '—' }}</p></SectionCard>
     </template>
+    <ReleaseVersionDrawer v-if="!embedded" v-model="versionDrawer" kind="version" :id="item?.version_id ?? null" :return-to="backTo" />
   </section>
 </template>
 

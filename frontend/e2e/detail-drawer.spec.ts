@@ -77,7 +77,7 @@ for (const width of [1280, 390]) {
           expect(requests.some(path => path.startsWith('/api/v1/releases?') && path.includes(`version_id=${id}`))).toBe(true)
         }
         if (id === 7) {
-          await drawer.getByRole('link', { name: '返回列表', exact: true }).click()
+          await drawer.getByRole(entry.path === '/versions' ? 'button' : 'link', { name: entry.path === '/versions' ? '关闭详情' : '返回列表', exact: true }).click()
           await expect(drawer).not.toBeVisible()
           await expect(page).toHaveURL(new RegExp(`#${entry.path}\\?page=2&keyword=context$`))
         } else {

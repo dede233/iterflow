@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { onBeforeUnmount, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import ReleaseVersionDrawer from '@/components/ReleaseVersionDrawer.vue'
+import { listTarget } from '@/utils/listQuery'
 import { listReleases } from '@/api/releases'
 import { useListQuery } from '@/composables/useListQuery'
 import { useResponsive } from '@/composables/useResponsive'
@@ -17,7 +18,6 @@ import { formatLocalDateTime } from '@/utils/dates'
 import { releaseDateBounds } from '@/utils/releaseDateRange'
 import type { ReleaseItem } from '@/types/domain'
 
-const router = useRouter()
 const { isMobile } = useResponsive()
 const { can } = usePermission()
 const rows = ref<ReleaseItem[]>([])
@@ -25,6 +25,14 @@ const total = ref(0)
 const loading = ref(false)
 const failed = ref(false)
 const filterDrawer = ref(false)
+const detailDrawer = ref(false)
+const detailKind = ref<'release' | 'version'>('release')
+const activeId = ref<number | null>(null)
+function openDetail(kind: 'release' | 'version', id: number): void {
+  detailKind.value = kind
+  activeId.value = id
+  detailDrawer.value = true
+}
 const filters = reactive({ page: 1, page_size: 20, version_id: null as number | null })
 const dateRange = ref<[string, string] | null>(null)
 let requestSequence = 0
@@ -93,7 +101,7 @@ const queryState = useListQuery({
     </ListFilterPanel>
     <ErrorState v-if="failed" title="发布记录加载失败" description="请检查网络后重试。" retry-label="重新加载" @retry="load" />
     <SectionCard v-else title="发布历史" :description="`共 ${total} 次发布`" :padded="false">
-      <el-table v-if="!isMobile" v-loading="loading" :data="rows" row-key="id">
+      <el-table v-if="!isMobile" v-loading="loading" :data="rows" row-key="id" @row-click="(row: ReleaseItem) => openDetail('release', row.id)">
         <el-table-column prop="version_id" label="版本 ID" width="120" />
         <el-table-column label="发布时间" width="210">
           <template #default="s">{{ formatLocalDateTime(s.row.released_at) }}</template>
@@ -104,8 +112,8 @@ const queryState = useListQuery({
         <el-table-column prop="release_notes" label="发布说明" min-width="260" show-overflow-tooltip />
         <el-table-column label="操作" :width="can('rd.version.view') ? 190 : 100" fixed="right">
           <template #default="s">
-            <el-button link type="primary" @click="router.push(queryState.detail('/releases/' + s.row.id))">查看详情</el-button>
-            <el-button v-if="can('rd.version.view')" link type="primary" @click="router.push(queryState.detail('/versions/' + s.row.version_id))">查看版本</el-button>
+            <el-button link type="primary" @click.stop="openDetail('release', s.row.id)">查看详情</el-button>
+            <el-button v-if="can('rd.version.view')" link type="primary" @click.stop="openDetail('version', s.row.version_id)">查看版本</el-button>
           </template>
         </el-table-column>
         <template #empty><EmptyState description="暂无发布记录" compact /></template>
@@ -116,14 +124,15 @@ const queryState = useListQuery({
           <div class="release-time">{{ formatLocalDateTime(release.released_at) }}</div>
           <p>{{ release.release_notes }}</p>
           <div class="release-actions">
-            <el-button link type="primary" @click="router.push(queryState.detail('/releases/' + release.id))">查看详情</el-button>
-            <el-button v-if="can('rd.version.view')" link type="primary" @click="router.push(queryState.detail('/versions/' + release.version_id))">查看版本</el-button>
+            <el-button link type="primary" @click="openDetail('release', release.id)">查看详情</el-button>
+            <el-button v-if="can('rd.version.view')" link type="primary" @click="openDetail('version', release.version_id)">查看版本</el-button>
           </div>
         </article>
         <EmptyState v-if="!loading && !rows.length" description="暂无发布记录" compact />
       </div>
     </SectionCard>
     <el-pagination class="pager" layout="prev, pager, next, total" :total="total" :current-page="filters.page" :page-size="filters.page_size" background @current-change="(page: number) => { void queryState.paginate(page) }" />
+    <ReleaseVersionDrawer v-model="detailDrawer" :kind="detailKind" :id="activeId" :return-to="listTarget('/releases', queryState.applied())" @updated="load" />
   </section>
 </template>
 

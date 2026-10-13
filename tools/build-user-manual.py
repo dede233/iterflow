@@ -41,7 +41,7 @@ def build(source, output):
         for attr in list(fonts.attrib):
             if "theme" in attr.lower():
                 del fonts.attrib[attr]
-        fonts.set(qn("w:eastAsia"), "Heiti SC")
+        fonts.set(qn("w:eastAsia"), "Arial Unicode MS")
         style.paragraph_format.space_after = Pt(8)
         style.paragraph_format.line_spacing = 1.2
         for border in style.element.xpath("./w:pPr/w:pBdr"):

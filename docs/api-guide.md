@@ -2,7 +2,7 @@
 
 更新日期：2026-10-12。对应开发契约 `spec/openapi-development.yaml`，线上 sx-kc.xyz:8443 已部署产品源 commit `3fe3a42`，含协作人员、按阶段分配、本人开发确认以及完成和发布门禁，并修复反馈提交人、系统和模块名称展示。历史发布契约保持不变；本次为用户授权的分支快照部署，未创建新的正式 tag/Release。部署证据见 [正式更新记录](feedback-reference-production-upgrade-2026-10-12.md)，先前协作功能升级见 [历史记录](collaboration-online-upgrade-2026-10-11.md)。用户操作见 [操作手册](user-manual.md)。
 
-2026-10-23 本分支追加版本角色权限扩展（待部署）：DEVELOPER、PRODUCT_MANAGER、DEVELOPMENT_LEAD 默认具备 rd.version.view/create/edit/status/publish 与已有 rd.requirement.view、rd.release.view。增量迁移保留原 DataScope；开发/研发 SELF 仅限本人创建或负责的版本，产品 ALL 不变。添加、迁移、移出需求仍需 rd.version.edit 与 rd.requirement.view，且两个对象均通过范围检查。需求状态和协作人员分配权限不随版本权限一并扩展。API shape 不变，历史快照保留。升级后的使用方式见操作手册。
+2026-10-23 已部署版本角色权限扩展（8444 测试验收通过后更新 8443 正式环境）：DEVELOPER、PRODUCT_MANAGER、DEVELOPMENT_LEAD 默认具备 rd.version.view/create/edit/status/publish 与已有 rd.requirement.view、rd.release.view。增量迁移保留原 DataScope；开发/研发 SELF 仅限本人创建或负责的版本，产品 ALL 不变。添加、迁移、移出需求仍需 rd.version.edit 与 rd.requirement.view，且两个对象均通过范围检查。需求状态和协作人员分配权限不随版本权限一并扩展。API shape 不变，历史快照保留。升级后的使用方式见操作手册。
 
 ## 访问和权限
 

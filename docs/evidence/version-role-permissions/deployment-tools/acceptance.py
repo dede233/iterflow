@@ -25,6 +25,14 @@ admin=login(env['INIT_ADMIN_USERNAME'],env['ITERFLOW_BROWSER_NEW_PASSWORD'])['ac
 roles={r['code']:r['id'] for r in call('GET','/roles',admin)}
 users=call('GET','/users?page_size=100',admin)['items'];used={u['username'] for u in users}
 def create(code):
+ existing=next((u for u in users if u['display_name']=='发版验收-'+code),None)
+ if existing:
+  assert existing['role_ids']==[roles[code]]
+  token=login(existing['username'])['access_token'];me=call('GET','/auth/me',token)
+  assert set(me['permission_codes']) >= {'rd.version.'+x for x in ('view','create','edit','status','publish')}
+  assert me['data_scope']==('ALL' if code=='PRODUCT_MANAGER' else 'SELF')
+  accounts.append({'username':existing['username'],'id':existing['id'],'role':code})
+  return existing['id'],token,existing['username']
  number=14
  while 'ceshi%03d'%number in used:number+=1
  name='ceshi%03d'%number;used.add(name)
@@ -52,7 +60,7 @@ passed('成员、设计、测试角色不能创建或发布版本')
 for code,uid,actor,name in actors:
  f=call('POST','/feedbacks',member,{'title':'角色发布反馈-'+code+'-'+suffix,'feedback_type':'NEW_FEATURE','description':'隔离测试环境，验证通知与上线同步'})
  f=call('PATCH','/feedbacks/%s/status'%f['id'],admin,{'status':'ACCEPTED','revision':f['revision']})
- r=call('POST','/feedbacks/%s/convert'%f['id'],admin,{'type':'CREATE_NEW','revision':f['revision'],'requirement_title':'完整发版-'+code+'-'+suffix,'requirement_type':'FEATURE','priority':'P1'})
+ r=call('POST','/feedbacks/%s/convert'%f['id'],admin,{'type':'CREATE_NEW','revision':f['revision'],'requirement_title':'完整发版-'+code+'-'+suffix,'requirement_type':'FEATURE','priority':'P1','description':'多角色完整发布验收'})
  rp='/requirements/%s'%r['id'];r=call('PATCH',rp,admin,{'owner_id':uid,'revision':r['revision']})
  v1=call('POST','/versions',actor,{'version_no':'VR-A-'+code+'-'+suffix,'name':'待迁移版本'})
  v2=call('POST','/versions',actor,{'version_no':'VR-B-'+code+'-'+suffix,'name':'完整版本流程'})

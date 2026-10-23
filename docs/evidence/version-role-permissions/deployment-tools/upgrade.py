@@ -27,8 +27,8 @@ def write(path,data):path.write_text(json.dumps(data,indent=2,sort_keys=True));p
 def inspect(name):return json.loads(run(['docker','inspect',name]))[0]
 def record(name):
     i=inspect(name)
-    return {'id':i['Id'],'image':i['Image'],'started':i['State']['StartedAt'],'mounts':i['Mounts'],'restart':i['HostConfig']['RestartPolicy']}
-def snapshot():return json.loads(run(cmd+['run','--rm','--no-deps','-T','api','python','-',database],stdin=(BASE/'snapshot.py').read_text()))
+    return {'id':i['Id'],'image':i['Image'],'started':i['State']['StartedAt'],'mounts':sorted(i['Mounts'],key=lambda m:m['Destination']),'restart':i['HostConfig']['RestartPolicy']}
+def snapshot():return json.loads(run(cmd+['--profile','init','run','--rm','--no-deps','-T','migrate','python','-',database],stdin=(BASE/'snapshot.py').read_text()))
 def backup(label):
     p=Path('/opt/iterflow/backups')/('version-roles-'+mode+'-'+label+'-'+time.strftime('%Y%m%dT%H%M%SZ',time.gmtime()))
     p.mkdir(mode=0o700)
@@ -96,12 +96,13 @@ if mode=='test':preserved+=['iterflow-mysql57-'+x+'-1' for x in ('api','web','re
 else:preserved+=[s['project']+'-'+x+'-1' for x in ('api','web','db','redis')]
 base={n:record(n) for n in preserved}
 vhost=Path('/www/server/panel/vhost/nginx/sx-kc.xyz.conf');vhost_hash=hashlib.sha256(vhost.read_bytes()).hexdigest()
-receipt={'source':SOURCE,'mode':mode,'old':old,'preserved':base};migration_attempted=False
+receipt={'source':SOURCE,'mode':mode,'old':old,'preserved':base,'vhost_sha256':vhost_hash};migration_attempted=False
+write(BASE/(mode+'-checkpoint.json'),receipt)
 try:
     run(cmd+['stop','web','api'])
     before=snapshot();write(BASE/(mode+'-before.json'),before)
     assert before['head']=='mysql57_0005' and before['triggers']==73
-    receipt['pre_backup']=backup('pre')
+    receipt['pre_backup']=backup('pre');write(BASE/(mode+'-checkpoint.json'),receipt)
     replacements={'API_IMAGE':api_tag,'WEB_IMAGE':web_tag,'BUILD_SHA':SOURCE}
     lines=[]
     for line in oldenv.splitlines():
@@ -114,7 +115,7 @@ try:
     run(cmd+['--profile','init','run','--rm','--no-deps','-T','migrate'])
     after=snapshot();write(BASE/(mode+'-after.json'),after);receipt['preservation']=proof(before,after)
     run(cmd+['--profile','init','run','--rm','--no-deps','-T','migrate','python','-m','app.cli.mysql_preflight'])
-    receipt['post_backup']=backup('post')
+    receipt['post_backup']=backup('post');write(BASE/(mode+'-checkpoint.json'),receipt)
     run(cmd+['up','-d','--no-deps','--no-build','--pull','never','--wait','--wait-timeout','240','api'])
     run(cmd+['up','-d','--no-deps','--no-build','--pull','never','--wait','--wait-timeout','240','web'])
     healthy()
@@ -132,6 +133,8 @@ except Exception:
     (BASE/(mode+'-failure.txt')).write_text(traceback.format_exc())
     if not migration_attempted:
         (root/'images.env').write_text(oldenv)
-        run(cmd+['start','api']);run(cmd+['start','web'])
+        run(cmd+['up','-d','--no-deps','--no-build','--pull','never','--wait','--wait-timeout','240','api'])
+        run(cmd+['up','-d','--no-deps','--no-build','--pull','never','--wait','--wait-timeout','240','web'])
+        if mode=='test':run(['systemctl','reload','iterflow-test-nginx'])
     print('UPGRADE_STOPPED; no automatic downgrade or restore; inspect protected evidence',flush=True)
     sys.exit(1)

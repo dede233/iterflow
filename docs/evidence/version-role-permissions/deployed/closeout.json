@@ -1,0 +1,22 @@
+{
+  "status": "PASS",
+  "source": "198f831d67e8b475975915b1824d711b949fb998",
+  "units": {
+    "docker": {
+      "is-enabled": "enabled",
+      "is-active": "active"
+    },
+    "iterflow-test-stack": {
+      "is-enabled": "enabled",
+      "is-active": "active"
+    },
+    "iterflow-test-nginx": {
+      "is-enabled": "enabled",
+      "is-active": "active"
+    }
+  },
+  "whole_host_reboot_tested": false,
+  "retention_keep": true,
+  "cleanup_hold": true,
+  "baseline_updated": true
+}

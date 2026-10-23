@@ -1,0 +1,32 @@
+{
+  "completed_utc": "2026-10-23T04:12:06Z",
+  "mode": "test",
+  "mount_validation": "Existing Compose volume and TLS targets, original volume creation date, before/after attachment digests, normalized mount equality through additional restart. Original pre-upgrade inspect was not persisted; initial assertion failure retained.",
+  "post_backup": {
+    "path": "/opt/iterflow/backups/version-roles-test-post-20261023T040802Z",
+    "sha256": {
+      "database.sql": "b225d81324690e1814472e96875e5b3bb1306774931f8702562ac032d0fd6d51",
+      "uploads.tar": "e1432fd03370c5b20a62d258c329a33ba38298893ae2d23fcd53a7934958207e"
+    }
+  },
+  "pre_backup": {
+    "path": "/opt/iterflow/backups/version-roles-test-pre-20261023T040750Z",
+    "sha256": {
+      "database.sql": "d1b500d4bddb6dbe4c6ab5b6c4ba43a5090465a29ee0c4d1efa8e60d3a05d702",
+      "uploads.tar": "e1432fd03370c5b20a62d258c329a33ba38298893ae2d23fcd53a7934958207e"
+    }
+  },
+  "preservation": {
+    "added_audits": 3,
+    "added_role_permissions": 8,
+    "all_other_tables_and_files_unchanged": true,
+    "changed_roles": [
+      1,
+      5,
+      6
+    ]
+  },
+  "restart": "PASS",
+  "source": "198f831d67e8b475975915b1824d711b949fb998",
+  "status": "PASS"
+}

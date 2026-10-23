@@ -1,0 +1,206 @@
+{
+  "completed_utc": "2026-10-23T04:19:03Z",
+  "mode": "production",
+  "old": {
+    "api": {
+      "id": "cfeffa319115dc2842c5f25dadfda83d3ac985904c6e6003f70442ccb4eaac20",
+      "image": "sha256:735bd73784c2f5e57b6f4b47de0e93c9fe082a3b19cd052ecadaea9af3a62de4",
+      "mounts": [
+        {
+          "Destination": "/app/data/uploads",
+          "Driver": "local",
+          "Mode": "rw",
+          "Name": "iterflow-mysql57_uploads",
+          "Propagation": "",
+          "RW": true,
+          "Source": "/var/lib/docker/volumes/iterflow-mysql57_uploads/_data",
+          "Type": "volume"
+        },
+        {
+          "Destination": "/run/iterflow/tls",
+          "Mode": "ro",
+          "Propagation": "rprivate",
+          "RW": false,
+          "Source": "/opt/iterflow/releases/iterflow-reference-display-3fe3a42/tls",
+          "Type": "bind"
+        }
+      ],
+      "restart": {
+        "MaximumRetryCount": 0,
+        "Name": "unless-stopped"
+      },
+      "started": "2026-10-12T10:17:05.202216041Z"
+    },
+    "web": {
+      "id": "b359fc5193108a2bc5cd1605edf61d73303145db644d1469977dc8a86467c219",
+      "image": "sha256:7a71383fb9e9e999ad45489ab10496138d9a16b504277286e845d9e74ad1db07",
+      "mounts": [],
+      "restart": {
+        "MaximumRetryCount": 0,
+        "Name": "unless-stopped"
+      },
+      "started": "2026-10-13T04:38:57.174209492Z"
+    }
+  },
+  "post_backup": {
+    "path": "/opt/iterflow/backups/version-roles-production-post-20261023T041749Z",
+    "sha256": {
+      "database.sql": "ba4baa0a35e833c1ed3bd0c6ea3242e7d19bc2e5e07515ed4bd1727a66604351",
+      "uploads.tar": "4d612d5d6a25522beced704ee128274f1493cbe0da34ce7dcbc7c553a8bfa311"
+    }
+  },
+  "pre_backup": {
+    "path": "/opt/iterflow/backups/version-roles-production-pre-20261023T041714Z",
+    "sha256": {
+      "database.sql": "66a3bc8eb56af5b2323cffc0f90cc501032e0873e9f6d265249e18c51d22e0db",
+      "uploads.tar": "4d612d5d6a25522beced704ee128274f1493cbe0da34ce7dcbc7c553a8bfa311"
+    }
+  },
+  "preservation": {
+    "added_audits": 3,
+    "added_role_permissions": 8,
+    "all_other_tables_and_files_unchanged": true,
+    "changed_roles": [
+      3,
+      4,
+      7
+    ]
+  },
+  "preserved": {
+    "iterflow-acceptance-20261012-753ebd-api-1": {
+      "id": "45cc3febf58fd9e67d7e000afecd39e8ba7f5361dc5e7257015d0497d0445202",
+      "image": "sha256:d02e7f8236b8deeac8f3fe91b1a7bf01f1e7da32d10a85bbb1ffcf6912cbd09e",
+      "mounts": [
+        {
+          "Destination": "/app/data/uploads",
+          "Driver": "local",
+          "Mode": "rw",
+          "Name": "iterflow-acceptance-20261012-753ebd_uploads",
+          "Propagation": "",
+          "RW": true,
+          "Source": "/var/lib/docker/volumes/iterflow-acceptance-20261012-753ebd_uploads/_data",
+          "Type": "volume"
+        },
+        {
+          "Destination": "/run/iterflow/tls",
+          "Mode": "ro",
+          "Propagation": "rprivate",
+          "RW": false,
+          "Source": "/opt/iterflow/acceptance/iterflow-acceptance-20261012-753ebd/tls",
+          "Type": "bind"
+        }
+      ],
+      "restart": {
+        "MaximumRetryCount": 0,
+        "Name": "unless-stopped"
+      },
+      "started": "2026-10-23T04:11:39.336455065Z"
+    },
+    "iterflow-acceptance-20261012-753ebd-db-1": {
+      "id": "47f8d4b56e9143680542f201cfb89b27db35f85450a9b39ac3c68bc7e16c2b52",
+      "image": "sha256:5107333e08a87b836d48ff7528b1e84b9c86781cc9f1748bbc1b8c42a870d933",
+      "mounts": [
+        {
+          "Destination": "/run/secrets/root-client.cnf",
+          "Mode": "ro",
+          "Propagation": "rprivate",
+          "RW": false,
+          "Source": "/opt/iterflow/acceptance/iterflow-acceptance-20261012-753ebd/root-client.cnf",
+          "Type": "bind"
+        },
+        {
+          "Destination": "/var/lib/mysql",
+          "Driver": "local",
+          "Mode": "rw",
+          "Name": "iterflow-acceptance-20261012-753ebd_dbdata",
+          "Propagation": "",
+          "RW": true,
+          "Source": "/var/lib/docker/volumes/iterflow-acceptance-20261012-753ebd_dbdata/_data",
+          "Type": "volume"
+        }
+      ],
+      "restart": {
+        "MaximumRetryCount": 0,
+        "Name": "unless-stopped"
+      },
+      "started": "2026-10-12T10:54:29.494596659Z"
+    },
+    "iterflow-acceptance-20261012-753ebd-redis-1": {
+      "id": "62d3c752a958f1b23f628eb71077bbac1525db11cd7adc85d4dbd38bab646ac3",
+      "image": "sha256:5d79a9ce29f8b3fe50fd5c07ee1bf654b5cec557b895835825bf6825d525e4f2",
+      "mounts": [
+        {
+          "Destination": "/data",
+          "Driver": "local",
+          "Mode": "rw",
+          "Name": "iterflow-acceptance-20261012-753ebd_redisdata",
+          "Propagation": "",
+          "RW": true,
+          "Source": "/var/lib/docker/volumes/iterflow-acceptance-20261012-753ebd_redisdata/_data",
+          "Type": "volume"
+        }
+      ],
+      "restart": {
+        "MaximumRetryCount": 0,
+        "Name": "unless-stopped"
+      },
+      "started": "2026-10-12T10:54:29.642617105Z"
+    },
+    "iterflow-acceptance-20261012-753ebd-web-1": {
+      "id": "62d221a47e1fdb998ef7dbbafa00dbff62013fa6e868e55405cb2ea2662fae60",
+      "image": "sha256:58b9fae5b662031c4b5f15aad9cc1412ff3ab7f76777af80b2557457982022f9",
+      "mounts": [],
+      "restart": {
+        "MaximumRetryCount": 0,
+        "Name": "unless-stopped"
+      },
+      "started": "2026-10-23T04:11:52.654672481Z"
+    },
+    "iterflow-mysql57-redis-1": {
+      "id": "9a232f1faa7e75a0d2ced78fedd31344d74180d348afd80de98aef74bc05b14e",
+      "image": "sha256:5d79a9ce29f8b3fe50fd5c07ee1bf654b5cec557b895835825bf6825d525e4f2",
+      "mounts": [
+        {
+          "Destination": "/data",
+          "Driver": "local",
+          "Mode": "rw",
+          "Name": "iterflow-mysql57_redisdata",
+          "Propagation": "",
+          "RW": true,
+          "Source": "/var/lib/docker/volumes/iterflow-mysql57_redisdata/_data",
+          "Type": "volume"
+        }
+      ],
+      "restart": {
+        "MaximumRetryCount": 0,
+        "Name": "unless-stopped"
+      },
+      "started": "2026-10-10T09:00:58.357562616Z"
+    },
+    "iterflow-production-redis": {
+      "id": "060243ee073a82a90f7ac939ee7da4c6bdb5be68b909831cf64d18235d992aba",
+      "image": "sha256:5d79a9ce29f8b3fe50fd5c07ee1bf654b5cec557b895835825bf6825d525e4f2",
+      "mounts": [
+        {
+          "Destination": "/data",
+          "Driver": "local",
+          "Mode": "z",
+          "Name": "iterflow-production_redisdata",
+          "Propagation": "",
+          "RW": true,
+          "Source": "/var/lib/docker/volumes/iterflow-production_redisdata/_data",
+          "Type": "volume"
+        }
+      ],
+      "restart": {
+        "MaximumRetryCount": 0,
+        "Name": "unless-stopped"
+      },
+      "started": "2026-10-09T09:27:01.519508432Z"
+    }
+  },
+  "restart": "PASS",
+  "source": "198f831d67e8b475975915b1824d711b949fb998",
+  "status": "PASS",
+  "vhost_sha256": "491c4c78c19aac43e04bd75a73ff7155edf5a899deb029b0e3cb0749df5b7836"
+}

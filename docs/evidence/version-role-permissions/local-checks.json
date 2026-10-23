@@ -26,5 +26,15 @@
   "contract_and_migration_followup": 24,
   "api_shape_changed": false,
   "production_changed": false,
-  "fresh_self_review": "same agent"
+  "fresh_self_review": "same agent",
+  "mysql_migration_followup": 4,
+  "frontend_security_patch": {
+    "vite": "6.4.5",
+    "vitest": "4.1.12",
+    "follow_redirects": "1.16.1",
+    "unit_passed": 341,
+    "targeted_browser_passed": 32,
+    "audit_vulnerabilities": 0,
+    "production_audit_vulnerabilities": 0
+  }
 }

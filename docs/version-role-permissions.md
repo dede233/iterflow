@@ -33,3 +33,9 @@
 完整 MySQL 回归暴露预检查仍匹配旧 head 的问题，已更新为 mysql57_0006；mysql57_0005 仅在显式旧库预检查时接受，并继续检查开发确认触发器。本地 ARM Docker 上的 amd64 MySQL 重启曾出现入口脚本 mkdir 段错误，保留首次日志，未计为通过；恢复隔离容器后 standard 完整 72 项通过，包含三次连续重启、独立库与附件备份恢复。portable 首轮 68 项通过、4 项失败（旧 head 预检查与 standard 容器不可用），修正预检查后重跑又在本地 amd64 模拟重启时退出139，结果40通过、7失败、26错误。未计为通过或跳过门禁；以相同代码的原生 Linux CI standard/portable 完整验收继续验证，线上保持原版本。标准环境最后新增的旧 head 仅预检查允许/新 head 就绪校验另行实测。
 
 Fresh Self-Review（同一 Agent）：检查三角色精确授权、无新增权限码/角色、旧授权与停用状态保留、迁移 CAS/审计/幂等/失败回滚、未改变状态机或发布事务、历史迁移与发布契约不变、API shape 未变、仅测试库恢复。源分支 CI 结果以 GitHub Checks 为准；没有合并 master、更新线上或创建 tag/Release。
+
+## CI 依赖审计修复
+
+首轮分支 CI `39895612356` 的前端依赖审计失败。核对上游公告后，在原主版本范围内更新 Vite 6.4.3 → 6.4.5、Vitest 系列 4.1.11 → 4.1.12、follow-redirects 1.16.0 → 1.16.1 及必要的测试依赖。全量及生产 npm audit 均为零漏洞，没有跳过审计。生成锁文件时本机 npm10 的 peer resolver 出现 edgesOut 异常，使用临时 npm12 生成，随后仍以 npm10 的标准 npm ci 验证安装，未更改全局 npm 或其他工作目录依赖。
+
+上游依据：[Vitest](https://github.com/vitest-dev/vitest/security/advisories/GHSA-qxg6-89mg-rqv8)、[Vite](https://github.com/vitejs/vite/security/advisories/GHSA-rq7h-c2jc-7f22)、[follow-redirects](https://github.com/follow-redirects/follow-redirects/security/advisories/GHSA-q3jh-wrc6-jgq8)。前端重新运行单元、类型、构建、bundle 与浏览器回归，最终分支 CI 以最后提交的 Checks 为准。

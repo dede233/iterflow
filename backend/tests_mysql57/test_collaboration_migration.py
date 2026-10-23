@@ -100,7 +100,7 @@ def test_mysql_existing_upgrade_preserves_accounts_and_checks_role_collision(
                     "Upgrade must not auto-confirm existing developers"
                 )
             with engine.connect() as db:
-                assert db.scalar(text("SELECT version_num FROM alembic_version")) == "mysql57_0005"
+                assert db.scalar(text("SELECT version_num FROM alembic_version")) == "mysql57_0006"
                 assert (
                     db.scalar(
                         text(

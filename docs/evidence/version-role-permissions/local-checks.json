@@ -1,0 +1,40 @@
+{
+  "date": "2026-10-23",
+  "base": "f98fff1f87c477c5f12194614d108e0ea4e2938c",
+  "postgres_full": {
+    "passed": 399,
+    "s3_initial_skip": 1,
+    "s3_followup_passed": 1
+  },
+  "postgres_native": {
+    "passed": 61,
+    "skipped": 0
+  },
+  "mysql_standard": {
+    "passed": 72,
+    "skipped": 0
+  },
+  "mysql_portable_local": {
+    "passed": 40,
+    "failed": 7,
+    "errors": 26,
+    "status": "FAILED",
+    "blocker": "amd64 container on ARM Docker exited139 during restart; connection refused thereafter"
+  },
+  "frontend_unit": 341,
+  "frontend_browser_mocked_api": 160,
+  "contract_and_migration_followup": 24,
+  "api_shape_changed": false,
+  "production_changed": false,
+  "fresh_self_review": "same agent",
+  "mysql_migration_followup": 4,
+  "frontend_security_patch": {
+    "vite": "6.4.5",
+    "vitest": "4.1.12",
+    "follow_redirects": "1.16.1",
+    "unit_passed": 341,
+    "targeted_browser_passed": 32,
+    "audit_vulnerabilities": 0,
+    "production_audit_vulnerabilities": 0
+  }
+}

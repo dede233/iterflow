@@ -1,5 +1,7 @@
 # IterFlow Tasks
 
+2026-10-23 用户确认开发人员、产品负责人、研发负责人均需完整版本流程权限。独立分支 `codex/version-role-permissions`，范围为默认角色授权、双数据库追加迁移、回归及当前文档，详见 [版本角色权限](docs/version-role-permissions.md)。保留原 DataScope、发布事务、全员开发确认、revision 与审计；未部署该增量。
+
 ## 当前开发文档
 
 2026-10-13 本地导航文案：将“系统与模块”统一为四字“业务系统”，同步PC/移动入口、页面主标题及开发文档。分支 `codex/business-system-label`；构建/类型检查、11项导航测试和4项浏览器回归通过（含五种屏宽），首次同名标题选择器失败已修正为一级主标题并完整重跑。Fresh Self-Review确认仅文案及既有测试定位调整，无路由、权限、API或数据库变更；本轮未合并master或部署服务器。

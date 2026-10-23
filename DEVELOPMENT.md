@@ -1,5 +1,7 @@
 # DEVELOPMENT.md
 
+2026-10-23 用户确认开发人员、产品负责人、研发负责人均需完整版本流程权限。独立分支 `codex/version-role-permissions`，范围为默认角色授权、双数据库追加迁移、回归及当前文档，详见 [版本角色权限](docs/version-role-permissions.md)。保留原 DataScope、发布事务、全员开发确认、revision 与审计；未部署该增量。
+
 ## 当前开发文档
 
 2026-10-12 当前主线已合入反馈关联名称修复；8443/8444产品源为3fe3a42。保留测试环境已配置开机恢复和异常恢复，操作与验证范围见 [中文合并与运维记录](docs/master-merge-and-autorecovery-2026-10-12.md)。后文2026-10-11部署事实保留为历史，不代表当前产品源。

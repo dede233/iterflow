@@ -1,5 +1,7 @@
 # 迭程 IterFlow：MySQL 5.7 空库部署包
 
+2026-10-23 待部署增量：mysql57_0006 为三类基础角色补齐完整版本权限，不新增表或触发器。已有库升级前备份，执行正式 Alembic upgrade head；无需重跑 seed。保留用户、角色启停、自定义授权和数据范围，权限变更写审计。仅当前分支 head 更新不代表线上已迁移。
+
 本包用于 Linux amd64 与全新空库。仅在本地 Oracle MySQL 5.7.44 和 GitHub Linux amd64
 测试过；远程版本、供应商、TLS、网络和权限未核实。当前未操作服务器/远程数据库。
 API 仍为 1.8.1 开发基线，本适配分支不是新的正式 tag/Release。
@@ -71,7 +73,7 @@ curl --fail http://127.0.0.1:8080/
 先执行正式迁移，然后 seed；不使用 create_all、stamp head 或 PG 历史迁移。
 MySQL DDL 不原子：失败即停，保留现场；不要 stamp/盲目续跑。由 DBA 确认仅针对自己的空库
 清理失败初始化后重建。seed 只创建基础角色、权限和新管理员，首次登录必须改密。
-迁移后必须检查 mysql57_0005、73 个 trigger、键登记函数及完整唯一约束；runtime readiness
+迁移后必须检查 mysql57_0006、73 个 trigger、键登记函数及完整唯一约束；runtime readiness
 只用低权限检查。长键保持原 500 字符/2000 字节范围，分成 512 字节二进制段，以
 UNIQUE(parent_id,segment) 确定路径，再以文件 leaf_id UNIQUE 保证完整键唯一；无哈希/前缀误判。
 登记节点不可修改或删除，文件删除后可复用路径；节点积累需要计入存储容量。

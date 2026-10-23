@@ -617,7 +617,7 @@ export interface paths {
         put?: never;
         /**
          * 发布前检查
-         * @description 运行与 publish 相同的前置检查；通过返回 200，未通过返回 409 并含 checks。 新增 DEVELOPMENT_COMPLETION_CHECK：每条有效需求至少一名开发人员且全部已本人确认；未确认的需求作为发布阻断项。
+         * @description 需要 rd.version.publish 及 Version 数据范围。基础开发人员、产品负责人和研发负责人具备完整版本操作权限；SELF 仍仅限本人创建或负责的版本。运行与 publish 相同的前置检查；通过返回 200，未通过返回 409 并含 checks。 新增 DEVELOPMENT_COMPLETION_CHECK：每条有效需求至少一名开发人员且全部已本人确认；未确认的需求作为发布阻断项。
          */
         post: operations["check_version_publish_api_v1_versions__version_id__publish_check_post"];
         delete?: never;
@@ -637,7 +637,7 @@ export interface paths {
         put?: never;
         /**
          * 发布版本
-         * @description 需要发布权限及数据范围；版本必须 READY，全部有效关联需求 DONE，每条需求至少一名开发且全部本人确认。实际发布重新校验并锁定相关业务行。Release(SUCCESS)、Version、Requirement/Feedback ONLINE、通知和审计同一事务提交；中途异常全部回滚。重复发布返回 409；普通状态接口不能进入 RELEASED。
+         * @description 需要 rd.version.publish 及数据范围；基础开发人员、产品负责人和研发负责人默认具有该权限。版本必须 READY，全部有效关联需求 DONE，每条需求至少一名开发且全部本人确认。实际发布重新校验并锁定相关业务行。Release(SUCCESS)、Version、Requirement/Feedback ONLINE、通知和审计同一事务提交；中途异常全部回滚。重复发布返回 409；普通状态接口不能进入 RELEASED。
          */
         post: operations["publish_version_api_v1_versions__version_id__publish_post"];
         delete?: never;

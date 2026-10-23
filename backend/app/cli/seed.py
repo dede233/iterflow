@@ -101,6 +101,8 @@ BASE_ROLES = {
                 "rd.version.view",
                 "rd.version.create",
                 "rd.version.edit",
+                "rd.version.status",
+                "rd.version.publish",
                 "rd.release.view",
             }
         ),
@@ -119,6 +121,8 @@ BASE_ROLES = {
                 "rd.version.view",
                 "rd.version.edit",
                 "rd.version.status",
+                "rd.version.create",
+                "rd.version.publish",
                 "rd.release.view",
             }
         ),
@@ -147,6 +151,10 @@ BASE_ROLES = {
                 "rd.requirement.view",
                 "rd.requirement.status",
                 "rd.version.view",
+                "rd.version.create",
+                "rd.version.edit",
+                "rd.version.status",
+                "rd.version.publish",
                 "rd.release.view",
             }
         ),

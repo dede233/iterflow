@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import RequirementProgress from './RequirementProgress.vue'
 import { computed, onScopeDispose, ref, watch } from 'vue'
 import { getRequirement, listRequirementFeedbacks } from '@/api/requirements'
 import { useAuthStore } from '@/stores/auth'
@@ -68,6 +69,7 @@ onScopeDispose(() => { sequence++ })
         <el-descriptions-item label="类型">{{ requirementTypeLabel[item.requirement_type] || item.requirement_type }}</el-descriptions-item>
         <el-descriptions-item label="来源">{{ item.source === 'FEEDBACK' ? '反馈转化' : '直接创建' }}</el-descriptions-item>
       </el-descriptions>
+      <RequirementProgress :item="item" readonly />
       <h3>需求描述</h3>
       <p class="summary-content">{{ item.description || '暂无描述' }}</p>
       <h3>验收标准</h3>

@@ -14,6 +14,7 @@ declare module 'vue' {
     ApiSchemaView: typeof import('./src/components/ApiSchemaView.vue')['default']
     AppIcon: typeof import('./src/components/ui/AppIcon.vue')['default']
     AuthShell: typeof import('./src/components/ui/AuthShell.vue')['default']
+    BulkRequirementPicker: typeof import('./src/components/BulkRequirementPicker.vue')['default']
     CollaborationPeople: typeof import('./src/components/CollaborationPeople.vue')['default']
     DashboardOverviewContent: typeof import('./src/components/DashboardOverviewContent.vue')['default']
     ElAlert: typeof import('element-plus/es')['ElAlert']

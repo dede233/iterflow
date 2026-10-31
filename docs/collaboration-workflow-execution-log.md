@@ -81,3 +81,11 @@ AGENTS.md、DEVELOPMENT.md、TASKS.md 已区分本轮开发授权与历史发布
 实际测试：后端全量 380 passed / 1 skipped（S3 未配置）；随后新增独立 PostgreSQL 旧数据迁移测试 1 passed，验证旧关系/owner 保留、不伪造确认、不发通知、升级不重复记录及拒绝无审核降级。前端 50 文件 / 333 tests passed；vue-tsc/Vite、类型一致性、bundle、Ruff、Mypy 与 diff check 通过。历史迁移测试改用反射出的历史表模型，避免用新增列写入旧数据库；旧状态文案和 owner 筛选测试随新语义同步。测试使用隔离 Docker 数据库，未连接真实库。
 
 Fresh Self-Review（同一 Agent 自查）：确认普通状态入口不能绕开角色和确认；旧确认内容不被覆盖；历史 owner 仅保留读取；发布前检查内容版本。未发现阶段阻断或与本轮授权冲突。摘要人员/精简进度接入、批量事务、邮件和最终五视口及完整门禁继续在阶段 4–6 完成，不代表发布候选已就绪。
+
+## 阶段 4 版本批量关联
+
+完成：contract-first 增加批量关联接口（1–50 条、去重、请求 UUID、版本与逐条需求 revision）。事务先锁版本，再按 ID 锁需求；完整检查权限、归属、终态和过期修订后才写入，全部成功才提交，版本递增一次、每条需求递增一次；重复旧请求返回 409，不重复关联或审计。界面支持关键词/状态/优先级筛选、当前页多选、跨页保留、已选清单和逐项冲突原因。摘要加入只读阶段/人员信息。
+
+主要文件：version schema/service/router、开发契约与类型、BulkRequirementPicker 及测试、VersionDetailView、RequirementSummaryDialog、协作 PostgreSQL 测试、五视口浏览器用例。
+
+验证：后端全量 383 passed / 1 skipped（S3 待最终隔离门禁）；包含批次回滚、两个版本争抢同组需求、状态不隐式改变、重复请求不重复关系。前端 51 文件 / 334 tests passed，跨页 revision 快照与冲突不重放用例通过；vue-tsc/Vite、Mypy 通过；摘要五视口 Playwright 5 passed。Fresh Self-Review 检查全事务、权限过滤、选择快照与旧异步响应失效，无阶段阻断。请求标识用于审计追踪，revision 是重复写防线；重复提交返回冲突而不伪装成新成功。继续阶段 5。

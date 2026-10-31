@@ -2141,6 +2141,70 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
       description: 需要 rd.version.edit 与 rd.requirement.view；目标 Version 与 Requirement 均须在各自 DataScope 内。通过
         VersionService；READY/RELEASED/CANCELED 冻结返回 409。
+  /versions/{version_id}/requirements/batch:
+    post:
+      tags:
+      - Version
+      summary: 批量关联需求
+      operationId: bulk_add_version_requirements
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: version_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Version Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkAddRequirements'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionOut'
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: revision CAS 冲突 (40910) 或该操作的业务冲突
+          content:
+            application/json:
+              schema:
+                anyOf:
+                - $ref: '#/components/schemas/RevisionConflictResponse'
+                - $ref: '#/components/schemas/ErrorResponse'
+                title: Response 409 Bulk Add Version Requirements Api V1 Versions  Version Id  Requirements
+                  Batch Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: 需要 rd.version.edit 与 rd.requirement.view；目标 Version 与 Requirement 均须在各自 DataScope 内。通过
+        VersionService；READY/RELEASED/CANCELED 冻结返回 409。
   /versions/{version_id}/requirements/move:
     post:
       tags:
@@ -4111,6 +4175,44 @@ components:
       required:
       - file
       title: Body_upload_file_api_v1_files_post
+    BulkAddRequirements:
+      properties:
+        version_revision:
+          type: integer
+          minimum: 1.0
+          title: 版本修订号
+        request_id:
+          type: string
+          format: uuid
+          title: 请求标识
+        items:
+          items:
+            $ref: '#/components/schemas/BulkRequirementItem'
+          type: array
+          maxItems: 50
+          minItems: 1
+          title: 需求列表
+      type: object
+      required:
+      - version_revision
+      - request_id
+      - items
+      title: BulkAddRequirements
+    BulkRequirementItem:
+      properties:
+        requirement_id:
+          type: integer
+          minimum: 1.0
+          title: 需求 ID
+        revision:
+          type: integer
+          minimum: 1.0
+          title: 需求修订号
+      type: object
+      required:
+      - requirement_id
+      - revision
+      title: BulkRequirementItem
     BusinessModuleCreate:
       properties:
         code:

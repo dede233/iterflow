@@ -28,6 +28,7 @@ from app.repositories.requirement_repository import RequirementRepository
 from app.repositories.version_repository import VersionRepository
 from app.schemas.version import (
     AddRequirementRequest,
+    BulkAddRequirements,
     MoveRequirementRequest,
     PublishVersionRequest,
     RemoveRequirementRequest,
@@ -363,6 +364,74 @@ class VersionService:
             after_version_id=version_id,
         )
         self._bump_version_revision(version, payload.version_revision, operator_id)
+        self.db.commit()
+        self.db.refresh(version)
+        return version
+
+    def bulk_add_requirements(
+        self,
+        version_id: int,
+        payload: BulkAddRequirements,
+        operator_id: int,
+        viewer_scope: DataScope,
+        viewer_id: int,
+    ) -> Version:
+        version = self._lock_version(version_id)
+        self._ensure_version_scope(version, viewer_id, viewer_scope)
+        self._ensure_version_revision(version, payload.version_revision)
+        self._ensure_mutable(version)
+        expected = {entry.requirement_id: entry.revision for entry in payload.items}
+        query = select(Requirement).where(Requirement.id.in_(expected)).order_by(Requirement.id)
+        if viewer_scope is not DataScope.ALL:
+            query = query.where(RequirementRepository.self_criterion(viewer_id))
+        requirements = list(
+            self.db.scalars(query.with_for_update().execution_options(populate_existing=True))
+        )
+        if len(requirements) != len(expected):
+            raise NotFoundError("部分需求不存在或不可访问")
+        errors = []
+        for item in requirements:
+            reason = None
+            if item.revision != expected[item.id]:
+                reason = "需求已修改, 请核对后重新选择"
+            elif item.current_version_id is not None or self.repo.active_relation_of_requirement(
+                item.id
+            ):
+                reason = "需求已有版本归属, 请使用迁移"
+            elif item.status in {RequirementStatus.ONLINE, RequirementStatus.CANCELED}:
+                reason = "终态需求不能加入版本"
+            if reason:
+                errors.append({"requirement_id": item.id, "reason": reason})
+        if errors:
+            raise AppError(40933, "批量添加未执行, 请核对所选需求", 409, {"items": errors})
+        req_repo = RequirementRepository(self.db)
+        for item in requirements:
+            if not req_repo.update_with_revision(
+                item.id,
+                expected[item.id],
+                {"current_version_id": version_id, "updated_by": operator_id},
+            ):
+                raise self._requirement_conflict(req_repo, item.id)
+            self.db.add(
+                VersionRequirement(
+                    version_id=version_id, requirement_id=item.id, added_by=operator_id
+                )
+            )
+            self._audit_requirement_relation(
+                "VERSION_REQUIREMENT_ADD",
+                version_id=version_id,
+                requirement_id=item.id,
+                before_version_id=None,
+                before_current_version_id=None,
+                after_version_id=version_id,
+            )
+        self._bump_version_revision(version, payload.version_revision, operator_id)
+        self.audit.log(
+            "VERSION",
+            version_id,
+            "BULK_ADD",
+            after={"request_id": str(payload.request_id), "requirement_ids": sorted(expected)},
+        )
         self.db.commit()
         self.db.refresh(version)
         return version

@@ -576,6 +576,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/versions/{version_id}/requirements/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 批量关联需求
+         * @description 需要 rd.version.edit 与 rd.requirement.view；目标 Version 与 Requirement 均须在各自 DataScope 内。通过 VersionService；READY/RELEASED/CANCELED 冻结返回 409。
+         */
+        post: operations["bulk_add_version_requirements"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/versions/{version_id}/requirements/move": {
         parameters: {
             query?: never;
@@ -1315,6 +1335,25 @@ export interface components {
         Body_upload_file_api_v1_files_post: {
             /** 上传文件 */
             file: string;
+        };
+        /** BulkAddRequirements */
+        BulkAddRequirements: {
+            /** 版本修订号 */
+            version_revision: number;
+            /**
+             * 请求标识
+             * Format: uuid
+             */
+            request_id: string;
+            /** 需求列表 */
+            items: components["schemas"]["BulkRequirementItem"][];
+        };
+        /** BulkRequirementItem */
+        BulkRequirementItem: {
+            /** 需求 ID */
+            requirement_id: number;
+            /** 需求修订号 */
+            revision: number;
         };
         /** BusinessModuleCreate */
         BusinessModuleCreate: {
@@ -4875,6 +4914,77 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["AddRequirementRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description revision CAS 冲突 (40910) 或该操作的业务冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bulk_add_version_requirements: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                version_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkAddRequirements"];
             };
         };
         responses: {

@@ -17,6 +17,8 @@ for (const width of [375, 390, 768, 1280, 1440]) {
       if (path === '/api/v1/notifications/unread-count') return json({ unread_count: 0 })
       if (path === '/api/v1/versions/7') return json({ id: 7, version_no: 'V-NEXT', name: '下一迭代', status: 'PLANNING', revision: 1, created_at: '2026-10-31T00:00:00Z', updated_at: '2026-10-31T00:00:00Z' })
       if (path === '/api/v1/versions/7/requirements') return json({ version_id: 7, items: [requirement], stats: { total: 1, completed: 1, completion_rate: 1, by_status: { DONE: 1 } } })
+      if (path === '/api/v1/requirements/9/workflow') return json({ revision: 1, needs_confirmation: false, legacy_completed: true, design_status: 'NOT_REQUIRED', records: [] })
+      if (path === '/api/v1/requirements/9/participants') return json({ revision: 1, participants: [{ user_id: 1, role: 'DEVELOP', display_name: '开发人员', active: true }] })
       if (path === '/api/v1/requirements/9') return json(requirement)
       return route.fulfill({ status: 404, json: { message: `Unexpected request ${path}` } })
     })

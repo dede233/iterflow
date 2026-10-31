@@ -310,3 +310,101 @@ def test_new_unassigned_requirement_cannot_bypass_confirmation(collaboration_api
     )
     assert response.status_code == 409
     assert client.get(base, headers=headers[1]).json()["revision"] == 1
+
+
+def test_bulk_add_is_atomic_and_preserves_status(collaboration_api):
+    from app.core.exceptions import AppError
+    from app.models.entities import Version, VersionRequirement
+    from app.schemas.version import BulkAddRequirements
+    from app.services.version_service import VersionService
+
+    client, headers, engine = collaboration_api
+    requirements = [
+        client.post(
+            "/api/v1/requirements",
+            headers=headers[1],
+            json={"title": f"批量需求{i}", "description": "说明", "requirement_type": "FEATURE"},
+        ).json()
+        for i in range(2)
+    ]
+    with Session(engine) as db:
+        version = Version(version_no="BATCH", name="批量版本", created_by=1)
+        db.add(version)
+        db.commit()
+        version_id = version.id
+    payload = BulkAddRequirements(
+        version_revision=1,
+        request_id=uuid4(),
+        items=[{"requirement_id": r["id"], "revision": 1} for r in requirements],
+    )
+    bad = payload.model_copy(deep=True)
+    bad.items[1].revision = 2
+    with Session(engine) as db:
+        with pytest.raises(AppError) as exc:
+            VersionService(db).bulk_add_requirements(version_id, bad, 1, DataScope.ALL, 1)
+        assert exc.value.status_code == 409
+        db.rollback()
+        assert db.scalar(select(func.count()).select_from(VersionRequirement)) == 0
+        assert db.get(Version, version_id).revision == 1
+    with Session(engine) as db:
+        updated = VersionService(db).bulk_add_requirements(version_id, payload, 1, DataScope.ALL, 1)
+        assert updated.revision == 2
+        for item in db.scalars(select(Requirement)):
+            assert item.status == "DRAFT" and item.revision == 2
+    with Session(engine) as db:
+        with pytest.raises(ConflictError):
+            VersionService(db).bulk_add_requirements(version_id, payload, 1, DataScope.ALL, 1)
+        db.rollback()
+        assert db.scalar(select(func.count()).select_from(VersionRequirement)) == 2
+
+
+def test_concurrent_batches_cannot_partially_attach(collaboration_api):
+    from app.core.exceptions import AppError
+    from app.models.entities import Version, VersionRequirement
+    from app.schemas.version import BulkAddRequirements
+    from app.services.version_service import VersionService
+
+    client, headers, engine = collaboration_api
+    requirements = [
+        client.post(
+            "/api/v1/requirements",
+            headers=headers[1],
+            json={"title": f"并发需求{i}", "description": "说明", "requirement_type": "FEATURE"},
+        ).json()
+        for i in range(2)
+    ]
+    with Session(engine) as db:
+        versions = [
+            Version(version_no=f"CONCURRENT{i}", name="版本", created_by=1) for i in range(2)
+        ]
+        db.add_all(versions)
+        db.commit()
+        ids = [v.id for v in versions]
+    barrier = Barrier(2)
+
+    def add(vid):
+        with Session(engine) as db:
+            barrier.wait(timeout=10)
+            try:
+                VersionService(db).bulk_add_requirements(
+                    vid,
+                    BulkAddRequirements(
+                        version_revision=1,
+                        request_id=uuid4(),
+                        items=[{"requirement_id": r["id"], "revision": 1} for r in requirements],
+                    ),
+                    1,
+                    DataScope.ALL,
+                    1,
+                )
+                return "success"
+            except AppError:
+                db.rollback()
+                return "conflict"
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        assert sorted(pool.map(add, ids)) == ["conflict", "success"]
+    with Session(engine) as db:
+        relations = list(db.scalars(select(VersionRequirement)))
+        assert len(relations) == 2
+        assert len({r.version_id for r in relations}) == 1

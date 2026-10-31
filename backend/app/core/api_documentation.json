@@ -239,6 +239,32 @@
         }
       }
     },
+    "BulkAddRequirements": {
+      "title": "BulkAddRequirements",
+      "properties": {
+        "version_revision": {
+          "title": "版本修订号"
+        },
+        "request_id": {
+          "title": "请求标识"
+        },
+        "items": {
+          "title": "需求列表",
+          "items": {}
+        }
+      }
+    },
+    "BulkRequirementItem": {
+      "title": "BulkRequirementItem",
+      "properties": {
+        "requirement_id": {
+          "title": "需求 ID"
+        },
+        "revision": {
+          "title": "需求修订号"
+        }
+      }
+    },
     "BusinessModuleCreate": {
       "title": "BusinessModuleCreate",
       "properties": {
@@ -2768,6 +2794,15 @@
           "Version"
         ],
         "summary": "向版本添加需求",
+        "description": "需要 rd.version.edit 与 rd.requirement.view；目标 Version 与 Requirement 均须在各自 DataScope 内。通过 VersionService；READY/RELEASED/CANCELED 冻结返回 409。"
+      }
+    },
+    "/versions/{version_id}/requirements/batch": {
+      "post": {
+        "tags": [
+          "Version"
+        ],
+        "summary": "批量关联需求",
         "description": "需要 rd.version.edit 与 rd.requirement.view；目标 Version 与 Requirement 均须在各自 DataScope 内。通过 VersionService；READY/RELEASED/CANCELED 冻结返回 409。"
       }
     },

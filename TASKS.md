@@ -1,5 +1,20 @@
 # IterFlow Tasks
 
+## 当前协作流程优化
+
+- [x] 用户批准方案并授权开工，采用方案推荐默认值；保留历史发布约束及证据。
+- [x] 阶段 0：开发范围与默认规则冻结；新能力契约、迁移及状态规格仍须在各阶段实现前落地。
+- [x] 阶段 1：反馈表单精简、版本内需求摘要弹窗（328 单测、五视口浏览器、构建与契约类型检查通过）。
+- [ ] 阶段 2：反馈多人接收／受理、环节人员和历史读取兼容。
+- [ ] 阶段 3：需求六阶段、确认／设计／验收记录和进度区。
+- [ ] 阶段 4：版本批量关联事务及多选界面。
+- [ ] 阶段 5：站内通知矩阵、邮箱验证／偏好、可靠邮件发送。
+- [ ] 阶段 6：完整回归、旧数据迁移演练和升级准备。
+
+范围见 `docs/collaboration-workflow-improvement-plan.md`；实际验证记录见
+`docs/collaboration-workflow-execution-log.md`。以上勾选只代表已验证结果，
+不以实现文件存在代替测试通过。以下保留历史发布任务。
+
 > 本次正式发布目标为 `v1.8.1`，Hotfix 外部独立终审 PASS，用户已授权 Final Release + Cloudflare Preview Resume。正式发布成立条件为新的 Release Branch / Final Master 六项 CI PASS、annotated v1.8.1 tag 与正式 GitHub Release；发布事实以最终 master commit、标签和 Release 为准，不提前记录 tag SHA。发布 base：`df9e1ba1a5ee1a4c763098d8e180250f409bedd3`；包、FastAPI、health、Frontend 与当前契约元数据同步 1.8.1，当前契约 `spec/openapi-v1.8.1.yaml`，API shape 不变。v1.8.0 及更早正式标签/Release/契约不可变；本轮只发布已审查的共享 PageHeader 平板响应式修复，随后将正式版本合入独立 Preview 并恢复验收，不部署 Production。证据见 `docs/v1.8.1-release-readiness.md`。
 
 ## V1.8 — Version Workspace & Main-Chain Productivity

@@ -56,6 +56,7 @@ declare module 'vue' {
     MobileBottomNav: typeof import('./src/components/MobileBottomNav.vue')['default']
     PageHeader: typeof import('./src/components/ui/PageHeader.vue')['default']
     PermissionAssignmentDrawer: typeof import('./src/components/PermissionAssignmentDrawer.vue')['default']
+    RequirementSummaryDialog: typeof import('./src/components/RequirementSummaryDialog.vue')['default']
     RevisionConflictDialog: typeof import('./src/components/RevisionConflictDialog.vue')['default']
     RoleActions: typeof import('./src/components/RoleActions.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']

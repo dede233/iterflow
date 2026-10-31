@@ -1,5 +1,10 @@
 # DEVELOPMENT.md
 
+当前开发工作为 2026-10-31 授权的协作流程优化，范围及默认规则见
+`docs/collaboration-workflow-improvement-plan.md`，阶段结果见
+`docs/collaboration-workflow-execution-log.md`。下文 v1.8.1 发布目标为历史记录；
+本轮包版本暂不变，不执行正式发布或真实数据库升级。
+
 
 ## 项目命名
 

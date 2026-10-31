@@ -1,5 +1,13 @@
 # AGENTS.md
 
+## 当前开发授权 2026-10-31
+
+用户已批准按 `docs/collaboration-workflow-improvement-plan.md` 开工，范围为反馈表单精简、多人接收单人受理、需求六阶段与环节人员、邮件通知、版本批量关联及摘要弹窗。按方案推荐默认值实施；反馈接收人暂不自动扩展 DataScope，不新增系统角色或 permission。允许为该范围更新开发契约、实现必要 Alembic migration 并在隔离测试数据库验证；不得对真实数据执行迁移。
+
+该授权替代下文历史版本授权中针对本轮范围的“不开发新功能／不新增 migration／不调整需求状态”限制；其他主链、事务、revision、RBAC 和技术栈规则不变。取消需求总负责人须保留历史读取兼容；版本负责人保留。仅更新 `spec/openapi-development.yaml`，已发布契约不变。
+
+本轮按阶段实施、验证并记录实际结果；不沿用历史自动 merge/tag/Release/Preview 授权。正式发布、远端合并和真实环境升级另行处理。执行记录见 `docs/collaboration-workflow-execution-log.md`。
+
 
 ## 项目命名
 

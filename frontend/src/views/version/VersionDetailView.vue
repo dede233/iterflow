@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import {
   addVersionRequirement,
   changeVersionStatus,
@@ -17,6 +17,7 @@ import { listReleases } from '@/api/releases'
 import { getRequirement } from '@/api/requirements'
 import ScopedObjectSelector from '@/components/ScopedObjectSelector.vue'
 import ScopedRelationLink from '@/components/ScopedRelationLink.vue'
+import RequirementSummaryDialog from '@/components/RequirementSummaryDialog.vue'
 import { filterVersionWorklist, visibleWorklistStats } from '@/utils/versionWorklist'
 import { useDetailNavigation } from '@/composables/useDetailNavigation'
 import { usePermission } from '@/composables/usePermission'
@@ -51,13 +52,14 @@ import type {
 const props = defineProps<{ embedded?: boolean; embeddedId?: number }>()
 const emit = defineEmits<{ updated: []; close: [] }>()
 const route = useRoute()
-const router = useRouter()
 const { backTo, related } = useDetailNavigation('/versions')
 const { can } = usePermission()
 const { isMobile } = useResponsive()
 const id = Number(props.embedded ? props.embeddedId : route.params.id)
 const { start: startPresence, stop: stopPresence, existingEditor } = useEditingPresence('VERSION', id)
 const conflict = useRevisionConflict()
+const summaryRequirementId = ref<number | null>(null)
+watch(() => [route.params.id, props.embeddedId], () => { summaryRequirementId.value = null })
 
 async function showVersionConflict(error: unknown, revision: number, onReload?: (latest: VersionItem) => void | Promise<void>): Promise<void> {
   await conflict.show(error, revision, {
@@ -458,7 +460,7 @@ onMounted(load)
           </el-table-column>
           <el-table-column label="操作" width="180">
             <template #default="s">
-              <el-link type="primary" @click="router.push(related('/requirements/' + s.row.id))">查看</el-link>
+              <el-link type="primary" @click="summaryRequirementId = s.row.id">查看</el-link>
               <template v-if="canManageReqs">
                 <el-link type="warning" style="margin-left: 10px" @click="openMove(s.row)">迁移</el-link>
                 <el-link type="danger" style="margin-left: 10px" @click="removeReq(s.row)">移出</el-link>
@@ -472,7 +474,7 @@ onMounted(load)
             <div class="req-card-title">{{ req.title }}</div>
             <p>优先级 {{ req.priority }}</p>
             <div class="req-card-actions">
-              <el-button link type="primary" @click="router.push(related('/requirements/' + req.id))">查看</el-button>
+              <el-button link type="primary" @click="summaryRequirementId = req.id">查看</el-button>
               <template v-if="canManageReqs">
                 <el-button link type="warning" @click="openMove(req)">迁移</el-button>
                 <el-button link type="danger" @click="removeReq(req)">移出</el-button>
@@ -497,6 +499,8 @@ onMounted(load)
         <EmptyState v-else description="尚无发布记录" compact />
       </SectionCard>
     </template>
+
+    <RequirementSummaryDialog :id="summaryRequirementId" :return-to="backTo" @close="summaryRequirementId = null" />
 
     <!-- publish dialog -->
     <el-dialog v-model="publishDialog" title="发布版本" width="min(520px, 92vw)" destroy-on-close>

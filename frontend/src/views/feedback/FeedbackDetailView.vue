@@ -223,8 +223,6 @@ const editForm = reactive({
   system_id: null as number | null,
   module_id: null as number | null,
   description: '',
-  expected_result: '',
-  actual_result: '',
   reproduce_steps: '',
 })
 const editModuleOptions = computed(() =>
@@ -246,8 +244,6 @@ function fillEditForm(latest: Feedback): void {
     system_id: latest.system_id ?? null,
     module_id: latest.module_id ?? null,
     description: latest.description,
-    expected_result: latest.expected_result ?? '',
-    actual_result: latest.actual_result ?? '',
     reproduce_steps: latest.reproduce_steps ?? '',
   })
 }
@@ -271,8 +267,6 @@ async function submitEdit(): Promise<void> {
       system_id: editForm.system_id ?? null,
       module_id: editForm.module_id ?? null,
       description: editForm.description.trim(),
-      expected_result: editForm.expected_result.trim() || null,
-      actual_result: editForm.actual_result.trim() || null,
       reproduce_steps: editForm.reproduce_steps.trim() || null,
       revision: item.value.revision,
     })
@@ -397,10 +391,10 @@ onMounted(async () => {
           <el-descriptions-item label="详细描述" :span="isMobile ? 1 : 2">
             <div class="multiline">{{ item.description }}</div>
           </el-descriptions-item>
-          <el-descriptions-item v-if="item.expected_result" label="期望结果" :span="isMobile ? 1 : 2">
+          <el-descriptions-item v-if="item.expected_result" label="历史补充 · 期望结果" :span="isMobile ? 1 : 2">
             <div class="multiline">{{ item.expected_result }}</div>
           </el-descriptions-item>
-          <el-descriptions-item v-if="item.actual_result" label="实际结果" :span="isMobile ? 1 : 2">
+          <el-descriptions-item v-if="item.actual_result" label="历史补充 · 实际结果" :span="isMobile ? 1 : 2">
             <div class="multiline">{{ item.actual_result }}</div>
           </el-descriptions-item>
           <el-descriptions-item v-if="item.reproduce_steps" label="复现步骤" :span="isMobile ? 1 : 2">
@@ -537,12 +531,6 @@ onMounted(async () => {
         </template>
         <el-form-item label="详细描述">
           <el-input v-model="editForm.description" type="textarea" :rows="5" />
-        </el-form-item>
-        <el-form-item label="期望结果">
-          <el-input v-model="editForm.expected_result" type="textarea" :rows="2" />
-        </el-form-item>
-        <el-form-item label="实际结果">
-          <el-input v-model="editForm.actual_result" type="textarea" :rows="2" />
         </el-form-item>
         <el-form-item label="复现步骤">
           <el-input v-model="editForm.reproduce_steps" type="textarea" :rows="3" />

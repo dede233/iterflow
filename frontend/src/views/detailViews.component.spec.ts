@@ -220,6 +220,26 @@ beforeEach(() => {
 })
 
 describe('detail views enforce permission-aware loading in mounted components', () => {
+  it('preserves historical feedback results without including them in ordinary edits', async () => {
+    permissionSet('rd.feedback.view', 'rd.feedback.edit')
+    mocks.getFeedback.mockResolvedValue({ ...feedback, expected_result: '原期望内容', actual_result: '原实际内容' })
+    mocks.updateFeedback.mockResolvedValue(feedback)
+    const wrapper = mount(FeedbackDetailView, { global: { stubs, directives: { loading: {} } } })
+    await flushPromises()
+    expect(wrapper.text()).toContain('原期望内容')
+    expect(wrapper.text()).toContain('原实际内容')
+    await wrapper.findAll('button').find(button => button.text() === '编辑')!.trigger('click')
+    await flushPromises()
+    const fields = wrapper.findAllComponents({ name: 'ElInput' }).map(input => input.props('modelValue'))
+    expect(fields).not.toContain('原期望内容')
+    expect(fields).not.toContain('原实际内容')
+    await wrapper.findAll('button').find(button => button.text() === '保存')!.trigger('click')
+    await flushPromises()
+    const payload = mocks.updateFeedback.mock.calls.at(-1)![1]
+    expect(payload).not.toHaveProperty('expected_result')
+    expect(payload).not.toHaveProperty('actual_result')
+    wrapper.unmount()
+  })
   it('keeps Version visible without fetching or rendering unauthorized child sections', async () => {
     permissionSet('rd.version.view')
     const wrapper = mount(VersionDetailView, { global: { stubs, directives: { loading: {} } } })

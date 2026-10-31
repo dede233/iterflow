@@ -209,7 +209,17 @@ def restore_package(stage, dump, files, headers, requirement_id, file_id):
             "-m",
             "app.cli.mysql_preflight",
         )
-        dc("up", "-d", "--wait", "--wait-timeout", "300", "redis", "api", "web", "notification-worker")
+        dc(
+            "up",
+            "-d",
+            "--wait",
+            "--wait-timeout",
+            "300",
+            "redis",
+            "api",
+            "web",
+            "notification-worker",
+        )
         with httpx.Client(
             base_url=f"http://127.0.0.1:{args.web_port + 1}", timeout=30
         ) as client:
@@ -343,7 +353,13 @@ try:
             "services:\n"
             + "".join(
                 f"  {service}:\n    networks: [default, proof]\n"
-                for service in ("api", "notification-worker", "migrate", "seed", "client")
+                for service in (
+                    "api",
+                    "notification-worker",
+                    "migrate",
+                    "seed",
+                    "client",
+                )
             )
             + f"networks:\n  proof:\n    external: true\n    name: {db_project}_default\n"
         )
@@ -387,6 +403,24 @@ try:
                 "-m",
                 "app.cli.mysql_preflight",
             )
+            import re
+
+            granted_tables = set(
+                re.findall(
+                    r"ON `iterflow`\.`([^`]+)`",
+                    (bundle / "runtime-grants.sql").read_text(),
+                )
+            )
+            actual_tables = {
+                row[0]
+                for row in sql(
+                    "SELECT table_name FROM information_schema.tables WHERE table_schema=%s",
+                    (db_name,),
+                )
+            }
+            assert granted_tables == actual_tables, (
+                "Shipped runtime grants must cover the migrated schema exactly"
+            )
             for (table,) in sql(
                 "SELECT table_name FROM information_schema.tables WHERE table_schema=%s",
                 (db_name,),
@@ -410,7 +444,17 @@ try:
                 "sys_file",
             ):
                 assert sql(f"SELECT COUNT(*) FROM `{db_name}`.`{table}`")[0][0] == 0
-            dc("up", "-d", "--wait", "--wait-timeout", "300", "redis", "api", "web", "notification-worker")
+            dc(
+                "up",
+                "-d",
+                "--wait",
+                "--wait-timeout",
+                "300",
+                "redis",
+                "api",
+                "web",
+                "notification-worker",
+            )
             with httpx.Client(
                 base_url=f"http://127.0.0.1:{args.web_port}", timeout=30
             ) as client:
@@ -550,13 +594,40 @@ try:
                     },
                 ).json()
                 r = request("GET", f"/requirements/{r['id']}", h).json()
-                request("PUT", f"/requirements/{r['id']}/participants", h, json={"revision":r["revision"], "participants":[{"role":role,"user_id":user["id"]} for role in ("CONFIRM","DEVELOP","ACCEPT")]})
+                request(
+                    "PUT",
+                    f"/requirements/{r['id']}/participants",
+                    h,
+                    json={
+                        "revision": r["revision"],
+                        "participants": [
+                            {"role": role, "user_id": user["id"]}
+                            for role in ("CONFIRM", "DEVELOP", "ACCEPT")
+                        ],
+                    },
+                )
                 r = request("GET", f"/requirements/{r['id']}", h).json()
                 for status in ("CONFIRMED", "DEVELOPING", "TESTING"):
-                    r = request("PATCH", f"/requirements/{r['id']}/status", h, json={"status":status,"revision":r["revision"]}).json()
+                    r = request(
+                        "PATCH",
+                        f"/requirements/{r['id']}/status",
+                        h,
+                        json={"status": status, "revision": r["revision"]},
+                    ).json()
                 # Even an administrator must give a reason to act for the acceptance owner.
-                request("PATCH", f"/requirements/{r['id']}/status", ah, expected=403, json={"status":"DONE","revision":r["revision"]})
-                r = request("PATCH", f"/requirements/{r['id']}/status", h, json={"status":"DONE","revision":r["revision"]}).json()
+                request(
+                    "PATCH",
+                    f"/requirements/{r['id']}/status",
+                    ah,
+                    expected=403,
+                    json={"status": "DONE", "revision": r["revision"]},
+                )
+                r = request(
+                    "PATCH",
+                    f"/requirements/{r['id']}/status",
+                    h,
+                    json={"status": "DONE", "revision": r["revision"]},
+                ).json()
                 for status in ("DEVELOPING", "TESTING", "READY"):
                     v = request(
                         "PATCH",
@@ -650,13 +721,33 @@ try:
                     and len(files) > 1024
                 )
                 dc("start", "api", "notification-worker")
-                dc("up", "-d", "--wait", "--wait-timeout", "300", "redis", "api", "web", "notification-worker")
+                dc(
+                    "up",
+                    "-d",
+                    "--wait",
+                    "--wait-timeout",
+                    "300",
+                    "redis",
+                    "api",
+                    "web",
+                    "notification-worker",
+                )
                 wait_proxy(client, h)
                 dc("stop", "web", "api", "notification-worker")
                 restored_proof = restore_package(
                     stage, dump, files, h, r["id"], file["id"]
                 )
-                dc("up", "-d", "--wait", "--wait-timeout", "300", "redis", "api", "web", "notification-worker")
+                dc(
+                    "up",
+                    "-d",
+                    "--wait",
+                    "--wait-timeout",
+                    "300",
+                    "redis",
+                    "api",
+                    "web",
+                    "notification-worker",
+                )
                 wait_proxy(client, h)
                 request("DELETE", f"/files/{file['id']}", h, expected=204)
                 request("GET", download, h, expected=404)

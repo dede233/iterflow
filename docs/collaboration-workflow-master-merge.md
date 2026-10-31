@@ -40,3 +40,5 @@ MySQL 新增微秒 UTC 时间、有效单确认/验收人的生成列唯一索�
 - 自查补充 PostgreSQL 历史迁移与跨库流程专项 16 passed；MySQL 新流程专项 10 passed，覆盖批量添加全成全败、旧 revision、站内投递消费及失效人员。MySQL 历史设计/人员/确认时间迁移及隔离恢复专项 3 passed。
 - 自查修正 MySQL 历史确认快照的 UTC 时区标记；补齐包重启后 worker 启动；恢复证据的触发器数量改为数据库实查值（91），消除旧脚本写死 73 的过时记录。证据见 `docs/evidence/collaboration-workflow/merge-mysql-standard-backup-restore.json`。
 - 冻结的 PostgreSQL 0001–0008 与 MySQL 0001–0006 文件未改写。这里是同一 Agent 的 Fresh Self-Review，不称 independent review。
+
+自查同时发现 MySQL runtime SQL 授权模板尚未包含六张新表，已补齐模板，并要求包验收核对模板表集合与实际迁移库一致；防止测试动态授权通过而交付模板遗漏。仅修改模板，没有对真实数据库执行 GRANT。

@@ -205,3 +205,14 @@ CI 的 push 过滤只有 master、phase/**、fix/**，因此使用现有 workflo
 ### 主线合并完成
 
 按用户授权取消旧逐人开发确认门禁，并完成双数据库整合、历史数据兼容与回归修复。master 合并前确认 10f6bfa 无漂移；no-ff 合并并推送 `69c2c877cfee27b4142f03ea00559238f0cdc489`。其 [CI 41174648931](https://github.com/dede233/iterflow/actions/runs/41174648931) attempt 1 八项全部通过（原六项 + MySQL standard/portable）；完整 Job ID、测试计数和修复记录见 `docs/collaboration-workflow-master-merge.md`。本次文档收口仍验证其自身 CI；未发布、部署或操作真实数据库。
+
+## 2026-10-31 转需求默认确认人
+
+用户要求：转需求时，需求确认人默认当前账号，允许修改。
+
+- `FeedbackDetailView.vue` 在打开转换弹窗时按当前登录身份初始化确认人；向人员选择器提供显示名称，避免远程选项未加载时只显示数字 ID。保留更换、清空和单选能力，不在编辑过程中重新覆盖用户选择。
+- 当前账号没有 `rd.requirement.view` 时不预填不合格人员，沿用后端人员读取资格校验。关联已有需求继续发送空 participants，不改变已有分工；直接新建需求和其他环节默认值不变。
+- 需求仍从待确认开始，不生成自动确认记录；无 API、数据库、权限或状态机改动。方案中旧的“任何环节均不默认创建人”已按本次用户指令更新。
+- 本地验证：详情组件、需求 API、详情权限三组既有回归共 **38 项通过**；`npm run build` 的 Vue/TypeScript 检查及 Vite 构建通过；`git diff --check` 通过。组件回归有 jsdom XHR AggregateError 控制台输出，但测试断言和进程退出均通过；本次没有将它作为真实后端联调证据。
+- Fresh Self-Review：默认值只在打开时设置，提交仍读取可编辑的 convertRoles；不会恢复已清空值，不改变 LINK_EXISTING 或隐式执行确认。无规格冲突。
+- 仅本地修改，未推送、合并、部署或连接真实数据库；未重新运行全量后端及远端 CI。

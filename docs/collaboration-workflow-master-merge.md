@@ -52,3 +52,24 @@ MySQL 新增微秒 UTC 时间、有效单确认/验收人的生成列唯一索�
 合并前再次 fetch 确认远端和本地 master 均为 `10f6bfa6410c7836d7d43e402a175d56ad9577c7`，无漂移。目标为 no-ff 合入 `e563efa`，在现有 master worktree 操作；原有未跟踪 data/ 与历史验收文件完整保留。此合并只推送 origin/master，不创建标签、Release，不部署、不执行真实数据库迁移。
 
 最终 master CI 结果待实际运行完成后记录。
+
+## master 验证完成
+
+已创建并推送 no-ff 合并提交 `69c2c877cfee27b4142f03ea00559238f0cdc489`；第一父提交为冻结主线 `10f6bfa6410c7836d7d43e402a175d56ad9577c7`，第二父提交为源分支 `e563efae6eceac8275b7720196df73091ed81495`。合并树相对源分支仅增加合并记录并清除方案文档尾随空格，未再次改变产品代码。
+
+[master CI 41174648931](https://github.com/dede233/iterflow/actions/runs/41174648931)，attempt 1，精确匹配上述 merge SHA，八项全部 SUCCESS，无重跑或失败忽略。
+
+| 任务 | Job ID | 结果 |
+| --- | --- | --- |
+| backend | 124459592384 | PASS：416 passed / 1 skipped；PG 专项 78 passed / 0 skipped，迁移与类型检查通过 |
+| frontend | 124459592641 | PASS：342 tests，类型、构建、bundle 与依赖审计通过 |
+| docker_smoke | 124459592508 | PASS：隔离 Compose 初始化、健康与认证 |
+| s3 | 124459592484 | PASS：真实 S3-compatible round trip，覆盖后端全量中的可选跳过项 |
+| browser_smoke | 124459592541 | PASS：173 tests |
+| backup_restore | 124459592557 | PASS：一次性 runner 的数据库/附件备份恢复 |
+| mysql57 (standard) | 124459592458 | PASS：68 tests，实际 amd64 包主链、权限、重启、备份及恢复 |
+| mysql57 (portable) | 124459592501 | PASS：68 tests，OFF/OFF 与 767-byte 键验证、实际包及恢复 |
+
+本次记录为合并 CI 完成后的文档收口；文档收口提交同样运行全量 CI，最终提交 SHA 和对应 CI 链接在交付回复中提供，不以本表冒充其他 SHA 的结果。
+
+本任务临时 PostgreSQL、Redis、MySQL 容器及其临时凭据已清理；原 Preview 容器、既有停止的 MySQL proof 容器、master worktree 原有未跟踪 data/ 与验收文件未修改。未创建 tag/GitHub Release，未发布、部署、执行真实数据库 migration/GRANT/restore；只推送 origin 源分支和 master。

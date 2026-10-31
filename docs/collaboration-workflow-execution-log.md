@@ -201,3 +201,7 @@ CI 的 push 过滤只有 master、phase/**、fix/**，因此使用现有 workflo
 ## master 合并整合
 
 用户授权合并并推送 master；确认 master 为冻结的 10f6bfa。发现源分支与主线存在双数据库和旧逐人确认规则差异，用户明确选择新验收方案后继续整合。兼容取舍、迁移衔接、测试和远端结果集中记录于 `docs/collaboration-workflow-master-merge.md`，此处不预先宣告合并完成。
+
+### 主线合并完成
+
+按用户授权取消旧逐人开发确认门禁，并完成双数据库整合、历史数据兼容与回归修复。master 合并前确认 10f6bfa 无漂移；no-ff 合并并推送 `69c2c877cfee27b4142f03ea00559238f0cdc489`。其 [CI 41174648931](https://github.com/dede233/iterflow/actions/runs/41174648931) attempt 1 八项全部通过（原六项 + MySQL standard/portable）；完整 Job ID、测试计数和修复记录见 `docs/collaboration-workflow-master-merge.md`。本次文档收口仍验证其自身 CI；未发布、部署或操作真实数据库。

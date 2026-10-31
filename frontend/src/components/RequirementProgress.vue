@@ -19,7 +19,7 @@ const pending = ref<WorkflowAction['action'] | null>(null)
 const steps = ['DRAFT', 'CONFIRMED', 'DEVELOPING', 'TESTING', 'DONE', 'ONLINE']
 const roles = ['CONFIRM', 'DEVELOP', 'DEVELOP', 'ACCEPT', '', '']
 const designLabels = { NOT_REQUIRED: '不需要设计', PENDING: '未开始', IN_PROGRESS: '进行中', DONE: '已完成' }
-const actionLabels: Record<string, string> = { CONFIRM: '确认当前内容', DESIGN_PENDING: '启用 / 重新打开设计', DESIGN_START: '开始设计', DESIGN_DONE: '完成设计', DESIGN_CANCEL: '取消设计要求', LEGACY_MIGRATION: '历史数据迁入（未补造确认）' }
+const actionLabels: Record<string, string> = { CONFIRM: '确认当前内容', REQUEST_CHANGES: '要求补充说明', DESIGN_PENDING: '启用 / 重新打开设计', DESIGN_START: '开始设计', DESIGN_DONE: '完成设计', DESIGN_CANCEL: '取消设计要求', LEGACY_MIGRATION: '历史数据迁入（未补造确认）' }
 const identity = computed(() => `${auth.user?.id}:${auth.accessToken}:${auth.permissionCodes.join(',')}`)
 let sequence = 0
 async function load() {
@@ -29,6 +29,7 @@ async function load() {
   try {
     const [workflow, participants] = await Promise.all([getWorkflow(props.item.id), getParticipants(props.item.id)])
     if (request !== sequence) return
+    if (!Array.isArray(workflow.records) || !Array.isArray(participants.participants)) throw new Error('Invalid workflow response')
     flow.value = workflow; people.value = participants.participants
   } catch { if (request === sequence) failed.value = true }
 }
@@ -79,6 +80,7 @@ function recordLabel(action: string) { return actionLabels[action] || requiremen
         </li>
       </ol>
       <div v-if="canAct" class="progress-actions">
+        <el-button v-if="item.status === 'DRAFT' && canRole('CONFIRM')" @click="begin('REQUEST_CHANGES')">要求补充说明</el-button>
         <el-button v-if="flow.needs_confirmation && canRole('CONFIRM')" type="primary" @click="begin('CONFIRM')">确认当前内容</el-button>
         <el-button v-for="action in actions" :key="action.target" @click="emit('status', action)">{{ action.label }}</el-button>
         <el-button v-for="action in designActions" :key="action" @click="begin(action)">{{ actionLabels[action] }}</el-button>
@@ -86,7 +88,7 @@ function recordLabel(action: string) { return actionLabels[action] || requiremen
       <CollaborationPeople v-if="!readonly" kind="requirement" :id="item.id" :revision="item.revision" :editable="auth.hasPermission('rd.requirement.edit') && !['ONLINE', 'CANCELED'].includes(item.status)" @updated="emit('updated')" />
       <details class="progress-history"><summary>查看流转与确认记录（最近 {{ flow.records.length }} 条）</summary>
         <p v-if="!flow.records.length">尚无确认或流转记录。</p>
-        <article v-for="record in flow.records" :key="record.id"><strong>{{ recordLabel(record.action) }}</strong> · {{ record.actor_id ? `实际操作人 #${record.actor_id}` : '历史迁移' }} · {{ formatLocalDateTime(record.created_at) }}<p v-if="record.detail.reason">{{ record.detail.reason }}</p><details v-if="record.detail.description"><summary>当时确认的内容</summary><p class="multiline">{{ record.detail.description }}</p><p class="multiline">{{ record.detail.acceptance_criteria }}</p></details></article>
+        <article v-for="record in flow.records" :key="record.id"><strong>{{ recordLabel(record.action) }}</strong> · {{ record.actor_id ? `${record.detail.actor_name || '实际操作人'} #${record.actor_id}` : '历史迁移' }} · {{ formatLocalDateTime(record.created_at) }}<p v-if="record.detail.reason">{{ record.detail.reason }}</p><details v-if="record.detail.description"><summary>当时确认的内容</summary><p class="multiline">{{ record.detail.description }}</p><p class="multiline">{{ record.detail.acceptance_criteria }}</p></details></article>
       </details>
     </template>
     <p v-else>正在加载进度…</p>

@@ -193,6 +193,10 @@ class DictionaryItem(Base, AuditMixin):
 
 
 class Requirement(Base, AuditMixin):
+    @property
+    def current_handlers(self):
+        return getattr(self, "_current_handlers", [])
+
     __tablename__ = "rd_requirement"
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     requirement_no: Mapped[str] = mapped_column(String(32), unique=True, index=True)

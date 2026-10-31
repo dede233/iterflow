@@ -5182,6 +5182,12 @@ components:
           - type: string
           - type: 'null'
           title: 验收标准
+        participants:
+          items:
+            $ref: '#/components/schemas/ParticipantInput'
+          type: array
+          maxItems: 100
+          title: 环节人员
         requirement_id:
           anyOf:
           - type: integer
@@ -5251,20 +5257,18 @@ components:
           - type: 'null'
           title: 复现步骤
         recipient_ids:
-          anyOf:
-          - items:
-              type: integer
-            type: array
-            maxItems: 50
-            minItems: 1
-          - type: 'null'
-          title: 接收人编号
-          description: 新界面必填；旧写客户端省略时保留兼容，显式列表不能为空。
+          items:
+            type: integer
+          type: array
+          maxItems: 50
+          minItems: 1
+          title: 反馈接收人
       type: object
       required:
       - title
       - feedback_type
       - description
+      - recipient_ids
       title: FeedbackCreate
     FeedbackOut:
       properties:
@@ -6275,6 +6279,11 @@ components:
       title: RequirementCreate
     RequirementOut:
       properties:
+        current_handlers:
+          items:
+            $ref: '#/components/schemas/PersonOption'
+          type: array
+          title: 当前待处理人
         id:
           type: integer
           title: 需求 ID
@@ -7126,6 +7135,7 @@ components:
           type: string
           enum:
           - CONFIRM
+          - REQUEST_CHANGES
           - DESIGN_PENDING
           - DESIGN_START
           - DESIGN_DONE

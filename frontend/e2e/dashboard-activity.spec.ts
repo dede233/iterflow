@@ -1,3 +1,4 @@
+import { mockCollaboration } from './collaboration-fixture'
 import { expect, test, type Page } from '@playwright/test'
 import type { DashboardOverview } from '../src/types/dashboard'
 
@@ -20,6 +21,7 @@ const overview: DashboardOverview = {
 async function login(page: Page, feedbackOnly = false) {
   const requests: string[] = []
   await page.route('**/api/v1/**', async (route) => {
+    if (await mockCollaboration(route)) return
     const path = new URL(route.request().url()).pathname
     requests.push(path)
     if (path === '/api/v1/auth/login') return route.fulfill({ json: { access_token: 'activity-test', refresh_token: 'activity-refresh', token_type: 'bearer' } })

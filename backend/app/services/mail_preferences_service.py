@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.exceptions import AppError, ConflictError
 from app.models.entities import CollaborationEvent, MailPreference, User
+from app.repositories.user_repository import UserRepository
 from app.schemas.mail import MailMode, MailPreferencesOut
 from app.services.audit_service import AuditService
 
@@ -109,9 +110,13 @@ class MailPreferencesService:
             item.challenge_attempts += 1
             self.db.commit()
             raise AppError(42270, "验证码不正确", 422)
-        user.email = item.pending_email
-        user.revision += 1
-        user.updated_by = user.id
+        if not UserRepository(self.db).update_with_revision(
+            user.id,
+            item.challenge_user_revision,
+            {"email": item.pending_email, "updated_by": user.id},
+        ):
+            raise ConflictError("账号已修改, 请重新验证")
+        self.db.refresh(user)
         item.verified_at = datetime.now(UTC)
         item.verified_email = item.pending_email
         item.pending_email = None

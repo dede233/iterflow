@@ -9,7 +9,7 @@ from app.models.enums import (
     RequirementSource,
     RequirementStatus,
 )
-from app.schemas.collaboration import ParticipantInput, ParticipantsChange
+from app.schemas.collaboration import ParticipantInput, ParticipantsChange, PersonOption
 from app.schemas.common import PageResult
 
 
@@ -69,6 +69,7 @@ class RequirementAssigneeChange(BaseModel):
 
 
 class RequirementOut(BaseModel):
+    current_handlers: list[PersonOption] = Field(default_factory=list)
     model_config = ConfigDict(from_attributes=True)
     id: int
     requirement_no: str

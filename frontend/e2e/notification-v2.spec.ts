@@ -1,3 +1,4 @@
+import { mockCollaboration } from './collaboration-fixture'
 import { expect, test, type Page } from '@playwright/test'
 
 async function notifications(page: Page, count: number, permissions = ['rd.release.view']) {
@@ -6,7 +7,8 @@ async function notifications(page: Page, count: number, permissions = ['rd.relea
     localStorage.setItem('iterflow.access_token', 'notification-v2-access')
     localStorage.setItem('iterflow.refresh_token', 'notification-v2-refresh')
   })
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
+    if (await mockCollaboration(route)) return
     const path = new URL(route.request().url()).pathname
     const json = (body: unknown) => route.fulfill({ status: 200, json: body })
     if (path === '/api/v1/auth/me') return json({ id: 1, username: 'member', display_name: '普通成员', email: null, status: 'ACTIVE', revision: 1, must_change_password: false, data_scope: 'SELF', role_ids: [], permission_codes: permissions })

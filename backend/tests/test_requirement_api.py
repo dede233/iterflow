@@ -174,7 +174,17 @@ def _create_req(client, headers, **overrides) -> dict:
 
 
 def _create_feedback(client, headers, **overrides) -> dict:
-    body = {"title": "反馈标题", "feedback_type": "SYSTEM_ISSUE", "description": "反馈描述"}
+    body = {
+        "title": "反馈标题",
+        "feedback_type": "SYSTEM_ISSUE",
+        "description": "反馈描述",
+        "recipient_ids": [
+            p["id"]
+            for p in client.get(
+                "/api/v1/collaboration/people?kind=feedback", headers=headers
+            ).json()["items"]
+        ],
+    }
     body.update(overrides)
     r = client.post("/api/v1/feedbacks", headers=headers, json=body)
     assert r.status_code == 200, r.text

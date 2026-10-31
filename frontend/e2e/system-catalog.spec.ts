@@ -1,3 +1,4 @@
+import { mockCollaboration } from './collaboration-fixture'
 import { expect, test } from '@playwright/test'
 
 type CatalogItem = {
@@ -23,6 +24,7 @@ test('administrator configures a system and module for the feedback form', async
     localStorage.setItem('iterflow.refresh_token', 'catalog-test-refresh')
   })
   await page.route('**/api/v1/**', async (route) => {
+    if (await mockCollaboration(route)) return
     const { pathname } = new URL(route.request().url())
     if (pathname === '/api/v1/notifications/unread-count') return route.fulfill({ status: 200, json: { unread_count: 0 } })
     const method = route.request().method()

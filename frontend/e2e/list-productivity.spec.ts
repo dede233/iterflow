@@ -1,3 +1,4 @@
+import { mockCollaboration } from './collaboration-fixture'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 
 const configs = [
@@ -13,7 +14,8 @@ async function fixture(page: Page, config: typeof configs[number]) {
     localStorage.setItem('iterflow.access_token', 'list-productivity-access')
     localStorage.setItem('iterflow.refresh_token', 'list-productivity-refresh')
   })
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
+    if (await mockCollaboration(route)) return
     const url = new URL(route.request().url())
     const json = (body: unknown) => route.fulfill({ status: 200, json: body })
     if (url.pathname === '/api/v1/auth/me') return json({ id: 1, username: 'reader', display_name: '普通查看者', status: 'ACTIVE', revision: 1, must_change_password: false, data_scope: 'SELF', role_ids: [], permission_codes: [config.permission] })
@@ -56,7 +58,7 @@ for (const width of [375, 390, 768, 1280, 1440]) {
       const form = await filterForm(page, width, config)
       if (config.path === 'requirements') {
         await form.getByPlaceholder('编号 / 标题').fill(' hit ')
-        await selectStatus(page, form, '已确认')
+        await selectStatus(page, form, '待开发')
       } else if (config.path === 'versions') {
         await selectStatus(page, form, '已发布')
         await form.getByPlaceholder('开始日期').click()

@@ -408,3 +408,54 @@ def test_concurrent_batches_cannot_partially_attach(collaboration_api):
         relations = list(db.scalars(select(VersionRequirement)))
         assert len(relations) == 2
         assert len({r.version_id for r in relations}) == 1
+
+
+def test_required_recipients_current_handlers_and_clarification(collaboration_api):
+    client, headers, _engine = collaboration_api
+    assert (
+        client.post(
+            "/api/v1/feedbacks",
+            headers=headers[1],
+            json={"title": "新反馈", "description": "说明", "feedback_type": "OTHER"},
+        ).status_code
+        == 422
+    )
+    item = client.post(
+        "/api/v1/requirements",
+        headers=headers[1],
+        json={
+            "title": "待确认需求",
+            "description": "待补充",
+            "requirement_type": "FEATURE",
+            "participants": [{"user_id": 2, "role": "CONFIRM"}, {"user_id": 3, "role": "DEVELOP"}],
+        },
+    ).json()
+    assert item["current_handlers"] == [{"id": 2, "display_name": "人员2"}]
+    base = f"/api/v1/requirements/{item['id']}"
+    requested = client.post(
+        base + "/workflow",
+        headers=headers[2],
+        json={"revision": 1, "action": "REQUEST_CHANGES", "reason": "请补充验收范围"},
+    )
+    assert requested.status_code == 200, requested.text
+    assert requested.json()["records"][0]["detail"]["actor_name"] == "人员2"
+    assert client.get(base, headers=headers[1]).json()["status"] == "DRAFT"
+    assert (
+        client.get(
+            "/api/v1/requirements?participant_id=3&participant_role=DEVELOP", headers=headers[1]
+        ).json()["total"]
+        == 1
+    )
+    assert (
+        client.get(
+            "/api/v1/requirements?participant_id=3&participant_role=CONFIRM", headers=headers[1]
+        ).json()["total"]
+        == 0
+    )
+    confirmed = client.post(
+        base + "/workflow", headers=headers[2], json={"revision": 2, "action": "CONFIRM"}
+    )
+    assert confirmed.status_code == 200
+    assert client.get(base, headers=headers[1]).json()["current_handlers"] == [
+        {"id": 3, "display_name": "人员3"}
+    ]

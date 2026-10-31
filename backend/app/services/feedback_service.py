@@ -11,6 +11,7 @@ from app.models.entities import (
     FileObject,
     Requirement,
     RequirementFeedback,
+    RequirementParticipant,
 )
 from app.models.enums import (
     DataScope,
@@ -339,6 +340,12 @@ class FeedbackService:
                 updated_by=operator_id,
             )
             self.db.add(target)
+            self.db.flush()
+            CollaborationService(self.db).validate_people(
+                sorted({p.user_id for p in payload.participants}), "requirement", operator_id
+            )
+            for person in payload.participants:
+                self.db.add(RequirementParticipant(requirement_id=target.id, **person.model_dump()))
             self.db.flush()
         else:  # LINK_EXISTING
             requirement_id = payload.requirement_id

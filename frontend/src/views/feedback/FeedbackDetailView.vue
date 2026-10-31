@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import PeopleSelector from '@/components/PeopleSelector.vue'
+import type { Participant } from '@/api/collaboration'
 import CollaborationPeople from '@/components/CollaborationPeople.vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, type UploadRequestOptions } from 'element-plus'
@@ -100,6 +102,8 @@ const statusActions = computed<StatusAction[]>(() =>
 )
 
 // --- convert to requirement dialog ---
+const convertRoles = reactive<Record<Participant['role'], number[]>>({ CONFIRM: [], DESIGN: [], DEVELOP: [], ACCEPT: [] })
+const roleLabels = { CONFIRM: '需求确认人', DESIGN: '设计人员（可选）', DEVELOP: '开发人员', ACCEPT: '验收人员' }
 const convertDialog = ref(false)
 const convertSubmitting = ref(false)
 const convertForm = reactive({
@@ -114,6 +118,7 @@ const convertForm = reactive({
 
 function openConvert(): void {
   if (!item.value) return
+  Object.assign(convertRoles, { CONFIRM: [], DESIGN: [], DEVELOP: [], ACCEPT: [] })
   Object.assign(convertForm, {
     type: 'CREATE_NEW',
     requirement_title: item.value.title,
@@ -145,6 +150,7 @@ async function submitConvert(): Promise<void> {
   try {
     if (convertForm.type === 'LINK_EXISTING' && convertForm.requirement_id) await getRequirement(convertForm.requirement_id)
     const req = await convertFeedback(item.value.id, {
+      participants: convertForm.type === 'CREATE_NEW' ? Object.entries(convertRoles).flatMap(([role, ids]) => ids.map(user_id => ({ role: role as Participant['role'], user_id }))) : [],
       type: convertForm.type,
       revision: item.value.revision,
       requirement_title: convertForm.requirement_title.trim() || undefined,
@@ -358,7 +364,7 @@ onMounted(async () => {
   <section v-loading="loading" class="page">
     <ErrorState v-if="failed" title="反馈加载失败" description="请检查网络或确认反馈是否仍可访问。" retry-label="重新加载" @retry="load" />
     <template v-if="item">
-      <CollaborationPeople v-if="can('rd.feedback.view')" kind="feedback" :id="item.id" :revision="item.revision" :editable="canEdit" @updated="load" />
+
       <PageHeader :title="item.title" :eyebrow="item.feedback_no">
         <template #status>
           <StatusTag :status="item.status" :label="feedbackStatusLabel[item.status]" :type="feedbackStatusTagType(item.status)" />
@@ -378,6 +384,7 @@ onMounted(async () => {
         </el-button>
         </template>
       </PageHeader>
+      <CollaborationPeople v-if="can('rd.feedback.view')" kind="feedback" :id="item.id" :revision="item.revision" :editable="canEdit" @updated="load" />
 
       <div class="detail-grid">
       <SectionCard title="反馈详情" description="问题内容与复现信息" class="detail-main">
@@ -573,6 +580,7 @@ onMounted(async () => {
           <el-form-item label="验收标准">
             <el-input v-model="convertForm.acceptance_criteria" type="textarea" :rows="3" />
           </el-form-item>
+          <el-form-item v-for="(label, role) in roleLabels" :key="role" :label="label"><PeopleSelector v-model="convertRoles[role]" kind="requirement" :multiple="role === 'DESIGN' || role === 'DEVELOP'" /></el-form-item>
         </template>
         <el-form-item v-else label="目标需求" required>
           <ScopedObjectSelector v-model="convertForm.requirement_id" kind="requirement" :allowed="canLinkExisting" :active="convertDialog && convertForm.type === 'LINK_EXISTING'" :disabled="convertSubmitting" />

@@ -5,7 +5,7 @@ COPY requirements.lock ./
 RUN pip install --no-cache-dir --require-hashes -r requirements.lock
 COPY pyproject.toml ./
 COPY app ./app
-RUN pip install --no-cache-dir setuptools==84.0.0 \
+RUN pip install --no-cache-dir setuptools==84.1.0 \
     && pip install --no-cache-dir --no-build-isolation --no-deps . \
     && pip check \
     && groupadd --system iterflow \

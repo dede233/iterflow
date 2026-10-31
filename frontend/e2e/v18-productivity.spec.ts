@@ -1,3 +1,4 @@
+import { mockCollaboration } from './collaboration-fixture'
 import { expect, test, type Page } from '@playwright/test'
 const widths = [375, 390, 768, 1280, 1440]
 const permissions = ['rd.feedback.view', 'rd.feedback.convert', 'rd.feedback.edit', 'rd.requirement.view', 'rd.version.view', 'rd.version.edit', 'rd.version.publish', 'rd.release.view', 'sys.audit.view']
@@ -9,14 +10,15 @@ async function fixture(page: Page, readRequirement = true, unlinked = false) {
   const requests: { path: string; query: Record<string, string>; method: string; body: any }[] = []
   const unexpected: string[] = []
   await page.addInitScript(() => { localStorage.setItem('iterflow.access_token', 'v18-access'); localStorage.setItem('iterflow.refresh_token', 'v18-refresh') })
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
+    if (await mockCollaboration(route)) return
     const url = new URL(route.request().url()); const path = url.pathname.slice('/api/v1'.length); const query = Object.fromEntries(url.searchParams)
     requests.push({ path, query, method: route.request().method(), body: route.request().postDataJSON() })
     const json = (body: unknown, status = 200) => route.fulfill({ status, json: body })
     if (path === '/auth/me') return json({ id: 1, username: 'scope-reader', display_name: '范围查看者', status: 'ACTIVE', revision: 1, must_change_password: false, data_scope: 'SELF', role_ids: [], permission_codes: permissions.filter(p => readRequirement || p !== 'rd.requirement.view') })
     if (path === '/notifications/unread-count') return json({ unread_count: 0 })
     if (path === '/feedbacks') return json({ items: query.keyword === 'duplicate' ? [{ ...feedback, id: 2, feedback_no: 'FB-2', title: '重复目标' }] : [feedback], total: 41, page: Number(query.page), page_size: 20 })
-    if (path === '/requirements') return json({ items: query.keyword === 'empty' ? [] : [requirement(query.page === '2' ? 8 : 7)], total: query.keyword === 'empty' ? 0 : 41, page: Number(query.page), page_size: 20 })
+    if (path === '/requirements') return json({ items: query.keyword === 'empty' ? [] : [{ ...requirement(query.page === '2' ? 8 : 7), current_version_id: null }], total: query.keyword === 'empty' ? 0 : 41, page: Number(query.page), page_size: 20 })
     if (path === '/versions') return json({ items: [version(1), version(3)], total: 41, page: Number(query.page), page_size: 20 })
     if (path === '/releases') return json({ items: [release], total: 41, page: Number(query.page), page_size: 20 })
     if (path === '/audits') return json({ items: [], total: 41, page: Number(query.page), size: 20 })
@@ -30,6 +32,7 @@ async function fixture(page: Page, readRequirement = true, unlinked = false) {
       if (route.request().method() === 'POST') return json(version(1))
       return json({ version_id: Number(path.split('/')[2]), items: [{ ...requirement(7), revision: 1 }, requirement(8, 'DONE', 'P2')], stats: { total: 2, completed: 1, completion_rate: 0.5, by_status: { CONFIRMED: 1, DONE: 1 } } })
     }
+    if (path === '/versions/1/requirements/batch') return json(version(1))
     if (path === '/versions/3/requirements/move') return json(version(3))
     if (path === '/feedbacks/1/convert') return json(requirement(7))
     if (path === '/feedbacks/1/status') return json({ ...feedback, status: 'DUPLICATE', duplicate_of_id: 2 })
@@ -66,18 +69,22 @@ for (const width of widths) {
   test(`V1.8 scoped selector pagination, cancel, empty, latest CAS ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1000 }); const state = await fixture(page)
     await page.goto('/#/versions/1'); await page.getByRole('button', { name: '添加需求', exact: true }).click()
-    const parent = page.getByRole('dialog', { name: '添加需求', exact: true }); await parent.getByRole('button', { name: '选择需求', exact: true }).click()
-    let selector = page.getByRole('dialog', { name: '选择需求', exact: true }); await expect(selector.locator('.selector-option')).toHaveCount(1)
-    await expect(selector.locator('.selector-option')).toBeVisible()
-    if ([375, 1440].includes(width)) await page.screenshot({ path: `/tmp/v18-selector-${width}.png`, fullPage: true, animations: 'disabled' })
-    await selector.locator('.el-pagination .number').filter({ hasText: /^2$/ }).click(); await expect(selector.locator('.selector-option')).toContainText('REQ-8')
-    await selector.getByRole('textbox', { name: '搜索需求' }).fill('empty'); await expect(selector.getByText('暂无可见结果')).toBeVisible()
-    await selector.getByRole('button', { name: '取消', exact: true }).click(); await expect(selector).not.toBeVisible()
-    await parent.getByRole('button', { name: '选择需求', exact: true }).click(); selector = page.getByRole('dialog', { name: '选择需求', exact: true })
-    await expect(selector.locator('.selector-option')).toContainText('REQ-7'); await selector.locator('.selector-option').focus(); await page.keyboard.press('Enter')
-    await expect(selector).not.toBeVisible(); await parent.getByRole('button', { name: '添加', exact: true }).click()
-    await expect.poll(() => state.requests.find(r => r.path === '/versions/1/requirements' && r.method === 'POST')?.body).toEqual({ requirement_id: 7, revision: 13, version_revision: 3 })
-    const writeIndex = state.requests.findIndex(r => r.path === '/versions/1/requirements' && r.method === 'POST'); expect(state.requests[writeIndex - 1]?.path).toBe('/requirements/7')
+    let parent = page.getByRole('dialog', { name: '批量添加需求', exact: true })
+    await expect(parent.getByRole('checkbox')).toHaveCount(1)
+    await parent.locator('.el-checkbox').click()
+    await parent.locator('.el-pagination .number').filter({ hasText: /^2$/ }).click()
+    await expect(parent.locator('.bulk-list')).toContainText('REQ-8')
+    await expect(parent).toContainText('已选 1 / 50')
+    await parent.getByPlaceholder('编号 / 标题').fill('empty')
+    await parent.getByRole('button', { name: '搜索', exact: true }).click()
+    await expect(parent.getByRole('checkbox')).toHaveCount(0)
+    await parent.getByRole('button', { name: '取消', exact: true }).click()
+    await expect(parent).not.toBeVisible()
+    await page.getByRole('button', { name: '添加需求', exact: true }).click()
+    parent = page.getByRole('dialog', { name: '批量添加需求', exact: true })
+    await parent.locator('.el-checkbox').click()
+    await parent.getByRole('button', { name: '添加 1 条需求', exact: true }).click()
+    await expect.poll(() => state.requests.find(r => r.path === '/versions/1/requirements/batch')?.body).toMatchObject({ items: [{ requirement_id: 7, revision: 13 }], version_revision: 3, request_id: expect.any(String) })
     await expect(parent).not.toBeVisible()
     const row = width < 768 ? page.locator('.req-card').filter({ hasText: 'REQ-7' }) : page.locator('.el-table__row').filter({ hasText: 'REQ-7' })
     await row.getByText('迁移', { exact: true }).click()
@@ -104,7 +111,7 @@ for (const width of widths) {
 }
 const queryCases = [
   { path: 'feedbacks', api: '/feedbacks', query: 'page=2&status=ACCEPTED', expected: { page: '2', page_size: '20', status: 'ACCEPTED' } },
-  { path: 'requirements', api: '/requirements', query: 'page=2&priority=P0&source=DIRECT&owner_id=1', expected: { page: '2', page_size: '20', priority: 'P0', source: 'DIRECT', owner_id: '1' } },
+  { path: 'requirements', api: '/requirements', query: 'page=2&priority=P0&source=DIRECT&participant_id=1', expected: { page: '2', page_size: '20', priority: 'P0', source: 'DIRECT', participant_id: '1' } },
   { path: 'versions', api: '/versions', query: 'page=2&status=PLANNING&owner_id=1', expected: { page: '2', page_size: '20', status: 'PLANNING', owner_id: '1' } },
   { path: 'releases', api: '/releases', query: 'page=2&version_id=1', expected: { page: '2', page_size: '20', version_id: '1' } },
   { path: 'admin/audits', api: '/audits', query: 'page=2&entity_type=FEEDBACK&operator_id=1', expected: { page: '2', size: '20', entity_type: 'FEEDBACK', operator_id: '1' } },
@@ -174,18 +181,17 @@ test('V1.8 selector failure/retry and local worklist filter intersections remain
   await expect(worklist).toContainText('当前筛选 0 / 2 项可见需求')
   await worklist.getByRole('button', { name: '重置清单' }).click()
   await expect(worklist).toContainText('当前筛选 2 / 2 项可见需求')
-  await worklist.getByRole('button', { name: '已完成 1', exact: true }).click()
+  await worklist.getByRole('button', { name: '待发布 1', exact: true }).click()
   await expect(worklist.locator('.req-card')).toHaveCount(1)
   expect(state.requests.filter(r => r.path.endsWith('/requirements') && r.path.startsWith('/versions')).length).toBe(1)
   let failures = 0
   await page.route('**/api/v1/requirements?*', route => { failures++; return failures === 1 ? route.fulfill({ status: 500, json: { message: 'test failure' } }) : route.fallback() })
   await page.getByRole('button', { name: '添加需求', exact: true }).click()
-  const parent = page.getByRole('dialog', { name: '添加需求', exact: true }); await parent.getByRole('button', { name: '选择需求' }).click()
-  const selector = page.getByRole('dialog', { name: '选择需求', exact: true })
-  await expect(selector.getByRole('alert')).toContainText('搜索失败，请重试')
-  await selector.getByRole('button', { name: '重试', exact: true }).click(); await expect(selector.locator('.selector-option')).toHaveCount(1)
-  await page.keyboard.press('Escape'); await expect(selector).not.toBeVisible(); await expect(parent).toBeVisible()
-  await parent.getByRole('button', { name: '取消', exact: true }).click(); await noOverflow(page, 390)
+  const selector = page.getByRole('dialog', { name: '批量添加需求', exact: true })
+  await expect(selector).toContainText('列表加载失败')
+  await selector.getByRole('button', { name: '重试', exact: true }).click(); await expect(selector.locator('.el-checkbox')).toHaveCount(1)
+  await selector.getByRole('button', { name: '取消', exact: true }).click()
+  await expect(selector).not.toBeVisible(); await noOverflow(page, 390)
   expect(state.unexpected).toEqual([])
 })
 

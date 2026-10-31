@@ -99,3 +99,61 @@ Fresh Self-Review（同一 Agent 自查）：确认普通状态入口不能绕�
 实际验证：后端全量 388 passed / 1 skipped（S3 留待最终门禁）；最终事件操作者修订后版本事务/并发/邮件专项 35 passed。本地 TCP SMTP 收件箱验证真实协议投递、验证码、站内保留、重复消费、地址改变、移除接收人、账号停用、超时结果不确定、稳定 Message-ID、永久失败/手动重试、重试上限和回滚。前端 52 文件 / 335 tests passed；类型/build/bundle、Ruff/Mypy、独立新空库 0001→0007 upgrade 与 Alembic check 均通过。
 
 Fresh Self-Review：不记录 SMTP 原始异常、凭据或验证码；验证码有过期/频率/尝试限制；发信前重新授权；重复请求不自动重放。SMTP 超时仍可能重复，文档明确不保证严格一次投递。旧事件在升级时标记已处理，不补发邮件。无阶段阻断。正式 SMTP、真实地址和站点配置尚未测试，待后续部署授权；继续阶段 6 最终集成、旧数据演练与门禁。
+
+
+## 阶段 6 最终集成、兼容与本地验收
+
+2026-10-31 完成。本阶段按用户授权自主推进，只使用一次性测试库和测试容器；没有部署到 Preview/Production，没有连接真实数据库，没有 push、merge、tag 或 GitHub Release。
+
+### 集成补齐
+
+- 新反馈 API 与界面统一要求至少一位接收人；阶段 2 的临时旧客户端省略兼容已结束，缺少字段返回 422。历史反馈仍允许无分工。
+- 反馈转新需求可以同时配置确认/设计/开发/验收人员，角色校验和创建仍在同一事务。关联已有需求不改写其分工。
+- 待确认支持要求补充说明，意见与实际操作者留痕；列表补充当前待处理人，继续取消总负责人输入。
+- 邮箱确认更新用户采用 revision CAS；管理员修改邮箱彻底清除原验证与挑战，改回旧地址也须重新验证。验收通过后给关联版本负责人产生待发布邮件待办。
+- 备份/恢复脚本将 notification-worker 纳入停写、失败停机和恢复范围。兼容映射、升级顺序、回退限制与真实环境待验项记录于 `docs/collaboration-workflow-upgrade.md`。
+- 前端更新到经审计的兼容依赖，Vite 6.4.5、vue-tsc 3.3.14、Vitest 4.1.12，并锁定有修复的传递依赖；后端镜像 setuptools 升至 84.1.0。运行时 Python requirements.lock 未改动。
+
+主要修改文件：开发 OpenAPI/生成类型/中文文档；feedback/workflow/requirement schemas 和 services、需求 repository、邮件与用户管理 service；反馈详情/需求列表/进度组件；后端协作、邮件、旧数据迁移测试；浏览器协作夹具及主链/筛选/个人中心回归；Dockerfile、前端 lockfile、备份恢复脚本和升级说明。
+
+### 最终结果
+
+| 门禁 | 实际结果 |
+| --- | --- |
+| 后端全量，DeprecationWarning 作为错误 | **396 passed，0 skipped**，包含 PostgreSQL 与真实 S3 往返 |
+| PostgreSQL 专项 | 独立运行 56 passed / 0 skipped；新增邮箱变更测试后全量包含全部 **57** 个 PG 用例，另邮件/用户专项 8 passed |
+| 前端单测 | **52 文件、335 passed** |
+| 浏览器拦截 API 回归 | 最终单独全量 **164 passed**，五视口及 PageHeader 平板断点、抽屉/弹窗、筛选、分页、多选、失败重试、冲突与权限 |
+| 真实生产构建浏览器 | **2 个主链用例通过**，真实 PostgreSQL/Redis/Local Storage、独立账号及受限角色；15 个页面 × 五视口检查 |
+| 旧数据迁移 | PLANNED、DONE、ONLINE、PAUSED、DRAFT 五种历史场景通过；关系/owner 保留、无虚假确认、无补发、重复 upgrade 无重复迁入记录、拒绝破坏性 downgrade |
+| Alembic / 契约 | 新空库 0001→0007；最终 alembic check 无差异，runtime parity 6 passed，历史契约摘要冻结校验通过 |
+| 静态与构建 | Ruff check/format、Mypy 104 文件、compileall、API types、vue-tsc、Vite 和 bundle 通过；最大 JS chunk 274.1 KiB |
+| 依赖审计 | npm 全量/生产零漏洞；Python 开发环境/生产锁零已知漏洞，本地 iterflow-api 包正常显示非 PyPI 跳过 |
+| Docker | API/Web 镜像构建、全新测试 volume 迁移/seed、健康/ready/Web/登录、代理审计 IP 通过；worker 正常运行 |
+| S3 | 隔离 SeaweedFS 4.22 真正上传/读取/下载/删除通过 |
+| SMTP | 本地 TCP SMTP 测试收件箱；验证、偏好、去重、撤权、邮箱变化、超时不确定、永久失败、重试边界通过；无真实发信 |
+| 备份恢复 | 数据库单独备份、数据库+附件备份、校验、故意破坏测试数据后恢复、额外表清除、附件 SHA256、登录和 ready 全通过 |
+| 重启持久性 | 恢复后单独重启 worker；Release=1、ONLINE requirement=1、未处理事件=0、投递记录=106、已发送站内记录=52，前后一致 |
+| 工作区检查 | git diff --check、修改脚本 bash -n 通过 |
+
+真实浏览器主链包含初始密码修改、受限账号提交反馈、单人受理与转需求、人员分工、两人编辑 409、明确重新加载、版本批量添加、确认/开发/验收、发布前并发变更阻断、重新验收后成功发布、Release、Requirement/Feedback ONLINE、提交人站内通知、审计、SELF 数据范围及各视口。最终浏览器覆盖由 164 个拦截 API 用例和 2 个真实后端用例共同组成，不把拦截数据测试当作真实端到端。
+
+### 测试环境与可追溯日志
+
+测试容器使用 Colima：`iterflow-workflow-test-db`（32768）、`iterflow-workflow-test-redis`（32769）、`iterflow-workflow-test-s3`（34784）；最终数据库为独立新建的 `iterflow_workflow_final`。Docker 演练使用 `/tmp/iterflow-workflow-smoke` 独立副本与同名 Compose project，容器名、volume、端口均与原环境隔离（Web 34781/API 34780/PG 34782/Redis 34783）。SMTP 默认关闭；协议测试仅使用进程内本地测试服务器。
+
+本机详细日志：`/tmp/iterflow-final-backend2.log`、`/tmp/iterflow-final-postgres.log`、`/tmp/iterflow-mail-invalidation.log`、`/tmp/iterflow-final-frontend.log`、`/tmp/iterflow-final-schema-check.log`、`/tmp/iterflow-final-mock-green.log`、`/tmp/iterflow-final-all-browser.log`（含真实主链成功记录和初次组合运行失败）、`/tmp/iterflow-final-smoke2.log`、`/tmp/iterflow-final-backup-drill.log`、`/tmp/iterflow-final-pip-audit.log`、`/tmp/iterflow-final-npm-audit.log`、`/tmp/iterflow-worker-before.log`、`/tmp/iterflow-worker-after.log`。日志是本机临时验收证据，不含真实 SMTP 凭据。
+
+### 失败与修复记录
+
+- Docker 首次构建因隔离容器 DNS 失败，临时 Compose 副本加入 build extra_hosts 后成功；未修改正式部署网络，也未重启共享 Docker。S3 首次 bind mount 因 Colima 无法读取宿主临时文件失败，改为向专用测试容器 docker cp 配置后通过。
+- 原依赖审计暴露旧版本问题；npm 10 更新依赖时触发解析器错误，使用 npm 11 在规范化临时路径解析 lockfile，再用项目 npm ci 安装成功并审计归零。运行时安装仍可使用正常 npm ci；Docker 构建已验证。
+- 旧浏览器用例仍使用“确认/已确认/已完成”和单选弹窗，已按新语义更新。Element Plus 多选框的隐藏 input 不适合直接 check，改为点击用户可见 label；接收人选择点击可见 select wrapper。没有使用 force click 绕过真实交互。
+- 个人中心旧测试未拦截新增邮件设置接口，访问真实测试 API 时出现认证重定向，补齐夹具后 2 项通过。
+- 初次组合浏览器运行中，真实主链已通过后启动恢复演练，导致尚在运行的部分静态页面用例遇到服务停机；保留该失败日志。最终将 164 项完整页面回归放在独立 Vite 服务重新运行，全部通过，与真实后端主链的 2 项成功结果分别记账。没有将有失败的组合日志宣称为全绿。
+
+### Fresh Self-Review 与交付边界
+
+同一执行 Agent 重新检查契约、差异、权限、事务、锁顺序、CAS、历史语义、通知资格与备份停写，不称为独立评审。修复了邮箱改回旧地址恢复验证资格的问题以及待发布邮件待办遗漏。未发现本轮范围内未解决的阻断或规格冲突。
+
+阶段 0–6 的本地实现和验收完成。已发布契约/标签/Release 未改，真实数据库和正式 SMTP 未操作。远端六项 CI 未触发，不能把本地对应门禁称为远端 CI PASS；正式合并、版本号、发布与部署仍不在本轮操作范围。真实数据规模迁移耗时和正式邮件连通性保留到目标环境授权验收。

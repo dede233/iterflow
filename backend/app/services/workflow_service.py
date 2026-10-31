@@ -55,6 +55,7 @@ class WorkflowService:
         return item.legacy_completed or item.confirmed_revision == item.content_revision
 
     def record(self, item: Requirement, action: str, actor_id: int, detail: dict):
+        actor = self.db.get(User, actor_id)
         self.db.add(
             RequirementStep(
                 requirement_id=item.id,
@@ -62,6 +63,7 @@ class WorkflowService:
                 actor_id=actor_id,
                 detail={
                     "content_revision": item.content_revision,
+                    "actor_name": actor.display_name if actor else None,
                     "description": item.description,
                     "acceptance_criteria": item.acceptance_criteria,
                     "participants": [
@@ -133,7 +135,11 @@ class WorkflowService:
         if item.status in {"ONLINE", "CANCELED"}:
             raise AppError(40961, "终态需求不能修改流程", 409)
         values: dict[str, Any] = {}
-        if payload.action == "CONFIRM":
+        if payload.action == "REQUEST_CHANGES":
+            if item.status != "DRAFT" or not payload.reason or not payload.reason.strip():
+                raise AppError(40961, "仅待确认阶段可要求补充, 请填写意见", 409)
+            self.actor(item, "CONFIRM", actor_id, payload.reason)
+        elif payload.action == "CONFIRM":
             self.actor(item, "CONFIRM", actor_id, payload.reason)
             if item.confirmed_revision == item.content_revision:
                 raise AppError(40961, "当前内容已确认", 409)

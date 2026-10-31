@@ -1,3 +1,4 @@
+import { mockCollaboration } from './collaboration-fixture'
 import { expect, test } from '@playwright/test'
 test.use({ timezoneId: 'America/New_York' })
 for (const width of [375, 390, 768, 1280, 1440]) {
@@ -5,7 +6,8 @@ for (const width of [375, 390, 768, 1280, 1440]) {
     await page.setViewportSize({ width, height: 900 })
     const requests: Record<string, string>[] = []
     await page.addInitScript(() => { localStorage.setItem('iterflow.access_token', 'release-dates'); localStorage.setItem('iterflow.refresh_token', 'release-dates-refresh') })
-    await page.route('**/api/v1/**', route => {
+    await page.route('**/api/v1/**', async (route) => {
+    if (await mockCollaboration(route)) return
       const url = new URL(route.request().url())
       const json = (body: unknown) => route.fulfill({ json: body })
       if (url.pathname.endsWith('/auth/me')) return json({ id: 1, username: 'reader', display_name: '查看者', status: 'ACTIVE', revision: 1, must_change_password: false, data_scope: 'SELF', role_ids: [], permission_codes: ['rd.release.view'] })

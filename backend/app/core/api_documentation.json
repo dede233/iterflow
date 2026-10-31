@@ -876,6 +876,10 @@
             {}
           ]
         },
+        "participants": {
+          "title": "环节人员",
+          "items": {}
+        },
         "requirement_id": {
           "title": "需求 ID",
           "anyOf": [
@@ -940,14 +944,8 @@
           ]
         },
         "recipient_ids": {
-          "title": "接收人编号",
-          "description": "新界面必填；旧写客户端省略时保留兼容，显式列表不能为空。",
-          "anyOf": [
-            {
-              "items": {}
-            },
-            {}
-          ]
+          "title": "反馈接收人",
+          "items": {}
         }
       }
     },
@@ -1758,6 +1756,10 @@
     "RequirementOut": {
       "title": "RequirementOut",
       "properties": {
+        "current_handlers": {
+          "title": "当前待处理人",
+          "items": {}
+        },
         "id": {
           "title": "需求 ID"
         },

@@ -200,6 +200,12 @@ def feedback_api(tmp_path: Path) -> Iterator[FeedbackFixture]:
 
 def _create(client: TestClient, headers: dict[str, str], **overrides) -> dict:
     body = {
+        "recipient_ids": [
+            p["id"]
+            for p in client.get(
+                "/api/v1/collaboration/people?kind=feedback", headers=headers
+            ).json()["items"]
+        ],
         "title": "初始反馈标题",
         "feedback_type": "SYSTEM_ISSUE",
         "urgency": "NORMAL",
@@ -674,6 +680,7 @@ def test_system_module_relation_validation(feedback_api):
             json={
                 "title": "标题",
                 "feedback_type": "OTHER",
+                "recipient_ids": [ids["cs"]],
                 "description": "描述",
                 "module_id": ids["mod_a1"],
             },
@@ -688,6 +695,7 @@ def test_system_module_relation_validation(feedback_api):
             json={
                 "title": "标题",
                 "feedback_type": "OTHER",
+                "recipient_ids": [ids["cs"]],
                 "description": "描述",
                 "system_id": ids["sys_a"],
                 "module_id": ids["mod_b1"],
@@ -703,6 +711,7 @@ def test_system_module_relation_validation(feedback_api):
             json={
                 "title": "标题",
                 "feedback_type": "OTHER",
+                "recipient_ids": [ids["cs"]],
                 "description": "描述",
                 "system_id": ids["sys_off"],
             },
@@ -717,6 +726,7 @@ def test_system_module_relation_validation(feedback_api):
             json={
                 "title": "标题",
                 "feedback_type": "OTHER",
+                "recipient_ids": [ids["cs"]],
                 "description": "描述",
                 "system_id": ids["sys_a"],
                 "module_id": ids["mod_a_off"],
@@ -731,6 +741,7 @@ def test_system_module_relation_validation(feedback_api):
         json={
             "title": "标题",
             "feedback_type": "OTHER",
+            "recipient_ids": [ids["cs"]],
             "description": "描述",
             "system_id": ids["sys_a"],
             "module_id": ids["mod_a1"],
@@ -814,7 +825,7 @@ def test_audit_records_create_update_and_status_change(feedback_api):
         .order_by(OperationLog.id)
     ).all()
     actions = [log.action for log in logs]
-    assert actions == ["CREATE", "UPDATE", "STATUS_CHANGE"]
+    assert actions == ["RECIPIENTS_CHANGE", "CREATE", "UPDATE", "STATUS_CHANGE"]
 
     status_log = logs[-1]
     # NEW -> CLOSED direct: the audit before-value must be the pre-update status.

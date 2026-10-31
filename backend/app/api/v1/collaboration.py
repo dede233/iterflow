@@ -54,7 +54,11 @@ def people(
     db: Session = Depends(get_db),
     user: User = Depends(
         require_any_permission(
-            "rd.feedback.create", "rd.feedback.edit", "rd.requirement.create", "rd.requirement.edit"
+            "rd.feedback.create",
+            "rd.feedback.edit",
+            "rd.feedback.convert",
+            "rd.requirement.create",
+            "rd.requirement.edit",
         )
     ),
 ):
@@ -71,7 +75,9 @@ def people(
         from app.repositories.user_repository import UserRepository
 
         codes = UserRepository(db).permission_codes(user.id)
-        if not codes.intersection({"*", "rd.requirement.create", "rd.requirement.edit"}):
+        if not codes.intersection(
+            {"*", "rd.requirement.create", "rd.requirement.edit", "rd.feedback.convert"}
+        ):
             raise PermissionDenied()
     return CollaborationService(db).people(kind, submitter_id, keyword, page, page_size)
 

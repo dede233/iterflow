@@ -150,6 +150,7 @@ def test_full_v1_business_lifecycle_over_http_and_postgresql(
         json={
             "title": "Phase 8.2 real HTTP feedback",
             "feedback_type": "NEW_FEATURE",
+            "recipient_ids": [user_id],
             "urgency": "NORMAL",
             "description": "Exercise the complete production business workflow.",
         },

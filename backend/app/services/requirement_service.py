@@ -111,6 +111,7 @@ class RequirementService:
         collaboration.requirement_event(item, "CREATED", operator_id)
         self.db.commit()
         self.db.refresh(item)
+        self.repo.populate_handlers([item])
         return item
 
     def update(
@@ -157,6 +158,7 @@ class RequirementService:
         self.db.commit()
         updated = self.repo.get(requirement_id)
         assert updated is not None
+        self.repo.populate_handlers([updated])
         return updated
 
     def change_status(
@@ -232,6 +234,7 @@ class RequirementService:
         self.db.commit()
         updated = self.repo.get(requirement_id)
         assert updated is not None
+        self.repo.populate_handlers([updated])
         return updated
 
     # NOTE: moving a requirement between versions now lives in VersionService

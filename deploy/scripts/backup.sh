@@ -20,11 +20,11 @@ if [[ "$MODE" != "local" ]]; then
 fi
 
 mkdir -m 700 "$BACKUP_DIR"
-restart_services() { "${COMPOSE[@]}" up -d api web; }
+restart_services() { "${COMPOSE[@]}" up -d api web notification-worker; }
 trap restart_services EXIT
 
 # Stop both HTTP entry points before taking separately timed database and file snapshots.
-"${COMPOSE[@]}" stop web api
+"${COMPOSE[@]}" stop web api notification-worker
 "${COMPOSE[@]}" exec -T db pg_dump -U iterflow -d iterflow -Fc > "$BACKUP_DIR/database.dump"
 "${COMPOSE[@]}" run -T --rm --no-deps api tar -C /app/data/uploads -cf - . > "$BACKUP_DIR/uploads.tar"
 REVISION="$("${COMPOSE[@]}" exec -T db psql -U iterflow -d iterflow -tAc 'SELECT version_num FROM alembic_version')"

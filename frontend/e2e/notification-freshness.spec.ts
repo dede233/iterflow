@@ -1,3 +1,4 @@
+import { mockCollaboration } from './collaboration-fixture'
 import { expect, test } from '@playwright/test'
 for (const width of [375, 390, 768, 1280, 1440]) {
   test(`badge refreshes on resume with cooldown at ${width}px`, async ({ page }) => {
@@ -7,7 +8,8 @@ for (const width of [375, 390, 768, 1280, 1440]) {
     let requests = 0
     let count = 3
     await page.addInitScript(() => { localStorage.setItem('iterflow.access_token', 'freshness'); localStorage.setItem('iterflow.refresh_token', 'freshness-refresh') })
-    await page.route('**/api/v1/**', route => {
+    await page.route('**/api/v1/**', async (route) => {
+    if (await mockCollaboration(route)) return
       const path = new URL(route.request().url()).pathname
       const json = (body: unknown) => route.fulfill({ json: body })
       if (path.endsWith('/auth/me')) return json({ id: 1, username: 'reader', display_name: '查看者', email: null, status: 'ACTIVE', revision: 1, must_change_password: false, data_scope: 'SELF', role_ids: [], permission_codes: [] })

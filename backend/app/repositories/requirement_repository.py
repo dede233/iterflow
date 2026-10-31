@@ -1,7 +1,7 @@
 from sqlalchemy import ColumnElement, func, or_, select
 from sqlalchemy.orm import Session
 
-from app.models.entities import Requirement, RequirementParticipant
+from app.models.entities import Requirement, RequirementParticipant, User
 from app.models.enums import DataScope, Priority, RequirementSource, RequirementStatus
 from app.repositories.base import BaseRepository
 
@@ -26,7 +26,10 @@ class RequirementRepository(BaseRepository[Requirement]):
         stmt = select(Requirement).where(Requirement.id == entity_id)
         if data_scope is not DataScope.ALL:
             stmt = stmt.where(self.self_criterion(user_id))
-        return self.db.scalar(stmt)
+        item = self.db.scalar(stmt)
+        if item:
+            self.populate_handlers([item])
+        return item
 
     def list_scoped(
         self,
@@ -85,4 +88,48 @@ class RequirementRepository(BaseRepository[Requirement]):
                 .limit(page_size)
             ).all()
         )
+        self.populate_handlers(items)
         return items, total
+
+    def populate_handlers(self, items: list[Requirement]) -> None:
+        grouped: dict[int, list] = {}
+        if not items:
+            return
+        for person, user in self.db.execute(
+            select(RequirementParticipant, User)
+            .join(User)
+            .where(
+                RequirementParticipant.requirement_id.in_([r.id for r in items]),
+                RequirementParticipant.active.is_(True),
+            )
+        ):
+            grouped.setdefault(person.requirement_id, []).append((person, user))
+        for item in items:
+            stage = item.paused_from if item.status == "PAUSED" else item.status
+            role = {
+                "DRAFT": "CONFIRM",
+                "CONFIRMED": "DEVELOP",
+                "DEVELOPING": "DEVELOP",
+                "TESTING": "ACCEPT",
+            }.get(stage or "")
+            if (
+                item.status not in {"ONLINE", "CANCELED"}
+                and not item.legacy_completed
+                and item.confirmed_revision != item.content_revision
+            ):
+                role = "CONFIRM"
+            roles = {role}
+            if stage in {"CONFIRMED", "DEVELOPING"} and item.design_status in {
+                "PENDING",
+                "IN_PROGRESS",
+            }:
+                roles.add("DESIGN")
+            names = {
+                u.id: {
+                    "id": u.id,
+                    "display_name": u.display_name + ("(已停用)" if u.status != "ACTIVE" else ""),
+                }
+                for p, u in grouped.get(item.id, [])
+                if p.role in roles
+            }
+            item.__dict__["_current_handlers"] = list(names.values())

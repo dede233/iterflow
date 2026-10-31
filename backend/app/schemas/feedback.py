@@ -11,6 +11,7 @@ from app.models.enums import (
     ManualFeedbackStatus,
     Priority,
 )
+from app.schemas.collaboration import ParticipantInput, ParticipantsChange
 from app.schemas.common import PageResult
 
 
@@ -24,7 +25,7 @@ class FeedbackCreate(BaseModel):
     expected_result: str | None = None
     actual_result: str | None = None
     reproduce_steps: str | None = None
-    recipient_ids: list[int] | None = Field(default=None, min_length=1, max_length=50)
+    recipient_ids: list[int] = Field(min_length=1, max_length=50)
 
 
 class FeedbackUpdate(BaseModel):
@@ -101,11 +102,15 @@ class FeedbackConvertRequest(BaseModel):
     priority: Priority = Priority.P2
     description: str | None = Field(default=None, min_length=2)
     acceptance_criteria: str | None = None
+    participants: list[ParticipantInput] = Field(default_factory=list, max_length=100)
     # LINK_EXISTING field
     requirement_id: int | None = None
 
     @model_validator(mode="after")
     def check_mode_fields(self) -> Self:
+        ParticipantsChange(revision=1, participants=self.participants)
+        if self.type is FeedbackConvertType.LINK_EXISTING and self.participants:
+            raise ValueError("关联已有需求不能覆盖环节人员")
         if self.type is FeedbackConvertType.CREATE_NEW:
             missing = [
                 name

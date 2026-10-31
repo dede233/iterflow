@@ -24,11 +24,12 @@ change="$(curl --fail --silent --show-error -H 'Content-Type: application/json' 
   "$BASE/auth/change-password")"
 token="$(jq -r '.access_token' <<< "$change")"
 
+actor_id="$(curl --fail --silent -H "Authorization: Bearer $token" "$BASE/auth/me" | jq -r '.id')"
 stage="feedback creation"
 title="restore-drill-$(date +%s)"
 feedback="$(curl --fail --silent --show-error -H 'Content-Type: application/json' \
   -H "Authorization: Bearer $token" \
-  -d "$(jq -nc --arg t "$title" '{title:$t,feedback_type:"SYSTEM_ISSUE",description:"Local backup restore drill"}')" \
+  -d "$(jq -nc --arg t "$title" --argjson uid "$actor_id" '{recipient_ids:[$uid],title:$t,feedback_type:"SYSTEM_ISSUE",description:"Local backup restore drill"}')" \
   "$BASE/feedbacks")"
 feedback_id="$(jq -r '.id' <<< "$feedback")"
 printf 'iterflow restore drill %s\n' "$title" > "$TEMP_DIR/attachment.txt"
@@ -68,7 +69,7 @@ sentinel_after="$("${COMPOSE[@]}" exec -T db psql -U iterflow -d iterflow -tAc \
 [[ "$sentinel_after" == t ]]
 revision="$("${COMPOSE[@]}" exec -T db psql -U iterflow -d iterflow -tAc \
   'SELECT version_num FROM alembic_version')"
-[[ "$revision" == 0004_integrity ]]
+[[ "$revision" == 0007_notification_delivery ]]
 stage="restored administrator login"
 restored_login="$(curl --fail --silent --show-error -H 'Content-Type: application/json' \
   -d "$(jq -nc --arg u "$username" --arg p "$new_password" '{username:$u,password:$p}')" \

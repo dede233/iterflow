@@ -17,7 +17,9 @@ from app.models.entities import (
     MailPreference,
     Notification,
     NotificationDelivery,
+    Requirement,
     User,
+    Version,
 )
 from app.services.collaboration_service import CollaborationService
 from app.services.delivery_service import DeliveryService
@@ -303,3 +305,55 @@ def test_off_preference_keeps_site_and_permanent_failure_needs_retry(
     with Session(engine) as db:
         row = db.get(NotificationDelivery, response.id)
         assert row.status == "SKIPPED" and row.last_error == "ACCESS_REVOKED"
+
+
+def test_waiting_release_is_task_only_for_current_version_owner(collaboration_api):
+    client, headers, engine = collaboration_api
+    req = client.post(
+        "/api/v1/requirements",
+        headers=headers[1],
+        json={"title": "发布待办", "description": "已验收", "requirement_type": "FEATURE"},
+    ).json()
+    with Session(engine) as db:
+        version = Version(version_no="MAIL-TASK", name="发布待办", owner_id=2, created_by=1)
+        db.add(version)
+        db.flush()
+        db.get(Requirement, req["id"]).current_version_id = version.id
+        db.flush()
+        event = CollaborationEvent(
+            entity_type="REQUIREMENT",
+            entity_id=req["id"],
+            action="STATUS_DONE",
+            actor_id=1,
+            recipient_ids=[1, 2],
+        )
+        service = DeliveryService(db)
+        assert service.is_task(event, 2)
+        assert not service.is_task(event, 1)
+        version.owner_id = 3
+        db.flush()
+        assert not service.is_task(event, 2)
+        assert service.is_task(event, 3)
+
+
+def test_admin_email_change_and_restore_requires_new_verification(collaboration_api, smtp_sink):
+    from app.schemas.user import UserUpdate
+    from app.services.user_administration_service import UserAdministrationService
+
+    client, headers, engine = collaboration_api
+    verify(client, headers, engine)
+    with Session(engine) as db:
+        service = UserAdministrationService(db)
+        user = db.get(User, 2)
+        service.update_profile(
+            2, UserUpdate(revision=user.revision, email="changed@example.test"), 1
+        )
+        pref = db.get(MailPreference, 2)
+        assert pref.verified_email is None and pref.verified_at is None
+        service.update_profile(
+            2, UserUpdate(revision=user.revision, email="person2@example.test"), 1
+        )
+    assert not client.get("/api/v1/me/mail-preferences", headers=headers[2]).json()["verified"]
+    create_feedback(client, headers)
+    drain(engine)
+    assert len(smtp_sink) == 1

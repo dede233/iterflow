@@ -18,6 +18,7 @@ import ListFilterPanel from '@/components/ui/ListFilterPanel.vue'
 import { REQUIREMENT_PRIORITIES, REQUIREMENT_STATUSES, requirementStatusLabel, requirementStatusTagType } from '@/constants/requirement'
 import type { Requirement, RequirementListParams } from '@/types/domain'
 
+function handlerNames(row: Requirement) { return row.current_handlers?.map(p => p.display_name).join('、') || (['DONE', 'ONLINE', 'CANCELED'].includes(row.status) ? '—' : '待分配') }
 const router = useRouter()
 const { isMobile } = useResponsive()
 const { can } = usePermission()
@@ -152,6 +153,7 @@ const queryState = useListQuery({
           />
         </template>
       </el-table-column>
+      <el-table-column label="当前待处理人" min-width="150"><template #default="s">{{ handlerNames(s.row) }}</template></el-table-column>
       <el-table-column label="操作" width="90" fixed="right">
         <template #default="s">
           <el-link type="primary" @click.stop="openDetail(s.row.id)">查看</el-link>
@@ -171,6 +173,7 @@ const queryState = useListQuery({
         <template #status>
           <StatusTag :status="r.status" :label="requirementStatusLabel[r.status]" :type="requirementStatusTagType(r.status)" size="sm" />
         </template>
+          <span>{{ r.current_handlers?.map(p => p.display_name).join('、') || '暂无待处理人员' }}</span>
           <span>{{ r.priority }}</span>
           <span>{{ r.source === 'FEEDBACK' ? '反馈转化' : '直接创建' }}</span>
       </ListCard>

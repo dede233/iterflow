@@ -1,3 +1,4 @@
+import { mockCollaboration } from './collaboration-fixture'
 import { expect, test, type Page } from '@playwright/test'
 
 const release = {
@@ -13,7 +14,8 @@ async function fixture(page: Page, options: { version?: boolean; releasePermissi
     localStorage.setItem('iterflow.access_token', 'release-detail-access')
     localStorage.setItem('iterflow.refresh_token', 'release-detail-refresh')
   })
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
+    if (await mockCollaboration(route)) return
     const path = new URL(route.request().url()).pathname
     const json = (body: unknown, status = 200) => route.fulfill({ status, json: body })
     if (path === '/api/v1/auth/me') return json({ id: 1, username: 'viewer', display_name: '发布记录查看者', email: null, status: 'ACTIVE', revision: 1, must_change_password: false, data_scope: 'SELF', role_ids: [], permission_codes: [...(options.releasePermission === false ? [] : ['rd.release.view']), ...(options.version ? ['rd.version.view'] : [])] })

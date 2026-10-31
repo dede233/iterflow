@@ -1,9 +1,9 @@
-from sqlalchemy import delete
+from sqlalchemy import delete, update
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import AppError, ConflictError, NotFoundError, PermissionDenied
 from app.core.security import hash_password
-from app.models.entities import Role, User, UserRole
+from app.models.entities import MailPreference, Role, User, UserRole
 from app.models.enums import UserStatus
 from app.repositories.user_repository import UserRepository
 from app.schemas.user import UserCreate, UserOut, UserRoleUpdate, UserStatusChange, UserUpdate
@@ -125,6 +125,21 @@ class UserAdministrationService:
         if not self.users.update_with_revision(user_id, payload.revision, values):
             raise self._user_conflict(user_id, "用户已被其他用户修改")
 
+        if "email" in values and values["email"] != before["email"]:
+            # Email ownership never survives an administrative address change,
+            # including changing away and later restoring a previously verified address.
+            self.db.execute(
+                update(MailPreference)
+                .where(MailPreference.user_id == user_id)
+                .values(
+                    verified_email=None,
+                    verified_at=None,
+                    pending_email=None,
+                    challenge_id=None,
+                    challenge_expires_at=None,
+                    revision=MailPreference.revision + 1,
+                )
+            )
         self.db.refresh(user)
         self.audit.log("USER", user_id, "UPDATE", before=before, after=values)
         self.db.commit()

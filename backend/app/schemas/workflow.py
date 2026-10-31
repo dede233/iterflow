@@ -9,7 +9,14 @@ DesignStatus = Literal["NOT_REQUIRED", "PENDING", "IN_PROGRESS", "DONE"]
 class WorkflowAction(BaseModel):
     model_config = ConfigDict(extra="forbid")
     revision: int = Field(ge=1)
-    action: Literal["CONFIRM", "DESIGN_PENDING", "DESIGN_START", "DESIGN_DONE", "DESIGN_CANCEL"]
+    action: Literal[
+        "CONFIRM",
+        "REQUEST_CHANGES",
+        "DESIGN_PENDING",
+        "DESIGN_START",
+        "DESIGN_DONE",
+        "DESIGN_CANCEL",
+    ]
     reason: str | None = Field(default=None, max_length=500)
 
 

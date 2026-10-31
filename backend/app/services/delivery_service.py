@@ -14,6 +14,7 @@ from app.models.entities import (
     MailPreference,
     Notification,
     NotificationDelivery,
+    Requirement,
     RequirementParticipant,
     User,
     Version,
@@ -37,6 +38,7 @@ ACTION_LABELS = {
     "STATUS_CANNOT_REPRODUCE": "反馈暂无法复现",
     "STATUS_REQUIREMENT_LINKED": "反馈已关联需求",
     "CREATED": "新需求待确认",
+    "REQUEST_CHANGES": "需求需要补充说明",
     "RECONFIRM": "需求内容变更, 待重新确认",
     "CONFIRM": "需求内容已确认",
     "STATUS_CONFIRMED": "需求已确认, 等待开发",
@@ -134,6 +136,17 @@ class DeliveryService:
             "PARTICIPANTS_CHANGE",
         }:
             return True
+        if event.entity_type == "REQUIREMENT" and event.action == "STATUS_DONE":
+            item = self.db.get(Requirement, event.entity_id)
+            version = (
+                self.db.get(Version, item.current_version_id)
+                if item and item.current_version_id
+                else None
+            )
+            return bool(version and version.owner_id == uid)
+        if event.action == "REQUEST_CHANGES":
+            item = self.db.get(Requirement, event.entity_id)
+            return bool(item and item.created_by == uid)
         required_role = {
             "CREATED": "CONFIRM",
             "RECONFIRM": "CONFIRM",

@@ -1838,6 +1838,8 @@ export interface components {
             description?: string | null;
             /** 验收标准 */
             acceptance_criteria?: string | null;
+            /** 环节人员 */
+            participants?: components["schemas"]["ParticipantInput"][];
             /** 需求 ID */
             requirement_id?: number | null;
         };
@@ -1870,11 +1872,8 @@ export interface components {
             actual_result?: string | null;
             /** 复现步骤 */
             reproduce_steps?: string | null;
-            /**
-             * 接收人编号
-             * @description 新界面必填；旧写客户端省略时保留兼容，显式列表不能为空。
-             */
-            recipient_ids?: number[] | null;
+            /** 反馈接收人 */
+            recipient_ids: number[];
         };
         /** FeedbackOut */
         FeedbackOut: {
@@ -2411,6 +2410,8 @@ export interface components {
         };
         /** RequirementOut */
         RequirementOut: {
+            /** 当前待处理人 */
+            current_handlers?: components["schemas"]["PersonOption"][];
             /** 需求 ID */
             id: number;
             /** 需求编号 */
@@ -2858,7 +2859,7 @@ export interface components {
              * 动作
              * @enum {string}
              */
-            action: "CONFIRM" | "DESIGN_PENDING" | "DESIGN_START" | "DESIGN_DONE" | "DESIGN_CANCEL";
+            action: "CONFIRM" | "REQUEST_CHANGES" | "DESIGN_PENDING" | "DESIGN_START" | "DESIGN_DONE" | "DESIGN_CANCEL";
             /** 原因 */
             reason?: string | null;
         };

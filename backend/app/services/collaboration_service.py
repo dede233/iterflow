@@ -259,11 +259,13 @@ class CollaborationService:
         return ParticipantsOut(
             revision=item.revision,
             participants=[
-                ParticipantOut(
-                    user_id=u.id,
-                    role=p.role,
-                    display_name=u.display_name,
-                    active=u.status == UserStatus.ACTIVE,
+                ParticipantOut.model_validate(
+                    {
+                        "user_id": u.id,
+                        "role": p.role,
+                        "display_name": u.display_name,
+                        "active": u.status == UserStatus.ACTIVE,
+                    }
                 )
                 for p, u in rows
             ],

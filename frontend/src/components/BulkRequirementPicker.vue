@@ -2,6 +2,7 @@
 import { computed, onScopeDispose, reactive, ref, watch } from 'vue'
 import { api } from '@/api/client'
 import { listRequirements } from '@/api/requirements'
+import { createRequestId } from '@/utils/requestId'
 import { useAuthStore } from '@/stores/auth'
 import { REQUIREMENT_STATUSES, REQUIREMENT_PRIORITIES, requirementStatusLabel } from '@/constants/requirement'
 import type { Requirement, RequirementListParams } from '@/types/domain'
@@ -16,7 +17,7 @@ const failed = ref(false), error = ref('')
 const problems = ref<{ requirement_id: number; reason: string }[]>([])
 // Both version and requirement revisions belong to the user's original selection.
 const versionRevision = props.revision
-const requestId = crypto.randomUUID()
+const requestId = createRequestId()
 let sequence = 0
 const identity = computed(() => `${auth.user?.id}:${auth.accessToken}:${auth.permissionCodes.join(',')}`)
 function disabledReason(row: Requirement) {

@@ -157,3 +157,21 @@ Fresh Self-Review：不记录 SMTP 原始异常、凭据或验证码；验证码
 同一执行 Agent 重新检查契约、差异、权限、事务、锁顺序、CAS、历史语义、通知资格与备份停写，不称为独立评审。修复了邮箱改回旧地址恢复验证资格的问题以及待发布邮件待办遗漏。未发现本轮范围内未解决的阻断或规格冲突。
 
 阶段 0–6 的本地实现和验收完成。已发布契约/标签/Release 未改，真实数据库和正式 SMTP 未操作。远端六项 CI 未触发，不能把本地对应门禁称为远端 CI PASS；正式合并、版本号、发布与部署仍不在本轮操作范围。真实数据规模迁移耗时和正式邮件连通性保留到目标环境授权验收。
+
+
+## 后续授权：分支推送与远端六项 CI
+
+2026-10-31 用户授权推送当前分支、运行六项 CI、直接修复失败并记录结果。仅推送 GitHub origin 的 `codex/collaboration-workflow`，不合并、不创建 tag/Release、不部署、不操作真实数据库。推送前工作区干净，HEAD 为 `28dff2f1b8bb1cbc10929ebe469eebe0faa1b279`；origin/master 为 `10f6bfa6410c7836d7d43e402a175d56ad9577c7`。未更改 master 或 Gitee 分支。
+
+CI 的 push 过滤只有 master、phase/**、fix/**，因此使用现有 workflow_dispatch 指定本分支触发完整六项，不调整触发规则或降低门禁。
+
+### 第一轮与修复
+
+[Run 41171078601](https://github.com/dede233/iterflow/actions/runs/41171078601)，attempt 1，检查原始提交 `28dff2f`。结果：frontend、s3、docker_smoke、backup_restore 成功；backend、browser_smoke 失败。首次失败证据保留在该 Run，未将真实代码失败作为基础设施错误重跑。
+
+1. backend：395 passed / 1 skipped（独立 S3 job 已通过），PostgreSQL 57 passed；Ruff 通过，Mypy 报 `collaboration_service.py` 将普通 str 传入 ParticipantOut.role 的 Literal 类型。CI 安装 SQLAlchemy 2.1.6/Pydantic 2.14.2，本地原为 2.0.54/2.13.5；在本地升级到相同版本后以禁用增量缓存的 Mypy 复现同一错误。修复为显式通过 `ParticipantOut.model_validate` 校验数据库结果，保留角色值的运行时限制，不使用 ignore 或降低类型检查。
+2. browser_smoke：159 passed / 7 failed，全部集中在批量添加需求。CI 使用 `http://iterflow.example.test:8080`，属于非安全上下文，`crypto.randomUUID` 不可用；弹窗组件在初始化请求 UUID 时抛错。localhost 被浏览器视为可信来源，先前本地验收没有覆盖这一区别。修复增加 `createRequestId`：优先原生 randomUUID，否则使用仍可用的 `crypto.getRandomValues` 生成符合 RFC 4122 v4 格式的随机 UUID，不使用 Math.random。原 revision 快照、请求追踪和批量原子事务保持不变。
+
+本地修复验证：Ruff check/format、Mypy --no-incremental（104 文件）、compileall、schema/契约 13 项通过；前端 52 文件 / 336 项通过（同时覆盖有/无 randomUUID 的批量选择与冲突保持），类型生成一致性、生产构建、bundle 通过。另以生产 bundle 在普通 HTTP 来源下验证 375px/1280px 两种视口：确认 isSecureContext=false、randomUUID 不可用，仍可选择、提交并得到有效 UUID 与原 revision。测试资源从本地构建产物拦截返回、API 使用测试夹具，不依赖真实服务。最初的临时域名解析方案遇到宿主 Surge 代理阻断，已保留日志并停止该次测试；未修改系统 hosts 或代理配置。最终本地证据见 `/tmp/iterflow-remote-ci/http-origin-build.log`、`frontend-fix.log`、`fix-local-tests.log`。
+
+修复涉及协作 service 返回模型构造、前端 requestId 工具及批量组件/回归用例；没有 API shape、数据库 migration 或生产配置变更。后续对修复提交重新运行全部六项 CI，最终结果在下文记录。

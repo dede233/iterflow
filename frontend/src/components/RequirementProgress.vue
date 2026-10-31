@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onScopeDispose, ref, watch } from 'vue'
+import { computed, onScopeDispose, ref, useId, watch } from 'vue'
 import { actWorkflow, getWorkflow, getParticipants, type Workflow, type WorkflowAction, type Participants } from '@/api/collaboration'
 import { useAuthStore } from '@/stores/auth'
 import { availableRequirementStatusActions, requirementStatusLabel, type ReqStatusAction } from '@/constants/requirement'
@@ -10,6 +10,8 @@ import SectionCard from './ui/SectionCard.vue'
 const props = defineProps<{ item: Requirement; readonly?: boolean }>()
 const emit = defineEmits<{ updated: []; status: [action: ReqStatusAction] }>()
 const auth = useAuthStore()
+const expanded = ref(false)
+const bodyId = useId()
 const flow = ref<Workflow | null>(null)
 const people = ref<Participants['participants']>([])
 const failed = ref(false)
@@ -21,6 +23,7 @@ const roles = ['CONFIRM', 'DEVELOP', 'DEVELOP', 'ACCEPT', '', '']
 const designLabels = { NOT_REQUIRED: '不需要设计', PENDING: '未开始', IN_PROGRESS: '进行中', DONE: '已完成' }
 const actionLabels: Record<string, string> = { CONFIRM: '确认当前内容', REQUEST_CHANGES: '要求补充说明', DESIGN_PENDING: '启用 / 重新打开设计', DESIGN_START: '开始设计', DESIGN_DONE: '完成设计', DESIGN_CANCEL: '取消设计要求', LEGACY_MIGRATION: '历史数据迁入（未补造确认）' }
 const identity = computed(() => `${auth.user?.id}:${auth.accessToken}:${auth.permissionCodes.join(',')}`)
+watch(() => [props.item.id, identity.value], () => { expanded.value = false })
 let sequence = 0
 async function load() {
   const request = ++sequence
@@ -39,6 +42,17 @@ const current = computed(() => steps.indexOf(props.item.status === 'PAUSED' ? fl
 const canAct = computed(() => !props.readonly && auth.hasPermission('rd.requirement.status') && !['ONLINE', 'CANCELED'].includes(props.item.status))
 const canRole = (role: string) => people.value.some(p => p.role === role && p.active && p.user_id === auth.user?.id) || !!auth.user?.can_view_api_docs
 const names = (role: string) => people.value.filter(p => p.role === role).map(p => p.display_name + (p.active ? '' : '（已停用）')).join('、') || '待分配'
+const summaryDetail = computed(() => {
+  if (failed.value) return '进度加载失败，展开重试'
+  if (!flow.value) return '正在加载进度…'
+  if (props.item.status === 'CANCELED') return '流程已取消'
+  if (props.item.status === 'ONLINE') return '版本已实际发布'
+  const role = roles[current.value]
+  const detail = role ? names(role) : props.item.current_version_id ? `所属版本 #${props.item.current_version_id}` : '尚未关联版本'
+  return props.item.status === 'PAUSED' && flow.value.paused_from
+    ? `暂停前：${requirementStatusLabel[flow.value.paused_from]} · ${detail}`
+    : detail
+})
 const actions = computed(() => availableRequirementStatusActions(props.item.status, canAct.value).filter(a => {
   if (a.target === 'CONFIRMED' && props.item.status === 'DRAFT') return false
   if (a.target === 'DEVELOPING') return canRole(props.item.status === 'TESTING' ? 'ACCEPT' : 'DEVELOP')
@@ -61,7 +75,16 @@ async function submit() {
 function recordLabel(action: string) { return actionLabels[action] || requirementStatusLabel[action.replace('STATUS_', '')] || action }
 </script>
 <template>
-  <SectionCard title="需求进度" description="确认、开发、验收与上线记录">
+  <SectionCard class="requirement-progress" :padded="false">
+    <button class="progress-toggle" type="button" :aria-expanded="expanded" :aria-controls="bodyId" :aria-label="expanded ? '收起需求进度' : '展开需求进度'" @click="expanded = !expanded">
+      <span class="progress-title">需求进度</span>
+      <span class="progress-status">{{ requirementStatusLabel[item.status] }}</span>
+      <span class="progress-summary" :title="summaryDetail">{{ summaryDetail }}</span>
+      <span v-if="flow?.needs_confirmation" class="progress-notice">内容待确认</span>
+      <span class="progress-toggle-label">{{ expanded ? '收起' : '展开' }}<span class="progress-chevron" :class="{ expanded }" aria-hidden="true">⌄</span></span>
+    </button>
+    <div v-show="expanded" :id="bodyId" class="progress-body">
+    <template v-if="expanded">
     <p v-if="failed">进度加载失败 <el-button link @click="load">重试</el-button></p>
     <template v-else-if="flow">
       <el-alert v-if="item.status === 'PAUSED' || item.status === 'CANCELED'" :title="`${requirementStatusLabel[item.status]}${flow.paused_from ? ' · 暂停前：' + requirementStatusLabel[flow.paused_from] : ''}`" type="warning" :closable="false" />
@@ -85,23 +108,48 @@ function recordLabel(action: string) { return actionLabels[action] || requiremen
         <el-button v-for="action in actions" :key="action.target" @click="emit('status', action)">{{ action.label }}</el-button>
         <el-button v-for="action in designActions" :key="action" @click="begin(action)">{{ actionLabels[action] }}</el-button>
       </div>
-      <CollaborationPeople v-if="!readonly" kind="requirement" :id="item.id" :revision="item.revision" :editable="auth.hasPermission('rd.requirement.edit') && !['ONLINE', 'CANCELED'].includes(item.status)" @updated="emit('updated')" />
+      <details v-if="!readonly" class="progress-people"><summary>查看 / 调整环节人员</summary>
+        <CollaborationPeople kind="requirement" :id="item.id" :revision="item.revision" :editable="auth.hasPermission('rd.requirement.edit') && !['ONLINE', 'CANCELED'].includes(item.status)" @updated="emit('updated')" />
+      </details>
       <details class="progress-history"><summary>查看流转与确认记录（最近 {{ flow.records.length }} 条）</summary>
         <p v-if="!flow.records.length">尚无确认或流转记录。</p>
         <article v-for="record in flow.records" :key="record.id"><strong>{{ recordLabel(record.action) }}</strong> · {{ record.actor_id ? `${record.detail.actor_name || '实际操作人'} #${record.actor_id}` : '历史迁移' }} · {{ formatLocalDateTime(record.created_at) }}<p v-if="record.detail.reason">{{ record.detail.reason }}</p><details v-if="record.detail.description"><summary>当时确认的内容</summary><p class="multiline">{{ record.detail.description }}</p><p class="multiline">{{ record.detail.acceptance_criteria }}</p></details></article>
       </details>
     </template>
     <p v-else>正在加载进度…</p>
+    </template>
+    </div>
     <el-dialog :model-value="pending !== null" :title="pending ? actionLabels[pending] : ''" width="min(520px, calc(100vw - 24px))" append-to-body @close="pending = null">
       <el-form label-position="top" @submit.prevent="submit"><el-form-item label="说明（取消、重开设计或管理员代操作必填）"><el-input v-model="reason" type="textarea" maxlength="500" /></el-form-item><el-button type="primary" native-type="submit" :loading="busy">确认操作</el-button></el-form>
     </el-dialog>
   </SectionCard>
 </template>
 <style scoped>
-.progress-steps { list-style: none; padding: 12px 0 0; margin: 0; }
-.progress-steps li { position: relative; display: flex; gap: 16px; padding-bottom: 24px; }
-.progress-steps li:not(:last-child)::before { content: ''; position: absolute; left: 15px; top: 32px; bottom: 0; width: 2px; background: var(--if-border, #ddd); }
-.step-dot { flex: 0 0 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: var(--if-bg-muted, #eee); }
+.requirement-progress { margin-bottom: var(--if-space-4); }
+.progress-people { margin-top: 16px; }.progress-people > summary { margin-bottom: 8px; }
+.progress-toggle { width: 100%; min-height: 56px; display: flex; align-items: center; gap: 12px; padding: 12px var(--if-space-5); border: 0; border-radius: var(--if-radius); background: transparent; color: var(--if-text-primary); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+.progress-toggle:hover { background: var(--if-bg-muted); }
+.progress-toggle:focus-visible { outline: 2px solid var(--el-color-primary); outline-offset: 2px; }
+.progress-title { flex-shrink: 0; font-size: 14px; font-weight: 600; }
+.progress-status { flex-shrink: 0; padding: 3px 8px; border-radius: 4px; background: var(--el-color-primary-light-9); color: var(--el-color-primary); font-size: 12px; }
+.progress-summary { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--if-text-3); }
+.progress-notice { flex-shrink: 0; color: var(--el-color-warning-dark-2); font-size: 12px; }
+.progress-toggle-label { flex-shrink: 0; display: flex; align-items: center; gap: 6px; margin-left: auto; color: var(--el-color-primary); }
+.progress-chevron { display: inline-block; font-size: 18px; line-height: 1; }.progress-chevron.expanded { transform: rotate(180deg); }
+.progress-body { border-top: 1px solid var(--if-border); padding: var(--if-space-4) var(--if-space-5); }
+.progress-steps { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; list-style: none; padding: 16px 0; margin: 0; }
+.progress-steps li { min-width: 0; padding: 12px; border: 1px solid var(--if-border); border-radius: 8px; font-size: 12px; }
+.progress-steps li.current { border-color: var(--el-color-primary); background: var(--el-color-primary-light-9); }
+.step-dot { width: 24px; height: 24px; margin-bottom: 8px; border-radius: 50%; display: grid; place-items: center; background: var(--if-bg-muted, #eee); }
 .current .step-dot { background: var(--el-color-primary); color: white; }.completed .step-dot { background: var(--el-color-success-light-8); color: var(--el-color-success-dark-2); }
-small { margin-left: 12px; color: var(--if-text-3); }p { margin: 8px 0; overflow-wrap: anywhere; }.progress-actions { display: flex; gap: 8px; flex-wrap: wrap; }.progress-actions .el-button { margin: 0; }.progress-history { margin-top: 20px; }.progress-history article { border-top: 1px solid var(--if-border, #eee); padding: 12px 0; }.multiline { white-space: pre-wrap; }summary { cursor: pointer; }
+small { display: block; margin-top: 4px; color: var(--if-text-3); }p { margin: 8px 0; overflow-wrap: anywhere; }.progress-actions { display: flex; gap: 8px; flex-wrap: wrap; }.progress-actions .el-button { margin: 0; }.progress-history { margin-top: 20px; }.progress-history article { border-top: 1px solid var(--if-border, #eee); padding: 12px 0; }.multiline { white-space: pre-wrap; }summary { cursor: pointer; }
+@media (max-width: 1199px) { .progress-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 767px) {
+  .progress-toggle { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; gap: 8px; padding: 12px var(--if-space-4); }
+  .progress-toggle-label { grid-column: 4; grid-row: 1; min-height: 24px; }
+  .progress-summary { grid-column: 1 / -1; grid-row: 2; }
+  .progress-notice { grid-column: 3; grid-row: 1; min-width: 0; font-size: 11px; }
+  .progress-body { padding: var(--if-space-4); }
+  .progress-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+}
 </style>

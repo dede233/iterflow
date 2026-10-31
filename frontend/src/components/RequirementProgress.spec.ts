@@ -23,12 +23,18 @@ function panel() {
 it('shows six steps and uses the displayed revision without replaying conflicts', async () => {
   mocks.act.mockRejectedValue({ response: { status: 409 } })
   const wrapper = panel(); await flushPromises()
+  expect(wrapper.find('.progress-toggle').attributes('aria-expanded')).toBe('false')
+  expect(wrapper.findAll('li')).toHaveLength(0)
+  expect(wrapper.find('.progress-summary').text()).toBe('确认人')
+  await wrapper.find('.progress-toggle').trigger('click')
   expect(wrapper.findAll('li')).toHaveLength(6)
   expect(wrapper.text()).toContain('等待确认当前内容')
   await wrapper.findAll('button').find(b => b.text() === '确认当前内容')!.trigger('click')
   await wrapper.find('form').trigger('submit'); await flushPromises()
   expect(mocks.act).toHaveBeenCalledExactlyOnceWith(1, { action: 'CONFIRM', revision: 8, reason: null })
   expect(wrapper.emitted('updated')).toBeUndefined()
+  await wrapper.find('.progress-toggle').trigger('click')
+  expect(wrapper.findAll('li')).toHaveLength(0)
   wrapper.unmount()
 })
 it('clears progress on loss of access and ignores old responses', async () => {

@@ -191,6 +191,7 @@ test('core detail dialogs stay operable on a 375px screen', async ({ page }) => 
   await checkDialog()
   await page.goto('/#/requirements/2')
   await expect(page.getByRole('heading', { name: longTitle })).toBeVisible()
+  await page.getByRole('button', { name: '展开需求进度', exact: true }).click()
   await page.getByRole('button', { name: '重新开发' }).click()
   await checkDialog()
   await page.goto('/#/versions/3')

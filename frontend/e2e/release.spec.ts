@@ -216,6 +216,7 @@ test('Phase 7 real restricted users: presence, conflict, publish, notification a
     await selector.getByRole('button', { name: '添加 1 条需求', exact: true }).click()
     expect((await relation).status()).toBe(200)
     await pageB.reload()
+    await pageB.getByRole('button', { name: '展开需求进度', exact: true }).click()
     await pageB.getByRole('button', { name: '确认当前内容', exact: true }).click()
     await pageB.getByRole('dialog', { name: '确认当前内容', exact: true }).getByRole('button', { name: '确认操作' }).click()
     await expect(pageB.getByRole('button', { name: '开始开发', exact: true })).toBeVisible()

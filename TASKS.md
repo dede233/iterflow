@@ -118,4 +118,4 @@ TEAM、废弃权限删除、trusted IP实现、新migration/permission/entity、
 
 - [x] 核对 master 10f6bfa 无漂移；用户明确取消逐人开发完成门禁。
 - [x] 衔接双数据库迁移，保留历史开发确认、主线版本权限与详情增量；本地回归与专项通过。
-- [x] 整合基线及 master 合并提交八项 CI 全部通过；合并 SHA 69c2c87、CI 41174648931 和修复结果已记录在 `docs/collaboration-workflow-master-merge.md`。文档收口提交自身 CI 继续核验。
+- [x] 整合基线及 master 合并提交八项 CI 全部通过；合并 SHA 69c2c87、CI 41174648931 和修复结果已记录在 `docs/collaboration-workflow-master-merge.md`。文档收口及 UTC 快照边界修复提交均核验自身 CI，最终运行链接见交付回复。

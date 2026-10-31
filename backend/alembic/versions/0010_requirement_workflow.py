@@ -12,6 +12,15 @@ branch_labels = None
 depends_on = None
 
 
+def utc_iso(value):
+    if value is None:
+        return None
+    # MySQL DATETIME is stored in UTC without tzinfo; PostgreSQL may return
+    # aware values in the connection's configured time zone.
+    aware = value if value.tzinfo is not None else value.replace(tzinfo=UTC)
+    return aware.astimezone(UTC).isoformat()
+
+
 def upgrade():
     op.add_column(
         "rd_requirement",
@@ -70,9 +79,7 @@ def upgrade():
             "legacy_developers": [
                 {
                     **dict(p),
-                    "completed_at": p["completed_at"].replace(tzinfo=UTC).isoformat()
-                    if p["completed_at"]
-                    else None,
+                    "completed_at": utc_iso(p["completed_at"]),
                 }
                 for p in people
             ],

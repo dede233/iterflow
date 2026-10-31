@@ -73,3 +73,7 @@ MySQL 新增微秒 UTC 时间、有效单确认/验收人的生成列唯一索�
 本次记录为合并 CI 完成后的文档收口；文档收口提交同样运行全量 CI，最终提交 SHA 和对应 CI 链接在交付回复中提供，不以本表冒充其他 SHA 的结果。
 
 本任务临时 PostgreSQL、Redis、MySQL 容器及其临时凭据已清理；原 Preview 容器、既有停止的 MySQL proof 容器、master worktree 原有未跟踪 data/ 与验收文件未修改。未创建 tag/GitHub Release，未发布、部署、执行真实数据库 migration/GRANT/restore；只推送 origin 源分支和 master。
+
+### UTC 快照边界修复
+
+最终核对发现：PostgreSQL 可能按非 UTC 会话时区返回带时区的 datetime，直接 replace(tzinfo=UTC) 会改变迁移快照表达的实际时刻。修正为“已有时区先换算 UTC；MySQL 的无时区 UTC 值才补 UTC 标记”。原历史表 completed_at 不更新。新增四种时间来源及未确认空值测试，5 passed；最新修复提交重新跑完整八项 CI，最终精确 SHA/运行链接在交付回复记录。本轮迁移始终未在真实业务库执行。

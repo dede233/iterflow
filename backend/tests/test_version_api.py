@@ -17,6 +17,7 @@ from app.models.entities import (
     OperationLog,
     Permission,
     Requirement,
+    RequirementParticipant,
     Role,
     RolePermission,
     User,
@@ -54,6 +55,7 @@ def ver_api(tmp_path: Path) -> Iterator[Fixture]:
         RolePermission.__table__,
         OperationLog.__table__,
         Requirement.__table__,
+        RequirementParticipant.__table__,
         Version.__table__,
         VersionRequirement.__table__,
     ):

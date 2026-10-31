@@ -4,6 +4,92 @@
  */
 
 export interface paths {
+    "/collaboration/people": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 需求详情 */
+        get: operations["people_api_v1_collaboration_people_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/feedbacks/{feedback_id}/collaboration": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 需求详情 */
+        get: operations["feedback_collaboration_api_v1_feedbacks__feedback_id__collaboration_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/feedbacks/{feedback_id}/recipients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 需求详情 */
+        put: operations["recipients_api_v1_feedbacks__feedback_id__recipients_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/feedbacks/{feedback_id}/transfer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 需求详情 */
+        post: operations["transfer_api_v1_feedbacks__feedback_id__transfer_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/requirements/{requirement_id}/participants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 需求详情 */
+        get: operations["participants_api_v1_requirements__requirement_id__participants_get"];
+        /** 需求详情 */
+        put: operations["change_participants_api_v1_requirements__requirement_id__participants_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/login": {
         parameters: {
             query?: never;
@@ -1526,6 +1612,19 @@ export interface components {
             /** 请求追踪 ID */
             request_id: string | null;
         };
+        /** FeedbackCollaborationOut */
+        FeedbackCollaborationOut: {
+            /** 修订号 */
+            revision: number;
+            /** 接收人 */
+            recipients: components["schemas"]["PersonOption"][];
+            /** 处理人编号 */
+            handler_id: number | null;
+            /** 受理人编号 */
+            accepted_by: number | null;
+            /** 受理时间 */
+            accepted_at: string | null;
+        };
         /**
          * FeedbackConvertRequest
          * @description Convert a feedback into a requirement (Phase 4).
@@ -1587,6 +1686,11 @@ export interface components {
             actual_result?: string | null;
             /** 复现步骤 */
             reproduce_steps?: string | null;
+            /**
+             * 接收人编号
+             * @description 新界面必填；旧写客户端省略时保留兼容，显式列表不能为空。
+             */
+            recipient_ids?: number[] | null;
         };
         /** FeedbackOut */
         FeedbackOut: {
@@ -1667,6 +1771,15 @@ export interface components {
             reason?: string | null;
             /** 重复反馈关联 ID */
             duplicate_of_id?: number | null;
+        };
+        /** FeedbackTransfer */
+        FeedbackTransfer: {
+            /** 修订号 */
+            revision: number;
+            /** 处理人编号 */
+            handler_id: number;
+            /** 原因 */
+            reason: string;
         };
         /**
          * FeedbackType
@@ -1843,6 +1956,44 @@ export interface components {
             /** 未读通知数 */
             unread_count: number;
         };
+        /** ParticipantInput */
+        ParticipantInput: {
+            /** 人员编号 */
+            user_id: number;
+            /**
+             * 环节角色
+             * @enum {string}
+             */
+            role: "CONFIRM" | "DESIGN" | "DEVELOP" | "ACCEPT";
+        };
+        /** ParticipantOut */
+        ParticipantOut: {
+            /** 人员编号 */
+            user_id: number;
+            /**
+             * 环节角色
+             * @enum {string}
+             */
+            role: "CONFIRM" | "DESIGN" | "DEVELOP" | "ACCEPT";
+            /** 显示名称 */
+            display_name: string;
+            /** 账号是否有效 */
+            active: boolean;
+        };
+        /** ParticipantsChange */
+        ParticipantsChange: {
+            /** 修订号 */
+            revision: number;
+            /** 环节人员 */
+            participants: components["schemas"]["ParticipantInput"][];
+        };
+        /** ParticipantsOut */
+        ParticipantsOut: {
+            /** 修订号 */
+            revision: number;
+            /** 环节人员 */
+            participants: components["schemas"]["ParticipantOut"][];
+        };
         /** PermissionOut */
         PermissionOut: {
             /** 唯一标识 ID */
@@ -1861,6 +2012,24 @@ export interface components {
             deprecated: boolean;
             /** 替代权限码 */
             replacement_code: string | null;
+        };
+        /** PersonOption */
+        PersonOption: {
+            /** 编号 */
+            id: number;
+            /** 显示名称 */
+            display_name: string;
+        };
+        /** PersonPage */
+        PersonPage: {
+            /** 数据列表 */
+            items: components["schemas"]["PersonOption"][];
+            /** 总数 */
+            total: number;
+            /** 页码 */
+            page: number;
+            /** 每页条数 */
+            page_size: number;
         };
         /**
          * Priority
@@ -1916,6 +2085,13 @@ export interface components {
              * @description 对象的乐观锁修订号；写入时提交最后读取的修订号。
              */
             revision: number;
+        };
+        /** RecipientsChange */
+        RecipientsChange: {
+            /** 修订号 */
+            revision: number;
+            /** 接收人编号 */
+            recipient_ids: number[];
         };
         /** RefreshRequest */
         RefreshRequest: {
@@ -2463,6 +2639,316 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    people_api_v1_collaboration_people_get: {
+        parameters: {
+            query: {
+                kind: "feedback" | "requirement";
+                feedback_id?: number | null;
+                keyword?: string;
+                page?: number;
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonPage"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    feedback_collaboration_api_v1_feedbacks__feedback_id__collaboration_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                feedback_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedbackCollaborationOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    recipients_api_v1_feedbacks__feedback_id__recipients_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                feedback_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecipientsChange"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedbackCollaborationOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    transfer_api_v1_feedbacks__feedback_id__transfer_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                feedback_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FeedbackTransfer"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedbackCollaborationOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    participants_api_v1_requirements__requirement_id__participants_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requirement_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParticipantsOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    change_participants_api_v1_requirements__requirement_id__participants_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requirement_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ParticipantsChange"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParticipantsOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     login_api_v1_auth_login_post: {
         parameters: {
             query?: never;

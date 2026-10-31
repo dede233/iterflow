@@ -199,7 +199,7 @@ def test_integrity_migration_round_trip_and_database_constraints(migration_schem
 
     with engine.connect() as connection:
         assert connection.scalar(text("SELECT version_num FROM alembic_version")) == (
-            "0004_integrity"
+            "0005_collaboration_people"
         )
 
     with Session(engine) as session:
@@ -295,7 +295,7 @@ def test_integrity_migration_round_trip_and_database_constraints(migration_schem
     _upgrade_head(scoped_url)
     with engine.connect() as connection:
         assert connection.scalar(text("SELECT version_num FROM alembic_version")) == (
-            "0004_integrity"
+            "0005_collaboration_people"
         )
 
 

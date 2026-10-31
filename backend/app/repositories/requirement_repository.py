@@ -1,7 +1,7 @@
 from sqlalchemy import ColumnElement, func, or_, select
 from sqlalchemy.orm import Session
 
-from app.models.entities import Requirement
+from app.models.entities import Requirement, RequirementParticipant
 from app.models.enums import DataScope, Priority, RequirementSource, RequirementStatus
 from app.repositories.base import BaseRepository
 
@@ -12,7 +12,15 @@ class RequirementRepository(BaseRepository[Requirement]):
 
     @staticmethod
     def self_criterion(user_id: int):
-        return or_(Requirement.owner_id == user_id, Requirement.created_by == user_id)
+        participant = select(RequirementParticipant.requirement_id).where(
+            RequirementParticipant.user_id == user_id,
+            RequirementParticipant.active.is_(True),
+        )
+        return or_(
+            Requirement.owner_id == user_id,
+            Requirement.created_by == user_id,
+            Requirement.id.in_(participant),
+        )
 
     def get_scoped(self, entity_id: int, user_id: int, data_scope: DataScope) -> Requirement | None:
         stmt = select(Requirement).where(Requirement.id == entity_id)

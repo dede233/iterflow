@@ -712,6 +712,39 @@
         }
       }
     },
+    "FeedbackCollaborationOut": {
+      "title": "FeedbackCollaborationOut",
+      "properties": {
+        "revision": {
+          "title": "修订号"
+        },
+        "recipients": {
+          "title": "接收人",
+          "items": {}
+        },
+        "handler_id": {
+          "title": "处理人编号",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "accepted_by": {
+          "title": "受理人编号",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "accepted_at": {
+          "title": "受理时间",
+          "anyOf": [
+            {},
+            {}
+          ]
+        }
+      }
+    },
     "FeedbackConvertRequest": {
       "title": "FeedbackConvertRequest",
       "description": "Convert a feedback into a requirement (Phase 4).\n\nCREATE_NEW builds a brand-new requirement from the feedback; LINK_EXISTING\nattaches the feedback to an existing requirement. No version association here\n(that is a later phase).",
@@ -814,6 +847,16 @@
           "title": "复现步骤",
           "anyOf": [
             {},
+            {}
+          ]
+        },
+        "recipient_ids": {
+          "title": "接收人编号",
+          "description": "新界面必填；旧写客户端省略时保留兼容，显式列表不能为空。",
+          "anyOf": [
+            {
+              "items": {}
+            },
             {}
           ]
         }
@@ -958,6 +1001,20 @@
             {},
             {}
           ]
+        }
+      }
+    },
+    "FeedbackTransfer": {
+      "title": "FeedbackTransfer",
+      "properties": {
+        "revision": {
+          "title": "修订号"
+        },
+        "handler_id": {
+          "title": "处理人编号"
+        },
+        "reason": {
+          "title": "原因"
         }
       }
     },
@@ -1221,6 +1278,58 @@
         }
       }
     },
+    "ParticipantInput": {
+      "title": "ParticipantInput",
+      "properties": {
+        "user_id": {
+          "title": "人员编号"
+        },
+        "role": {
+          "title": "环节角色"
+        }
+      }
+    },
+    "ParticipantOut": {
+      "title": "ParticipantOut",
+      "properties": {
+        "user_id": {
+          "title": "人员编号"
+        },
+        "role": {
+          "title": "环节角色"
+        },
+        "display_name": {
+          "title": "显示名称"
+        },
+        "active": {
+          "title": "账号是否有效"
+        }
+      }
+    },
+    "ParticipantsChange": {
+      "title": "ParticipantsChange",
+      "properties": {
+        "revision": {
+          "title": "修订号"
+        },
+        "participants": {
+          "title": "环节人员",
+          "items": {}
+        }
+      }
+    },
+    "ParticipantsOut": {
+      "title": "ParticipantsOut",
+      "properties": {
+        "revision": {
+          "title": "修订号"
+        },
+        "participants": {
+          "title": "环节人员",
+          "items": {}
+        }
+      }
+    },
     "PermissionOut": {
       "title": "PermissionOut",
       "properties": {
@@ -1251,6 +1360,35 @@
             {},
             {}
           ]
+        }
+      }
+    },
+    "PersonOption": {
+      "title": "PersonOption",
+      "properties": {
+        "id": {
+          "title": "编号"
+        },
+        "display_name": {
+          "title": "显示名称"
+        }
+      }
+    },
+    "PersonPage": {
+      "title": "PersonPage",
+      "properties": {
+        "items": {
+          "title": "数据列表",
+          "items": {}
+        },
+        "total": {
+          "title": "总数"
+        },
+        "page": {
+          "title": "页码"
+        },
+        "page_size": {
+          "title": "每页条数"
         }
       }
     },
@@ -1319,6 +1457,18 @@
         "revision": {
           "title": "修订号",
           "description": "对象的乐观锁修订号；写入时提交最后读取的修订号。"
+        }
+      }
+    },
+    "RecipientsChange": {
+      "title": "RecipientsChange",
+      "properties": {
+        "revision": {
+          "title": "修订号"
+        },
+        "recipient_ids": {
+          "title": "接收人编号",
+          "items": {}
         }
       }
     },
@@ -2220,6 +2370,52 @@
     }
   },
   "paths": {
+    "/collaboration/people": {
+      "get": {
+        "tags": [
+          "Requirement"
+        ],
+        "summary": "需求详情"
+      }
+    },
+    "/feedbacks/{feedback_id}/collaboration": {
+      "get": {
+        "tags": [
+          "Requirement"
+        ],
+        "summary": "需求详情"
+      }
+    },
+    "/feedbacks/{feedback_id}/recipients": {
+      "put": {
+        "tags": [
+          "Requirement"
+        ],
+        "summary": "需求详情"
+      }
+    },
+    "/feedbacks/{feedback_id}/transfer": {
+      "post": {
+        "tags": [
+          "Requirement"
+        ],
+        "summary": "需求详情"
+      }
+    },
+    "/requirements/{requirement_id}/participants": {
+      "get": {
+        "tags": [
+          "Requirement"
+        ],
+        "summary": "需求详情"
+      },
+      "put": {
+        "tags": [
+          "Requirement"
+        ],
+        "summary": "需求详情"
+      }
+    },
     "/auth/login": {
       "post": {
         "tags": [

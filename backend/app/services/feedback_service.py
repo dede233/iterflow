@@ -29,6 +29,7 @@ from app.schemas.feedback import (
     FeedbackUpdate,
 )
 from app.services.audit_service import AuditService
+from app.services.collaboration_service import CollaborationService
 from app.services.revision_conflict import revision_conflict_data
 
 # Frozen Feedback state machine (V1.5). Keys are the current status; values are
@@ -152,10 +153,12 @@ class FeedbackService:
             submitter_id=operator_id,
             created_by=operator_id,
             updated_by=operator_id,
-            **payload.model_dump(),
+            **payload.model_dump(exclude={"recipient_ids"}),
         )
         self.db.add(item)
         self.db.flush()
+        if payload.recipient_ids is not None:
+            CollaborationService(self.db).set_recipients(item, payload.recipient_ids, operator_id)
         self.audit.log("FEEDBACK", item.id, "CREATE", after={"feedback_no": item.feedback_no})
         self.db.commit()
         self.db.refresh(item)
@@ -249,6 +252,12 @@ class FeedbackService:
             "duplicate_of_id": new_duplicate_of_id,
             "updated_by": operator_id,
         }
+        if target is ManualFeedbackStatus.ACCEPTED:
+            values.update(
+                CollaborationService(self.db).accept_values(current, operator_id, payload.reason)
+            )
+        elif target is ManualFeedbackStatus.NEW:
+            values.update(handler_id=None, accepted_by=None, accepted_at=None)
         if not self.repo.update_with_revision(feedback_id, payload.revision, values):
             self.db.expire_all()
             latest = self.repo.get(feedback_id)
@@ -268,7 +277,17 @@ class FeedbackService:
                 "status": target,
                 "duplicate_of_id": new_duplicate_of_id,
                 "reason": payload.reason,
+                "accepted_by": current.accepted_by,
+                "accepted_at": current.accepted_at.isoformat() if current.accepted_at else None,
             },
+        )
+        collaboration = CollaborationService(self.db)
+        collaboration.event(
+            "FEEDBACK",
+            feedback_id,
+            f"STATUS_{target}",
+            operator_id,
+            [current.submitter_id, *collaboration.recipient_ids(feedback_id)],
         )
         self.db.commit()
         updated = self.repo.get(feedback_id)

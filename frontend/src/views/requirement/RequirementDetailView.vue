@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CollaborationPeople from '@/components/CollaborationPeople.vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
@@ -183,6 +184,7 @@ onMounted(load)
   <section v-loading="loading" class="page">
     <ErrorState v-if="failed" title="需求加载失败" description="请检查网络或确认需求是否仍可访问。" retry-label="重新加载" @retry="load" />
     <template v-if="item">
+      <CollaborationPeople v-if="can('rd.requirement.view')" kind="requirement" :id="item.id" :revision="item.revision" :editable="canEdit && !['ONLINE', 'CANCELED'].includes(item.status)" @updated="load" />
       <PageHeader :title="item.title" :eyebrow="item.requirement_no">
         <template #status>
           <StatusTag :status="item.status" :label="requirementStatusLabel[item.status]" :type="requirementStatusTagType(item.status)" />

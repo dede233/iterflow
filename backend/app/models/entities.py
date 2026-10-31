@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, date, datetime
+from uuid import uuid4
 
 from sqlalchemy import (
     JSON,
@@ -287,6 +288,40 @@ class Feedback(Base, AuditMixin):
         BigInteger, ForeignKey("rd_requirement.id"), index=True
     )
     duplicate_of_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("rd_feedback.id"))
+    handler_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("sys_user.id"))
+    accepted_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("sys_user.id"))
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class FeedbackRecipient(Base):
+    __tablename__ = "rd_feedback_recipient"
+    feedback_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("rd_feedback.id"), primary_key=True
+    )
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("sys_user.id"), primary_key=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+
+class RequirementParticipant(Base):
+    __tablename__ = "rd_requirement_participant"
+    requirement_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("rd_requirement.id"), primary_key=True
+    )
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("sys_user.id"), primary_key=True)
+    role: Mapped[str] = mapped_column(String(16), primary_key=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+
+class CollaborationEvent(Base):
+    __tablename__ = "sys_collaboration_event"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    entity_type: Mapped[str] = mapped_column(String(32))
+    entity_id: Mapped[int] = mapped_column(BigInteger)
+    action: Mapped[str] = mapped_column(String(64))
+    actor_id: Mapped[int] = mapped_column(BigInteger)
+    recipient_ids: Mapped[list[int]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class Version(Base, AuditMixin):

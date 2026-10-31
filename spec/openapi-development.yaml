@@ -18,6 +18,299 @@ tags:
 - name: System
 - name: File
 paths:
+  /collaboration/people:
+    get:
+      tags:
+      - Requirement
+      summary: 需求详情
+      operationId: people_api_v1_collaboration_people_get
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: kind
+        in: query
+        required: true
+        schema:
+          enum:
+          - feedback
+          - requirement
+          type: string
+          title: Kind
+      - name: feedback_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Feedback Id
+      - name: keyword
+        in: query
+        required: false
+        schema:
+          type: string
+          maxLength: 100
+          default: ''
+          title: Keyword
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 50
+          minimum: 1
+          default: 20
+          title: Page Size
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonPage'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /feedbacks/{feedback_id}/collaboration:
+    get:
+      tags:
+      - Requirement
+      summary: 需求详情
+      operationId: feedback_collaboration_api_v1_feedbacks__feedback_id__collaboration_get
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: feedback_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Feedback Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedbackCollaborationOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /feedbacks/{feedback_id}/recipients:
+    put:
+      tags:
+      - Requirement
+      summary: 需求详情
+      operationId: recipients_api_v1_feedbacks__feedback_id__recipients_put
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: feedback_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Feedback Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecipientsChange'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedbackCollaborationOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /feedbacks/{feedback_id}/transfer:
+    post:
+      tags:
+      - Requirement
+      summary: 需求详情
+      operationId: transfer_api_v1_feedbacks__feedback_id__transfer_post
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: feedback_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Feedback Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeedbackTransfer'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedbackCollaborationOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /requirements/{requirement_id}/participants:
+    get:
+      tags:
+      - Requirement
+      summary: 需求详情
+      operationId: participants_api_v1_requirements__requirement_id__participants_get
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: requirement_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Requirement Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParticipantsOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags:
+      - Requirement
+      summary: 需求详情
+      operationId: change_participants_api_v1_requirements__requirement_id__participants_put
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: requirement_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Requirement Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ParticipantsChange'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParticipantsOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /auth/login:
     post:
       tags:
@@ -4307,6 +4600,40 @@ components:
       - request_id
       title: ErrorResponse
       type: object
+    FeedbackCollaborationOut:
+      properties:
+        revision:
+          type: integer
+          title: 修订号
+        recipients:
+          items:
+            $ref: '#/components/schemas/PersonOption'
+          type: array
+          title: 接收人
+        handler_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: 处理人编号
+        accepted_by:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: 受理人编号
+        accepted_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: 受理时间
+      type: object
+      required:
+      - revision
+      - recipients
+      - handler_id
+      - accepted_by
+      - accepted_at
+      title: FeedbackCollaborationOut
     FeedbackConvertRequest:
       properties:
         type:
@@ -4415,6 +4742,16 @@ components:
           - type: string
           - type: 'null'
           title: 复现步骤
+        recipient_ids:
+          anyOf:
+          - items:
+              type: integer
+            type: array
+            maxItems: 50
+            minItems: 1
+          - type: 'null'
+          title: 接收人编号
+          description: 新界面必填；旧写客户端省略时保留兼容，显式列表不能为空。
       type: object
       required:
       - title
@@ -4580,6 +4917,28 @@ components:
       - status
       - revision
       title: FeedbackStatusChange
+    FeedbackTransfer:
+      properties:
+        revision:
+          type: integer
+          minimum: 1.0
+          title: 修订号
+        handler_id:
+          type: integer
+          exclusiveMinimum: 0.0
+          title: 处理人编号
+        reason:
+          type: string
+          maxLength: 500
+          minLength: 2
+          title: 原因
+      additionalProperties: false
+      type: object
+      required:
+      - revision
+      - handler_id
+      - reason
+      title: FeedbackTransfer
     FeedbackType:
       type: string
       enum:
@@ -4908,6 +5267,87 @@ components:
       required:
       - unread_count
       title: NotificationUnreadCount
+    ParticipantInput:
+      properties:
+        user_id:
+          type: integer
+          exclusiveMinimum: 0.0
+          title: 人员编号
+        role:
+          type: string
+          enum:
+          - CONFIRM
+          - DESIGN
+          - DEVELOP
+          - ACCEPT
+          title: 环节角色
+      additionalProperties: false
+      type: object
+      required:
+      - user_id
+      - role
+      title: ParticipantInput
+    ParticipantOut:
+      properties:
+        user_id:
+          type: integer
+          exclusiveMinimum: 0.0
+          title: 人员编号
+        role:
+          type: string
+          enum:
+          - CONFIRM
+          - DESIGN
+          - DEVELOP
+          - ACCEPT
+          title: 环节角色
+        display_name:
+          type: string
+          title: 显示名称
+        active:
+          type: boolean
+          title: 账号是否有效
+      additionalProperties: false
+      type: object
+      required:
+      - user_id
+      - role
+      - display_name
+      - active
+      title: ParticipantOut
+    ParticipantsChange:
+      properties:
+        revision:
+          type: integer
+          minimum: 1.0
+          title: 修订号
+        participants:
+          items:
+            $ref: '#/components/schemas/ParticipantInput'
+          type: array
+          maxItems: 100
+          title: 环节人员
+      additionalProperties: false
+      type: object
+      required:
+      - revision
+      - participants
+      title: ParticipantsChange
+    ParticipantsOut:
+      properties:
+        revision:
+          type: integer
+          title: 修订号
+        participants:
+          items:
+            $ref: '#/components/schemas/ParticipantOut'
+          type: array
+          title: 环节人员
+      type: object
+      required:
+      - revision
+      - participants
+      title: ParticipantsOut
     PermissionOut:
       properties:
         id:
@@ -4947,6 +5387,42 @@ components:
       - deprecated
       - replacement_code
       title: PermissionOut
+    PersonOption:
+      properties:
+        id:
+          type: integer
+          title: 编号
+        display_name:
+          type: string
+          title: 显示名称
+      type: object
+      required:
+      - id
+      - display_name
+      title: PersonOption
+    PersonPage:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/PersonOption'
+          type: array
+          title: 数据列表
+        total:
+          type: integer
+          title: 总数
+        page:
+          type: integer
+          title: 页码
+        page_size:
+          type: integer
+          title: 每页条数
+      type: object
+      required:
+      - items
+      - total
+      - page
+      - page_size
+      title: PersonPage
     Priority:
       type: string
       enum:
@@ -5042,6 +5518,25 @@ components:
       - release_notes
       - revision
       title: PublishVersionRequest
+    RecipientsChange:
+      properties:
+        revision:
+          type: integer
+          minimum: 1.0
+          title: 修订号
+        recipient_ids:
+          items:
+            type: integer
+          type: array
+          maxItems: 50
+          minItems: 1
+          title: 接收人编号
+      additionalProperties: false
+      type: object
+      required:
+      - revision
+      - recipient_ids
+      title: RecipientsChange
     RefreshRequest:
       properties:
         refresh_token:

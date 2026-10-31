@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CollaborationPeople from '@/components/CollaborationPeople.vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, type UploadRequestOptions } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
@@ -357,6 +358,7 @@ onMounted(async () => {
   <section v-loading="loading" class="page">
     <ErrorState v-if="failed" title="反馈加载失败" description="请检查网络或确认反馈是否仍可访问。" retry-label="重新加载" @retry="load" />
     <template v-if="item">
+      <CollaborationPeople v-if="can('rd.feedback.view')" kind="feedback" :id="item.id" :revision="item.revision" :editable="canEdit" @updated="load" />
       <PageHeader :title="item.title" :eyebrow="item.feedback_no">
         <template #status>
           <StatusTag :status="item.status" :label="feedbackStatusLabel[item.status]" :type="feedbackStatusTagType(item.status)" />

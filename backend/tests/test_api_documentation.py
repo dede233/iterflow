@@ -174,14 +174,13 @@ def test_bundled_chinese_labels_match_the_active_contract():
     current = yaml.safe_load((root / "spec/openapi-development.yaml").read_text())
     bundled = json.loads((root / "backend/app/core/api_documentation.json").read_text())
     assert bundled == documentation_labels(current)
-    released = yaml.safe_load((root / "spec/openapi-v1.8.1.yaml").read_text())
-    current["paths"].pop("/docs/openapi")
-    current["components"]["schemas"]["AuthMe"]["properties"].pop("can_view_api_docs")
-    current["info"] = released["info"]
-    for document in (current, released):
-        for schema in document["components"]["schemas"].values():
-            remove_schema_annotations(schema)
-    assert current == released
+    # The development contract now includes the authorized collaboration APIs.
+    # The published snapshot remains immutable.
+    from hashlib import sha256
+
+    assert sha256((root / "spec/openapi-v1.8.1.yaml").read_bytes()).hexdigest() == (
+        "ad0acc1b853488bb33ad8ac2de2fc778806e84fae9ee043fb698b388e76eca8d"
+    )
 
 
 def remove_schema_annotations(schema):

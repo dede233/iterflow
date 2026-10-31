@@ -15,11 +15,14 @@ from app.main import app
 from app.models.entities import (
     BusinessModule,
     BusinessSystem,
+    CollaborationEvent,
     Feedback,
+    FeedbackRecipient,
     OperationLog,
     Permission,
     Requirement,
     RequirementFeedback,
+    RequirementParticipant,
     Role,
     RolePermission,
     User,
@@ -57,7 +60,10 @@ def req_api(tmp_path: Path) -> Iterator[Fixture]:
         BusinessSystem.__table__,
         BusinessModule.__table__,
         Feedback.__table__,
+        FeedbackRecipient.__table__,
+        CollaborationEvent.__table__,
         Requirement.__table__,
+        RequirementParticipant.__table__,
         RequirementFeedback.__table__,
     ):
         table.create(engine)

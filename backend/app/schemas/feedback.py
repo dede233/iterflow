@@ -24,6 +24,7 @@ class FeedbackCreate(BaseModel):
     expected_result: str | None = None
     actual_result: str | None = None
     reproduce_steps: str | None = None
+    recipient_ids: list[int] | None = Field(default=None, min_length=1, max_length=50)
 
 
 class FeedbackUpdate(BaseModel):

@@ -10,9 +10,12 @@ from app.core.database import get_db
 from app.core.security import create_access_token
 from app.main import app
 from app.models.entities import (
+    CollaborationEvent,
     Feedback,
+    FeedbackRecipient,
     Permission,
     Requirement,
+    RequirementParticipant,
     Role,
     RolePermission,
     User,
@@ -45,8 +48,11 @@ def editing_api() -> Iterator[tuple[TestClient, dict[str, dict[str, str]]]]:
         UserRole.__table__,
         RolePermission.__table__,
         Feedback.__table__,
+        FeedbackRecipient.__table__,
+        CollaborationEvent.__table__,
         Version.__table__,
         Requirement.__table__,
+        RequirementParticipant.__table__,
     ):
         table.create(engine)
 

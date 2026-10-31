@@ -14,13 +14,16 @@ from app.core.database import get_db
 from app.core.security import create_access_token
 from app.main import app
 from app.models.entities import (
+    CollaborationEvent,
     Feedback,
+    FeedbackRecipient,
     Notification,
     OperationLog,
     Permission,
     Release,
     Requirement,
     RequirementFeedback,
+    RequirementParticipant,
     Role,
     RolePermission,
     User,
@@ -64,7 +67,10 @@ def pub_api(tmp_path: Path) -> Iterator[Fixture]:
         RolePermission.__table__,
         OperationLog.__table__,
         Feedback.__table__,
+        FeedbackRecipient.__table__,
+        CollaborationEvent.__table__,
         Requirement.__table__,
+        RequirementParticipant.__table__,
         Version.__table__,
         VersionRequirement.__table__,
         RequirementFeedback.__table__,

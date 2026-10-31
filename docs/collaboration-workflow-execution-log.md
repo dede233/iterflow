@@ -175,3 +175,25 @@ CI 的 push 过滤只有 master、phase/**、fix/**，因此使用现有 workflo
 本地修复验证：Ruff check/format、Mypy --no-incremental（104 文件）、compileall、schema/契约 13 项通过；前端 52 文件 / 336 项通过（同时覆盖有/无 randomUUID 的批量选择与冲突保持），类型生成一致性、生产构建、bundle 通过。另以生产 bundle 在普通 HTTP 来源下验证 375px/1280px 两种视口：确认 isSecureContext=false、randomUUID 不可用，仍可选择、提交并得到有效 UUID 与原 revision。测试资源从本地构建产物拦截返回、API 使用测试夹具，不依赖真实服务。最初的临时域名解析方案遇到宿主 Surge 代理阻断，已保留日志并停止该次测试；未修改系统 hosts 或代理配置。最终本地证据见 `/tmp/iterflow-remote-ci/http-origin-build.log`、`frontend-fix.log`、`fix-local-tests.log`。
 
 修复涉及协作 service 返回模型构造、前端 requestId 工具及批量组件/回归用例；没有 API shape、数据库 migration 或生产配置变更。后续对修复提交重新运行全部六项 CI，最终结果在下文记录。
+
+
+### 修复提交完整六项 CI 通过
+
+修复提交：`770d7e532c726e4d4ffdefba9cc540603f7463c7`。已推送到 origin/codex/collaboration-workflow，并重新 workflow_dispatch 全部六项。[Run 41171763589](https://github.com/dede233/iterflow/actions/runs/41171763589)，attempt 1，六项全部 success。
+
+| Job | 结果 | 证据 |
+| --- | --- | --- |
+| backend | PASS | [124451031505](https://github.com/dede233/iterflow/actions/runs/41171763589/job/124451031505)：395 passed / 1 skipped（S3 独立验证）、PG 57 passed / 0 skipped、Ruff、Mypy 104 文件、compileall、迁移与契约、开发/生产审计、生产锁安装均通过 |
+| frontend | PASS | [124451031309](https://github.com/dede233/iterflow/actions/runs/41171763589/job/124451031309)：52 文件 / 336 tests、依赖审计、生成类型、构建、bundle 274.1 KiB 通过 |
+| docker_smoke | PASS | [124451031371](https://github.com/dede233/iterflow/actions/runs/41171763589/job/124451031371)：runner 内新 volume 的构建、迁移、seed、health/ready、Web、登录和代理审计 IP 通过 |
+| s3 | PASS | [124451031386](https://github.com/dede233/iterflow/actions/runs/41171763589/job/124451031386)：一次性 S3 兼容服务实际往返通过 |
+| browser_smoke | PASS | [124451031351](https://github.com/dede233/iterflow/actions/runs/41171763589/job/124451031351)：普通 HTTP 域名、真实生产构建下 **166 passed**，包含两个真实后端主链与全部页面回归 |
+| backup_restore | PASS | [124451031356](https://github.com/dede233/iterflow/actions/runs/41171763589/job/124451031356)：runner 临时库及附件的备份、破坏、恢复与校验通过 |
+
+没有关闭测试、降低断言、增加自动重试或使用旧提交的成功替代新提交检查。此次只有一轮代码修复，两个真实问题均已在新提交上重新验证。
+
+### 文档收口与边界
+
+本节记录已经完成的实现提交及其远端证据。提交/推送本次文档收口后，仍需对分支最新 SHA 再运行六项 CI；最终分支检查以 [CI 工作流该分支的实际 Run](https://github.com/dede233/iterflow/actions/workflows/ci.yml?query=branch%3Acodex%2Fcollaboration-workflow) 与最终交付消息中的 SHA/Run 为准，不预写尚未发生的 PASS。
+
+推送目标仅为 GitHub origin 的当前功能分支。核验 origin/master 仍为 `10f6bfa6410c7836d7d43e402a175d56ad9577c7`；未推送 master、未合并、未创建 PR/tag/Release、未部署、未修改真实数据库、未发真实邮件。CI 使用一次性 runner 的数据库、S3、volume 和测试账号。临时本地 HTTP 验证服务已停止，工作区代码修复和所有记录均纳入当前分支。

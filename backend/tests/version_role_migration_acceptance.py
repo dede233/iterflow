@@ -147,19 +147,19 @@ def exercise_upgrade(engine, cfg, monkeypatch, case):
                 "rollback": "injected migration audit",
             }[case]
             with pytest.raises(RuntimeError, match=match):
-                command.upgrade(cfg, "head")
+                command.upgrade(cfg, new)
         assert snapshot() == before
         with engine.connect() as db:
             assert db.scalar(text("SELECT version_num FROM alembic_version")) == old
         return
 
-    command.upgrade(cfg, "head")
+    command.upgrade(cfg, new)
     after = snapshot()
     if mysql:
         from app.core.mysql_preflight import validate_mysql
 
         with engine.connect() as connection:
-            validate_mysql(connection)
+            validate_mysql(connection, allow_legacy=True)
     for key in ("users", "assignments", "versions", "permissions"):
         assert after[key] == before[key], key
     expected_links = set(before["links"])
@@ -187,7 +187,7 @@ def exercise_upgrade(engine, cfg, monkeypatch, case):
             assert set(log.before_data["permission_ids"]) <= set(log.after_data["permission_ids"])
     with engine.connect() as db:
         assert db.scalar(text("SELECT version_num FROM alembic_version")) == new
-    command.upgrade(cfg, "head")
+    command.upgrade(cfg, new)
     helper = runpy.run_path(
         str(Path(__file__).parents[1] / "alembic/version_role_permissions_v1.py")
     )

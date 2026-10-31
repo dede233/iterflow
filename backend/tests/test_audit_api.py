@@ -12,12 +12,15 @@ from app.core.database import get_db
 from app.core.security import create_access_token
 from app.main import app
 from app.models.entities import (
+    CollaborationEvent,
     Feedback,
+    FeedbackRecipient,
     OperationLog,
     Permission,
     Release,
     Requirement,
     RequirementParticipant,
+    RequirementStep,
     Role,
     RolePermission,
     User,
@@ -51,7 +54,10 @@ def audit_api(tmp_path: Path) -> Iterator[AuditFixture]:
         UserRole.__table__,
         RolePermission.__table__,
         Feedback.__table__,
+        FeedbackRecipient.__table__,
+        CollaborationEvent.__table__,
         Requirement.__table__,
+        RequirementStep.__table__,
         RequirementParticipant.__table__,
         Version.__table__,
         Release.__table__,

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import PeopleSelector from '@/components/PeopleSelector.vue'
+import type { Participant } from '@/api/collaboration'
 import { reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
@@ -12,6 +14,8 @@ const router = useRouter()
 const props = withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
 const emit = defineEmits<{ cancel: []; created: [id: number] }>()
 const saving = ref(false)
+const roles = reactive<Record<Participant['role'], number[]>>({ CONFIRM: [], DESIGN: [], DEVELOP: [], ACCEPT: [] })
+const roleLabels = { CONFIRM: '需求确认人', DESIGN: '设计人员（可选）', DEVELOP: '开发人员', ACCEPT: '验收人员' }
 const form = reactive({
   title: '',
   requirement_type: 'FEATURE',
@@ -37,6 +41,7 @@ async function submit(): Promise<void> {
   saving.value = true
   try {
     const created = await createRequirement({
+      participants: Object.entries(roles).flatMap(([role, ids]) => ids.map(user_id => ({ role: role as Participant['role'], user_id }))),
       title: form.title.trim(),
       requirement_type: form.requirement_type,
       priority: form.priority,
@@ -77,6 +82,7 @@ async function submit(): Promise<void> {
         <el-form-item label="验收标准" class="span-2">
           <el-input v-model="form.acceptance_criteria" type="textarea" :rows="3" />
         </el-form-item>
+        <el-form-item v-for="(label, role) in roleLabels" :key="role" :label="label"><PeopleSelector v-model="roles[role]" kind="requirement" :multiple="role === 'DESIGN' || role === 'DEVELOP'" /></el-form-item>
         </div>
         <div class="editor-actions">
           <el-button @click="cancel">取消</el-button>

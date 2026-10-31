@@ -1,5 +1,9 @@
 # DEVELOPMENT.md
 
+当前开发工作为 2026-10-31 授权的协作流程优化，范围及默认规则见
+`docs/collaboration-workflow-improvement-plan.md`，阶段结果见
+`docs/collaboration-workflow-execution-log.md`。下文 v1.8.1 发布目标为历史记录；
+本轮包版本暂不变，不执行正式发布或真实数据库升级。
 2026-10-23 用户确认开发人员、产品负责人、研发负责人均需完整版本流程权限。独立分支 `codex/version-role-permissions`，范围为默认角色授权、双数据库追加迁移、回归及当前文档，详见 [版本角色权限](docs/version-role-permissions.md)。保留原 DataScope、发布事务、全员开发确认、revision 与审计；已合并并按测试先行顺序部署至 8444/8443，见 [部署记录](docs/version-role-deployment-2026-10-23.md)。
 
 ## 当前开发文档
@@ -69,6 +73,7 @@ Redis 服务：iterflow-redis
 ├── spec/
 ├── backend/
 ├── frontend/
+├── tools/
 └── deploy/
 ```
 
@@ -79,6 +84,11 @@ Redis 服务：iterflow-redis
 - `spec/status-machines.md`：状态机
 
 ## 3. 本地环境
+
+macOS / ServBay 本机启动脚本和目录整理约定见 [tools/README.md](tools/README.md)。
+主项目保存在 `~/Developer/work/iterflow/`，人工临时 worktree 与备份分别集中到
+`~/Developer/worktrees/iterflow/` 和 `~/Developer/backups/iterflow/`；上传文件归属
+主项目的 `data/uploads/`，不依赖旧开发 worktree。
 
 建议：
 - ServBay（可直接提供 Python、PostgreSQL、Redis 与 Nginx/Caddy），或 Docker Engine / Docker Desktop

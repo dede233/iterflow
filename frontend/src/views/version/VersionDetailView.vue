@@ -3,7 +3,6 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
 import {
-  addVersionRequirement,
   changeVersionStatus,
   checkVersionPublish,
   getVersion,
@@ -16,8 +15,10 @@ import {
 import ReleaseVersionDrawer from '@/components/ReleaseVersionDrawer.vue'
 import { listReleases } from '@/api/releases'
 import { getRequirement } from '@/api/requirements'
+import BulkRequirementPicker from '@/components/BulkRequirementPicker.vue'
 import ScopedObjectSelector from '@/components/ScopedObjectSelector.vue'
 import ScopedRelationLink from '@/components/ScopedRelationLink.vue'
+import RequirementSummaryDialog from '@/components/RequirementSummaryDialog.vue'
 import { filterVersionWorklist, visibleWorklistStats } from '@/utils/versionWorklist'
 import { useDetailNavigation } from '@/composables/useDetailNavigation'
 import { usePermission } from '@/composables/usePermission'
@@ -59,6 +60,8 @@ const { isMobile } = useResponsive()
 const id = Number(props.embedded ? props.embeddedId : route.params.id)
 const { start: startPresence, stop: stopPresence, existingEditor } = useEditingPresence('VERSION', id)
 const conflict = useRevisionConflict()
+const summaryRequirementId = ref<number | null>(null)
+watch(() => [route.params.id, props.embeddedId], () => { summaryRequirementId.value = null })
 
 async function showVersionConflict(error: unknown, revision: number, onReload?: (latest: VersionItem) => void | Promise<void>): Promise<void> {
   await conflict.show(error, revision, {
@@ -275,34 +278,7 @@ async function submitEdit(): Promise<void> {
 
 // --- add requirement dialog ---
 const addDialog = ref(false)
-const addSubmitting = ref(false)
-const addRequirementId = ref<number | null>(null)
-
-async function submitAdd(): Promise<void> {
-  if (!item.value || !addRequirementId.value) {
-    ElMessage.warning('请填写需求 ID')
-    return
-  }
-  addSubmitting.value = true
-  let requirementRevision = 0
-  try {
-    // Fetch the requirement's current revision for the optimistic lock.
-    const req = await getRequirement(addRequirementId.value)
-    requirementRevision = req.revision
-    await addVersionRequirement(item.value.id, req.id, req.revision, item.value.revision)
-    emit('updated')
-    ElMessage.success('需求已加入版本')
-    addDialog.value = false
-    addRequirementId.value = null
-    await load()
-  } catch (error) {
-    if (addRequirementId.value && item.value) {
-      await showRelationConflict(error, item.value.revision, requirementRevision, addRequirementId.value, item.value.id)
-    }
-  } finally {
-    addSubmitting.value = false
-  }
-}
+async function onBulkAdded() { addDialog.value = false; emit('updated'); await load() }
 
 // --- move requirement dialog ---
 const moveDialog = ref(false)
@@ -467,7 +443,7 @@ onMounted(load)
           </el-table-column>
           <el-table-column label="操作" width="180">
             <template #default="s">
-              <el-link type="primary" @click="router.push(related('/requirements/' + s.row.id))">查看</el-link>
+              <el-link type="primary" @click="summaryRequirementId = s.row.id">查看</el-link>
               <template v-if="canManageReqs">
                 <el-link type="warning" style="margin-left: 10px" @click="openMove(s.row)">迁移</el-link>
                 <el-link type="danger" style="margin-left: 10px" @click="removeReq(s.row)">移出</el-link>
@@ -481,7 +457,7 @@ onMounted(load)
             <div class="req-card-title">{{ req.title }}</div>
             <p>优先级 {{ req.priority }}</p>
             <div class="req-card-actions">
-              <el-button link type="primary" @click="router.push(related('/requirements/' + req.id))">查看</el-button>
+              <el-button link type="primary" @click="summaryRequirementId = req.id">查看</el-button>
               <template v-if="canManageReqs">
                 <el-button link type="warning" @click="openMove(req)">迁移</el-button>
                 <el-button link type="danger" @click="removeReq(req)">移出</el-button>
@@ -507,6 +483,7 @@ onMounted(load)
       </SectionCard>
     </template>
 
+    <RequirementSummaryDialog :id="summaryRequirementId" :return-to="backTo" @close="summaryRequirementId = null" />
     <ReleaseVersionDrawer v-if="!embedded" v-model="releaseDrawer" kind="release" :id="activeReleaseId" :return-to="backTo" @updated="load" />
 
     <!-- publish dialog -->
@@ -599,16 +576,8 @@ onMounted(load)
     </el-dialog>
 
     <!-- add requirement dialog -->
-    <el-dialog v-model="addDialog" title="添加需求" width="min(420px, 92vw)" destroy-on-close>
-      <el-form label-position="top">
-        <el-form-item label="需求" required>
-          <ScopedObjectSelector v-model="addRequirementId" kind="requirement" :allowed="canViewRequirements" :active="addDialog" :disabled="addSubmitting" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="addDialog = false">取消</el-button>
-        <el-button type="primary" :loading="addSubmitting" @click="submitAdd">添加</el-button>
-      </template>
+    <el-dialog v-model="addDialog" title="批量添加需求" width="min(780px, 94vw)" destroy-on-close append-to-body :close-on-click-modal="false">
+      <BulkRequirementPicker v-if="addDialog && item" :version-id="item.id" :revision="item.revision" @updated="onBulkAdded" @cancel="addDialog = false" />
     </el-dialog>
 
     <!-- move requirement dialog -->

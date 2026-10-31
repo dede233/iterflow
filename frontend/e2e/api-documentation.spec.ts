@@ -1,3 +1,4 @@
+import { mockCollaboration } from './collaboration-fixture'
 import { expect, test } from '@playwright/test'
 
 const schema = {
@@ -31,7 +32,8 @@ for (const width of [375, 1440]) {
         localStorage.setItem('iterflow.access_token', 'docs-access')
         localStorage.setItem('iterflow.refresh_token', 'docs-refresh')
       })
-      await page.route('**/api/v1/**', route => {
+      await page.route('**/api/v1/**', async (route) => {
+    if (await mockCollaboration(route)) return
         const path = new URL(route.request().url()).pathname
         if (path === '/api/v1/auth/me') return route.fulfill({ json: {
           id: 1, username: 'docs-user', display_name: '文档用户', email: null, status: 'ACTIVE',
@@ -81,7 +83,8 @@ test('backend denial after role revocation leaves no schema visible', async ({ p
     localStorage.setItem('iterflow.access_token', 'docs-access')
     localStorage.setItem('iterflow.refresh_token', 'docs-refresh')
   })
-  await page.route('**/api/v1/**', route => {
+  await page.route('**/api/v1/**', async (route) => {
+    if (await mockCollaboration(route)) return
     const path = new URL(route.request().url()).pathname
     if (path === '/api/v1/auth/me') return route.fulfill({ json: { id: 1, username: 'docs-user', status: 'ACTIVE', revision: 1, permission_codes: [], data_scope: 'SELF', must_change_password: false, can_view_api_docs: true } })
     if (path === '/api/v1/notifications/unread-count') return route.fulfill({ json: { unread_count: 0 } })

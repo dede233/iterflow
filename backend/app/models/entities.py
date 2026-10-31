@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, date, datetime
+from uuid import uuid4
 
 from sqlalchemy import (
     JSON,
@@ -200,6 +201,10 @@ class DictionaryItem(Base, AuditMixin):
 
 
 class Requirement(Base, AuditMixin):
+    @property
+    def current_handlers(self):
+        return getattr(self, "_current_handlers", [])
+
     __tablename__ = "rd_requirement"
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     requirement_no: Mapped[str] = mapped_column(identifier_type(32), unique=True, index=True)
@@ -248,9 +253,30 @@ class Requirement(Base, AuditMixin):
         )
     description: Mapped[str] = mapped_column(Text)
     acceptance_criteria: Mapped[str | None] = mapped_column(Text)
+    content_revision: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    confirmed_revision: Mapped[int | None] = mapped_column(Integer)
+    legacy_completed: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=text("false")
+    )
+    design_status: Mapped[str] = mapped_column(
+        String(20), default="NOT_REQUIRED", server_default="NOT_REQUIRED"
+    )
+    paused_from: Mapped[str | None] = mapped_column(String(20))
 
 
-class RequirementParticipant(Base):
+class RequirementStep(Base):
+    __tablename__ = "rd_requirement_step"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    requirement_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("rd_requirement.id"), index=True
+    )
+    action: Mapped[str] = mapped_column(String(64))
+    actor_id: Mapped[int | None] = mapped_column(BigInteger)
+    created_at: Mapped[datetime] = mapped_column(timestamp_type(), default=utcnow)
+    detail: Mapped[dict] = mapped_column(JSON)
+
+
+class LegacyRequirementParticipant(Base):
     __tablename__ = "rd_requirement_participant"
     __table_args__ = (
         CheckConstraint("discipline IN ('DEVELOPMENT', 'DESIGN')", name="participant_discipline"),
@@ -316,6 +342,54 @@ class Feedback(Base, AuditMixin):
             BigInteger, ForeignKey("rd_requirement.id"), index=True
         )
     duplicate_of_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("rd_feedback.id"))
+    handler_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("sys_user.id"))
+    accepted_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("sys_user.id"))
+    accepted_at: Mapped[datetime | None] = mapped_column(timestamp_type())
+
+
+class FeedbackRecipient(Base):
+    __tablename__ = "rd_feedback_recipient"
+    feedback_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("rd_feedback.id"), primary_key=True
+    )
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("sys_user.id"), primary_key=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+
+class RequirementParticipant(Base):
+    __tablename__ = "rd_requirement_actor"
+    requirement_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("rd_requirement.id"), primary_key=True
+    )
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("sys_user.id"), primary_key=True)
+    role: Mapped[str] = mapped_column(String(16), primary_key=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    if MYSQL:
+        single_actor_role: Mapped[str | None] = mapped_column(
+            String(16),
+            Computed(
+                "CASE WHEN active = 1 AND role IN ('CONFIRM', 'ACCEPT') THEN role ELSE NULL END",
+                persisted=True,
+            ),
+        )
+        __table_args__ = (
+            UniqueConstraint(
+                "requirement_id", "single_actor_role", name="uq_requirement_single_actor_role"
+            ),
+        )
+
+
+class CollaborationEvent(Base):
+    __tablename__ = "sys_collaboration_event"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    entity_type: Mapped[str] = mapped_column(String(32))
+    entity_id: Mapped[int] = mapped_column(BigInteger)
+    action: Mapped[str] = mapped_column(String(64))
+    actor_id: Mapped[int] = mapped_column(BigInteger)
+    recipient_ids: Mapped[list[int]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(timestamp_type(), default=utcnow)
+    processed_at: Mapped[datetime | None] = mapped_column(timestamp_type())
 
 
 class Version(Base, AuditMixin):
@@ -517,6 +591,48 @@ class OperationLog(Base):
 Index("ix_feedback_system_module", Feedback.system_id, Feedback.module_id)
 Index("ix_requirement_system_module", Requirement.system_id, Requirement.module_id)
 
+
+class MailPreference(Base):
+    __tablename__ = "sys_mail_preference"
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("sys_user.id"), primary_key=True)
+    revision: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    mode: Mapped[str] = mapped_column(String(16), default="TASKS", server_default="TASKS")
+    verified_at: Mapped[datetime | None] = mapped_column(timestamp_type())
+    verified_email: Mapped[str | None] = mapped_column(String(254))
+    pending_email: Mapped[str | None] = mapped_column(String(254))
+    challenge_id: Mapped[str | None] = mapped_column(String(36))
+    challenge_expires_at: Mapped[datetime | None] = mapped_column(timestamp_type())
+    challenge_user_revision: Mapped[int | None] = mapped_column(Integer)
+    challenge_attempts: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    requested_at: Mapped[datetime | None] = mapped_column(timestamp_type())
+
+
+class NotificationDelivery(Base):
+    __tablename__ = "sys_notification_delivery"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    event_id: Mapped[str] = mapped_column(String(36), ForeignKey("sys_collaboration_event.id"))
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("sys_user.id"))
+    channel: Mapped[str] = mapped_column(String(16))
+    status: Mapped[str] = mapped_column(String(16), default="PENDING")
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    next_attempt_at: Mapped[datetime] = mapped_column(timestamp_type(), default=utcnow, index=True)
+    last_error: Mapped[str | None] = mapped_column(String(64))
+    queued_email: Mapped[str | None] = mapped_column(String(254))
+    created_at: Mapped[datetime] = mapped_column(timestamp_type(), default=utcnow)
+    __table_args__ = (
+        UniqueConstraint("event_id", "user_id", "channel", name="uq_delivery_event_user_channel"),
+    )
+
+
+if not MYSQL:
+    Index(
+        "uq_requirement_single_actor_role",
+        RequirementParticipant.requirement_id,
+        RequirementParticipant.role,
+        unique=True,
+        postgresql_where=text("active AND role IN ('CONFIRM', 'ACCEPT')"),
+        sqlite_where=text("active AND role IN ('CONFIRM', 'ACCEPT')"),
+    )
 
 if MYSQL:
     Requirement.current_version_id = column_property(

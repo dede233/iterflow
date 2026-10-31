@@ -1,3 +1,4 @@
+import { mockCollaboration } from './collaboration-fixture'
 import { expect, test, type Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 
@@ -13,7 +14,8 @@ async function fixture(page: Page, expired: boolean) {
       localStorage.setItem('iterflow.refresh_token', 'invalid-v17-test')
     }
   }, expired)
-  await page.route('**/api/v1/**', route => {
+  await page.route('**/api/v1/**', async (route) => {
+    if (await mockCollaboration(route)) return
     const path = new URL(route.request().url()).pathname
     const json = (body: unknown) => route.fulfill({ status: 200, json: body })
     if (path === '/api/v1/auth/refresh') {

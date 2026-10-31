@@ -18,7 +18,6 @@ from app.models.entities import (
     Release,
     Requirement,
     RequirementFeedback,
-    RequirementParticipant,
     Role,
     RolePermission,
     User,
@@ -46,6 +45,7 @@ def ready_chain(engine, user_id):
         db.add(version)
         db.flush()
         requirement = Requirement(
+            legacy_completed=True,
             requirement_no=f"P7-{uuid4().hex[:24]}",
             title="Atomic requirement",
             requirement_type="FEATURE",
@@ -70,12 +70,6 @@ def ready_chain(engine, user_id):
         db.flush()
         db.add_all(
             [
-                RequirementParticipant(
-                    requirement_id=requirement.id,
-                    user_id=user_id,
-                    discipline="DEVELOPMENT",
-                    completed_at=datetime.now(UTC),
-                ),
                 RequirementFeedback(requirement_id=requirement.id, feedback_id=feedback.id),
                 VersionRequirement(version_id=version.id, requirement_id=requirement.id),
             ]
@@ -229,6 +223,7 @@ def matrix(postgres_e2e_engine, postgres_http_client):
                 created_by=user_id,
             )
             r = Requirement(
+                legacy_completed=True,
                 requirement_no=suffix,
                 title=suffix,
                 requirement_type="FEATURE",

@@ -26,3 +26,11 @@ GRANT SELECT ON `iterflow`.`alembic_version` TO 'iterflow_runtime'@'APP_HOST';
 GRANT SELECT ON `iterflow`.`iterflow_file_key_node` TO 'iterflow_runtime'@'APP_HOST';
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON `iterflow`.`rd_requirement_participant` TO 'iterflow_runtime'@'APP_HOST';
+
+-- Collaboration workflow and transactional notification delivery.
+GRANT SELECT, INSERT, UPDATE, DELETE ON `iterflow`.`rd_feedback_recipient` TO 'iterflow_runtime'@'APP_HOST';
+GRANT SELECT, INSERT, UPDATE, DELETE ON `iterflow`.`rd_requirement_actor` TO 'iterflow_runtime'@'APP_HOST';
+GRANT SELECT, INSERT, UPDATE, DELETE ON `iterflow`.`rd_requirement_step` TO 'iterflow_runtime'@'APP_HOST';
+GRANT SELECT, INSERT, UPDATE, DELETE ON `iterflow`.`sys_collaboration_event` TO 'iterflow_runtime'@'APP_HOST';
+GRANT SELECT, INSERT, UPDATE, DELETE ON `iterflow`.`sys_mail_preference` TO 'iterflow_runtime'@'APP_HOST';
+GRANT SELECT, INSERT, UPDATE, DELETE ON `iterflow`.`sys_notification_delivery` TO 'iterflow_runtime'@'APP_HOST';

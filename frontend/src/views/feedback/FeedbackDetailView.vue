@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import PeopleSelector from '@/components/PeopleSelector.vue'
+import type { Participant } from '@/api/collaboration'
+import CollaborationPeople from '@/components/CollaborationPeople.vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, type UploadRequestOptions } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
@@ -99,6 +102,8 @@ const statusActions = computed<StatusAction[]>(() =>
 )
 
 // --- convert to requirement dialog ---
+const convertRoles = reactive<Record<Participant['role'], number[]>>({ CONFIRM: [], DESIGN: [], DEVELOP: [], ACCEPT: [] })
+const roleLabels = { CONFIRM: '需求确认人', DESIGN: '设计人员（可选）', DEVELOP: '开发人员', ACCEPT: '验收人员' }
 const convertDialog = ref(false)
 const convertSubmitting = ref(false)
 const convertForm = reactive({
@@ -113,6 +118,7 @@ const convertForm = reactive({
 
 function openConvert(): void {
   if (!item.value) return
+  Object.assign(convertRoles, { CONFIRM: [], DESIGN: [], DEVELOP: [], ACCEPT: [] })
   Object.assign(convertForm, {
     type: 'CREATE_NEW',
     requirement_title: item.value.title,
@@ -144,6 +150,7 @@ async function submitConvert(): Promise<void> {
   try {
     if (convertForm.type === 'LINK_EXISTING' && convertForm.requirement_id) await getRequirement(convertForm.requirement_id)
     const req = await convertFeedback(item.value.id, {
+      participants: convertForm.type === 'CREATE_NEW' ? Object.entries(convertRoles).flatMap(([role, ids]) => ids.map(user_id => ({ role: role as Participant['role'], user_id }))) : [],
       type: convertForm.type,
       revision: item.value.revision,
       requirement_title: convertForm.requirement_title.trim() || undefined,
@@ -223,8 +230,6 @@ const editForm = reactive({
   system_id: null as number | null,
   module_id: null as number | null,
   description: '',
-  expected_result: '',
-  actual_result: '',
   reproduce_steps: '',
 })
 const editModuleOptions = computed(() =>
@@ -246,8 +251,6 @@ function fillEditForm(latest: Feedback): void {
     system_id: latest.system_id ?? null,
     module_id: latest.module_id ?? null,
     description: latest.description,
-    expected_result: latest.expected_result ?? '',
-    actual_result: latest.actual_result ?? '',
     reproduce_steps: latest.reproduce_steps ?? '',
   })
 }
@@ -271,8 +274,6 @@ async function submitEdit(): Promise<void> {
       system_id: editForm.system_id ?? null,
       module_id: editForm.module_id ?? null,
       description: editForm.description.trim(),
-      expected_result: editForm.expected_result.trim() || null,
-      actual_result: editForm.actual_result.trim() || null,
       reproduce_steps: editForm.reproduce_steps.trim() || null,
       revision: item.value.revision,
     })
@@ -353,6 +354,7 @@ onMounted(async () => {
   <section v-loading="loading" class="page">
     <ErrorState v-if="failed" title="反馈加载失败" description="请检查网络或确认反馈是否仍可访问。" retry-label="重新加载" @retry="load" />
     <template v-if="item">
+
       <PageHeader :title="item.title" :eyebrow="item.feedback_no">
         <template #status>
           <StatusTag :status="item.status" :label="feedbackStatusLabel[item.status]" :type="feedbackStatusTagType(item.status)" />
@@ -372,6 +374,7 @@ onMounted(async () => {
         </el-button>
         </template>
       </PageHeader>
+      <CollaborationPeople v-if="can('rd.feedback.view')" kind="feedback" :id="item.id" :revision="item.revision" :editable="canEdit" @updated="load" />
 
       <div class="detail-grid">
       <SectionCard title="反馈详情" description="问题内容与复现信息" class="detail-main">
@@ -387,10 +390,10 @@ onMounted(async () => {
           <el-descriptions-item label="详细描述" :span="isMobile ? 1 : 2">
             <div class="multiline">{{ item.description }}</div>
           </el-descriptions-item>
-          <el-descriptions-item v-if="item.expected_result" label="期望结果" :span="isMobile ? 1 : 2">
+          <el-descriptions-item v-if="item.expected_result" label="历史补充 · 期望结果" :span="isMobile ? 1 : 2">
             <div class="multiline">{{ item.expected_result }}</div>
           </el-descriptions-item>
-          <el-descriptions-item v-if="item.actual_result" label="实际结果" :span="isMobile ? 1 : 2">
+          <el-descriptions-item v-if="item.actual_result" label="历史补充 · 实际结果" :span="isMobile ? 1 : 2">
             <div class="multiline">{{ item.actual_result }}</div>
           </el-descriptions-item>
           <el-descriptions-item v-if="item.reproduce_steps" label="复现步骤" :span="isMobile ? 1 : 2">
@@ -531,12 +534,6 @@ onMounted(async () => {
         <el-form-item label="详细描述">
           <el-input v-model="editForm.description" type="textarea" :rows="5" />
         </el-form-item>
-        <el-form-item label="期望结果">
-          <el-input v-model="editForm.expected_result" type="textarea" :rows="2" />
-        </el-form-item>
-        <el-form-item label="实际结果">
-          <el-input v-model="editForm.actual_result" type="textarea" :rows="2" />
-        </el-form-item>
         <el-form-item label="复现步骤">
           <el-input v-model="editForm.reproduce_steps" type="textarea" :rows="3" />
         </el-form-item>
@@ -576,6 +573,7 @@ onMounted(async () => {
           <el-form-item label="验收标准">
             <el-input v-model="convertForm.acceptance_criteria" type="textarea" :rows="3" />
           </el-form-item>
+          <el-form-item v-for="(label, role) in roleLabels" :key="role" :label="label"><PeopleSelector v-model="convertRoles[role]" kind="requirement" :multiple="role === 'DESIGN' || role === 'DEVELOP'" /></el-form-item>
         </template>
         <el-form-item v-else label="目标需求" required>
           <ScopedObjectSelector v-model="convertForm.requirement_id" kind="requirement" :allowed="canLinkExisting" :active="convertDialog && convertForm.type === 'LINK_EXISTING'" :disabled="convertSubmitting" />

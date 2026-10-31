@@ -38,9 +38,7 @@ from app.models.entities import (
     Requirement,
     RequirementFeedback,
     RequirementParticipant,
-    Role,
     User,
-    UserRole,
     Version,
     VersionRequirement,
 )
@@ -56,6 +54,7 @@ BACKEND = Path(__file__).resolve().parents[1]
 PORTABLE = os.environ.get("ITERFLOW_MYSQL_TEST_PROFILE") == "portable"
 TEST_PORT = 57358 if PORTABLE else 57357
 TEST_CONTAINER = "iterflow-mysql57-portable-db" if PORTABLE else "iterflow-mysql57-proof-db"
+TEST_CONTAINER = os.environ.get("ITERFLOW_TEST_MYSQL_CONTAINER", TEST_CONTAINER)
 TEST_PROJECT = "iterflow-mysql57-portable" if PORTABLE else "iterflow-mysql57-proof"
 TEST_VERSION = "5.7.44-log" if PORTABLE else "5.7.44"
 
@@ -161,6 +160,7 @@ def test_mysql_full_lifecycle(mysql_api):
         "/api/v1/feedbacks",
         headers=headers,
         json={
+            "recipient_ids": [user_id],
             "title": "Phase 8.2 real HTTP feedback",
             "feedback_type": "NEW_FEATURE",
             "urgency": "NORMAL",
@@ -193,12 +193,12 @@ def test_mysql_full_lifecycle(mysql_api):
     assert converted.status_code == 200, converted.text
     requirement = converted.json()
     assert requirement["source"] == "FEEDBACK"
-    assert requirement["status"] == "CONFIRMED"
+    assert requirement["status"] == "DRAFT"
     stale_revision = requirement["revision"]
     assigned = client.patch(
         f"/api/v1/requirements/{requirement['id']}",
         headers=headers,
-        json={"owner_id": user_id, "priority": "P1", "revision": stale_revision},
+        json={"priority": "P1", "revision": stale_revision},
     )
     assert assigned.status_code == 200, assigned.text
     requirement = assigned.json()
@@ -233,8 +233,22 @@ def test_mysql_full_lifecycle(mysql_api):
     planned_response = client.get(f"/api/v1/requirements/{requirement['id']}", headers=headers)
     assert planned_response.status_code == 200, planned_response.text
     current_requirement = planned_response.json()
-    assert current_requirement["status"] == "PLANNED"
-    for status in ("DEVELOPING", "TESTING"):
+    assert current_requirement["status"] == "DRAFT"
+    roster = client.put(
+        f"/api/v1/requirements/{requirement['id']}/participants",
+        headers=headers,
+        json={
+            "revision": current_requirement["revision"],
+            "participants": [
+                {"role": role, "user_id": user_id} for role in ("CONFIRM", "DEVELOP", "ACCEPT")
+            ],
+        },
+    )
+    assert roster.status_code == 200, roster.text
+    current_requirement = client.get(
+        f"/api/v1/requirements/{requirement['id']}", headers=headers
+    ).json()
+    for status in ("CONFIRMED", "DEVELOPING", "TESTING"):
         response = client.patch(
             f"/api/v1/requirements/{requirement['id']}/status",
             headers=headers,
@@ -243,32 +257,10 @@ def test_mysql_full_lifecycle(mysql_api):
         assert response.status_code == 200, response.text
         current_requirement = response.json()
 
-    with Session(engine) as db:
-        developer_role = db.scalar(select(Role).where(Role.code == "DEVELOPER"))
-        if db.get(UserRole, (user_id, developer_role.id)) is None:
-            db.add(UserRole(user_id=user_id, role_id=developer_role.id))
-            db.commit()
-    roster = client.patch(
-        f"/api/v1/requirements/{requirement['id']}/collaborators",
-        headers=headers,
-        json={
-            "kind": "DEVELOPMENT",
-            "revision": current_requirement["revision"],
-            "user_ids": [user_id],
-        },
-    )
-    assert roster.status_code == 200, roster.text
-    completed = client.post(
-        f"/api/v1/requirements/{requirement['id']}/development-completion",
-        headers=headers,
-        json={"revision": roster.json()["revision"]},
-    )
-    assert completed.status_code == 200, completed.text
-
     response = client.patch(
         f"/api/v1/requirements/{requirement['id']}/status",
         headers=headers,
-        json={"status": "DONE", "revision": completed.json()["revision"]},
+        json={"status": "DONE", "revision": current_requirement["revision"]},
     )
     assert response.status_code == 200, response.text
     current_requirement = response.json()
@@ -488,6 +480,7 @@ def test_mysql_auth_refresh_logout_first_password_and_permissions(mysql_api):
         headers=headers,
         json={
             "title": "私人反馈",
+            "recipient_ids": [mysql_api[2]],
             "feedback_type": "SYSTEM_ISSUE",
             "urgency": "NORMAL",
             "description": "scope",
@@ -574,6 +567,7 @@ def test_mysql_catalog_chinese_search_revision_and_files(mysql_api):
         headers=headers,
         json={
             "title": "中文检索 ABC %_",
+            "recipient_ids": [mysql_api[2]],
             "feedback_type": "SYSTEM_ISSUE",
             "urgency": "NORMAL",
             "description": "中文内容",
@@ -634,6 +628,7 @@ def test_mysql_many_feedbacks_and_move_history(mysql_api):
             headers=headers,
             json={
                 "title": f"归并{i}",
+                "recipient_ids": [mysql_api[2]],
                 "feedback_type": "SYSTEM_ISSUE",
                 "urgency": "NORMAL",
                 "description": "merge",
@@ -829,6 +824,7 @@ def test_mysql_concurrent_feedback_conversion(mysql_api):
         headers=headers,
         json={
             "title": "并发转换",
+            "recipient_ids": [mysql_api[2]],
             "feedback_type": "SYSTEM_ISSUE",
             "urgency": "NORMAL",
             "description": "race",
@@ -960,33 +956,18 @@ def test_mysql_restart_and_isolated_backup_restore(mysql_api, monkeypatch, tmp_p
     client, engine, _, headers = mysql_api
     ids = ready(mysql_api)
     with Session(engine) as db:
-        developer = db.scalar(select(Role).where(Role.code == "DEVELOPER"))
-        db.add(UserRole(user_id=mysql_api[2], role_id=developer.id))
-        designer = db.scalar(select(Role).where(Role.code == "DESIGNER"))
-        db.add(UserRole(user_id=mysql_api[2], role_id=designer.id))
-        db.get(
-            RequirementParticipant, (ids["requirement"], mysql_api[2], "DEVELOPMENT")
-        ).completed_at = None
+        from app.models.entities import LegacyRequirementParticipant
+
+        old_completion = datetime.now(UTC)
+        db.add(
+            LegacyRequirementParticipant(
+                requirement_id=ids["requirement"],
+                user_id=mysql_api[2],
+                discipline="DEVELOPMENT",
+                completed_at=old_completion,
+            )
+        )
         db.commit()
-    current = client.get(f"/api/v1/requirements/{ids['requirement']}", headers=headers).json()
-    assigned = client.put(
-        f"/api/v1/requirements/{ids['requirement']}/collaborators",
-        headers=headers,
-        json={
-            "revision": current["revision"],
-            "owner_id": mysql_api[2],
-            "developer_ids": [mysql_api[2]],
-            "designer_ids": [],
-        },
-    )
-    assert assigned.status_code == 200, assigned.text
-    confirmation = client.post(
-        f"/api/v1/requirements/{ids['requirement']}/development-completion",
-        headers=headers,
-        json={"revision": assigned.json()["revision"]},
-    )
-    assert confirmation.status_code == 200, confirmation.text
-    saved_confirmation = confirmation.json()["development_completions"][0]["completed_at"]
     design = client.post(
         "/api/v1/requirements",
         headers=headers,
@@ -994,23 +975,19 @@ def test_mysql_restart_and_isolated_backup_restore(mysql_api, monkeypatch, tmp_p
             "title": "设计阶段备份恢复需求",
             "requirement_type": "FEATURE",
             "description": "独立恢复验收",
+            "participants": [
+                {"role": role, "user_id": mysql_api[2]} for role in ("CONFIRM", "DESIGN")
+            ],
         },
     ).json()
-    for state in ("CONFIRMED", "PLANNED"):
-        result = client.patch(
-            f"/api/v1/requirements/{design['id']}/status",
+    for action in ("CONFIRM", "DESIGN_PENDING", "DESIGN_START"):
+        result = client.post(
+            f"/api/v1/requirements/{design['id']}/workflow",
             headers=headers,
-            json={"revision": design["revision"], "status": state},
+            json={"revision": design["revision"], "action": action},
         )
         assert result.status_code == 200, result.text
-        design = result.json()
-    result = client.post(
-        f"/api/v1/requirements/{design['id']}/start-stage",
-        headers=headers,
-        json={"revision": design["revision"], "status": "DESIGNING", "user_ids": [mysql_api[2]]},
-    )
-    assert result.status_code == 200, result.text
-    design = result.json()
+        design = client.get(f"/api/v1/requirements/{design['id']}", headers=headers).json()
     upload = client.post(
         f"/api/v1/feedbacks/{ids['feedback']}/attachments",
         headers=headers,
@@ -1089,17 +1066,24 @@ def test_mysql_restart_and_isolated_backup_restore(mysql_api, monkeypatch, tmp_p
         shutil.copytree(saved_storage, restore_storage)
         with restore_engine.connect() as connection:
             validate_mysql(connection)
+            restored_triggers = connection.scalar(
+                text(
+                    "SELECT COUNT(*) FROM information_schema.triggers "
+                    "WHERE trigger_schema=DATABASE()"
+                )
+            )
+            assert restored_triggers == 91
         with Session(restore_engine) as session:
             assert session.get(Requirement, ids["requirement"]).current_version_id == ids["version"]
             assert session.get(Feedback, ids["feedback"]).main_requirement_id == ids["requirement"]
             assert session.scalar(select(func.count(User.id))) == 1
             assert session.scalar(select(func.count(VersionRequirement.id))) == 1
-            assert session.scalar(select(func.count()).select_from(RequirementParticipant)) == 2
-            participant = session.scalar(select(RequirementParticipant))
-            assert participant.user_id == mysql_api[2] and participant.discipline == "DEVELOPMENT"
-            assert participant.completed_at is not None
-            assert participant.completed_at.isoformat().replace("+00:00", "Z") == saved_confirmation
-            assert session.get(Requirement, design["id"]).status == "DESIGNING"
+            participant = session.get(
+                LegacyRequirementParticipant, (ids["requirement"], mysql_api[2], "DEVELOPMENT")
+            )
+            assert participant.completed_at == old_completion
+            assert session.get(Requirement, design["id"]).status == "CONFIRMED"
+            assert session.get(Requirement, design["id"]).design_status == "IN_PROGRESS"
             assert (
                 session.get(RequirementParticipant, (design["id"], mysql_api[2], "DESIGN"))
                 is not None
@@ -1115,16 +1099,15 @@ def test_mysql_restart_and_isolated_backup_restore(mysql_api, monkeypatch, tmp_p
             client.get(download, headers=headers).content == b"isolated mysql57 backup attachment"
         )
         stage_after_restore = client.post(
-            f"/api/v1/requirements/{design['id']}/start-stage",
+            f"/api/v1/requirements/{design['id']}/workflow",
             headers=headers,
             json={
                 "revision": design["revision"],
-                "status": "DEVELOPING",
-                "user_ids": [mysql_api[2]],
+                "action": "DESIGN_DONE",
             },
         )
         assert stage_after_restore.status_code == 200, stage_after_restore.text
-        assert stage_after_restore.json()["status"] == "DEVELOPING"
+        assert stage_after_restore.json()["design_status"] == "DONE"
         after_restore = client.post(
             "/api/v1/files",
             headers=headers,
@@ -1167,7 +1150,7 @@ def test_mysql_restart_and_isolated_backup_restore(mysql_api, monkeypatch, tmp_p
                     ).hexdigest(),
                     "restart_persistence": True,
                     "successful_consecutive_restarts": 3,
-                    "restored_guard_triggers": 73,
+                    "restored_guard_triggers": restored_triggers,
                     "profile": TEST_PROJECT,
                     "restored_function_upload": True,
                     "design_state_and_roster_restored": True,
@@ -1189,7 +1172,7 @@ def test_mysql_preflight_requires_empty_or_verified_schema(mysql_api):
 
     with mysql_api[1].connect() as connection:
         result = validate_mysql(connection)
-        assert result["table_count"] == 24
+        assert result["table_count"] == 30
         with pytest.raises(RuntimeError, match="empty"):
             validate_mysql(connection, empty=True)
         connection.execute(text("DROP TRIGGER domain_sys_user_insert"))
@@ -1297,7 +1280,7 @@ def test_mysql_runtime_principal_cannot_remove_database_protection(mysql_api, mo
     event.listen(runtime, "connect", database.configure_mysql)
     try:
         with runtime.connect() as connection:
-            assert validate_mysql(connection, inspect_triggers=False)["table_count"] == 24
+            assert validate_mysql(connection, inspect_triggers=False)["table_count"] == 30
             with pytest.raises(DBAPIError):
                 connection.execute(text("DROP TRIGGER domain_sys_user_insert"))
             with pytest.raises(DBAPIError):
@@ -1317,6 +1300,7 @@ def test_mysql_runtime_principal_cannot_remove_database_protection(mysql_api, mo
             headers=headers,
             json={
                 "title": "least privilege",
+                "recipient_ids": [mysql_api[2]],
                 "feedback_type": "SYSTEM_ISSUE",
                 "urgency": "NORMAL",
                 "description": "runtime account verified",
@@ -1508,7 +1492,7 @@ def test_mysql_upgrade_legacy_0001_preserves_full_keys(monkeypatch):
         monkeypatch.setattr(migrate, "engine", engine)
         migrate.main()
         with engine.connect() as c:
-            assert validate_mysql(c)["table_count"] == 24
+            assert validate_mysql(c)["table_count"] == 30
         with Session(engine) as session:
             assert set(session.scalars(select(FileObject.storage_key))) == set(keys)
     finally:

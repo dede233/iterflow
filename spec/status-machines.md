@@ -31,28 +31,18 @@ CLOSED            -> NEW        (重开; 需 reason)
 - 所有写操作提交 `revision`，旧 `revision` 返回 409（乐观锁，禁止静默覆盖）。
 
 ## Requirement
-DRAFT -> CONFIRMED -> PLANNED -> [DESIGNING] -> DEVELOPING -> TESTING -> DONE -> ONLINE
+DRAFT（待确认） -> CONFIRMED（待开发） -> DEVELOPING（开发中） -> TESTING（待验收） -> DONE（待发布） -> ONLINE（已上线）
 
-2026-10-10 用户授权增加可选设计阶段：PLANNED 可进入 DESIGNING，也可直接进入 DEVELOPING。
-DESIGNING 可进入 DEVELOPING、PAUSED、CANCELED；PAUSED 允许恢复 DESIGNING。
+2026-10-31 授权的新工作流：PLANNED 仅保留历史读取枚举，迁移为 CONFIRMED，不再接受人工写入。直接创建／反馈转新需求从 DRAFT 开始；加入版本不改变需求状态。确认、开始开发、提验、验收分别由具备权限的对应环节人员操作；人员分配不等于确认。修改 description／acceptance_criteria 增加内容版本，旧确认失效，继续正向流转或发布前须确认当前内容。设计为可选子进度，启用后提验前须完成或有原因取消。
 
-开始设计/开发使用 `POST /requirements/{id}/start-stage`，仅具备需求编辑和状态权限且数据范围可见的操作者可执行。
-该接口要求至少一名对应角色的启用参与人员，人员分工、状态、一次 revision CAS、审计和定向站内通知原子提交。
-设计阶段开始时选择设计人员，开发阶段开始时选择开发人员；设计分工在开发后保留。
-普通状态接口进入 DESIGNING，或从 DESIGNING 进入 DEVELOPING 时，也必须已有对应分工。
-既有 PLANNED -> DEVELOPING 普通状态 API 保持兼容，不强制改写历史需求或已有客户端；新前端使用阶段接口选择人员。
+待验收退回开发、暂停、恢复、取消均记录原因；恢复目标只允许 CONFIRMED／DEVELOPING。终态不增加重开入口。历史已完成需求保留发布资格，缺失的确认人和时间不得伪造。发布前检查与正式发布均检查当前内容确认资格。
 
-旁路：CONFIRMED/PLANNED/DESIGNING/DEVELOPING/TESTING 可进入 PAUSED；DRAFT/CONFIRMED/PLANNED/DESIGNING/PAUSED 可按规则取消。
+旁路：CONFIRMED/DEVELOPING/TESTING 可进入 PAUSED；DRAFT/CONFIRMED/PAUSED 可按规则取消。
 
 - `ONLINE` 只能由成功发布事务自动产生，普通状态接口禁止设置。
 - `DONE -> DEVELOPING` 仅在所属 Version 尚未发布时允许，必须填写原因并写审计日志。
 
-2026-10-10 用户授权全员开发完成确认，并进一步要求未全员确认时不能标记需求完成：进入 DONE 必须至少有一名开发人员且全部已本人确认，否则返回 409，事务不提交。提测仍按原流程；全员确认不会自动将需求置为 DONE。
-开发、测试、完成阶段，绑定的启用且具备开发资格的人员可确认本人完成；总负责人/管理员不能代确认。
-每次进入 DEVELOPING（包括恢复开发、退回开发）清空全部既有确认，并写审计；新增或移除后再加入的人员待确认。
-未变更分工的人员确认保留；禁止用空开发名单绕过门禁。既有需求不自动确认。
-Version 发布要求每条有效关联需求至少一名开发人员，且全部本人确认完成；原 READY、DONE、权限门禁仍然成立。
-详见 `docs/development-completion.md`。
+2026-10-31 用户明确选择新方案：取消逐人开发完成确认。任一有权限的开发参与人可提交验收，指定验收人确认 DONE；原开发确认接口下线，原确认时间保留历史表与迁移步骤快照，不再参与 DONE/发布门禁。主状态 PLANNED/DESIGNING 都映射到 CONFIRMED，原 DESIGNING 保留为 IN_PROGRESS 设计子进度；不伪造确认/验收人员。
 
 ## Version
 PLANNING -> DEVELOPING -> TESTING -> READY -> RELEASED

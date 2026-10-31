@@ -56,41 +56,6 @@
         }
       }
     },
-    "AssigneeOption": {
-      "title": "AssigneeOption",
-      "properties": {
-        "user_id": {
-          "title": "用户 ID"
-        },
-        "display_name": {
-          "title": "显示名称"
-        },
-        "can_develop": {
-          "title": "可分配开发职责"
-        },
-        "can_design": {
-          "title": "可分配设计职责"
-        }
-      }
-    },
-    "AssigneeOptionsPage": {
-      "title": "AssigneeOptionsPage",
-      "properties": {
-        "items": {
-          "title": "人员列表",
-          "items": {}
-        },
-        "total": {
-          "title": "人员总数"
-        },
-        "page": {
-          "title": "当前页码"
-        },
-        "page_size": {
-          "title": "每页条数"
-        }
-      }
-    },
     "AttachmentOut": {
       "title": "AttachmentOut",
       "description": "Business-facing attachment metadata. Never exposes storage_key/path.",
@@ -271,6 +236,32 @@
       "properties": {
         "file": {
           "title": "上传文件"
+        }
+      }
+    },
+    "BulkAddRequirements": {
+      "title": "BulkAddRequirements",
+      "properties": {
+        "version_revision": {
+          "title": "版本修订号"
+        },
+        "request_id": {
+          "title": "请求标识"
+        },
+        "items": {
+          "title": "需求列表",
+          "items": {}
+        }
+      }
+    },
+    "BulkRequirementItem": {
+      "title": "BulkRequirementItem",
+      "properties": {
+        "requirement_id": {
+          "title": "需求 ID"
+        },
+        "revision": {
+          "title": "需求修订号"
         }
       }
     },
@@ -708,26 +699,44 @@
     "DataScope": {
       "title": "DataScope"
     },
-    "DeveloperCompletion": {
-      "title": "DeveloperCompletion",
+    "DeliveryOut": {
+      "title": "DeliveryOut",
       "properties": {
-        "user_id": {
-          "title": "开发人员"
+        "id": {
+          "title": "投递标识"
         },
-        "completed_at": {
-          "title": "本人完成确认时间",
+        "event_id": {
+          "title": "事件标识"
+        },
+        "user_id": {
+          "title": "接收用户"
+        },
+        "channel": {
+          "title": "通知渠道"
+        },
+        "status": {
+          "title": "投递状态"
+        },
+        "attempts": {
+          "title": "尝试次数"
+        },
+        "last_error": {
+          "title": "脱敏错误",
           "anyOf": [
             {},
             {}
           ]
+        },
+        "next_attempt_at": {
+          "title": "下次尝试时间"
         }
       }
     },
-    "DevelopmentCompletionRequest": {
-      "title": "DevelopmentCompletionRequest",
+    "DeliveryRetry": {
+      "title": "DeliveryRetry",
       "properties": {
-        "revision": {
-          "title": "数据版本"
+        "attempts": {
+          "title": "已见尝试次数"
         }
       }
     },
@@ -744,6 +753,28 @@
     },
     "EditingEntityType": {
       "title": "EditingEntityType"
+    },
+    "EmailVerificationConfirm": {
+      "title": "EmailVerificationConfirm",
+      "properties": {
+        "revision": {
+          "title": "修订号"
+        },
+        "code": {
+          "title": "验证码"
+        }
+      }
+    },
+    "EmailVerificationRequest": {
+      "title": "EmailVerificationRequest",
+      "properties": {
+        "revision": {
+          "title": "修订号"
+        },
+        "email": {
+          "title": "邮箱"
+        }
+      }
     },
     "ErrorResponse": {
       "title": "ErrorResponse",
@@ -763,6 +794,39 @@
         },
         "request_id": {
           "title": "请求追踪 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        }
+      }
+    },
+    "FeedbackCollaborationOut": {
+      "title": "FeedbackCollaborationOut",
+      "properties": {
+        "revision": {
+          "title": "修订号"
+        },
+        "recipients": {
+          "title": "接收人",
+          "items": {}
+        },
+        "handler_id": {
+          "title": "处理人编号",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "accepted_by": {
+          "title": "受理人编号",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "accepted_at": {
+          "title": "受理时间",
           "anyOf": [
             {},
             {}
@@ -811,6 +875,10 @@
             {},
             {}
           ]
+        },
+        "participants": {
+          "title": "环节人员",
+          "items": {}
         },
         "requirement_id": {
           "title": "需求 ID",
@@ -874,6 +942,10 @@
             {},
             {}
           ]
+        },
+        "recipient_ids": {
+          "title": "反馈接收人",
+          "items": {}
         }
       }
     },
@@ -1040,6 +1112,20 @@
             {},
             {}
           ]
+        }
+      }
+    },
+    "FeedbackTransfer": {
+      "title": "FeedbackTransfer",
+      "properties": {
+        "revision": {
+          "title": "修订号"
+        },
+        "handler_id": {
+          "title": "处理人编号"
+        },
+        "reason": {
+          "title": "原因"
         }
       }
     },
@@ -1214,6 +1300,48 @@
         }
       }
     },
+    "MailPreferenceChange": {
+      "title": "MailPreferenceChange",
+      "properties": {
+        "revision": {
+          "title": "修订号"
+        },
+        "mode": {
+          "title": "邮件偏好"
+        }
+      }
+    },
+    "MailPreferencesOut": {
+      "title": "MailPreferencesOut",
+      "properties": {
+        "revision": {
+          "title": "修订号"
+        },
+        "mode": {
+          "title": "邮件偏好"
+        },
+        "email": {
+          "title": "当前邮箱",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "verified": {
+          "title": "邮箱已验证"
+        },
+        "pending_email": {
+          "title": "待验证邮箱",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "smtp_enabled": {
+          "title": "邮件服务已启用"
+        }
+      }
+    },
     "ManualFeedbackStatus": {
       "title": "ManualFeedbackStatus",
       "description": "Feedback statuses a human may set through the status API.\n\nREQUIREMENT_LINKED and ONLINE are produced only by convert and publish\ntransactions. They are intentionally excluded here so they can never be set\nby hand."
@@ -1303,6 +1431,58 @@
         }
       }
     },
+    "ParticipantInput": {
+      "title": "ParticipantInput",
+      "properties": {
+        "user_id": {
+          "title": "人员编号"
+        },
+        "role": {
+          "title": "环节角色"
+        }
+      }
+    },
+    "ParticipantOut": {
+      "title": "ParticipantOut",
+      "properties": {
+        "user_id": {
+          "title": "人员编号"
+        },
+        "role": {
+          "title": "环节角色"
+        },
+        "display_name": {
+          "title": "显示名称"
+        },
+        "active": {
+          "title": "账号是否有效"
+        }
+      }
+    },
+    "ParticipantsChange": {
+      "title": "ParticipantsChange",
+      "properties": {
+        "revision": {
+          "title": "修订号"
+        },
+        "participants": {
+          "title": "环节人员",
+          "items": {}
+        }
+      }
+    },
+    "ParticipantsOut": {
+      "title": "ParticipantsOut",
+      "properties": {
+        "revision": {
+          "title": "修订号"
+        },
+        "participants": {
+          "title": "环节人员",
+          "items": {}
+        }
+      }
+    },
     "PermissionOut": {
       "title": "PermissionOut",
       "properties": {
@@ -1333,6 +1513,35 @@
             {},
             {}
           ]
+        }
+      }
+    },
+    "PersonOption": {
+      "title": "PersonOption",
+      "properties": {
+        "id": {
+          "title": "编号"
+        },
+        "display_name": {
+          "title": "显示名称"
+        }
+      }
+    },
+    "PersonPage": {
+      "title": "PersonPage",
+      "properties": {
+        "items": {
+          "title": "数据列表",
+          "items": {}
+        },
+        "total": {
+          "title": "总数"
+        },
+        "page": {
+          "title": "页码"
+        },
+        "page_size": {
+          "title": "每页条数"
         }
       }
     },
@@ -1401,6 +1610,18 @@
         "revision": {
           "title": "修订号",
           "description": "对象的乐观锁修订号；写入时提交最后读取的修订号。"
+        }
+      }
+    },
+    "RecipientsChange": {
+      "title": "RecipientsChange",
+      "properties": {
+        "revision": {
+          "title": "修订号"
+        },
+        "recipient_ids": {
+          "title": "接收人编号",
+          "items": {}
         }
       }
     },
@@ -1495,78 +1716,6 @@
         }
       }
     },
-    "RequirementCollaboratorGroupUpdate": {
-      "title": "调整阶段分工",
-      "properties": {
-        "revision": {
-          "title": "数据版本"
-        },
-        "kind": {
-          "title": "分工类型"
-        },
-        "owner_id": {
-          "title": "总负责人",
-          "anyOf": [
-            {},
-            {}
-          ]
-        },
-        "user_ids": {
-          "title": "参与人员",
-          "items": {}
-        }
-      }
-    },
-    "RequirementCollaboratorsOut": {
-      "title": "RequirementCollaboratorsOut",
-      "properties": {
-        "revision": {
-          "title": "修订号"
-        },
-        "owner": {
-          "title": "总负责人",
-          "anyOf": [
-            {},
-            {}
-          ]
-        },
-        "developers": {
-          "title": "开发人员",
-          "items": {}
-        },
-        "designers": {
-          "title": "设计人员",
-          "items": {}
-        },
-        "development_completions": {
-          "title": "开发完成确认",
-          "items": {}
-        }
-      }
-    },
-    "RequirementCollaboratorsUpdate": {
-      "title": "RequirementCollaboratorsUpdate",
-      "properties": {
-        "revision": {
-          "title": "修订号"
-        },
-        "owner_id": {
-          "title": "总负责人 ID",
-          "anyOf": [
-            {},
-            {}
-          ]
-        },
-        "developer_ids": {
-          "title": "开发人员 ID 列表",
-          "items": {}
-        },
-        "designer_ids": {
-          "title": "设计人员 ID 列表",
-          "items": {}
-        }
-      }
-    },
     "RequirementCreate": {
       "title": "RequirementCreate",
       "properties": {
@@ -1594,11 +1743,12 @@
           ]
         },
         "owner_id": {
-          "title": "负责人 ID",
-          "anyOf": [
-            {},
-            {}
-          ]
+          "title": "历史总负责人编号",
+          "description": "历史总负责人只读；新写入不再接受 owner_id。"
+        },
+        "participants": {
+          "title": "环节人员",
+          "items": {}
         },
         "description": {
           "title": "描述"
@@ -1630,6 +1780,10 @@
     "RequirementOut": {
       "title": "RequirementOut",
       "properties": {
+        "current_handlers": {
+          "title": "当前待处理人",
+          "items": {}
+        },
         "id": {
           "title": "需求 ID"
         },
@@ -1729,21 +1883,6 @@
     "RequirementSource": {
       "title": "RequirementSource"
     },
-    "RequirementStageStart": {
-      "title": "开始需求阶段",
-      "properties": {
-        "revision": {
-          "title": "数据版本"
-        },
-        "status": {
-          "title": "阶段状态"
-        },
-        "user_ids": {
-          "title": "参与人员",
-          "items": {}
-        }
-      }
-    },
     "RequirementStatus": {
       "title": "RequirementStatus"
     },
@@ -1805,11 +1944,8 @@
           ]
         },
         "owner_id": {
-          "title": "负责人 ID",
-          "anyOf": [
-            {},
-            {}
-          ]
+          "title": "历史总负责人编号",
+          "description": "历史总负责人只读；新写入不再接受 owner_id。"
         },
         "description": {
           "title": "描述",
@@ -2386,9 +2522,149 @@
           "description": "对象的乐观锁修订号；写入时提交最后读取的修订号。"
         }
       }
+    },
+    "WorkflowAction": {
+      "title": "WorkflowAction",
+      "properties": {
+        "revision": {
+          "title": "修订号"
+        },
+        "action": {
+          "title": "动作"
+        },
+        "reason": {
+          "title": "原因",
+          "anyOf": [
+            {},
+            {}
+          ]
+        }
+      }
+    },
+    "WorkflowOut": {
+      "title": "WorkflowOut",
+      "properties": {
+        "revision": {
+          "title": "修订号"
+        },
+        "content_revision": {
+          "title": "内容版本"
+        },
+        "confirmed_revision": {
+          "title": "已确认内容版本",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "needs_confirmation": {
+          "title": "是否待确认"
+        },
+        "legacy_completed": {
+          "title": "历史完成资格"
+        },
+        "design_status": {
+          "title": "设计进度"
+        },
+        "paused_from": {
+          "title": "暂停前阶段",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "records": {
+          "title": "阶段记录",
+          "items": {}
+        }
+      }
+    },
+    "WorkflowRecord": {
+      "title": "WorkflowRecord",
+      "properties": {
+        "id": {
+          "title": "编号"
+        },
+        "action": {
+          "title": "动作"
+        },
+        "actor_id": {
+          "title": "实际操作人",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "created_at": {
+          "title": "发生时间"
+        },
+        "detail": {
+          "title": "详细信息"
+        }
+      }
     }
   },
   "paths": {
+    "/requirements/{requirement_id}/workflow": {
+      "get": {
+        "tags": [
+          "Requirement"
+        ],
+        "summary": "需求详情"
+      },
+      "post": {
+        "tags": [
+          "Requirement"
+        ],
+        "summary": "需求详情"
+      }
+    },
+    "/collaboration/people": {
+      "get": {
+        "tags": [
+          "Requirement"
+        ],
+        "summary": "需求详情"
+      }
+    },
+    "/feedbacks/{feedback_id}/collaboration": {
+      "get": {
+        "tags": [
+          "Requirement"
+        ],
+        "summary": "需求详情"
+      }
+    },
+    "/feedbacks/{feedback_id}/recipients": {
+      "put": {
+        "tags": [
+          "Requirement"
+        ],
+        "summary": "需求详情"
+      }
+    },
+    "/feedbacks/{feedback_id}/transfer": {
+      "post": {
+        "tags": [
+          "Requirement"
+        ],
+        "summary": "需求详情"
+      }
+    },
+    "/requirements/{requirement_id}/participants": {
+      "get": {
+        "tags": [
+          "Requirement"
+        ],
+        "summary": "需求详情"
+      },
+      "put": {
+        "tags": [
+          "Requirement"
+        ],
+        "summary": "需求详情"
+      }
+    },
     "/auth/login": {
       "post": {
         "tags": [
@@ -2567,47 +2843,6 @@
         "description": "普通创建需要 rd.requirement.create。指定 version_id 与 version_revision 时还需要 rd.version.edit 和 rd.requirement.view。目标版本同时受 Version DataScope 限制。"
       }
     },
-    "/requirements/assignee-options": {
-      "get": {
-        "tags": [
-          "requirements"
-        ],
-        "summary": "选择需求协作人员",
-        "description": "需要 rd.requirement.edit。仅返回启用且具备需求查看权限的个人 ID、显示名和可分配职责，不公开联系方式或管理资料。开发候选需启用 DEVELOPER 或 DEVELOPMENT_LEAD 角色，设计候选需启用 DESIGNER 角色。"
-      }
-    },
-    "/requirements/{requirement_id}/collaborators": {
-      "get": {
-        "tags": [
-          "requirements"
-        ],
-        "summary": "查看需求协作人员",
-        "description": "需要需求查看权限及该需求数据范围。"
-      },
-      "put": {
-        "tags": [
-          "requirements"
-        ],
-        "summary": "分配需求协作人员",
-        "description": "需要 rd.requirement.edit 及该需求数据范围。原子替换总负责人、开发和设计人员；revision CAS，旧 revision 返回 409。有效人员必须启用且拥有需求查看权限；开发、设计需对应启用角色。失败时关联、通知与审计一起回滚。同人兼任不同职责只收到一条事件通知。"
-      },
-      "patch": {
-        "tags": [
-          "requirements"
-        ],
-        "summary": "单独调整负责人或当前阶段分工",
-        "description": "需要需求编辑权限及数据范围；kind OWNER 单独修改 owner_id，DEVELOPMENT 或 DESIGN 单独替换 user_ids，保留其他分工。设计仅在 DESIGNING 调整；开发可在 DEVELOPING/TESTING/DONE 调整且不能清空。保留人员的确认保留，新增或移除后重加人员待确认；已完成需求调整开发名单可能再次阻断发布。revision CAS、审计和通知原子提交。"
-      }
-    },
-    "/requirements/{requirement_id}/development-completion": {
-      "post": {
-        "tags": [
-          "requirements"
-        ],
-        "summary": "开发人员确认本人开发完成",
-        "description": "仅当前绑定、启用且具有开发资格的人员本人可确认；需要需求查看、状态权限与数据范围。请求体仅 revision，不能指定他人或管理员代确认。DEVELOPING/TESTING/DONE 可补充确认；每次进入开发清空确认，新增或重加人员待确认。DONE 与发布均要求非空开发名单、全部本人确认；确认本身不会自动推进 DONE。确认时间、revision CAS、审计和通知原子提交。"
-      }
-    },
     "/requirements/{requirement_id}": {
       "get": {
         "tags": [
@@ -2620,15 +2855,6 @@
           "Requirement"
         ],
         "summary": "编辑需求"
-      }
-    },
-    "/requirements/{requirement_id}/start-stage": {
-      "post": {
-        "tags": [
-          "requirements"
-        ],
-        "summary": "开始设计或开发并分配阶段人员",
-        "description": "同时需要需求编辑、状态权限及数据范围。仅允许 PLANNED 到 DESIGNING/DEVELOPING 或 DESIGNING 到 DEVELOPING；选择 1–100 名对应角色的启用且具备需求查看权限的人员，不允许重复。仅替换当前阶段分工，设计进入开发后保留设计分工。人员、状态、一次 revision CAS、审计、通知原子提交；进入 DEVELOPING 清空既有开发确认。"
       }
     },
     "/requirements/{requirement_id}/feedbacks": {
@@ -2646,7 +2872,7 @@
           "Requirement"
         ],
         "summary": "变更需求状态",
-        "description": "进入 DONE 必须已分配至少一名开发人员且全部本人确认完成；未满足时返回业务冲突 409，状态、revision、审计和通知均不提交。旧 revision 仍返回 CAS 冲突。"
+        "description": "六阶段流转：开发参与人提交验收，指定验收人确认 DONE；不再要求每名开发人员单独确认。人员资格、内容确认、revision CAS、原因、审计及事务回滚统一校验。ONLINE 仅由成功发布产生。"
       }
     },
     "/versions": {
@@ -2704,6 +2930,15 @@
         "description": "需要 rd.version.edit 与 rd.requirement.view；目标 Version 与 Requirement 均须在各自 DataScope 内。通过 VersionService；READY/RELEASED/CANCELED 冻结返回 409。"
       }
     },
+    "/versions/{version_id}/requirements/batch": {
+      "post": {
+        "tags": [
+          "Version"
+        ],
+        "summary": "批量关联需求",
+        "description": "需要 rd.version.edit 与 rd.requirement.view；目标 Version 与 Requirement 均须在各自 DataScope 内。通过 VersionService；READY/RELEASED/CANCELED 冻结返回 409。"
+      }
+    },
     "/versions/{version_id}/requirements/move": {
       "post": {
         "tags": [
@@ -2728,7 +2963,7 @@
           "Version"
         ],
         "summary": "发布前检查",
-        "description": "需要 rd.version.publish 及 Version 数据范围。基础开发人员、产品负责人和研发负责人具备完整版本操作权限；SELF 仍仅限本人创建或负责的版本。运行与 publish 相同的前置检查；通过返回 200，未通过返回 409 并含 checks。 新增 DEVELOPMENT_COMPLETION_CHECK：每条有效需求至少一名开发人员且全部已本人确认；未确认的需求作为发布阻断项。"
+        "description": "需要 rd.version.publish 及 Version 数据范围。基础开发人员、产品负责人和研发负责人保留完整版本权限；SELF 仍限本人创建或负责的版本。检查 READY、全部有效需求 DONE 与当前内容确认资格；通过 200，否则 409。逐人开发完成确认已取消。"
       }
     },
     "/versions/{version_id}/publish": {
@@ -2737,7 +2972,7 @@
           "Version"
         ],
         "summary": "发布版本",
-        "description": "需要 rd.version.publish 及数据范围；基础开发人员、产品负责人和研发负责人默认具有该权限。版本必须 READY，全部有效关联需求 DONE，每条需求至少一名开发且全部本人确认。实际发布重新校验并锁定相关业务行。Release(SUCCESS)、Version、Requirement/Feedback ONLINE、通知和审计同一事务提交；中途异常全部回滚。重复发布返回 409；普通状态接口不能进入 RELEASED。"
+        "description": "需要 rd.version.publish 及数据范围。重新锁定校验 READY、全部有效需求 DONE 和内容确认资格。Release(SUCCESS)、Version、Requirement/Feedback ONLINE、通知事件和审计原子提交；异常回滚，重复发布 409。"
       }
     },
     "/releases": {
@@ -2789,6 +3024,52 @@
           "Notification"
         ],
         "summary": "标记通知已读"
+      }
+    },
+    "/me/mail-preferences": {
+      "get": {
+        "tags": [
+          "mail"
+        ],
+        "summary": "get_mail_preferences"
+      },
+      "put": {
+        "tags": [
+          "mail"
+        ],
+        "summary": "change_mail_preferences"
+      }
+    },
+    "/me/email-verification": {
+      "post": {
+        "tags": [
+          "mail"
+        ],
+        "summary": "request_email_verification"
+      }
+    },
+    "/me/email-verification/confirm": {
+      "post": {
+        "tags": [
+          "mail"
+        ],
+        "summary": "confirm_email_verification"
+      }
+    },
+    "/admin/mail-deliveries": {
+      "get": {
+        "tags": [
+          "mail"
+        ],
+        "summary": "list_mail_deliveries"
+      }
+    },
+    "/admin/mail-deliveries/{delivery_id}/retry": {
+      "post": {
+        "tags": [
+          "mail"
+        ],
+        "summary": "retry_mail_delivery"
       }
     },
     "/systems": {

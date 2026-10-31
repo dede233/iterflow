@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from collaboration_acceptance import RedactedHeaders
+from seeded_postgres_fixture import RedactedHeaders
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -118,26 +118,20 @@ def exercise_version_role(fixture, role_code, monkeypatch):
             "/api/v1/requirements",
             headers=admin,
             json={
-                "title": "全员开发确认门禁",
+                "title": "开发提交与验收人确认门禁",
                 "requirement_type": "FEATURE",
                 "description": "角色回归",
-                "owner_id": actor_id,
+                "participants": [
+                    {"role": "CONFIRM", "user_id": dev2_id},
+                    {"role": "DEVELOP", "user_id": dev1_id},
+                    {"role": "DEVELOP", "user_id": dev2_id},
+                    {"role": "ACCEPT", "user_id": dev2_id},
+                    {"role": "DESIGN", "user_id": actor_id},
+                ],
             },
         )
     )
     req_path = f"/api/v1/requirements/{req['id']}"
-    ok(
-        client.put(
-            req_path + "/collaborators",
-            headers=admin,
-            json={
-                "revision": req["revision"],
-                "owner_id": actor_id,
-                "developer_ids": [dev1_id, dev2_id],
-                "designer_ids": [],
-            },
-        )
-    )
     req = ok(client.get(req_path, headers=admin))
     ok(
         client.post(
@@ -203,45 +197,25 @@ def exercise_version_role(fixture, role_code, monkeypatch):
     assert client.post(path + "/publish/check", headers=actor).status_code == 409
     assert client.post(path + "/publish", headers=actor, json=body).status_code == 409
     req = ok(client.get(req_path, headers=admin))
-    for status in ("DEVELOPING", "TESTING"):
+    for status, header in (("CONFIRMED", dev2), ("DEVELOPING", dev1), ("TESTING", dev1)):
         req = ok(
             client.patch(
                 req_path + "/status",
-                headers=admin,
+                headers=header,
                 json={"status": status, "revision": req["revision"]},
             )
         )
     assert (
         client.patch(
-            req_path + "/status",
-            headers=admin,
-            json={"status": "DONE", "revision": req["revision"]},
+            req_path + "/status", headers=dev1, json={"status": "DONE", "revision": req["revision"]}
         ).status_code
-        == 409
+        == 403
     )
-    for i, developer in enumerate((dev1, dev2)):
-        ok(
-            client.post(
-                req_path + "/development-completion",
-                headers=developer,
-                json={"revision": req["revision"]},
-            )
-        )
-        req = ok(client.get(req_path, headers=admin))
-        if i == 0:
-            assert (
-                client.patch(
-                    req_path + "/status",
-                    headers=admin,
-                    json={"status": "DONE", "revision": req["revision"]},
-                ).status_code
-                == 409
-            )
-            assert client.post(path + "/publish", headers=actor, json=body).status_code == 409
+    # One developer submits; the other need not confirm. Only the acceptance actor completes.
     ok(
         client.patch(
             req_path + "/status",
-            headers=admin,
+            headers=dev2,
             json={"status": "DONE", "revision": req["revision"]},
         )
     )

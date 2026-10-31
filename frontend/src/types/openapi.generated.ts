@@ -4,6 +4,110 @@
  */
 
 export interface paths {
+    "/requirements/{requirement_id}/workflow": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 需求详情 */
+        get: operations["workflow_api_v1_requirements__requirement_id__workflow_get"];
+        put?: never;
+        /** 需求详情 */
+        post: operations["workflow_action_api_v1_requirements__requirement_id__workflow_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/collaboration/people": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 需求详情 */
+        get: operations["people_api_v1_collaboration_people_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/feedbacks/{feedback_id}/collaboration": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 需求详情 */
+        get: operations["feedback_collaboration_api_v1_feedbacks__feedback_id__collaboration_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/feedbacks/{feedback_id}/recipients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 需求详情 */
+        put: operations["recipients_api_v1_feedbacks__feedback_id__recipients_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/feedbacks/{feedback_id}/transfer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 需求详情 */
+        post: operations["transfer_api_v1_feedbacks__feedback_id__transfer_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/requirements/{requirement_id}/participants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 需求详情 */
+        get: operations["participants_api_v1_requirements__requirement_id__participants_get"];
+        /** 需求详情 */
+        put: operations["change_participants_api_v1_requirements__requirement_id__participants_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/login": {
         parameters: {
             query?: never;
@@ -334,74 +438,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/requirements/assignee-options": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 选择需求协作人员
-         * @description 需要 rd.requirement.edit。仅返回启用且具备需求查看权限的个人 ID、显示名和可分配职责，不公开联系方式或管理资料。开发候选需启用 DEVELOPER 或 DEVELOPMENT_LEAD 角色，设计候选需启用 DESIGNER 角色。
-         */
-        get: operations["assignee_options_api_v1_requirements_assignee_options_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/requirements/{requirement_id}/collaborators": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 查看需求协作人员
-         * @description 需要需求查看权限及该需求数据范围。
-         */
-        get: operations["get_collaborators_api_v1_requirements__requirement_id__collaborators_get"];
-        /**
-         * 分配需求协作人员
-         * @description 需要 rd.requirement.edit 及该需求数据范围。原子替换总负责人、开发和设计人员；revision CAS，旧 revision 返回 409。有效人员必须启用且拥有需求查看权限；开发、设计需对应启用角色。失败时关联、通知与审计一起回滚。同人兼任不同职责只收到一条事件通知。
-         */
-        put: operations["replace_collaborators_api_v1_requirements__requirement_id__collaborators_put"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /**
-         * 单独调整负责人或当前阶段分工
-         * @description 需要需求编辑权限及数据范围；kind OWNER 单独修改 owner_id，DEVELOPMENT 或 DESIGN 单独替换 user_ids，保留其他分工。设计仅在 DESIGNING 调整；开发可在 DEVELOPING/TESTING/DONE 调整且不能清空。保留人员的确认保留，新增或移除后重加人员待确认；已完成需求调整开发名单可能再次阻断发布。revision CAS、审计和通知原子提交。
-         */
-        patch: operations["update_collaborator_group_api_v1_requirements__requirement_id__collaborators_patch"];
-        trace?: never;
-    };
-    "/requirements/{requirement_id}/development-completion": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * 开发人员确认本人开发完成
-         * @description 仅当前绑定、启用且具有开发资格的人员本人可确认；需要需求查看、状态权限与数据范围。请求体仅 revision，不能指定他人或管理员代确认。DEVELOPING/TESTING/DONE 可补充确认；每次进入开发清空确认，新增或重加人员待确认。DONE 与发布均要求非空开发名单、全部本人确认；确认本身不会自动推进 DONE。确认时间、revision CAS、审计和通知原子提交。
-         */
-        post: operations["confirm_development_api_v1_requirements__requirement_id__development_completion_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/requirements/{requirement_id}": {
         parameters: {
             query?: never;
@@ -418,26 +454,6 @@ export interface paths {
         head?: never;
         /** 编辑需求 */
         patch: operations["update_requirement_api_v1_requirements__requirement_id__patch"];
-        trace?: never;
-    };
-    "/requirements/{requirement_id}/start-stage": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * 开始设计或开发并分配阶段人员
-         * @description 同时需要需求编辑、状态权限及数据范围。仅允许 PLANNED 到 DESIGNING/DEVELOPING 或 DESIGNING 到 DEVELOPING；选择 1–100 名对应角色的启用且具备需求查看权限的人员，不允许重复。仅替换当前阶段分工，设计进入开发后保留设计分工。人员、状态、一次 revision CAS、审计、通知原子提交；进入 DEVELOPING 清空既有开发确认。
-         */
-        post: operations["start_stage_api_v1_requirements__requirement_id__start_stage_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
         trace?: never;
     };
     "/requirements/{requirement_id}/feedbacks": {
@@ -475,7 +491,7 @@ export interface paths {
         head?: never;
         /**
          * 变更需求状态
-         * @description 进入 DONE 必须已分配至少一名开发人员且全部本人确认完成；未满足时返回业务冲突 409，状态、revision、审计和通知均不提交。旧 revision 仍返回 CAS 冲突。
+         * @description 六阶段流转：开发参与人提交验收，指定验收人确认 DONE；不再要求每名开发人员单独确认。人员资格、内容确认、revision CAS、原因、审计及事务回滚统一校验。ONLINE 仅由成功发布产生。
          */
         patch: operations["change_status_api_v1_requirements__requirement_id__status_patch"];
         trace?: never;
@@ -566,6 +582,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/versions/{version_id}/requirements/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 批量关联需求
+         * @description 需要 rd.version.edit 与 rd.requirement.view；目标 Version 与 Requirement 均须在各自 DataScope 内。通过 VersionService；READY/RELEASED/CANCELED 冻结返回 409。
+         */
+        post: operations["bulk_add_version_requirements"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/versions/{version_id}/requirements/move": {
         parameters: {
             query?: never;
@@ -617,7 +653,7 @@ export interface paths {
         put?: never;
         /**
          * 发布前检查
-         * @description 需要 rd.version.publish 及 Version 数据范围。基础开发人员、产品负责人和研发负责人具备完整版本操作权限；SELF 仍仅限本人创建或负责的版本。运行与 publish 相同的前置检查；通过返回 200，未通过返回 409 并含 checks。 新增 DEVELOPMENT_COMPLETION_CHECK：每条有效需求至少一名开发人员且全部已本人确认；未确认的需求作为发布阻断项。
+         * @description 需要 rd.version.publish 及 Version 数据范围。基础开发人员、产品负责人和研发负责人保留完整版本权限；SELF 仍限本人创建或负责的版本。检查 READY、全部有效需求 DONE 与当前内容确认资格；通过 200，否则 409。逐人开发完成确认已取消。
          */
         post: operations["check_version_publish_api_v1_versions__version_id__publish_check_post"];
         delete?: never;
@@ -637,7 +673,7 @@ export interface paths {
         put?: never;
         /**
          * 发布版本
-         * @description 需要 rd.version.publish 及数据范围；基础开发人员、产品负责人和研发负责人默认具有该权限。版本必须 READY，全部有效关联需求 DONE，每条需求至少一名开发且全部本人确认。实际发布重新校验并锁定相关业务行。Release(SUCCESS)、Version、Requirement/Feedback ONLINE、通知和审计同一事务提交；中途异常全部回滚。重复发布返回 409；普通状态接口不能进入 RELEASED。
+         * @description 需要 rd.version.publish 及数据范围。重新锁定校验 READY、全部有效需求 DONE 和内容确认资格。Release(SUCCESS)、Version、Requirement/Feedback ONLINE、通知事件和审计原子提交；异常回滚，重复发布 409。
          */
         post: operations["publish_version_api_v1_versions__version_id__publish_post"];
         delete?: never;
@@ -751,6 +787,92 @@ export interface paths {
         put?: never;
         /** 标记通知已读 */
         post: operations["mark_read_api_v1_notifications__notification_id__read_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/mail-preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** get_mail_preferences */
+        get: operations["get_mail_preferences"];
+        /** change_mail_preferences */
+        put: operations["change_mail_preferences"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/email-verification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** request_email_verification */
+        post: operations["request_email_verification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/email-verification/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** confirm_email_verification */
+        post: operations["confirm_email_verification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/mail-deliveries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** list_mail_deliveries */
+        get: operations["list_mail_deliveries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/mail-deliveries/{delivery_id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** retry_mail_delivery */
+        post: operations["retry_mail_delivery"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1182,28 +1304,6 @@ export interface components {
              */
             version_revision: number;
         };
-        /** AssigneeOption */
-        AssigneeOption: {
-            /** 用户 ID */
-            user_id: number;
-            /** 显示名称 */
-            display_name: string;
-            /** 可分配开发职责 */
-            can_develop: boolean;
-            /** 可分配设计职责 */
-            can_design: boolean;
-        };
-        /** AssigneeOptionsPage */
-        AssigneeOptionsPage: {
-            /** 人员列表 */
-            items: components["schemas"]["AssigneeOption"][];
-            /** 人员总数 */
-            total: number;
-            /** 当前页码 */
-            page: number;
-            /** 每页条数 */
-            page_size: number;
-        };
         /**
          * AttachmentOut
          * @description Business-facing attachment metadata. Never exposes storage_key/path.
@@ -1327,6 +1427,25 @@ export interface components {
         Body_upload_file_api_v1_files_post: {
             /** 上传文件 */
             file: string;
+        };
+        /** BulkAddRequirements */
+        BulkAddRequirements: {
+            /** 版本修订号 */
+            version_revision: number;
+            /**
+             * 请求标识
+             * Format: uuid
+             */
+            request_id: string;
+            /** 需求列表 */
+            items: components["schemas"]["BulkRequirementItem"][];
+        };
+        /** BulkRequirementItem */
+        BulkRequirementItem: {
+            /** 需求 ID */
+            requirement_id: number;
+            /** 需求修订号 */
+            revision: number;
         };
         /** BusinessModuleCreate */
         BusinessModuleCreate: {
@@ -1619,17 +1738,32 @@ export interface components {
          * @enum {string}
          */
         DataScope: "SELF" | "TEAM" | "ALL";
-        /** DeveloperCompletion */
-        DeveloperCompletion: {
-            /** 开发人员 */
+        /** DeliveryOut */
+        DeliveryOut: {
+            /** 投递标识 */
+            id: string;
+            /** 事件标识 */
+            event_id: string;
+            /** 接收用户 */
             user_id: number;
-            /** 本人完成确认时间 */
-            completed_at: string | null;
+            /** 通知渠道 */
+            channel: string;
+            /** 投递状态 */
+            status: string;
+            /** 尝试次数 */
+            attempts: number;
+            /** 脱敏错误 */
+            last_error: string | null;
+            /**
+             * 下次尝试时间
+             * Format: date-time
+             */
+            next_attempt_at: string;
         };
-        /** DevelopmentCompletionRequest */
-        DevelopmentCompletionRequest: {
-            /** 数据版本 */
-            revision: number;
+        /** DeliveryRetry */
+        DeliveryRetry: {
+            /** 已见尝试次数 */
+            attempts: number;
         };
         /** EditHeartbeat */
         EditHeartbeat: {
@@ -1643,6 +1777,20 @@ export interface components {
          * @enum {string}
          */
         EditingEntityType: "FEEDBACK" | "REQUIREMENT" | "VERSION";
+        /** EmailVerificationConfirm */
+        EmailVerificationConfirm: {
+            /** 修订号 */
+            revision: number;
+            /** 验证码 */
+            code: string;
+        };
+        /** EmailVerificationRequest */
+        EmailVerificationRequest: {
+            /** 修订号 */
+            revision: number;
+            /** 邮箱 */
+            email: string;
+        };
         /** ErrorResponse */
         ErrorResponse: {
             /** 错误码 */
@@ -1653,6 +1801,19 @@ export interface components {
             data: unknown | null;
             /** 请求追踪 ID */
             request_id: string | null;
+        };
+        /** FeedbackCollaborationOut */
+        FeedbackCollaborationOut: {
+            /** 修订号 */
+            revision: number;
+            /** 接收人 */
+            recipients: components["schemas"]["PersonOption"][];
+            /** 处理人编号 */
+            handler_id: number | null;
+            /** 受理人编号 */
+            accepted_by: number | null;
+            /** 受理时间 */
+            accepted_at: string | null;
         };
         /**
          * FeedbackConvertRequest
@@ -1683,6 +1844,8 @@ export interface components {
             description?: string | null;
             /** 验收标准 */
             acceptance_criteria?: string | null;
+            /** 环节人员 */
+            participants?: components["schemas"]["ParticipantInput"][];
             /** 需求 ID */
             requirement_id?: number | null;
         };
@@ -1715,6 +1878,8 @@ export interface components {
             actual_result?: string | null;
             /** 复现步骤 */
             reproduce_steps?: string | null;
+            /** 反馈接收人 */
+            recipient_ids: number[];
         };
         /** FeedbackOut */
         FeedbackOut: {
@@ -1810,6 +1975,15 @@ export interface components {
             reason?: string | null;
             /** 重复反馈关联 ID */
             duplicate_of_id?: number | null;
+        };
+        /** FeedbackTransfer */
+        FeedbackTransfer: {
+            /** 修订号 */
+            revision: number;
+            /** 处理人编号 */
+            handler_id: number;
+            /** 原因 */
+            reason: string;
         };
         /**
          * FeedbackType
@@ -1912,6 +2086,34 @@ export interface components {
              */
             ok: boolean;
         };
+        /** MailPreferenceChange */
+        MailPreferenceChange: {
+            /** 修订号 */
+            revision: number;
+            /**
+             * 邮件偏好
+             * @enum {string}
+             */
+            mode: "ALL" | "TASKS" | "OFF";
+        };
+        /** MailPreferencesOut */
+        MailPreferencesOut: {
+            /** 修订号 */
+            revision: number;
+            /**
+             * 邮件偏好
+             * @enum {string}
+             */
+            mode: "ALL" | "TASKS" | "OFF";
+            /** 当前邮箱 */
+            email: string | null;
+            /** 邮箱已验证 */
+            verified: boolean;
+            /** 待验证邮箱 */
+            pending_email: string | null;
+            /** 邮件服务已启用 */
+            smtp_enabled: boolean;
+        };
         /**
          * ManualFeedbackStatus
          * @description Feedback statuses a human may set through the status API.
@@ -1926,7 +2128,7 @@ export interface components {
          * ManualRequirementStatus
          * @enum {string}
          */
-        ManualRequirementStatus: "DRAFT" | "CONFIRMED" | "PLANNED" | "DESIGNING" | "DEVELOPING" | "TESTING" | "DONE" | "PAUSED" | "CANCELED";
+        ManualRequirementStatus: "DRAFT" | "CONFIRMED" | "DEVELOPING" | "TESTING" | "DONE" | "PAUSED" | "CANCELED";
         /**
          * ManualVersionStatus
          * @enum {string}
@@ -1986,6 +2188,44 @@ export interface components {
             /** 未读通知数 */
             unread_count: number;
         };
+        /** ParticipantInput */
+        ParticipantInput: {
+            /** 人员编号 */
+            user_id: number;
+            /**
+             * 环节角色
+             * @enum {string}
+             */
+            role: "CONFIRM" | "DESIGN" | "DEVELOP" | "ACCEPT";
+        };
+        /** ParticipantOut */
+        ParticipantOut: {
+            /** 人员编号 */
+            user_id: number;
+            /**
+             * 环节角色
+             * @enum {string}
+             */
+            role: "CONFIRM" | "DESIGN" | "DEVELOP" | "ACCEPT";
+            /** 显示名称 */
+            display_name: string;
+            /** 账号是否有效 */
+            active: boolean;
+        };
+        /** ParticipantsChange */
+        ParticipantsChange: {
+            /** 修订号 */
+            revision: number;
+            /** 环节人员 */
+            participants: components["schemas"]["ParticipantInput"][];
+        };
+        /** ParticipantsOut */
+        ParticipantsOut: {
+            /** 修订号 */
+            revision: number;
+            /** 环节人员 */
+            participants: components["schemas"]["ParticipantOut"][];
+        };
         /** PermissionOut */
         PermissionOut: {
             /** 唯一标识 ID */
@@ -2004,6 +2244,24 @@ export interface components {
             deprecated: boolean;
             /** 替代权限码 */
             replacement_code: string | null;
+        };
+        /** PersonOption */
+        PersonOption: {
+            /** 编号 */
+            id: number;
+            /** 显示名称 */
+            display_name: string;
+        };
+        /** PersonPage */
+        PersonPage: {
+            /** 数据列表 */
+            items: components["schemas"]["PersonOption"][];
+            /** 总数 */
+            total: number;
+            /** 页码 */
+            page: number;
+            /** 每页条数 */
+            page_size: number;
         };
         /**
          * Priority
@@ -2059,6 +2317,13 @@ export interface components {
              * @description 对象的乐观锁修订号；写入时提交最后读取的修订号。
              */
             revision: number;
+        };
+        /** RecipientsChange */
+        RecipientsChange: {
+            /** 修订号 */
+            revision: number;
+            /** 接收人编号 */
+            recipient_ids: number[];
         };
         /** RefreshRequest */
         RefreshRequest: {
@@ -2130,44 +2395,6 @@ export interface components {
             /** 操作原因 */
             reason?: string | null;
         };
-        /** 调整阶段分工 */
-        RequirementCollaboratorGroupUpdate: {
-            /** 数据版本 */
-            revision: number;
-            /**
-             * 分工类型
-             * @enum {string}
-             */
-            kind: "OWNER" | "DEVELOPMENT" | "DESIGN";
-            /** 总负责人 */
-            owner_id?: number | null;
-            /** 参与人员 */
-            user_ids?: number[];
-        };
-        /** RequirementCollaboratorsOut */
-        RequirementCollaboratorsOut: {
-            /** 修订号 */
-            revision: number;
-            /** 总负责人 */
-            owner: components["schemas"]["AssigneeOption"] | null;
-            /** 开发人员 */
-            developers: components["schemas"]["AssigneeOption"][];
-            /** 设计人员 */
-            designers: components["schemas"]["AssigneeOption"][];
-            /** 开发完成确认 */
-            development_completions: components["schemas"]["DeveloperCompletion"][];
-        };
-        /** RequirementCollaboratorsUpdate */
-        RequirementCollaboratorsUpdate: {
-            /** 修订号 */
-            revision: number;
-            /** 总负责人 ID */
-            owner_id: number | null;
-            /** 开发人员 ID 列表 */
-            developer_ids: number[];
-            /** 设计人员 ID 列表 */
-            designer_ids: number[];
-        };
         /** RequirementCreate */
         RequirementCreate: {
             /** 需求标题 */
@@ -2183,8 +2410,13 @@ export interface components {
             system_id?: number | null;
             /** 所属模块 ID */
             module_id?: number | null;
-            /** 负责人 ID */
-            owner_id?: number | null;
+            /**
+             * 历史总负责人编号
+             * @description 历史总负责人只读；新写入不再接受 owner_id。
+             */
+            owner_id?: null;
+            /** 环节人员 */
+            participants?: components["schemas"]["ParticipantInput"][];
             /** 描述 */
             description: string;
             /** 验收标准 */
@@ -2199,6 +2431,8 @@ export interface components {
         };
         /** RequirementOut */
         RequirementOut: {
+            /** 当前待处理人 */
+            current_handlers?: components["schemas"]["PersonOption"][];
             /** 需求 ID */
             id: number;
             /** 需求编号 */
@@ -2259,18 +2493,6 @@ export interface components {
          * @enum {string}
          */
         RequirementSource: "DIRECT" | "FEEDBACK";
-        /** 开始需求阶段 */
-        RequirementStageStart: {
-            /** 数据版本 */
-            revision: number;
-            /**
-             * 阶段状态
-             * @enum {string}
-             */
-            status: "DESIGNING" | "DEVELOPING";
-            /** 参与人员 */
-            user_ids: number[];
-        };
         /**
          * RequirementStatus
          * @enum {string}
@@ -2300,8 +2522,11 @@ export interface components {
             system_id?: number | null;
             /** 所属模块 ID */
             module_id?: number | null;
-            /** 负责人 ID */
-            owner_id?: number | null;
+            /**
+             * 历史总负责人编号
+             * @description 历史总负责人只读；新写入不再接受 owner_id。
+             */
+            owner_id?: null;
             /** 描述 */
             description?: string | null;
             /** 验收标准 */
@@ -2647,6 +2872,58 @@ export interface components {
              */
             revision: number;
         };
+        /** WorkflowAction */
+        WorkflowAction: {
+            /** 修订号 */
+            revision: number;
+            /**
+             * 动作
+             * @enum {string}
+             */
+            action: "CONFIRM" | "REQUEST_CHANGES" | "DESIGN_PENDING" | "DESIGN_START" | "DESIGN_DONE" | "DESIGN_CANCEL";
+            /** 原因 */
+            reason?: string | null;
+        };
+        /** WorkflowOut */
+        WorkflowOut: {
+            /** 修订号 */
+            revision: number;
+            /** 内容版本 */
+            content_revision: number;
+            /** 已确认内容版本 */
+            confirmed_revision: number | null;
+            /** 是否待确认 */
+            needs_confirmation: boolean;
+            /** 历史完成资格 */
+            legacy_completed: boolean;
+            /**
+             * 设计进度
+             * @enum {string}
+             */
+            design_status: "NOT_REQUIRED" | "PENDING" | "IN_PROGRESS" | "DONE";
+            /** 暂停前阶段 */
+            paused_from: string | null;
+            /** 阶段记录 */
+            records: components["schemas"]["WorkflowRecord"][];
+        };
+        /** WorkflowRecord */
+        WorkflowRecord: {
+            /** 编号 */
+            id: string;
+            /** 动作 */
+            action: string;
+            /** 实际操作人 */
+            actor_id: number | null;
+            /**
+             * 发生时间
+             * Format: date-time
+             */
+            created_at: string;
+            /** 详细信息 */
+            detail: {
+                [key: string]: unknown;
+            };
+        };
     };
     responses: never;
     parameters: never;
@@ -2656,6 +2933,418 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    workflow_api_v1_requirements__requirement_id__workflow_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requirement_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    workflow_action_api_v1_requirements__requirement_id__workflow_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requirement_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkflowAction"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    people_api_v1_collaboration_people_get: {
+        parameters: {
+            query: {
+                kind: "feedback" | "requirement";
+                feedback_id?: number | null;
+                keyword?: string;
+                page?: number;
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonPage"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    feedback_collaboration_api_v1_feedbacks__feedback_id__collaboration_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                feedback_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedbackCollaborationOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    recipients_api_v1_feedbacks__feedback_id__recipients_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                feedback_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecipientsChange"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedbackCollaborationOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    transfer_api_v1_feedbacks__feedback_id__transfer_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                feedback_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FeedbackTransfer"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedbackCollaborationOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    participants_api_v1_requirements__requirement_id__participants_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requirement_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParticipantsOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    change_participants_api_v1_requirements__requirement_id__participants_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requirement_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ParticipantsChange"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParticipantsOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     login_api_v1_auth_login_post: {
         parameters: {
             query?: never;
@@ -3697,6 +4386,8 @@ export interface operations {
                 source?: components["schemas"]["RequirementSource"] | null;
                 current_version_id?: number | null;
                 owner_id?: number | null;
+                participant_id?: number | null;
+                participant_role?: ("CONFIRM" | "DESIGN" | "DEVELOP" | "ACCEPT") | null;
             };
             header?: never;
             path?: never;
@@ -3762,283 +4453,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RequirementOut"];
-                };
-            };
-            /** @description 未登录或登录凭证不可用 */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description 无权执行该操作 */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description revision CAS 冲突 (40910) 或该操作的业务冲突 */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    assignee_options_api_v1_requirements_assignee_options_get: {
-        parameters: {
-            query?: {
-                keyword?: string | null;
-                kind?: "OWNER" | "DEVELOPER" | "DESIGNER";
-                page?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AssigneeOptionsPage"];
-                };
-            };
-            /** @description 未登录或登录凭证不可用 */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description 无权执行该操作 */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_collaborators_api_v1_requirements__requirement_id__collaborators_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                requirement_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RequirementCollaboratorsOut"];
-                };
-            };
-            /** @description 未登录或登录凭证不可用 */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description 无权执行该操作 */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    replace_collaborators_api_v1_requirements__requirement_id__collaborators_put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                requirement_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RequirementCollaboratorsUpdate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RequirementCollaboratorsOut"];
-                };
-            };
-            /** @description 未登录或登录凭证不可用 */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description 无权执行该操作 */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    update_collaborator_group_api_v1_requirements__requirement_id__collaborators_patch: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                requirement_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RequirementCollaboratorGroupUpdate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RequirementCollaboratorsOut"];
-                };
-            };
-            /** @description 未登录或登录凭证不可用 */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description 无权执行该操作 */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description revision CAS 冲突 (40910) 或该操作的业务冲突 */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    confirm_development_api_v1_requirements__requirement_id__development_completion_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                requirement_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["DevelopmentCompletionRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RequirementCollaboratorsOut"];
                 };
             };
             /** @description 未登录或登录凭证不可用 */
@@ -4172,68 +4586,6 @@ export interface operations {
             };
             /** @description 资源不存在或不在当前数据范围 */
             404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description revision CAS 冲突 (40910) 或该操作的业务冲突 */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    start_stage_api_v1_requirements__requirement_id__start_stage_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                requirement_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RequirementStageStart"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RequirementOut"];
-                };
-            };
-            /** @description 未登录或登录凭证不可用 */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description 无权执行该操作 */
-            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4739,6 +5091,77 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["AddRequirementRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description revision CAS 冲突 (40910) 或该操作的业务冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bulk_add_version_requirements: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                version_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkAddRequirements"];
             };
         };
         responses: {
@@ -5310,6 +5733,264 @@ export interface operations {
             };
             /** @description 未登录或登录凭证不可用 */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_mail_preferences: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MailPreferencesOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    change_mail_preferences: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MailPreferenceChange"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MailPreferencesOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    request_email_verification: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmailVerificationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MailPreferencesOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    confirm_email_verification: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmailVerificationConfirm"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MailPreferencesOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_mail_deliveries: {
+        parameters: {
+            query?: {
+                page?: number;
+                status?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeliveryOut"][];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    retry_mail_delivery: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                delivery_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeliveryRetry"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeliveryOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

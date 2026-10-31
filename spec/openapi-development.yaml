@@ -18,6 +18,384 @@ tags:
 - name: System
 - name: File
 paths:
+  /requirements/{requirement_id}/workflow:
+    get:
+      tags:
+      - Requirement
+      summary: 需求详情
+      operationId: workflow_api_v1_requirements__requirement_id__workflow_get
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: requirement_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Requirement Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+      - Requirement
+      summary: 需求详情
+      operationId: workflow_action_api_v1_requirements__requirement_id__workflow_post
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: requirement_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Requirement Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowAction'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /collaboration/people:
+    get:
+      tags:
+      - Requirement
+      summary: 需求详情
+      operationId: people_api_v1_collaboration_people_get
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: kind
+        in: query
+        required: true
+        schema:
+          enum:
+          - feedback
+          - requirement
+          type: string
+          title: Kind
+      - name: feedback_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Feedback Id
+      - name: keyword
+        in: query
+        required: false
+        schema:
+          type: string
+          maxLength: 100
+          default: ''
+          title: Keyword
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 50
+          minimum: 1
+          default: 20
+          title: Page Size
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonPage'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /feedbacks/{feedback_id}/collaboration:
+    get:
+      tags:
+      - Requirement
+      summary: 需求详情
+      operationId: feedback_collaboration_api_v1_feedbacks__feedback_id__collaboration_get
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: feedback_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Feedback Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedbackCollaborationOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /feedbacks/{feedback_id}/recipients:
+    put:
+      tags:
+      - Requirement
+      summary: 需求详情
+      operationId: recipients_api_v1_feedbacks__feedback_id__recipients_put
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: feedback_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Feedback Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecipientsChange'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedbackCollaborationOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /feedbacks/{feedback_id}/transfer:
+    post:
+      tags:
+      - Requirement
+      summary: 需求详情
+      operationId: transfer_api_v1_feedbacks__feedback_id__transfer_post
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: feedback_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Feedback Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeedbackTransfer'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedbackCollaborationOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /requirements/{requirement_id}/participants:
+    get:
+      tags:
+      - Requirement
+      summary: 需求详情
+      operationId: participants_api_v1_requirements__requirement_id__participants_get
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: requirement_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Requirement Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParticipantsOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags:
+      - Requirement
+      summary: 需求详情
+      operationId: change_participants_api_v1_requirements__requirement_id__participants_put
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: requirement_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Requirement Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ParticipantsChange'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParticipantsOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /auth/login:
     post:
       tags:
@@ -686,7 +1064,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-      description: 集中式状态机、权限与数据范围检查；必须携带 revision，旧 revision 或非法迁移返回 409。受理无需 reason；重复需可见且非自身的 duplicate_of_id，无需 reason；无法复现、关闭和重开需非空 reason。CLOSED/DUPLICATE/CANNOT_REPRODUCE 可重开 NEW，重开重复反馈清除重复指向。事务产出状态不可人工设置，非法枚举返回 422。
+      description: 集中式状态机、权限与数据范围检查；必须携带 revision，旧 revision 或非法迁移返回 409。受理无需 reason；重复需可见且非自身的 duplicate_of_id，无需
+        reason；无法复现、关闭和重开需非空 reason。CLOSED/DUPLICATE/CANNOT_REPRODUCE 可重开 NEW，重开重复反馈清除重复指向。事务产出状态不可人工设置，非法枚举返回
+        422。
   /feedbacks/{feedback_id}/attachments:
     get:
       tags:
@@ -1058,6 +1438,28 @@ paths:
             minimum: 1
           - type: 'null'
           title: Owner Id
+      - name: participant_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+            minimum: 1
+          - type: 'null'
+          title: Participant Id
+      - name: participant_role
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - enum:
+            - CONFIRM
+            - DESIGN
+            - DEVELOP
+            - ACCEPT
+            type: string
+          - type: 'null'
+          title: Participant Role
       responses:
         '200':
           description: Successful Response
@@ -1132,270 +1534,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /requirements/assignee-options:
-    get:
-      tags:
-      - requirements
-      summary: 选择需求协作人员
-      operationId: assignee_options_api_v1_requirements_assignee_options_get
-      security:
-      - bearerAuth: []
-      parameters:
-      - name: keyword
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-            maxLength: 100
-          - type: 'null'
-          title: Keyword
-      - name: kind
-        in: query
-        required: false
-        schema:
-          enum:
-          - OWNER
-          - DEVELOPER
-          - DESIGNER
-          type: string
-          default: OWNER
-          title: Kind
-      - name: page
-        in: query
-        required: false
-        schema:
-          type: integer
-          minimum: 1
-          default: 1
-          title: Page
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AssigneeOptionsPage'
-        '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-        '401':
-          description: 未登录或登录凭证不可用
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: 无权执行该操作
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-      description: 需要 rd.requirement.edit。仅返回启用且具备需求查看权限的个人 ID、显示名和可分配职责，不公开联系方式或管理资料。开发候选需启用 DEVELOPER
-        或 DEVELOPMENT_LEAD 角色，设计候选需启用 DESIGNER 角色。
-  /requirements/{requirement_id}/collaborators:
-    get:
-      tags:
-      - requirements
-      summary: 查看需求协作人员
-      operationId: get_collaborators_api_v1_requirements__requirement_id__collaborators_get
-      security:
-      - bearerAuth: []
-      parameters:
-      - name: requirement_id
-        in: path
-        required: true
-        schema:
-          type: integer
-          title: Requirement Id
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/RequirementCollaboratorsOut'
-        '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-        '401':
-          description: 未登录或登录凭证不可用
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: 无权执行该操作
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-      description: 需要需求查看权限及该需求数据范围。
-    put:
-      tags:
-      - requirements
-      summary: 分配需求协作人员
-      operationId: replace_collaborators_api_v1_requirements__requirement_id__collaborators_put
-      security:
-      - bearerAuth: []
-      parameters:
-      - name: requirement_id
-        in: path
-        required: true
-        schema:
-          type: integer
-          title: Requirement Id
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RequirementCollaboratorsUpdate'
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/RequirementCollaboratorsOut'
-        '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-        '401':
-          description: 未登录或登录凭证不可用
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: 无权执行该操作
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-      description: 需要 rd.requirement.edit 及该需求数据范围。原子替换总负责人、开发和设计人员；revision CAS，旧 revision 返回 409。有效人员必须启用且拥有需求查看权限；开发、设计需对应启用角色。失败时关联、通知与审计一起回滚。同人兼任不同职责只收到一条事件通知。
-    patch:
-      tags:
-      - requirements
-      summary: 单独调整负责人或当前阶段分工
-      operationId: update_collaborator_group_api_v1_requirements__requirement_id__collaborators_patch
-      security:
-      - bearerAuth: []
-      parameters:
-      - name: requirement_id
-        in: path
-        required: true
-        schema:
-          type: integer
-          title: Requirement Id
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RequirementCollaboratorGroupUpdate'
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/RequirementCollaboratorsOut'
-        '409':
-          description: revision CAS 冲突 (40910) 或该操作的业务冲突
-          content:
-            application/json:
-              schema:
-                anyOf:
-                - $ref: '#/components/schemas/RevisionConflictResponse'
-                - $ref: '#/components/schemas/ErrorResponse'
-                title: Response 409 Update Collaborator Group Api V1 Requirements  Requirement Id  Collaborators
-                  Patch
-        '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-        '401':
-          description: 未登录或登录凭证不可用
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: 无权执行该操作
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-      description: 需要需求编辑权限及数据范围；kind OWNER 单独修改 owner_id，DEVELOPMENT 或 DESIGN 单独替换 user_ids，保留其他分工。设计仅在 DESIGNING 调整；开发可在 DEVELOPING/TESTING/DONE 调整且不能清空。保留人员的确认保留，新增或移除后重加人员待确认；已完成需求调整开发名单可能再次阻断发布。revision CAS、审计和通知原子提交。
-  /requirements/{requirement_id}/development-completion:
-    post:
-      tags:
-      - requirements
-      summary: 开发人员确认本人开发完成
-      operationId: confirm_development_api_v1_requirements__requirement_id__development_completion_post
-      security:
-      - bearerAuth: []
-      parameters:
-      - name: requirement_id
-        in: path
-        required: true
-        schema:
-          type: integer
-          title: Requirement Id
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DevelopmentCompletionRequest'
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/RequirementCollaboratorsOut'
-        '409':
-          description: revision CAS 冲突 (40910) 或该操作的业务冲突
-          content:
-            application/json:
-              schema:
-                anyOf:
-                - $ref: '#/components/schemas/RevisionConflictResponse'
-                - $ref: '#/components/schemas/ErrorResponse'
-                title: Response 409 Confirm Development Api V1 Requirements  Requirement Id  Development
-                  Completion Post
-        '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-        '401':
-          description: 未登录或登录凭证不可用
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: 无权执行该操作
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-      description: 仅当前绑定、启用且具有开发资格的人员本人可确认；需要需求查看、状态权限与数据范围。请求体仅 revision，不能指定他人或管理员代确认。DEVELOPING/TESTING/DONE 可补充确认；每次进入开发清空确认，新增或重加人员待确认。DONE 与发布均要求非空开发名单、全部本人确认；确认本身不会自动推进 DONE。确认时间、revision CAS、审计和通知原子提交。
   /requirements/{requirement_id}:
     get:
       tags:
@@ -1496,62 +1634,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /requirements/{requirement_id}/start-stage:
-    post:
-      tags:
-      - requirements
-      summary: 开始设计或开发并分配阶段人员
-      operationId: start_stage_api_v1_requirements__requirement_id__start_stage_post
-      security:
-      - bearerAuth: []
-      parameters:
-      - name: requirement_id
-        in: path
-        required: true
-        schema:
-          type: integer
-          title: Requirement Id
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RequirementStageStart'
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/RequirementOut'
-        '409':
-          description: revision CAS 冲突 (40910) 或该操作的业务冲突
-          content:
-            application/json:
-              schema:
-                anyOf:
-                - $ref: '#/components/schemas/RevisionConflictResponse'
-                - $ref: '#/components/schemas/ErrorResponse'
-                title: Response 409 Start Stage Api V1 Requirements  Requirement Id  Start Stage Post
-        '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-        '401':
-          description: 未登录或登录凭证不可用
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: 无权执行该操作
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-      description: 同时需要需求编辑、状态权限及数据范围。仅允许 PLANNED 到 DESIGNING/DEVELOPING 或 DESIGNING 到 DEVELOPING；选择 1–100 名对应角色的启用且具备需求查看权限的人员，不允许重复。仅替换当前阶段分工，设计进入开发后保留设计分工。人员、状态、一次 revision CAS、审计、通知原子提交；进入 DEVELOPING 清空既有开发确认。
   /requirements/{requirement_id}/feedbacks:
     get:
       tags:
@@ -1603,7 +1685,6 @@ paths:
       tags:
       - Requirement
       summary: 变更需求状态
-      description: 进入 DONE 必须已分配至少一名开发人员且全部本人确认完成；未满足时返回业务冲突 409，状态、revision、审计和通知均不提交。旧 revision 仍返回 CAS 冲突。
       operationId: change_status_api_v1_requirements__requirement_id__status_patch
       security:
       - bearerAuth: []
@@ -1660,6 +1741,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+      description: 六阶段流转：开发参与人提交验收，指定验收人确认 DONE；不再要求每名开发人员单独确认。人员资格、内容确认、revision CAS、原因、审计及事务回滚统一校验。ONLINE
+        仅由成功发布产生。
   /versions:
     get:
       tags:
@@ -1895,7 +1978,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-      description: 需要版本编辑权限、数据范围和最新 revision。当前实现允许已发布版本修改 name、owner_id、planned_release_date、description；不修改版本号、状态、需求清单或已有 Release 的说明、结果与发布时间。基础信息修改写审计，旧 revision 返回 409；前端编辑页面提供名称、计划日期和说明。
+      description: 需要版本编辑权限、数据范围和最新 revision。当前实现允许已发布版本修改 name、owner_id、planned_release_date、description；不修改版本号、状态、需求清单或已有
+        Release 的说明、结果与发布时间。基础信息修改写审计，旧 revision 返回 409；前端编辑页面提供名称、计划日期和说明。
   /versions/{version_id}/status:
     patch:
       tags:
@@ -2043,6 +2127,70 @@ paths:
                 - $ref: '#/components/schemas/ErrorResponse'
                 title: Response 409 Add Version Requirement Api V1 Versions  Version Id  Requirements
                   Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: 需要 rd.version.edit 与 rd.requirement.view；目标 Version 与 Requirement 均须在各自 DataScope 内。通过
+        VersionService；READY/RELEASED/CANCELED 冻结返回 409。
+  /versions/{version_id}/requirements/batch:
+    post:
+      tags:
+      - Version
+      summary: 批量关联需求
+      operationId: bulk_add_version_requirements
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: version_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Version Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkAddRequirements'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionOut'
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: revision CAS 冲突 (40910) 或该操作的业务冲突
+          content:
+            application/json:
+              schema:
+                anyOf:
+                - $ref: '#/components/schemas/RevisionConflictResponse'
+                - $ref: '#/components/schemas/ErrorResponse'
+                title: Response 409 Bulk Add Version Requirements Api V1 Versions  Version Id  Requirements
+                  Batch Post
         '422':
           description: Validation Error
           content:
@@ -2248,7 +2396,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-      description: 需要 rd.version.publish 及 Version 数据范围。基础开发人员、产品负责人和研发负责人具备完整版本操作权限；SELF 仍仅限本人创建或负责的版本。运行与 publish 相同的前置检查；通过返回 200，未通过返回 409 并含 checks。 新增 DEVELOPMENT_COMPLETION_CHECK：每条有效需求至少一名开发人员且全部已本人确认；未确认的需求作为发布阻断项。
+      description: 需要 rd.version.publish 及 Version 数据范围。基础开发人员、产品负责人和研发负责人保留完整版本权限；SELF 仍限本人创建或负责的版本。检查
+        READY、全部有效需求 DONE 与当前内容确认资格；通过 200，否则 409。逐人开发完成确认已取消。
   /versions/{version_id}/publish:
     post:
       tags:
@@ -2310,7 +2459,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-      description: 需要 rd.version.publish 及数据范围；基础开发人员、产品负责人和研发负责人默认具有该权限。版本必须 READY，全部有效关联需求 DONE，每条需求至少一名开发且全部本人确认。实际发布重新校验并锁定相关业务行。Release(SUCCESS)、Version、Requirement/Feedback ONLINE、通知和审计同一事务提交；中途异常全部回滚。重复发布返回 409；普通状态接口不能进入 RELEASED。
+      description: 需要 rd.version.publish 及数据范围。重新锁定校验 READY、全部有效需求 DONE 和内容确认资格。Release(SUCCESS)、Version、Requirement/Feedback
+        ONLINE、通知事件和审计原子提交；异常回滚，重复发布 409。
   /releases:
     get:
       tags:
@@ -2548,6 +2698,224 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '401':
           description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /me/mail-preferences:
+    get:
+      tags:
+      - mail
+      summary: get_mail_preferences
+      operationId: get_mail_preferences
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MailPreferencesOut'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearerAuth: []
+    put:
+      tags:
+      - mail
+      summary: change_mail_preferences
+      operationId: change_mail_preferences
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MailPreferenceChange'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MailPreferencesOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearerAuth: []
+  /me/email-verification:
+    post:
+      tags:
+      - mail
+      summary: request_email_verification
+      operationId: request_email_verification
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailVerificationRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MailPreferencesOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearerAuth: []
+  /me/email-verification/confirm:
+    post:
+      tags:
+      - mail
+      summary: confirm_email_verification
+      operationId: confirm_email_verification
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailVerificationConfirm'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MailPreferencesOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearerAuth: []
+  /admin/mail-deliveries:
+    get:
+      tags:
+      - mail
+      summary: list_mail_deliveries
+      operationId: list_mail_deliveries
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: status
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Status
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DeliveryOut'
+                title: Response List Mail Deliveries Api V1 Admin Mail Deliveries Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/mail-deliveries/{delivery_id}/retry:
+    post:
+      tags:
+      - mail
+      summary: retry_mail_delivery
+      operationId: retry_mail_delivery
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: delivery_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Delivery Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeliveryRetry'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeliveryOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
           content:
             application/json:
               schema:
@@ -3815,50 +4183,6 @@ components:
       - revision
       - version_revision
       title: AddRequirementRequest
-    AssigneeOption:
-      properties:
-        user_id:
-          type: integer
-          title: 用户 ID
-        display_name:
-          type: string
-          title: 显示名称
-        can_develop:
-          type: boolean
-          title: 可分配开发职责
-        can_design:
-          type: boolean
-          title: 可分配设计职责
-      type: object
-      required:
-      - user_id
-      - display_name
-      - can_develop
-      - can_design
-      title: AssigneeOption
-    AssigneeOptionsPage:
-      properties:
-        items:
-          items:
-            $ref: '#/components/schemas/AssigneeOption'
-          type: array
-          title: 人员列表
-        total:
-          type: integer
-          title: 人员总数
-        page:
-          type: integer
-          title: 当前页码
-        page_size:
-          type: integer
-          title: 每页条数
-      type: object
-      required:
-      - items
-      - total
-      - page
-      - page_size
-      title: AssigneeOptionsPage
     AttachmentOut:
       properties:
         file_id:
@@ -4076,6 +4400,44 @@ components:
       required:
       - file
       title: Body_upload_file_api_v1_files_post
+    BulkAddRequirements:
+      properties:
+        version_revision:
+          type: integer
+          minimum: 1.0
+          title: 版本修订号
+        request_id:
+          type: string
+          format: uuid
+          title: 请求标识
+        items:
+          items:
+            $ref: '#/components/schemas/BulkRequirementItem'
+          type: array
+          maxItems: 50
+          minItems: 1
+          title: 需求列表
+      type: object
+      required:
+      - version_revision
+      - request_id
+      - items
+      title: BulkAddRequirements
+    BulkRequirementItem:
+      properties:
+        requirement_id:
+          type: integer
+          minimum: 1.0
+          title: 需求 ID
+        revision:
+          type: integer
+          minimum: 1.0
+          title: 需求修订号
+      type: object
+      required:
+      - requirement_id
+      - revision
+      title: BulkRequirementItem
     BusinessModuleCreate:
       properties:
         code:
@@ -4627,33 +4989,56 @@ components:
       - TEAM
       - ALL
       title: DataScope
-    DeveloperCompletion:
+    DeliveryOut:
       properties:
+        id:
+          type: string
+          title: 投递标识
+        event_id:
+          type: string
+          title: 事件标识
         user_id:
           type: integer
-          title: 开发人员
-        completed_at:
+          title: 接收用户
+        channel:
+          type: string
+          title: 通知渠道
+        status:
+          type: string
+          title: 投递状态
+        attempts:
+          type: integer
+          title: 尝试次数
+        last_error:
           anyOf:
           - type: string
-            format: date-time
           - type: 'null'
-          title: 本人完成确认时间
+          title: 脱敏错误
+        next_attempt_at:
+          type: string
+          format: date-time
+          title: 下次尝试时间
       type: object
       required:
+      - id
+      - event_id
       - user_id
-      - completed_at
-      title: DeveloperCompletion
-    DevelopmentCompletionRequest:
+      - channel
+      - status
+      - attempts
+      - last_error
+      - next_attempt_at
+      title: DeliveryOut
+    DeliveryRetry:
       properties:
-        revision:
+        attempts:
           type: integer
-          minimum: 1.0
-          title: 数据版本
-      additionalProperties: false
+          minimum: 0.0
+          title: 已见尝试次数
       type: object
       required:
-      - revision
-      title: DevelopmentCompletionRequest
+      - attempts
+      title: DeliveryRetry
     EditHeartbeat:
       properties:
         entity_type:
@@ -4674,6 +5059,37 @@ components:
       - REQUIREMENT
       - VERSION
       title: EditingEntityType
+    EmailVerificationConfirm:
+      properties:
+        revision:
+          type: integer
+          minimum: 1.0
+          title: 修订号
+        code:
+          type: string
+          pattern: ^[0-9]{6}$
+          title: 验证码
+      type: object
+      required:
+      - revision
+      - code
+      title: EmailVerificationConfirm
+    EmailVerificationRequest:
+      properties:
+        revision:
+          type: integer
+          minimum: 1.0
+          title: 修订号
+        email:
+          type: string
+          maxLength: 254
+          pattern: ^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$
+          title: 邮箱
+      type: object
+      required:
+      - revision
+      - email
+      title: EmailVerificationRequest
     ErrorResponse:
       properties:
         code:
@@ -4699,6 +5115,40 @@ components:
       - request_id
       title: ErrorResponse
       type: object
+    FeedbackCollaborationOut:
+      properties:
+        revision:
+          type: integer
+          title: 修订号
+        recipients:
+          items:
+            $ref: '#/components/schemas/PersonOption'
+          type: array
+          title: 接收人
+        handler_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: 处理人编号
+        accepted_by:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: 受理人编号
+        accepted_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: 受理时间
+      type: object
+      required:
+      - revision
+      - recipients
+      - handler_id
+      - accepted_by
+      - accepted_at
+      title: FeedbackCollaborationOut
     FeedbackConvertRequest:
       properties:
         type:
@@ -4739,6 +5189,12 @@ components:
           - type: string
           - type: 'null'
           title: 验收标准
+        participants:
+          items:
+            $ref: '#/components/schemas/ParticipantInput'
+          type: array
+          maxItems: 100
+          title: 环节人员
         requirement_id:
           anyOf:
           - type: integer
@@ -4807,11 +5263,19 @@ components:
           - type: string
           - type: 'null'
           title: 复现步骤
+        recipient_ids:
+          items:
+            type: integer
+          type: array
+          maxItems: 50
+          minItems: 1
+          title: 反馈接收人
       type: object
       required:
       - title
       - feedback_type
       - description
+      - recipient_ids
       title: FeedbackCreate
     FeedbackOut:
       properties:
@@ -4990,6 +5454,28 @@ components:
       - status
       - revision
       title: FeedbackStatusChange
+    FeedbackTransfer:
+      properties:
+        revision:
+          type: integer
+          minimum: 1.0
+          title: 修订号
+        handler_id:
+          type: integer
+          exclusiveMinimum: 0.0
+          title: 处理人编号
+        reason:
+          type: string
+          maxLength: 500
+          minLength: 2
+          title: 原因
+      additionalProperties: false
+      type: object
+      required:
+      - revision
+      - handler_id
+      - reason
+      title: FeedbackTransfer
     FeedbackType:
       type: string
       enum:
@@ -5179,6 +5665,61 @@ components:
           default: true
       type: object
       title: LogoutResponse
+    MailPreferenceChange:
+      properties:
+        revision:
+          type: integer
+          minimum: 1.0
+          title: 修订号
+        mode:
+          type: string
+          enum:
+          - ALL
+          - TASKS
+          - 'OFF'
+          title: 邮件偏好
+      type: object
+      required:
+      - revision
+      - mode
+      title: MailPreferenceChange
+    MailPreferencesOut:
+      properties:
+        revision:
+          type: integer
+          title: 修订号
+        mode:
+          type: string
+          enum:
+          - ALL
+          - TASKS
+          - 'OFF'
+          title: 邮件偏好
+        email:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: 当前邮箱
+        verified:
+          type: boolean
+          title: 邮箱已验证
+        pending_email:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: 待验证邮箱
+        smtp_enabled:
+          type: boolean
+          title: 邮件服务已启用
+      type: object
+      required:
+      - revision
+      - mode
+      - email
+      - verified
+      - pending_email
+      - smtp_enabled
+      title: MailPreferencesOut
     ManualFeedbackStatus:
       type: string
       enum:
@@ -5201,8 +5742,6 @@ components:
       enum:
       - DRAFT
       - CONFIRMED
-      - PLANNED
-      - DESIGNING
       - DEVELOPING
       - TESTING
       - DONE
@@ -5319,6 +5858,87 @@ components:
       required:
       - unread_count
       title: NotificationUnreadCount
+    ParticipantInput:
+      properties:
+        user_id:
+          type: integer
+          exclusiveMinimum: 0.0
+          title: 人员编号
+        role:
+          type: string
+          enum:
+          - CONFIRM
+          - DESIGN
+          - DEVELOP
+          - ACCEPT
+          title: 环节角色
+      additionalProperties: false
+      type: object
+      required:
+      - user_id
+      - role
+      title: ParticipantInput
+    ParticipantOut:
+      properties:
+        user_id:
+          type: integer
+          exclusiveMinimum: 0.0
+          title: 人员编号
+        role:
+          type: string
+          enum:
+          - CONFIRM
+          - DESIGN
+          - DEVELOP
+          - ACCEPT
+          title: 环节角色
+        display_name:
+          type: string
+          title: 显示名称
+        active:
+          type: boolean
+          title: 账号是否有效
+      additionalProperties: false
+      type: object
+      required:
+      - user_id
+      - role
+      - display_name
+      - active
+      title: ParticipantOut
+    ParticipantsChange:
+      properties:
+        revision:
+          type: integer
+          minimum: 1.0
+          title: 修订号
+        participants:
+          items:
+            $ref: '#/components/schemas/ParticipantInput'
+          type: array
+          maxItems: 100
+          title: 环节人员
+      additionalProperties: false
+      type: object
+      required:
+      - revision
+      - participants
+      title: ParticipantsChange
+    ParticipantsOut:
+      properties:
+        revision:
+          type: integer
+          title: 修订号
+        participants:
+          items:
+            $ref: '#/components/schemas/ParticipantOut'
+          type: array
+          title: 环节人员
+      type: object
+      required:
+      - revision
+      - participants
+      title: ParticipantsOut
     PermissionOut:
       properties:
         id:
@@ -5358,6 +5978,42 @@ components:
       - deprecated
       - replacement_code
       title: PermissionOut
+    PersonOption:
+      properties:
+        id:
+          type: integer
+          title: 编号
+        display_name:
+          type: string
+          title: 显示名称
+      type: object
+      required:
+      - id
+      - display_name
+      title: PersonOption
+    PersonPage:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/PersonOption'
+          type: array
+          title: 数据列表
+        total:
+          type: integer
+          title: 总数
+        page:
+          type: integer
+          title: 页码
+        page_size:
+          type: integer
+          title: 每页条数
+      type: object
+      required:
+      - items
+      - total
+      - page
+      - page_size
+      title: PersonPage
     Priority:
       type: string
       enum:
@@ -5453,6 +6109,25 @@ components:
       - release_notes
       - revision
       title: PublishVersionRequest
+    RecipientsChange:
+      properties:
+        revision:
+          type: integer
+          minimum: 1.0
+          title: 修订号
+        recipient_ids:
+          items:
+            type: integer
+          type: array
+          maxItems: 50
+          minItems: 1
+          title: 接收人编号
+      additionalProperties: false
+      type: object
+      required:
+      - revision
+      - recipient_ids
+      title: RecipientsChange
     RefreshRequest:
       properties:
         refresh_token:
@@ -5564,105 +6239,6 @@ components:
       - revision
       - version_revision
       title: RemoveRequirementRequest
-    RequirementCollaboratorGroupUpdate:
-      properties:
-        revision:
-          type: integer
-          minimum: 1.0
-          title: 数据版本
-        kind:
-          type: string
-          enum:
-          - OWNER
-          - DEVELOPMENT
-          - DESIGN
-          title: 分工类型
-        owner_id:
-          anyOf:
-          - type: integer
-            exclusiveMinimum: 0.0
-          - type: 'null'
-          title: 总负责人
-        user_ids:
-          items:
-            type: integer
-            exclusiveMinimum: 0.0
-          type: array
-          maxItems: 100
-          title: 参与人员
-      additionalProperties: false
-      type: object
-      required:
-      - revision
-      - kind
-      title: 调整阶段分工
-    RequirementCollaboratorsOut:
-      properties:
-        revision:
-          type: integer
-          title: 修订号
-        owner:
-          anyOf:
-          - $ref: '#/components/schemas/AssigneeOption'
-          - type: 'null'
-          title: 总负责人
-        developers:
-          items:
-            $ref: '#/components/schemas/AssigneeOption'
-          type: array
-          title: 开发人员
-        designers:
-          items:
-            $ref: '#/components/schemas/AssigneeOption'
-          type: array
-          title: 设计人员
-        development_completions:
-          items:
-            $ref: '#/components/schemas/DeveloperCompletion'
-          type: array
-          title: 开发完成确认
-      type: object
-      required:
-      - revision
-      - owner
-      - developers
-      - designers
-      - development_completions
-      title: RequirementCollaboratorsOut
-    RequirementCollaboratorsUpdate:
-      properties:
-        revision:
-          type: integer
-          minimum: 1.0
-          title: 修订号
-        owner_id:
-          anyOf:
-          - type: integer
-            exclusiveMinimum: 0.0
-          - type: 'null'
-          title: 总负责人 ID
-        developer_ids:
-          items:
-            type: integer
-            exclusiveMinimum: 0.0
-          type: array
-          maxItems: 100
-          title: 开发人员 ID 列表
-        designer_ids:
-          items:
-            type: integer
-            exclusiveMinimum: 0.0
-          type: array
-          maxItems: 100
-          title: 设计人员 ID 列表
-      additionalProperties: false
-      type: object
-      required:
-      - revision
-      - owner_id
-      - developer_ids
-      - designer_ids
-      title: RequirementCollaboratorsUpdate
     RequirementCreate:
       properties:
         title:
@@ -5691,10 +6267,15 @@ components:
           - type: 'null'
           title: 所属模块 ID
         owner_id:
-          anyOf:
-          - type: integer
-          - type: 'null'
-          title: 负责人 ID
+          type: 'null'
+          title: 历史总负责人编号
+          description: 历史总负责人只读；新写入不再接受 owner_id。
+        participants:
+          items:
+            $ref: '#/components/schemas/ParticipantInput'
+          type: array
+          maxItems: 100
+          title: 环节人员
         description:
           type: string
           title: 描述
@@ -5723,6 +6304,11 @@ components:
       title: RequirementCreate
     RequirementOut:
       properties:
+        current_handlers:
+          items:
+            $ref: '#/components/schemas/PersonOption'
+          type: array
+          title: 当前待处理人
         id:
           type: integer
           title: 需求 ID
@@ -5838,33 +6424,6 @@ components:
       - DIRECT
       - FEEDBACK
       title: RequirementSource
-    RequirementStageStart:
-      properties:
-        revision:
-          type: integer
-          minimum: 1.0
-          title: 数据版本
-        status:
-          type: string
-          enum:
-          - DESIGNING
-          - DEVELOPING
-          title: 阶段状态
-        user_ids:
-          items:
-            type: integer
-            exclusiveMinimum: 0.0
-          type: array
-          maxItems: 100
-          minItems: 1
-          title: 参与人员
-      additionalProperties: false
-      type: object
-      required:
-      - revision
-      - status
-      - user_ids
-      title: 开始需求阶段
     RequirementStatus:
       type: string
       enum:
@@ -5933,10 +6492,9 @@ components:
           - type: 'null'
           title: 所属模块 ID
         owner_id:
-          anyOf:
-          - type: integer
-          - type: 'null'
-          title: 负责人 ID
+          type: 'null'
+          title: 历史总负责人编号
+          description: 历史总负责人只读；新写入不再接受 owner_id。
         description:
           anyOf:
           - type: string
@@ -6593,6 +7151,111 @@ components:
       required:
       - revision
       title: VersionUpdate
+    WorkflowAction:
+      properties:
+        revision:
+          type: integer
+          minimum: 1.0
+          title: 修订号
+        action:
+          type: string
+          enum:
+          - CONFIRM
+          - REQUEST_CHANGES
+          - DESIGN_PENDING
+          - DESIGN_START
+          - DESIGN_DONE
+          - DESIGN_CANCEL
+          title: 动作
+        reason:
+          anyOf:
+          - type: string
+            maxLength: 500
+          - type: 'null'
+          title: 原因
+      additionalProperties: false
+      type: object
+      required:
+      - revision
+      - action
+      title: WorkflowAction
+    WorkflowOut:
+      properties:
+        revision:
+          type: integer
+          title: 修订号
+        content_revision:
+          type: integer
+          title: 内容版本
+        confirmed_revision:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: 已确认内容版本
+        needs_confirmation:
+          type: boolean
+          title: 是否待确认
+        legacy_completed:
+          type: boolean
+          title: 历史完成资格
+        design_status:
+          type: string
+          enum:
+          - NOT_REQUIRED
+          - PENDING
+          - IN_PROGRESS
+          - DONE
+          title: 设计进度
+        paused_from:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: 暂停前阶段
+        records:
+          items:
+            $ref: '#/components/schemas/WorkflowRecord'
+          type: array
+          title: 阶段记录
+      type: object
+      required:
+      - revision
+      - content_revision
+      - confirmed_revision
+      - needs_confirmation
+      - legacy_completed
+      - design_status
+      - paused_from
+      - records
+      title: WorkflowOut
+    WorkflowRecord:
+      properties:
+        id:
+          type: string
+          title: 编号
+        action:
+          type: string
+          title: 动作
+        actor_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: 实际操作人
+        created_at:
+          type: string
+          format: date-time
+          title: 发生时间
+        detail:
+          additionalProperties: true
+          type: object
+          title: 详细信息
+      type: object
+      required:
+      - id
+      - action
+      - actor_id
+      - created_at
+      - detail
+      title: WorkflowRecord
   securitySchemes:
     bearerAuth:
       type: http

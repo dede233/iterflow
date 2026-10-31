@@ -15,6 +15,7 @@ from app.repositories.version_repository import VersionRepository
 from app.schemas.release import PublishCheckResult, PublishResult
 from app.schemas.version import (
     AddRequirementRequest,
+    BulkAddRequirements,
     MoveRequirementRequest,
     PublishVersionRequest,
     RemoveRequirementRequest,
@@ -163,6 +164,22 @@ def add_version_requirement(
     return VersionService(db).add_requirement(
         version_id, payload, user.id, viewer_scope=scope, viewer_id=user.id
     )
+
+
+@router.post(
+    "/{version_id}/requirements/batch",
+    response_model=VersionOut,
+    responses=api_revision_conflict_responses(404, 409),
+)
+def bulk_add_version_requirements(
+    version_id: int,
+    payload: BulkAddRequirements,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_all_permissions("rd.version.edit", "rd.requirement.view")),
+):
+    _scoped_version_or_404(db, user, version_id)
+    scope = UserRepository(db).data_scope(user.id)
+    return VersionService(db).bulk_add_requirements(version_id, payload, user.id, scope, user.id)
 
 
 @router.post(

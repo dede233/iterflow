@@ -3,11 +3,13 @@ from fastapi import APIRouter
 from app.api.v1 import (
     audits,
     auth,
+    collaboration,
     dashboard,
     docs,
     editing,
     feedbacks,
     files,
+    mail,
     notifications,
     releases,
     requirements,
@@ -19,6 +21,7 @@ from app.api.v1 import (
 
 api_router = APIRouter()
 for module in (
+    collaboration,
     auth,
     dashboard,
     docs,
@@ -28,6 +31,7 @@ for module in (
     versions,
     releases,
     notifications,
+    mail,
     systems,
     editing,
     users,

@@ -15,7 +15,7 @@ class RedactedHeaders(dict):
 
 
 def exercise_feedback_reference_names(fixture):
-    client, engine, _, admin = fixture
+    client, engine, admin_id, admin = fixture
     permissions = {
         p["code"]: p["id"] for p in client.get("/api/v1/roles/permissions", headers=admin).json()
     }
@@ -87,6 +87,7 @@ def exercise_feedback_reference_names(fixture):
             headers=actors["owner"],
             json={
                 "title": "名称展示真实验收",
+                "recipient_ids": [admin_id],
                 "feedback_type": "OTHER",
                 "description": "仅关联名称且无目录管理权限",
                 "system_id": system_id,
@@ -110,7 +111,7 @@ def exercise_feedback_reference_names(fixture):
     assert_names(
         client.patch(
             path + "/status",
-            headers=actors["viewer"],
+            headers=admin,
             json={"status": "ACCEPTED", "revision": updated["revision"]},
         )
     )

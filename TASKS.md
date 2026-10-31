@@ -1,5 +1,20 @@
 # IterFlow Tasks
 
+## 当前协作流程优化
+
+- [x] 用户批准方案并授权开工，采用方案推荐默认值；保留历史发布约束及证据。
+- [x] 阶段 0：开发范围与默认规则冻结；新能力契约、迁移及状态规格仍须在各阶段实现前落地。
+- [x] 阶段 1：反馈表单精简、版本内需求摘要弹窗（328 单测、五视口浏览器、构建与契约类型检查通过）。
+- [x] 阶段 2：反馈多人接收／受理、环节人员和历史读取兼容（后端 378 项、PG 40 项、前端 331 项通过）。
+- [x] 阶段 3：需求六阶段、确认／设计／验收记录和进度区。
+- [x] 阶段 4：版本批量关联事务及多选界面。
+- [x] 阶段 5：站内通知矩阵、邮箱验证／偏好、可靠邮件发送。
+- [x] 阶段 6：完整回归、旧数据迁移演练和升级准备（后端 396、前端 335、浏览器 164 + 2 项通过；隔离 Docker/S3/备份恢复通过，未部署）。
+- [x] 后续授权：当前分支已推送，修复类型边界与 HTTP 来源 UUID 兼容问题；770d7e5 的远端六项 CI 全通过（Run 41171763589）。文档收口后仍检查最新 SHA；未合并、发布、部署或操作真实数据库。
+
+范围见 `docs/collaboration-workflow-improvement-plan.md`；实际验证记录见
+`docs/collaboration-workflow-execution-log.md`。以上勾选只代表已验证结果，
+不以实现文件存在代替测试通过。以下保留历史发布任务。
 2026-10-23 用户确认开发人员、产品负责人、研发负责人均需完整版本流程权限。独立分支 `codex/version-role-permissions`，范围为默认角色授权、双数据库追加迁移、回归及当前文档，详见 [版本角色权限](docs/version-role-permissions.md)。保留原 DataScope、发布事务、全员开发确认、revision 与审计；已合并并按测试先行顺序部署至 8444/8443，见 [部署记录](docs/version-role-deployment-2026-10-23.md)。
 
 ## 当前开发文档
@@ -98,3 +113,9 @@
 ## 冻结非范围
 
 TEAM、废弃权限删除、trusted IP实现、新migration/permission/entity、状态机/Publish改造、Release回滚、工时/Story Point、独立Mobile、WebSocket/SSE/broker、额外Release搜索、正式发布或Preview部署。
+
+## 2026-10-31 协作优化主线整合
+
+- [x] 核对 master 10f6bfa 无漂移；用户明确取消逐人开发完成门禁。
+- [x] 衔接双数据库迁移，保留历史开发确认、主线版本权限与详情增量；本地回归与专项通过。
+- [ ] 整合分支及最终 master 八项 CI，合并 SHA 和结果记录在 `docs/collaboration-workflow-master-merge.md`；完成后据实际结果更新。

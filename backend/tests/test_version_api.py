@@ -14,11 +14,12 @@ from app.core.database import get_db
 from app.core.security import create_access_token
 from app.main import app
 from app.models.entities import (
-    Notification,
+    CollaborationEvent,
     OperationLog,
     Permission,
     Requirement,
     RequirementParticipant,
+    RequirementStep,
     Role,
     RolePermission,
     User,
@@ -55,8 +56,9 @@ def ver_api(tmp_path: Path) -> Iterator[Fixture]:
         UserRole.__table__,
         RolePermission.__table__,
         OperationLog.__table__,
-        Notification.__table__,
         Requirement.__table__,
+        CollaborationEvent.__table__,
+        RequirementStep.__table__,
         RequirementParticipant.__table__,
         Version.__table__,
         VersionRequirement.__table__,
@@ -64,16 +66,7 @@ def ver_api(tmp_path: Path) -> Iterator[Fixture]:
         table.create(engine)
 
     listeners = []
-    for model in (
-        User,
-        Role,
-        Permission,
-        OperationLog,
-        Notification,
-        Requirement,
-        Version,
-        VersionRequirement,
-    ):
+    for model in (User, Role, Permission, OperationLog, Requirement, Version, VersionRequirement):
         counter = iter(range(1, 100000))
 
         def assign_id(_mapper, _connection, target, *, _counter=counter):
@@ -338,14 +331,14 @@ def test_add_list_and_stats(ver_api):
     assert rel is not None
     detail = client.get(f"/api/v1/requirements/{req['id']}", headers=headers["alice"]).json()
     assert detail["current_version_id"] == v["id"]
-    assert detail["status"] == "PLANNED"
+    assert detail["status"] == "DRAFT"
 
     view = client.get(f"/api/v1/versions/{v['id']}/requirements", headers=headers["alice"]).json()
     assert [r["id"] for r in view["items"]] == [req["id"]]
     assert view["stats"]["total"] == 1
     assert view["stats"]["completed"] == 0
     assert view["stats"]["completion_rate"] == 0.0
-    assert view["stats"]["by_status"]["PLANNED"] == 1
+    assert view["stats"]["by_status"]["DRAFT"] == 1
 
 
 def test_add_requirement_already_in_a_version_conflicts(ver_api):
@@ -728,7 +721,7 @@ def test_create_requirement_with_version_uses_version_service_rules(ver_api):
         version_revision=v["revision"],
     )
     assert created["current_version_id"] == v["id"]
-    assert created["status"] == "PLANNED"
+    assert created["status"] == "DRAFT"
     assert session.get(Version, v["id"]).revision == v["revision"] + 1
     relation = session.scalar(
         select(VersionRequirement).where(
@@ -845,7 +838,7 @@ def test_requirement_create_with_version_succeeds_for_all_three_permissions(ver_
     assert response.status_code == 200, response.text
     requirement = response.json()
     assert requirement["current_version_id"] == version["id"]
-    assert requirement["status"] == "PLANNED"
+    assert requirement["status"] == "DRAFT"
     session.expire_all()
     assert session.get(Version, version["id"]).revision == version["revision"] + 1
     assert (

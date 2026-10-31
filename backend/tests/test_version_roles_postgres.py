@@ -1,5 +1,5 @@
 import pytest
-from test_collaboration_postgres import collaboration_pg as collaboration_pg
+from seeded_postgres_fixture import collaboration_pg as collaboration_pg
 from version_role_acceptance import exercise_version_role
 
 

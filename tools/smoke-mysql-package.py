@@ -209,7 +209,17 @@ def restore_package(stage, dump, files, headers, requirement_id, file_id):
             "-m",
             "app.cli.mysql_preflight",
         )
-        dc("up", "-d", "--wait", "--wait-timeout", "300", "redis", "api", "web")
+        dc(
+            "up",
+            "-d",
+            "--wait",
+            "--wait-timeout",
+            "300",
+            "redis",
+            "api",
+            "web",
+            "notification-worker",
+        )
         with httpx.Client(
             base_url=f"http://127.0.0.1:{args.web_port + 1}", timeout=30
         ) as client:
@@ -253,15 +263,15 @@ def restore_package(stage, dump, files, headers, requirement_id, file_id):
                 "SELECT COUNT(*) FROM information_schema.triggers WHERE trigger_schema=%s",
                 (restored,),
             )[0][0]
-            == 73
+            == 91
         )
-        dc("stop", "api")
+        dc("stop", "api", "notification-worker")
         post_dump = dc(
             "--profile", "ops", "run", "--rm", "-T", "client", stdout=subprocess.PIPE
         ).stdout
         return {
             "package_isolated_restore": True,
-            "restored_guard_triggers": 73,
+            "restored_guard_triggers": 91,
             "restored_function_runtime_upload": True,
             "package_post_restore_backup_sha256": hashlib.sha256(post_dump).hexdigest(),
         }
@@ -343,7 +353,13 @@ try:
             "services:\n"
             + "".join(
                 f"  {service}:\n    networks: [default, proof]\n"
-                for service in ("api", "migrate", "seed", "client")
+                for service in (
+                    "api",
+                    "notification-worker",
+                    "migrate",
+                    "seed",
+                    "client",
+                )
             )
             + f"networks:\n  proof:\n    external: true\n    name: {db_project}_default\n"
         )
@@ -387,6 +403,24 @@ try:
                 "-m",
                 "app.cli.mysql_preflight",
             )
+            import re
+
+            granted_tables = set(
+                re.findall(
+                    r"ON `iterflow`\.`([^`]+)`",
+                    (bundle / "runtime-grants.sql").read_text(),
+                )
+            )
+            actual_tables = {
+                row[0]
+                for row in sql(
+                    "SELECT table_name FROM information_schema.tables WHERE table_schema=%s",
+                    (db_name,),
+                )
+            }
+            assert granted_tables == actual_tables, (
+                "Shipped runtime grants must cover the migrated schema exactly"
+            )
             for (table,) in sql(
                 "SELECT table_name FROM information_schema.tables WHERE table_schema=%s",
                 (db_name,),
@@ -410,7 +444,17 @@ try:
                 "sys_file",
             ):
                 assert sql(f"SELECT COUNT(*) FROM `{db_name}`.`{table}`")[0][0] == 0
-            dc("up", "-d", "--wait", "--wait-timeout", "300", "redis", "api", "web")
+            dc(
+                "up",
+                "-d",
+                "--wait",
+                "--wait-timeout",
+                "300",
+                "redis",
+                "api",
+                "web",
+                "notification-worker",
+            )
             with httpx.Client(
                 base_url=f"http://127.0.0.1:{args.web_port}", timeout=30
             ) as client:
@@ -490,6 +534,7 @@ try:
                     h,
                     json={
                         "title": "中文包主链",
+                        "recipient_ids": [user["id"]],
                         "feedback_type": "NEW_FEATURE",
                         "urgency": "NORMAL",
                         "description": "真实 amd64 镜像主链",
@@ -520,7 +565,6 @@ try:
                     f"/requirements/{r['id']}",
                     h,
                     json={
-                        "owner_id": user["id"],
                         "priority": "P1",
                         "revision": old_revision,
                     },
@@ -550,51 +594,40 @@ try:
                     },
                 ).json()
                 r = request("GET", f"/requirements/{r['id']}", h).json()
-                r = request(
-                    "POST",
-                    f"/requirements/{r['id']}/start-stage",
+                request(
+                    "PUT",
+                    f"/requirements/{r['id']}/participants",
                     h,
                     json={
-                        "status": "DEVELOPING",
                         "revision": r["revision"],
-                        "user_ids": [user["id"]],
+                        "participants": [
+                            {"role": role, "user_id": user["id"]}
+                            for role in ("CONFIRM", "DEVELOP", "ACCEPT")
+                        ],
                     },
-                ).json()
-                r = request(
-                    "PATCH",
-                    f"/requirements/{r['id']}/status",
-                    h,
-                    json={"status": "TESTING", "revision": r["revision"]},
-                ).json()
-                blocked = request(
-                    "PATCH",
-                    f"/requirements/{r['id']}/status",
-                    h,
-                    expected=409,
-                    json={"status": "DONE", "revision": r["revision"]},
-                ).json()
-                assert blocked["code"] == 40913
-                request(
-                    "POST",
-                    f"/requirements/{r['id']}/development-completion",
-                    ah,
-                    expected=403,
-                    json={"revision": r["revision"]},
-                )
-                request(
-                    "POST",
-                    f"/requirements/{r['id']}/development-completion",
-                    h,
-                    json={"revision": r["revision"]},
                 )
                 r = request("GET", f"/requirements/{r['id']}", h).json()
-                for status in ("DONE",):
+                for status in ("CONFIRMED", "DEVELOPING", "TESTING"):
                     r = request(
                         "PATCH",
                         f"/requirements/{r['id']}/status",
                         h,
                         json={"status": status, "revision": r["revision"]},
                     ).json()
+                # Even an administrator must give a reason to act for the acceptance owner.
+                request(
+                    "PATCH",
+                    f"/requirements/{r['id']}/status",
+                    ah,
+                    expected=403,
+                    json={"status": "DONE", "revision": r["revision"]},
+                )
+                r = request(
+                    "PATCH",
+                    f"/requirements/{r['id']}/status",
+                    h,
+                    json={"status": "DONE", "revision": r["revision"]},
+                ).json()
                 for status in ("DEVELOPING", "TESTING", "READY"):
                     v = request(
                         "PATCH",
@@ -643,7 +676,7 @@ try:
                 request("GET", download, expected=401)
                 assert request("GET", download, h).content == b"package attachment"
                 for _ in range(3):
-                    dc("stop", "web", "api")
+                    dc("stop", "web", "api", "notification-worker")
                     dc("restart", "redis")
                     dc(
                         "up",
@@ -654,6 +687,7 @@ try:
                         "redis",
                         "api",
                         "web",
+                        "notification-worker",
                     )
                     wait_proxy(client, h)
                     assert request("GET", download, h).content == b"package attachment"
@@ -662,7 +696,7 @@ try:
                     request("GET", f"/requirements/{r['id']}", h).json()["status"]
                     == "ONLINE"
                 )
-                dc("stop", "api")
+                dc("stop", "api", "notification-worker")
                 dump = dc(
                     "--profile",
                     "ops",
@@ -686,14 +720,34 @@ try:
                     and b"domain_rd_version_requirement" in dump
                     and len(files) > 1024
                 )
-                dc("start", "api")
-                dc("up", "-d", "--wait", "--wait-timeout", "300", "redis", "api", "web")
+                dc("start", "api", "notification-worker")
+                dc(
+                    "up",
+                    "-d",
+                    "--wait",
+                    "--wait-timeout",
+                    "300",
+                    "redis",
+                    "api",
+                    "web",
+                    "notification-worker",
+                )
                 wait_proxy(client, h)
-                dc("stop", "web", "api")
+                dc("stop", "web", "api", "notification-worker")
                 restored_proof = restore_package(
                     stage, dump, files, h, r["id"], file["id"]
                 )
-                dc("up", "-d", "--wait", "--wait-timeout", "300", "redis", "api", "web")
+                dc(
+                    "up",
+                    "-d",
+                    "--wait",
+                    "--wait-timeout",
+                    "300",
+                    "redis",
+                    "api",
+                    "web",
+                    "notification-worker",
+                )
                 wait_proxy(client, h)
                 request("DELETE", f"/files/{file['id']}", h, expected=204)
                 request("GET", download, h, expected=404)

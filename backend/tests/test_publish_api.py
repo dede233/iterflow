@@ -14,7 +14,9 @@ from app.core.database import get_db
 from app.core.security import create_access_token
 from app.main import app
 from app.models.entities import (
+    CollaborationEvent,
     Feedback,
+    FeedbackRecipient,
     Notification,
     OperationLog,
     Permission,
@@ -22,6 +24,7 @@ from app.models.entities import (
     Requirement,
     RequirementFeedback,
     RequirementParticipant,
+    RequirementStep,
     Role,
     RolePermission,
     User,
@@ -65,7 +68,10 @@ def pub_api(tmp_path: Path) -> Iterator[Fixture]:
         RolePermission.__table__,
         OperationLog.__table__,
         Feedback.__table__,
+        FeedbackRecipient.__table__,
+        CollaborationEvent.__table__,
         Requirement.__table__,
+        RequirementStep.__table__,
         RequirementParticipant.__table__,
         Version.__table__,
         VersionRequirement.__table__,
@@ -162,6 +168,7 @@ def _seed_ready_version(
         updated_by=boss_id,
     )
     requirement = Requirement(
+        legacy_completed=True,
         requirement_no="REQ-1",
         title="需求",
         requirement_type="FEATURE",
@@ -193,14 +200,6 @@ def _seed_ready_version(
                 requirement_id=requirement.id, feedback_id=feedback.id, is_primary=True
             ),
         ]
-    )
-    session.add(
-        RequirementParticipant(
-            requirement_id=requirement.id,
-            user_id=boss_id,
-            discipline="DEVELOPMENT",
-            completed_at=datetime.now(UTC),
-        )
     )
     session.commit()
     return {"version": version.id, "requirement": requirement.id, "feedback": feedback.id}
@@ -369,7 +368,6 @@ def test_publish_check_passes_when_ready_and_all_done(pub_api):
     assert types == {
         "VERSION_STATUS_CHECK": True,
         "REQUIREMENT_STATUS_CHECK": True,
-        "DEVELOPMENT_COMPLETION_CHECK": True,
         "PERMISSION_CHECK": True,
     }
 

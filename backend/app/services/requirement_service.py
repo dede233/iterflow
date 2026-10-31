@@ -1,3 +1,5 @@
+from typing import Any
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -14,26 +16,13 @@ from app.models.enums import (
 from app.repositories.requirement_repository import RequirementRepository
 from app.schemas.requirement import (
     RequirementCreate,
-    RequirementStageStart,
     RequirementStatusChange,
     RequirementUpdate,
 )
 from app.services.audit_service import AuditService
-from app.services.requirement_collaboration_service import RequirementCollaborationService
+from app.services.collaboration_service import CollaborationService
 from app.services.revision_conflict import revision_conflict_data
-
-STATUS_LABELS = {
-    RequirementStatus.DRAFT: "草稿",
-    RequirementStatus.CONFIRMED: "已确认",
-    RequirementStatus.PLANNED: "已排期",
-    RequirementStatus.DESIGNING: "设计中",
-    RequirementStatus.DEVELOPING: "开发中",
-    RequirementStatus.TESTING: "测试中",
-    RequirementStatus.DONE: "已完成",
-    RequirementStatus.ONLINE: "已上线",
-    RequirementStatus.PAUSED: "已暂停",
-    RequirementStatus.CANCELED: "已取消",
-}
+from app.services.workflow_service import WorkflowService
 
 ALLOWED_TRANSITIONS: dict[RequirementStatus, set[ManualRequirementStatus]] = {
     RequirementStatus.DRAFT: {
@@ -41,17 +30,6 @@ ALLOWED_TRANSITIONS: dict[RequirementStatus, set[ManualRequirementStatus]] = {
         ManualRequirementStatus.CANCELED,
     },
     RequirementStatus.CONFIRMED: {
-        ManualRequirementStatus.PLANNED,
-        ManualRequirementStatus.PAUSED,
-        ManualRequirementStatus.CANCELED,
-    },
-    RequirementStatus.PLANNED: {
-        ManualRequirementStatus.DESIGNING,
-        ManualRequirementStatus.DEVELOPING,
-        ManualRequirementStatus.PAUSED,
-        ManualRequirementStatus.CANCELED,
-    },
-    RequirementStatus.DESIGNING: {
         ManualRequirementStatus.DEVELOPING,
         ManualRequirementStatus.PAUSED,
         ManualRequirementStatus.CANCELED,
@@ -67,9 +45,7 @@ ALLOWED_TRANSITIONS: dict[RequirementStatus, set[ManualRequirementStatus]] = {
     },
     RequirementStatus.DONE: {ManualRequirementStatus.DEVELOPING},
     RequirementStatus.PAUSED: {
-        ManualRequirementStatus.DESIGNING,
         ManualRequirementStatus.CONFIRMED,
-        ManualRequirementStatus.PLANNED,
         ManualRequirementStatus.DEVELOPING,
         ManualRequirementStatus.CANCELED,
     },
@@ -83,33 +59,6 @@ class RequirementService:
         self.db = db
         self.repo = RequirementRepository(db)
         self.audit = AuditService(db)
-
-    def start_stage(
-        self, requirement_id: int, payload: RequirementStageStart, operator_id: int
-    ) -> Requirement:
-        current = self.db.scalar(
-            select(Requirement).where(Requirement.id == requirement_id).with_for_update()
-        )
-        if current is None:
-            raise NotFoundError("需求不存在")
-        if current.revision != payload.revision:
-            raise ConflictError("需求已被其他用户修改", revision_conflict_data(current))
-        allowed = (
-            {RequirementStatus.PLANNED}
-            if payload.status == "DESIGNING"
-            else {RequirementStatus.PLANNED, RequirementStatus.DESIGNING}
-        )
-        if current.status not in allowed:
-            raise ConflictError("当前状态不能开始该阶段")
-        kind = "DESIGN" if payload.status == "DESIGNING" else "DEVELOPMENT"
-        RequirementCollaborationService(self.db).apply_members(current, kind, payload.user_ids)
-        return self.change_status(
-            requirement_id,
-            RequirementStatusChange(
-                revision=payload.revision, status=ManualRequirementStatus(payload.status)
-            ),
-            operator_id,
-        )
 
     def create(
         self,
@@ -126,9 +75,18 @@ class RequirementService:
             source=source,
             created_by=operator_id,
             updated_by=operator_id,
-            **payload.model_dump(exclude={"version_id", "version_revision"}),
+            **payload.model_dump(
+                exclude={"version_id", "version_revision", "participants", "owner_id"}
+            ),
+        )
+        collaboration = CollaborationService(self.db)
+        collaboration.validate_people(
+            sorted({p.user_id for p in payload.participants}), "requirement", operator_id
         )
         self.db.add(item)
+        self.db.flush()
+        for person in payload.participants:
+            self.db.add(RequirementParticipant(requirement_id=item.id, **person.model_dump()))
         self.db.flush()
         if payload.version_id is not None:
             # Keep the VersionRequirement relation authoritative and route every
@@ -150,12 +108,10 @@ class RequirementService:
             "CREATE",
             after={"requirement_no": item.requirement_no},
         )
-        if item.owner_id is not None:
-            RequirementCollaborationService(self.db).notify(
-                item, operator_id, "已分配", "你已成为该需求的总负责人。"
-            )
+        collaboration.requirement_event(item, "CREATED", operator_id)
         self.db.commit()
         self.db.refresh(item)
+        self.repo.populate_handlers([item])
         return item
 
     def update(
@@ -164,9 +120,19 @@ class RequirementService:
         current = self.repo.get(requirement_id)
         if not current:
             raise NotFoundError("需求不存在")
-        values = payload.model_dump(exclude_unset=True, exclude={"revision"}) | {
+        WorkflowService(self.db).lock(current)
+        values = payload.model_dump(exclude_unset=True, exclude={"revision", "owner_id"}) | {
             "updated_by": operator_id
         }
+        content_changed = any(
+            key in values and values[key] != getattr(current, key)
+            for key in ("description", "acceptance_criteria")
+        )
+        if content_changed:
+            if current.status == RequirementStatus.ONLINE:
+                raise AppError(40961, "已上线需求范围不可修改", 409)
+            values["content_revision"] = current.content_revision + 1
+            values["legacy_completed"] = False
         # Snapshot the real old values of the changed business fields before the
         # atomic UPDATE mutates this in-session object (synchronize_session).
         changed_fields = [key for key in values if key != "updated_by"]
@@ -186,13 +152,13 @@ class RequirementService:
             before=before_values,
             after=after_values,
         )
-        if "owner_id" in values and before_values["owner_id"] != values["owner_id"]:
-            RequirementCollaborationService(self.db).notify(
-                current, operator_id, "负责人已更新", "请查看最新负责人分工。"
-            )
+        if content_changed:
+            self.db.flush()
+            CollaborationService(self.db).requirement_event(current, "RECONFIRM", operator_id)
         self.db.commit()
         updated = self.repo.get(requirement_id)
         assert updated is not None
+        self.repo.populate_handlers([updated])
         return updated
 
     def change_status(
@@ -201,6 +167,8 @@ class RequirementService:
         current = self.repo.get(requirement_id)
         if not current:
             raise NotFoundError("需求不存在")
+        workflow = WorkflowService(self.db)
+        workflow.lock(current)
         if current.revision != payload.revision:
             raise ConflictError("需求状态已被其他用户修改", revision_conflict_data(current))
         current_status = RequirementStatus(current.status)
@@ -208,25 +176,19 @@ class RequirementService:
         previous_status = current.status
         if payload.status not in ALLOWED_TRANSITIONS[current_status]:
             raise AppError(40911, f"不允许从 {current.status} 变更为 {payload.status}", 409)
-        if payload.status == ManualRequirementStatus.DESIGNING or (
-            current_status == RequirementStatus.DESIGNING
+        workflow_values: dict[str, Any] = {}
+        if (
+            current.status == RequirementStatus.DRAFT
+            and payload.status == ManualRequirementStatus.CONFIRMED
+        ):
+            workflow_values["confirmed_revision"] = current.content_revision
+        if payload.status == ManualRequirementStatus.PAUSED:
+            workflow_values["paused_from"] = current.status
+        if (
+            current.status == RequirementStatus.DONE
             and payload.status == ManualRequirementStatus.DEVELOPING
         ):
-            kind = (
-                "DESIGN" if payload.status == ManualRequirementStatus.DESIGNING else "DEVELOPMENT"
-            )
-            if (
-                self.db.scalar(
-                    select(RequirementParticipant.user_id)
-                    .where(
-                        RequirementParticipant.requirement_id == requirement_id,
-                        RequirementParticipant.discipline == kind,
-                    )
-                    .limit(1)
-                )
-                is None
-            ):
-                raise ConflictError("请先选择阶段人员再开始该阶段")
+            workflow_values["legacy_completed"] = False
         if (
             current.status == RequirementStatus.DONE
             and payload.status == ManualRequirementStatus.DEVELOPING
@@ -241,11 +203,13 @@ class RequirementService:
                 )
                 if version_status == VersionStatus.RELEASED:
                     raise AppError(40912, "已发布版本中的需求不能退回开发中", 409)
+        workflow.validate_transition(current, payload.status, operator_id, payload.reason)
         if not self.repo.update_with_revision(
             requirement_id,
             payload.revision,
             {
                 "status": RequirementStatus(payload.status.value),
+                **workflow_values,
                 "updated_by": operator_id,
             },
         ):
@@ -254,10 +218,12 @@ class RequirementService:
                 "需求状态已被其他用户修改",
                 revision_conflict_data(self.repo.get(requirement_id)),
             )
-        if payload.status == ManualRequirementStatus.DONE:
-            RequirementCollaborationService(self.db).require_development_completed(requirement_id)
-        if payload.status == ManualRequirementStatus.DEVELOPING:
-            RequirementCollaborationService(self.db).reset_development(requirement_id)
+        workflow.record(
+            current,
+            f"STATUS_{payload.status}",
+            operator_id,
+            {"from": previous_status, "to": payload.status, "reason": payload.reason},
+        )
         self.audit.log(
             "REQUIREMENT",
             requirement_id,
@@ -265,24 +231,10 @@ class RequirementService:
             before={"status": previous_status},
             after={"status": payload.status, "reason": payload.reason},
         )
-        RequirementCollaborationService(self.db).notify(
-            current,
-            operator_id,
-            "状态已更新",
-            f"{STATUS_LABELS[RequirementStatus(previous_status)]} → "
-            f"{STATUS_LABELS[RequirementStatus(payload.status.value)]}。请查看需求详情。",
-            discipline=(
-                "DESIGN"
-                if payload.status == ManualRequirementStatus.DESIGNING
-                else "DEVELOPMENT"
-                if payload.status
-                in {ManualRequirementStatus.DEVELOPING, ManualRequirementStatus.TESTING}
-                else None
-            ),
-        )
         self.db.commit()
         updated = self.repo.get(requirement_id)
         assert updated is not None
+        self.repo.populate_handlers([updated])
         return updated
 
     # NOTE: moving a requirement between versions now lives in VersionService

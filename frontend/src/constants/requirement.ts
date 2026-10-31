@@ -25,13 +25,11 @@ export const REQUIREMENT_TYPES = [
 ] as const
 
 export const REQUIREMENT_STATUSES = [
-  { value: 'DRAFT', label: '草稿' },
-  { value: 'CONFIRMED', label: '已确认' },
-  { value: 'PLANNED', label: '已排期' },
-  { value: 'DESIGNING', label: '设计中' },
+  { value: 'DRAFT', label: '待确认' },
+  { value: 'CONFIRMED', label: '待开发' },
   { value: 'DEVELOPING', label: '开发中' },
-  { value: 'TESTING', label: '测试中' },
-  { value: 'DONE', label: '已完成' },
+  { value: 'TESTING', label: '待验收' },
+  { value: 'DONE', label: '待发布' },
   { value: 'ONLINE', label: '已上线' },
   { value: 'PAUSED', label: '已暂停' },
   { value: 'CANCELED', label: '已取消' },
@@ -47,47 +45,33 @@ export interface ReqStatusAction {
   target: ManualRequirementStatus
   label: string
   needsReason: boolean
-  startsStage?: boolean
 }
 
 // Human-settable transitions keyed by current status (mirrors backend).
 const TRANSITIONS: Record<string, ReqStatusAction[]> = {
   DRAFT: [
     { target: 'CONFIRMED', label: '确认', needsReason: false },
-    { target: 'CANCELED', label: '取消', needsReason: false },
+    { target: 'CANCELED', label: '取消', needsReason: true },
   ],
   CONFIRMED: [
-    { target: 'PLANNED', label: '排期', needsReason: false },
-    { target: 'PAUSED', label: '暂停', needsReason: false },
-    { target: 'CANCELED', label: '取消', needsReason: false },
-  ],
-  PLANNED: [
-    { target: 'DESIGNING', label: '开始设计', needsReason: false, startsStage: true },
-    { target: 'DEVELOPING', label: '开始开发', needsReason: false, startsStage: true },
-    { target: 'PAUSED', label: '暂停', needsReason: false },
-    { target: 'CANCELED', label: '取消', needsReason: false },
-  ],
-  DESIGNING: [
-    { target: 'DEVELOPING', label: '开始开发', needsReason: false, startsStage: true },
-    { target: 'PAUSED', label: '暂停', needsReason: false },
-    { target: 'CANCELED', label: '取消', needsReason: false },
+    { target: 'DEVELOPING', label: '开始开发', needsReason: false },
+    { target: 'PAUSED', label: '暂停', needsReason: true },
+    { target: 'CANCELED', label: '取消', needsReason: true },
   ],
   DEVELOPING: [
-    { target: 'TESTING', label: '提测', needsReason: false },
-    { target: 'PAUSED', label: '暂停', needsReason: false },
+    { target: 'TESTING', label: '提交验收', needsReason: false },
+    { target: 'PAUSED', label: '暂停', needsReason: true },
   ],
   TESTING: [
-    { target: 'DEVELOPING', label: '退回开发', needsReason: false },
-    { target: 'DONE', label: '完成', needsReason: false },
-    { target: 'PAUSED', label: '暂停', needsReason: false },
+    { target: 'DEVELOPING', label: '退回开发', needsReason: true },
+    { target: 'DONE', label: '验收通过', needsReason: false },
+    { target: 'PAUSED', label: '暂停', needsReason: true },
   ],
   DONE: [{ target: 'DEVELOPING', label: '重新开发', needsReason: true }],
   PAUSED: [
-    { target: 'DESIGNING', label: '恢复设计', needsReason: false },
-    { target: 'CONFIRMED', label: '恢复到已确认', needsReason: false },
-    { target: 'PLANNED', label: '恢复到已排期', needsReason: false },
-    { target: 'DEVELOPING', label: '恢复开发', needsReason: false },
-    { target: 'CANCELED', label: '取消', needsReason: false },
+    { target: 'CONFIRMED', label: '恢复待开发', needsReason: true },
+    { target: 'DEVELOPING', label: '恢复开发', needsReason: true },
+    { target: 'CANCELED', label: '取消', needsReason: true },
   ],
 }
 
@@ -105,7 +89,6 @@ export function requirementStatusTagType(status: string): string {
       DRAFT: 'info',
       CONFIRMED: 'primary',
       PLANNED: 'primary',
-      DESIGNING: 'primary',
       DEVELOPING: 'primary',
       TESTING: 'warning',
       DONE: 'success',

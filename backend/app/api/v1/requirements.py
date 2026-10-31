@@ -13,21 +13,14 @@ from app.repositories.requirement_repository import RequirementRepository
 from app.repositories.user_repository import UserRepository
 from app.repositories.version_repository import VersionRepository
 from app.schemas.requirement import (
-    AssigneeOptionsPage,
-    DevelopmentCompletionRequest,
     LinkedFeedbackOut,
-    RequirementCollaboratorGroupUpdate,
-    RequirementCollaboratorsOut,
-    RequirementCollaboratorsUpdate,
     RequirementCreate,
     RequirementOut,
     RequirementPage,
-    RequirementStageStart,
     RequirementStatusChange,
     RequirementUpdate,
 )
 from app.services.feedback_service import FeedbackService
-from app.services.requirement_collaboration_service import RequirementCollaborationService
 from app.services.requirement_service import RequirementService
 
 router = APIRouter(prefix="/requirements", tags=["requirements"])
@@ -67,6 +60,8 @@ def list_requirements(
     source: RequirementSource | None = Query(None),
     current_version_id: int | None = Query(None, ge=1),
     owner_id: int | None = Query(None, ge=1),
+    participant_id: int | None = Query(None, ge=1),
+    participant_role: Literal["CONFIRM", "DESIGN", "DEVELOP", "ACCEPT"] | None = Query(None),
     db: Session = Depends(get_db),
     user: User = Depends(require_permission("rd.requirement.view")),
 ):
@@ -82,6 +77,8 @@ def list_requirements(
         source=source,
         current_version_id=current_version_id,
         owner_id=owner_id,
+        participant_id=participant_id,
+        participant_role=participant_role,
     )
     return {"items": items, "page": page, "page_size": page_size, "total": total}
 
@@ -107,53 +104,6 @@ def create_requirement(
     return RequirementService(db).create(payload, user.id, viewer_scope=scope)
 
 
-@router.get("/assignee-options", response_model=AssigneeOptionsPage)
-def assignee_options(
-    keyword: str | None = Query(None, max_length=100),
-    kind: Literal["OWNER", "DEVELOPER", "DESIGNER"] = "OWNER",
-    page: int = Query(1, ge=1),
-    db: Session = Depends(get_db),
-    user: User = Depends(require_permission("rd.requirement.edit")),
-):
-    return RequirementCollaborationService(db).options(keyword, page, kind)
-
-
-@router.get("/{requirement_id}/collaborators", response_model=RequirementCollaboratorsOut)
-def get_collaborators(
-    requirement_id: int,
-    db: Session = Depends(get_db),
-    user: User = Depends(require_permission("rd.requirement.view")),
-):
-    item = _scoped_requirement_or_404(db, user, requirement_id)
-    return RequirementCollaborationService(db).read(item)
-
-
-@router.put("/{requirement_id}/collaborators", response_model=RequirementCollaboratorsOut)
-def replace_collaborators(
-    requirement_id: int,
-    payload: RequirementCollaboratorsUpdate,
-    db: Session = Depends(get_db),
-    user: User = Depends(require_permission("rd.requirement.edit")),
-):
-    _scoped_requirement_or_404(db, user, requirement_id)
-    return RequirementCollaborationService(db).replace(requirement_id, payload, user.id)
-
-
-@router.post(
-    "/{requirement_id}/development-completion",
-    response_model=RequirementCollaboratorsOut,
-    responses=api_revision_conflict_responses(),
-)
-def confirm_development(
-    requirement_id: int,
-    payload: DevelopmentCompletionRequest,
-    db: Session = Depends(get_db),
-    user: User = Depends(require_all_permissions("rd.requirement.view", "rd.requirement.status")),
-):
-    _scoped_requirement_or_404(db, user, requirement_id)
-    return RequirementCollaborationService(db).confirm_development(requirement_id, payload, user.id)
-
-
 @router.get("/{requirement_id}", response_model=RequirementOut)
 def get_requirement(
     requirement_id: int,
@@ -161,36 +111,6 @@ def get_requirement(
     user: User = Depends(require_permission("rd.requirement.view")),
 ):
     return _scoped_requirement_or_404(db, user, requirement_id)
-
-
-@router.post(
-    "/{requirement_id}/start-stage",
-    response_model=RequirementOut,
-    responses=api_revision_conflict_responses(),
-)
-def start_stage(
-    requirement_id: int,
-    payload: RequirementStageStart,
-    db: Session = Depends(get_db),
-    user: User = Depends(require_all_permissions("rd.requirement.edit", "rd.requirement.status")),
-):
-    _scoped_requirement_or_404(db, user, requirement_id)
-    return RequirementService(db).start_stage(requirement_id, payload, user.id)
-
-
-@router.patch(
-    "/{requirement_id}/collaborators",
-    response_model=RequirementCollaboratorsOut,
-    responses=api_revision_conflict_responses(),
-)
-def update_collaborator_group(
-    requirement_id: int,
-    payload: RequirementCollaboratorGroupUpdate,
-    db: Session = Depends(get_db),
-    user: User = Depends(require_permission("rd.requirement.edit")),
-):
-    _scoped_requirement_or_404(db, user, requirement_id)
-    return RequirementCollaborationService(db).replace_group(requirement_id, payload, user.id)
 
 
 @router.get("/{requirement_id}/feedbacks", response_model=list[LinkedFeedbackOut])
@@ -232,10 +152,6 @@ def update_requirement(
 
 @router.patch(
     "/{requirement_id}/status",
-    description=(
-        "进入 DONE 必须已分配至少一名开发人员且全部本人确认完成；未满足时返回业务冲突 409，"  # noqa: RUF001
-        "状态、revision、审计和通知均不提交。旧 revision 仍返回 CAS 冲突。"
-    ),
     response_model=RequirementOut,
     responses=api_revision_conflict_responses(404, 409),
 )

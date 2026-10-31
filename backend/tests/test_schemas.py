@@ -17,6 +17,7 @@ from app.schemas.user import UserOut
 
 def test_feedback_create_validates_business_enums():
     payload = FeedbackCreate(
+        recipient_ids=[1],
         title="反馈标题",
         feedback_type=FeedbackType.SYSTEM_ISSUE,
         urgency=FeedbackUrgency.URGENT,

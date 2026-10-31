@@ -1,3 +1,4 @@
+import { mockCollaboration } from './collaboration-fixture'
 import { expect, test } from '@playwright/test'
 
 const timestamp = '2026-10-08T00:00:00Z'
@@ -8,7 +9,7 @@ const version = (id: number) => ({
 })
 const requirement = (id: number) => ({
   id, requirement_no: `REQ-${id}`, title: `需求详情 ${id}`, requirement_type: 'FEATURE',
-  source: 'DIRECT', priority: 'P2', status: 'DRAFT', system_id: null, module_id: null,
+  source: 'DIRECT', priority: 'P2', status: 'CONFIRMED', system_id: null, module_id: null,
   owner_id: 1, current_version_id: null, description: `需求描述 ${id}`, acceptance_criteria: null,
   created_at: timestamp, updated_at: timestamp, updated_by: 1, revision: 4,
 })
@@ -22,7 +23,7 @@ const feedback = (id: number) => ({
 
 const cases = [
   { path: '/versions', label: '版本', item: version, titleField: 'name', editField: '版本名称', action: '开始开发', nextStatus: 'DEVELOPING' },
-  { path: '/requirements', label: '需求', item: requirement, titleField: 'title', editField: '标题', action: '确认', nextStatus: 'CONFIRMED' },
+  { path: '/requirements', label: '需求', item: requirement, titleField: 'title', editField: '标题', action: '开始开发', nextStatus: 'DEVELOPING' },
   { path: '/feedbacks', label: '反馈', item: feedback, titleField: 'title', editField: '标题', action: '受理', nextStatus: 'ACCEPTED' },
 ] as const
 
@@ -38,7 +39,8 @@ for (const width of [1280, 390]) {
         localStorage.setItem('iterflow.access_token', 'drawer-test-access')
         localStorage.setItem('iterflow.refresh_token', 'drawer-test-refresh')
       })
-      await page.route('**/api/v1/**', async route => {
+      await page.route('**/api/v1/**', async (route) => {
+    if (await mockCollaboration(route)) return
         const url = new URL(route.request().url())
         const path = url.pathname.replace('/api/v1', '')
         requests.push(url.pathname + url.search)
@@ -105,7 +107,8 @@ for (const width of [1280, 390]) {
         localStorage.setItem('iterflow.access_token', 'drawer-edit-access')
         localStorage.setItem('iterflow.refresh_token', 'drawer-edit-refresh')
       })
-      await page.route('**/api/v1/**', async route => {
+      await page.route('**/api/v1/**', async (route) => {
+    if (await mockCollaboration(route)) return
         const request = route.request()
         const url = new URL(request.url())
         const path = url.pathname.slice('/api/v1'.length)

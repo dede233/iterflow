@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import MailPreferences from '@/components/MailPreferences.vue'
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
@@ -38,6 +39,7 @@ async function logout(): Promise<void> {
         <el-button @click="logout">退出登录</el-button>
       </div>
     </SectionCard>
+    <MailPreferences />
   </div>
 </template>
 

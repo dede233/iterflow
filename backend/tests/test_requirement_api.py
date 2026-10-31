@@ -1,5 +1,4 @@
 from collections.abc import Iterator
-from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -16,13 +15,15 @@ from app.main import app
 from app.models.entities import (
     BusinessModule,
     BusinessSystem,
+    CollaborationEvent,
     Feedback,
-    Notification,
+    FeedbackRecipient,
     OperationLog,
     Permission,
     Requirement,
     RequirementFeedback,
     RequirementParticipant,
+    RequirementStep,
     Role,
     RolePermission,
     User,
@@ -57,27 +58,20 @@ def req_api(tmp_path: Path) -> Iterator[Fixture]:
         UserRole.__table__,
         RolePermission.__table__,
         OperationLog.__table__,
-        Notification.__table__,
         BusinessSystem.__table__,
         BusinessModule.__table__,
         Feedback.__table__,
+        FeedbackRecipient.__table__,
+        CollaborationEvent.__table__,
         Requirement.__table__,
+        RequirementStep.__table__,
         RequirementParticipant.__table__,
         RequirementFeedback.__table__,
     ):
         table.create(engine)
 
     listeners = []
-    for model in (
-        User,
-        Role,
-        Permission,
-        OperationLog,
-        Notification,
-        Feedback,
-        Requirement,
-        RequirementFeedback,
-    ):
+    for model in (User, Role, Permission, OperationLog, Feedback, Requirement, RequirementFeedback):
         counter = iter(range(1, 100000))
 
         def assign_id(_mapper, _connection, target, *, _counter=counter):
@@ -165,6 +159,14 @@ def req_api(tmp_path: Path) -> Iterator[Fixture]:
 
 def _create_req(client, headers, **overrides) -> dict:
     body = {"title": "需求标题", "requirement_type": "FEATURE", "description": "需求描述内容"}
+    import jwt
+
+    uid = int(
+        jwt.decode(headers["Authorization"].split()[1], options={"verify_signature": False})["sub"]
+    )
+    body["participants"] = [
+        {"user_id": uid, "role": role} for role in ("CONFIRM", "DEVELOP", "ACCEPT")
+    ]
     body.update(overrides)
     r = client.post("/api/v1/requirements", headers=headers, json=body)
     assert r.status_code == 200, r.text
@@ -172,7 +174,17 @@ def _create_req(client, headers, **overrides) -> dict:
 
 
 def _create_feedback(client, headers, **overrides) -> dict:
-    body = {"title": "反馈标题", "feedback_type": "SYSTEM_ISSUE", "description": "反馈描述"}
+    body = {
+        "title": "反馈标题",
+        "feedback_type": "SYSTEM_ISSUE",
+        "description": "反馈描述",
+        "recipient_ids": [
+            p["id"]
+            for p in client.get(
+                "/api/v1/collaboration/people?kind=feedback", headers=headers
+            ).json()["items"]
+        ],
+    }
     body.update(overrides)
     r = client.post("/api/v1/feedbacks", headers=headers, json=body)
     assert r.status_code == 200, r.text
@@ -266,18 +278,9 @@ def test_requirement_status_machine(req_api):
 
     r = status("CONFIRMED", 1)
     assert r.status_code == 200 and r.json()["status"] == "CONFIRMED"
-    r = status("PLANNED", r.json()["revision"])
+    assert status("PLANNED", r.json()["revision"]).status_code == 422
     r = status("DEVELOPING", r.json()["revision"])
     r = status("TESTING", r.json()["revision"])
-    _session.add(
-        RequirementParticipant(
-            requirement_id=rid,
-            user_id=_ids["alice"],
-            discipline="DEVELOPMENT",
-            completed_at=datetime.now(UTC),
-        )
-    )
-    _session.commit()
     r = status("DONE", r.json()["revision"])
     assert r.status_code == 200 and r.json()["status"] == "DONE"
     # DONE -> DEVELOPING requires a reason.
@@ -340,7 +343,7 @@ def test_convert_create_new(req_api):
     assert resp.status_code == 200, resp.text
     req = resp.json()
     assert req["source"] == "FEEDBACK"
-    assert req["status"] == "CONFIRMED"
+    assert req["status"] == "DRAFT"
 
     detail = client.get(f"/api/v1/feedbacks/{fb['id']}", headers=headers["alice"]).json()
     assert detail["status"] == "REQUIREMENT_LINKED"

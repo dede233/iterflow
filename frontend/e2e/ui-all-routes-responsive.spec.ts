@@ -1,3 +1,4 @@
+import { mockCollaboration } from './collaboration-fixture'
 import { expect, test } from '@playwright/test'
 
 const date = '2026-09-24T00:00:00Z'
@@ -104,7 +105,8 @@ test('all 19 authenticated screens render at every release viewport', async ({ p
     localStorage.setItem('iterflow.access_token', 'responsive-test-access')
     localStorage.setItem('iterflow.refresh_token', 'responsive-test-refresh')
   })
-  await page.route('**/api/v1/**', (route) => {
+  await page.route('**/api/v1/**', async (route) => {
+    if (await mockCollaboration(route)) return
     const { pathname } = new URL(route.request().url())
     if (pathname === '/api/v1/notifications/unread-count') return route.fulfill({ status: 200, json: { unread_count: 0 } })
     if (pathname.startsWith('/api/v1/editing/')) return route.fulfill({ status: 200, json: {} })
@@ -153,7 +155,8 @@ test('core detail dialogs stay operable on a 375px screen', async ({ page }) => 
     localStorage.setItem('iterflow.access_token', 'responsive-test-access')
     localStorage.setItem('iterflow.refresh_token', 'responsive-test-refresh')
   })
-  await page.route('**/api/v1/**', (route) => {
+  await page.route('**/api/v1/**', async (route) => {
+    if (await mockCollaboration(route)) return
     const { pathname } = new URL(route.request().url())
     if (pathname === '/api/v1/notifications/unread-count') return route.fulfill({ status: 200, json: { unread_count: 0 } })
     if (pathname.startsWith('/api/v1/editing/')) return route.fulfill({ status: 200, json: {} })

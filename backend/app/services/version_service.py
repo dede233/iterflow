@@ -28,6 +28,7 @@ from app.repositories.requirement_repository import RequirementRepository
 from app.repositories.version_repository import VersionRepository
 from app.schemas.version import (
     AddRequirementRequest,
+    BulkAddRequirements,
     MoveRequirementRequest,
     PublishVersionRequest,
     RemoveRequirementRequest,
@@ -36,8 +37,8 @@ from app.schemas.version import (
     VersionUpdate,
 )
 from app.services.audit_service import AuditService
+from app.services.collaboration_service import CollaborationService
 from app.services.publish_check_service import PublishCheckService
-from app.services.requirement_collaboration_service import RequirementCollaborationService
 from app.services.revision_conflict import revision_conflict_data
 
 # Version states in which the requirement set is frozen (V1.5 §freeze).
@@ -163,8 +164,6 @@ class VersionService:
 
     @staticmethod
     def _planned_status(current: str) -> RequirementStatus:
-        if RequirementStatus(current) in {RequirementStatus.DRAFT, RequirementStatus.CONFIRMED}:
-            return RequirementStatus.PLANNED
         return RequirementStatus(current)
 
     def requirements_view(
@@ -253,6 +252,7 @@ class VersionService:
         action: str,
         *,
         version_id: int,
+        operator_id: int,
         requirement_id: int,
         before_version_id: int | None,
         before_current_version_id: int | None,
@@ -277,6 +277,15 @@ class VersionService:
             },
             after=after,
         )
+
+        self.db.flush()
+        requirement = self.db.get(Requirement, requirement_id)
+        if requirement is not None:
+            CollaborationService(self.db).requirement_event(
+                requirement,
+                "RELATION_CHANGE",
+                operator_id,
+            )
 
     def attach_new_requirement(
         self,
@@ -306,6 +315,7 @@ class VersionService:
         )
         self._audit_requirement_relation(
             "VERSION_REQUIREMENT_ADD",
+            operator_id=operator_id,
             version_id=version_id,
             requirement_id=requirement.id,
             before_version_id=None,
@@ -360,6 +370,7 @@ class VersionService:
         )
         self._audit_requirement_relation(
             "VERSION_REQUIREMENT_ADD",
+            operator_id=operator_id,
             version_id=version_id,
             requirement_id=requirement.id,
             before_version_id=None,
@@ -367,8 +378,74 @@ class VersionService:
             after_version_id=version_id,
         )
         self._bump_version_revision(version, payload.version_revision, operator_id)
-        RequirementCollaborationService(self.db).notify(
-            requirement, operator_id, "版本清单已更新", "请查看最新版本归属和需求状态。"
+        self.db.commit()
+        self.db.refresh(version)
+        return version
+
+    def bulk_add_requirements(
+        self,
+        version_id: int,
+        payload: BulkAddRequirements,
+        operator_id: int,
+        viewer_scope: DataScope,
+        viewer_id: int,
+    ) -> Version:
+        version = self._lock_version(version_id)
+        self._ensure_version_scope(version, viewer_id, viewer_scope)
+        self._ensure_version_revision(version, payload.version_revision)
+        self._ensure_mutable(version)
+        expected = {entry.requirement_id: entry.revision for entry in payload.items}
+        query = select(Requirement).where(Requirement.id.in_(expected)).order_by(Requirement.id)
+        if viewer_scope is not DataScope.ALL:
+            query = query.where(RequirementRepository.self_criterion(viewer_id))
+        requirements = list(
+            self.db.scalars(query.with_for_update().execution_options(populate_existing=True))
+        )
+        if len(requirements) != len(expected):
+            raise NotFoundError("部分需求不存在或不可访问")
+        errors = []
+        for item in requirements:
+            reason = None
+            if item.revision != expected[item.id]:
+                reason = "需求已修改, 请核对后重新选择"
+            elif item.current_version_id is not None or self.repo.active_relation_of_requirement(
+                item.id
+            ):
+                reason = "需求已有版本归属, 请使用迁移"
+            elif item.status in {RequirementStatus.ONLINE, RequirementStatus.CANCELED}:
+                reason = "终态需求不能加入版本"
+            if reason:
+                errors.append({"requirement_id": item.id, "reason": reason})
+        if errors:
+            raise AppError(40933, "批量添加未执行, 请核对所选需求", 409, {"items": errors})
+        req_repo = RequirementRepository(self.db)
+        for item in requirements:
+            if not req_repo.update_with_revision(
+                item.id,
+                expected[item.id],
+                {"current_version_id": version_id, "updated_by": operator_id},
+            ):
+                raise self._requirement_conflict(req_repo, item.id)
+            self.db.add(
+                VersionRequirement(
+                    version_id=version_id, requirement_id=item.id, added_by=operator_id
+                )
+            )
+            self._audit_requirement_relation(
+                "VERSION_REQUIREMENT_ADD",
+                operator_id=operator_id,
+                version_id=version_id,
+                requirement_id=item.id,
+                before_version_id=None,
+                before_current_version_id=None,
+                after_version_id=version_id,
+            )
+        self._bump_version_revision(version, payload.version_revision, operator_id)
+        self.audit.log(
+            "VERSION",
+            version_id,
+            "BULK_ADD",
+            after={"request_id": str(payload.request_id), "requirement_ids": sorted(expected)},
         )
         self.db.commit()
         self.db.refresh(version)
@@ -416,6 +493,7 @@ class VersionService:
         )
         self._audit_requirement_relation(
             "VERSION_REQUIREMENT_REMOVE",
+            operator_id=operator_id,
             version_id=version_id,
             requirement_id=requirement_id,
             before_version_id=version_id,
@@ -424,9 +502,6 @@ class VersionService:
             reason=payload.reason,
         )
         self._bump_version_revision(version, payload.version_revision, operator_id)
-        RequirementCollaborationService(self.db).notify(
-            requirement, operator_id, "版本清单已更新", "请查看最新版本归属和需求状态。"
-        )
         self.db.commit()
         self.db.refresh(version)
         return version
@@ -510,6 +585,7 @@ class VersionService:
         )
         self._audit_requirement_relation(
             "VERSION_REQUIREMENT_MOVE",
+            operator_id=operator_id,
             version_id=target_version_id,
             requirement_id=requirement.id,
             before_version_id=old_version_id,
@@ -520,9 +596,6 @@ class VersionService:
         self._bump_version_revision(target, payload.version_revision, operator_id)
         if old_version is not None:
             self._bump_version_revision(old_version, old_version.revision, operator_id)
-        RequirementCollaborationService(self.db).notify(
-            requirement, operator_id, "已迁移版本", "请查看新的版本归属。"
-        )
         self.db.commit()
         self.db.refresh(target)
         return target
@@ -551,6 +624,14 @@ class VersionService:
         if version.revision != payload.revision:
             raise self._version_conflict(version_id)
 
+        # Same version -> requirement lock order as workflow/content changes.
+        self.db.execute(
+            select(Requirement)
+            .where(Requirement.current_version_id == version_id)
+            .order_by(Requirement.id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        ).scalars().all()
         # Centralized pre-publish checks (same checks as POST /publish/check).
         check = PublishCheckService(self.db).evaluate(version, lock=True)
         if not check["passed"]:
@@ -632,6 +713,11 @@ class VersionService:
                     ).all()
                 )
             for rid in online_requirement_ids:
+                requirement = self.db.get(Requirement, rid)
+                assert requirement is not None
+                CollaborationService(self.db).requirement_event(
+                    requirement, "PUBLISHED", operator_id
+                )
                 self.audit.log(
                     "REQUIREMENT",
                     rid,
@@ -681,6 +767,16 @@ class VersionService:
                             before={"status": FeedbackStatus.REQUIREMENT_LINKED},
                             after={"status": FeedbackStatus.ONLINE},
                         )
+                        CollaborationService(self.db).event(
+                            "FEEDBACK",
+                            feedback.id,
+                            "PUBLISHED",
+                            operator_id,
+                            [
+                                feedback.submitter_id,
+                                *CollaborationService(self.db).recipient_ids(feedback.id),
+                            ],
+                        )
                         self.db.add(
                             Notification(
                                 user_id=feedback.submitter_id,
@@ -704,12 +800,6 @@ class VersionService:
             "RELEASE_CREATE",
             after={"version_id": version.id, "result": ReleaseResult.SUCCESS},
         )
-        for requirement in self.db.scalars(
-            select(Requirement).where(Requirement.id.in_(online_requirement_ids))
-        ):
-            RequirementCollaborationService(self.db).notify(
-                requirement, operator_id, "已上线", f"已随版本 {version.version_no} 成功发布。"
-            )
         self.db.commit()
         self.db.refresh(release)
         return {

@@ -1,5 +1,6 @@
 from datetime import date, datetime
 from typing import Self
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -99,3 +100,20 @@ class VersionRequirementsOut(BaseModel):
     version_id: int
     stats: VersionStats
     items: list[RequirementOut]
+
+
+class BulkRequirementItem(BaseModel):
+    requirement_id: int = Field(ge=1)
+    revision: int = Field(ge=1)
+
+
+class BulkAddRequirements(BaseModel):
+    version_revision: int = Field(ge=1)
+    request_id: UUID
+    items: list[BulkRequirementItem] = Field(min_length=1, max_length=50)
+
+    @model_validator(mode="after")
+    def unique_requirements(self) -> Self:
+        if len({i.requirement_id for i in self.items}) != len(self.items):
+            raise ValueError("不能重复选择需求")
+        return self

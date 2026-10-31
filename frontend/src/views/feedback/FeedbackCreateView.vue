@@ -9,6 +9,7 @@ import { usePermission } from '@/composables/usePermission'
 import { FEEDBACK_TYPES, FEEDBACK_URGENCIES } from '@/constants/feedback'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import SectionCard from '@/components/ui/SectionCard.vue'
+import PeopleSelector from '@/components/PeopleSelector.vue'
 import type { BusinessModuleItem, BusinessSystemItem } from '@/types/domain'
 
 const router = useRouter()
@@ -20,6 +21,7 @@ const systems = ref<BusinessSystemItem[]>([])
 const modules = ref<BusinessModuleItem[]>([])
 const canReadSystems = computed(() => can(['sys.system.view', 'sys.system.manage']))
 const fileList = ref<UploadUserFile[]>([])
+const recipientIds = ref<number[]>([])
 
 const form = reactive({
   title: '',
@@ -28,8 +30,6 @@ const form = reactive({
   system_id: null as number | null,
   module_id: null as number | null,
   description: '',
-  expected_result: '',
-  actual_result: '',
   reproduce_steps: '',
 })
 
@@ -56,6 +56,11 @@ async function submit(): Promise<void> {
     return
   }
   saving.value = true
+  if (!recipientIds.value.length) {
+    ElMessage.warning('请选择至少一位反馈接收人')
+    saving.value = false
+    return
+  }
   try {
     const created = await createFeedback({
       title: form.title.trim(),
@@ -64,8 +69,7 @@ async function submit(): Promise<void> {
       system_id: form.system_id ?? null,
       module_id: form.module_id ?? null,
       description: form.description.trim(),
-      expected_result: form.expected_result.trim() || null,
-      actual_result: form.actual_result.trim() || null,
+      recipient_ids: recipientIds.value,
       reproduce_steps: form.reproduce_steps.trim() || null,
     })
     // Upload any staged attachments against the new feedback id.
@@ -135,14 +139,9 @@ onMounted(async () => {
         </template>
         </div>
         <h2 class="form-subtitle">详细说明</h2>
+        <el-form-item label="反馈接收人" required><PeopleSelector v-model="recipientIds" kind="feedback" multiple /></el-form-item>
         <el-form-item label="详细描述" required>
           <el-input v-model="form.description" type="textarea" :rows="6" />
-        </el-form-item>
-        <el-form-item label="期望结果">
-          <el-input v-model="form.expected_result" type="textarea" :rows="2" />
-        </el-form-item>
-        <el-form-item label="实际结果">
-          <el-input v-model="form.actual_result" type="textarea" :rows="2" />
         </el-form-item>
         <el-form-item label="复现步骤">
           <el-input v-model="form.reproduce_steps" type="textarea" :rows="3" />

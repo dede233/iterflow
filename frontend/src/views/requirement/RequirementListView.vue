@@ -18,6 +18,7 @@ import ListFilterPanel from '@/components/ui/ListFilterPanel.vue'
 import { REQUIREMENT_PRIORITIES, REQUIREMENT_STATUSES, requirementStatusLabel, requirementStatusTagType } from '@/constants/requirement'
 import type { Requirement, RequirementListParams } from '@/types/domain'
 
+function handlerNames(row: Requirement) { return row.current_handlers?.map(p => p.display_name).join('、') || (['DONE', 'ONLINE', 'CANCELED'].includes(row.status) ? '—' : '待分配') }
 const router = useRouter()
 const { isMobile } = useResponsive()
 const { can } = usePermission()
@@ -30,13 +31,13 @@ const createDialog = ref(false)
 const filterDrawer = ref(false)
 const detailDrawer = ref(false)
 const activeRequirementId = ref<number | null>(null)
-const filters = reactive({ page: 1, page_size: 20, keyword: '', status: '' as RequirementListParams['status'], priority: '' as RequirementListParams['priority'], source: '' as RequirementListParams['source'], current_version_id: null as number | null, owner_id: null as number | null })
+const filters = reactive({ page: 1, page_size: 20, keyword: '', status: '' as RequirementListParams['status'], priority: '' as RequirementListParams['priority'], source: '' as RequirementListParams['source'], current_version_id: null as number | null, participant_id: null as number | null, participant_role: '' as RequirementListParams['participant_role'] })
 let requestSequence = 0
 const positiveId = (value: number | null) => value != null && Number.isSafeInteger(value) && value >= 1 ? value : undefined
 
 async function load(): Promise<void> {
   const q = queryState.applied()
-  const current = { page: Number(q.page ?? 1), page_size: Number(q.page_size ?? 20), keyword: q.keyword ?? '', status: q.status as RequirementListParams['status'], priority: q.priority as RequirementListParams['priority'], source: q.source as RequirementListParams['source'], current_version_id: q.current_version_id ? Number(q.current_version_id) : null, owner_id: q.owner_id ? Number(q.owner_id) : null }
+  const current = { page: Number(q.page ?? 1), page_size: Number(q.page_size ?? 20), keyword: q.keyword ?? '', status: q.status as RequirementListParams['status'], priority: q.priority as RequirementListParams['priority'], source: q.source as RequirementListParams['source'], current_version_id: q.current_version_id ? Number(q.current_version_id) : null, participant_id: q.participant_id ? Number(q.participant_id) : null, participant_role: q.participant_role as RequirementListParams['participant_role'] }
 
   const sequence = ++requestSequence
   loading.value = true
@@ -46,7 +47,7 @@ async function load(): Promise<void> {
       page: current.page, page_size: current.page_size,
       keyword: current.keyword.trim() || undefined, status: current.status || undefined,
       priority: current.priority || undefined, source: current.source || undefined,
-      current_version_id: positiveId(current.current_version_id), owner_id: positiveId(current.owner_id),
+      current_version_id: positiveId(current.current_version_id), participant_id: positiveId(current.participant_id), participant_role: current.participant_role || undefined,
     })
     if (sequence !== requestSequence) return
     rows.value = page.items
@@ -96,7 +97,8 @@ const queryState = useListQuery({
     filters.priority = (q.priority ?? '') as typeof filters.priority
     filters.source = (q.source ?? '') as typeof filters.source
     filters.current_version_id = q.current_version_id ? Number(q.current_version_id) : null
-    filters.owner_id = q.owner_id ? Number(q.owner_id) : null
+    filters.participant_role = q.participant_role as RequirementListParams['participant_role']
+    filters.participant_id = q.participant_id ? Number(q.participant_id) : null
   },
   load, invalidate: () => { requestSequence++ },
 })
@@ -104,7 +106,7 @@ const queryState = useListQuery({
 
 <template>
   <section class="page">
-    <PageHeader title="需求管理" description="从确认、排期到交付，清晰跟进每项研发需求。" eyebrow="研发协作">
+    <PageHeader title="需求管理" description="从确认、开发到交付，清晰跟进每项研发需求。" eyebrow="研发协作">
       <template #actions>
       <el-button v-if="isMobile" @click="filterDrawer = true"><AppIcon name="filter" :size="16" />筛选</el-button>
       <el-button
@@ -123,7 +125,8 @@ const queryState = useListQuery({
       <el-form-item label="优先级"><el-select v-model="filters.priority" clearable placeholder="全部"><el-option v-for="p in REQUIREMENT_PRIORITIES" :key="p.value" :label="p.label" :value="p.value" /></el-select></el-form-item>
       <el-form-item label="来源"><el-select v-model="filters.source" clearable placeholder="全部"><el-option label="直接创建" value="DIRECT" /><el-option label="反馈转化" value="FEEDBACK" /></el-select></el-form-item>
       <el-form-item label="版本 ID"><el-input-number v-model="filters.current_version_id" :min="1" :precision="0" step-strictly controls-position="right" /></el-form-item>
-      <el-form-item label="负责人 ID"><el-input-number v-model="filters.owner_id" :min="1" :precision="0" step-strictly controls-position="right" /></el-form-item>
+      <el-form-item label="参与人 ID"><el-input-number v-model="filters.participant_id" :min="1" :precision="0" step-strictly controls-position="right" /></el-form-item>
+      <el-form-item label="环节角色"><el-select v-model="filters.participant_role" clearable><el-option label="确认人" value="CONFIRM" /><el-option label="设计人员" value="DESIGN" /><el-option label="开发人员" value="DEVELOP" /><el-option label="验收人" value="ACCEPT" /></el-select></el-form-item>
     </ListFilterPanel>
 
     <ErrorState v-if="failed" title="需求加载失败" description="请检查网络后重试。" retry-label="重新加载" @retry="load" />
@@ -150,6 +153,7 @@ const queryState = useListQuery({
           />
         </template>
       </el-table-column>
+      <el-table-column label="当前待处理人" min-width="150"><template #default="s">{{ handlerNames(s.row) }}</template></el-table-column>
       <el-table-column label="操作" width="90" fixed="right">
         <template #default="s">
           <el-link type="primary" @click.stop="openDetail(s.row.id)">查看</el-link>
@@ -169,6 +173,7 @@ const queryState = useListQuery({
         <template #status>
           <StatusTag :status="r.status" :label="requirementStatusLabel[r.status]" :type="requirementStatusTagType(r.status)" size="sm" />
         </template>
+          <span>{{ r.current_handlers?.map(p => p.display_name).join('、') || '暂无待处理人员' }}</span>
           <span>{{ r.priority }}</span>
           <span>{{ r.source === 'FEEDBACK' ? '反馈转化' : '直接创建' }}</span>
       </ListCard>

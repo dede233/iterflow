@@ -1,3 +1,4 @@
+import { mockCollaboration } from './collaboration-fixture'
 import { expect, test, type Page } from '@playwright/test'
 
 // Include both sides of the mobile and tablet/desktop boundaries.
@@ -28,7 +29,8 @@ async function fixture(page: Page) {
     localStorage.setItem('iterflow.access_token', 'page-header-test-access')
     localStorage.setItem('iterflow.refresh_token', 'page-header-test-refresh')
   })
-  await page.route('**/api/v1/**', route => {
+  await page.route('**/api/v1/**', async (route) => {
+    if (await mockCollaboration(route)) return
     const path = new URL(route.request().url()).pathname
     const responses: Record<string, unknown> = {
       '/api/v1/auth/me': {
@@ -61,7 +63,7 @@ async function fixture(page: Page) {
 
 const screens = [
   { name: 'Feedback', path: '/feedbacks/1', buttons: ['编辑', '转需求', '受理', '标记重复', '无法复现', '关闭'] },
-  { name: 'Requirement', path: '/requirements/2', buttons: ['编辑', '重新开发'] },
+  { name: 'Requirement', path: '/requirements/2', buttons: ['编辑'] },
   { name: 'Version', path: '/versions/3', buttons: ['编辑', '发布', '退回测试'] },
 ]
 
@@ -73,6 +75,7 @@ for (const width of widths) {
       page.on('pageerror', error => errors.push(error.message))
       const unexpected = await fixture(page)
       await page.goto(`/#${screen.path}`)
+      if (screen.name === 'Requirement') await expect(page.getByRole('button', { name: '重新开发', exact: true })).toBeVisible()
       const header = page.locator('.page-header')
       const heading = header.getByRole('heading', { name: title, exact: true })
       await expect(heading).toBeVisible()

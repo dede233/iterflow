@@ -1,23 +1,22 @@
 import os
 from collections.abc import Iterator
+from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
 
 import pytest
 from alembic.config import Config
-from sqlalchemy import create_engine, func, select, text
+from sqlalchemy import MetaData, Table, create_engine, func, select, text
 from sqlalchemy.engine import URL, make_url
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, registry
 
 from alembic import command
 from app.core.config import get_settings
 from app.models.entities import (
     AttachmentRelation,
-    Feedback,
     FileObject,
     Release,
-    Requirement,
     RequirementFeedback,
     User,
     Version,
@@ -68,7 +67,18 @@ def migration_schema() -> Iterator[tuple[object, URL, str]]:
     engine = create_engine(scoped_url)
     try:
         command.upgrade(_alembic_config(), "0003_role_system_flag")
+        # Map the historical schema, not today's evolved application models.
+        global Requirement, Feedback
+        historical = registry()
+        metadata = MetaData()
+        Requirement = type("HistoricalRequirement", (), {})
+        Feedback = type("HistoricalFeedback", (), {})
+        historical.map_imperatively(
+            Requirement, Table("rd_requirement", metadata, autoload_with=engine)
+        )
+        historical.map_imperatively(Feedback, Table("rd_feedback", metadata, autoload_with=engine))
         yield engine, scoped_url, schema
+        historical.dispose()
     finally:
         engine.dispose()
         with admin_engine.begin() as connection:
@@ -135,6 +145,9 @@ def _seed_valid_relations(session: Session) -> dict[str, int]:
         created_by=user.id,
     )
     requirement = Requirement(
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+        revision=1,
         requirement_no=f"REQ-{uuid4().hex[:8]}",
         title="Integrity requirement",
         requirement_type="FEATURE",
@@ -146,6 +159,10 @@ def _seed_valid_relations(session: Session) -> dict[str, int]:
         created_by=user.id,
     )
     feedback = Feedback(
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+        revision=1,
+        urgency="NORMAL",
         feedback_no=f"FB-{uuid4().hex[:8]}",
         title="Integrity feedback",
         feedback_type=FeedbackType.NEW_FEATURE,
@@ -319,6 +336,9 @@ def test_migration_refuses_to_guess_existing_mirror_data(migration_schema) -> No
             created_by=user.id,
         )
         requirement = Requirement(
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+            revision=1,
             requirement_no=f"RLEG-{uuid4().hex[:8]}",
             title="Legacy inconsistent requirement",
             requirement_type="FEATURE",

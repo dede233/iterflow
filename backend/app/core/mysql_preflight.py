@@ -80,13 +80,30 @@ def validate_mysql(
 
         head = connection.scalar(text("SELECT version_num FROM alembic_version"))
         legacy = (
-            head in {"mysql57_0001", "mysql57_0002", "mysql57_0003", "mysql57_0004", "mysql57_0005"}
+            head
+            in {
+                "mysql57_0001",
+                "mysql57_0002",
+                "mysql57_0003",
+                "mysql57_0004",
+                "mysql57_0005",
+                "mysql57_0006",
+            }
             and allow_legacy
         )
-        if head != "mysql57_0006" and not legacy:
+        if head != "mysql57_0009" and not legacy:
             raise RuntimeError("MySQL Alembic head is missing or unsupported")
         portable = "iterflow_file_key_node" in tables
         business_tables = set(Base.metadata.tables)
+        if legacy:
+            business_tables -= {
+                "rd_feedback_recipient",
+                "rd_requirement_actor",
+                "sys_collaboration_event",
+                "rd_requirement_step",
+                "sys_mail_preference",
+                "sys_notification_delivery",
+            }
         if head in {"mysql57_0001", "mysql57_0002"}:
             business_tables.remove("rd_requirement_participant")
         expected_tables = business_tables | {"alembic_version"}
@@ -115,7 +132,7 @@ def validate_mysql(
                     "domain_iterflow_file_key_node_" + event
                     for event in ("insert", "update", "delete")
                 } | {"storage_key_sys_file_insert", "storage_key_sys_file_update"}
-            if head in {"mysql57_0005", "mysql57_0006"}:
+            if head in {"mysql57_0005", "mysql57_0006", "mysql57_0009"}:
                 expected |= {
                     "completion_rd_requirement_participant_" + event
                     for event in ("insert", "update")

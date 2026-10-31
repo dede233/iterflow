@@ -1,3 +1,4 @@
+import { mockCollaboration } from './collaboration-fixture'
 import { expect, test } from '@playwright/test'
 
 const admin = {
@@ -30,7 +31,8 @@ test.beforeEach(async ({ page }) => {
     localStorage.setItem('iterflow.access_token', 'admin-test-access')
     localStorage.setItem('iterflow.refresh_token', 'admin-test-refresh')
   })
-  await page.route('**/api/v1/**', (route) => {
+  await page.route('**/api/v1/**', async (route) => {
+    if (await mockCollaboration(route)) return
     const { pathname } = new URL(route.request().url())
     if (pathname === '/api/v1/notifications/unread-count') return route.fulfill({ status: 200, json: { unread_count: 0 } })
     const responses: Record<string, unknown> = {

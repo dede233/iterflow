@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from alembic import command
 from app.core.config import get_settings
 from app.core.security import hash_password
-from app.models.entities import Permission, Requirement, Role, User
+from app.models.entities import Permission, Role, User
 
 
 @pytest.mark.parametrize("collision", [False, True])
@@ -41,15 +41,19 @@ def test_collaboration_existing_postgres_upgrade(monkeypatch, collision):
                 Permission(code=c, name=c) for c in ["rd.requirement.view", "rd.requirement.status"]
             )
             db.flush()
-            req = Requirement(
-                requirement_no="REQ-LEGACY",
-                title="原有中文需求",
-                requirement_type="FEATURE",
-                description="保留原数据",
-                owner_id=user.id,
-                created_by=user.id,
+            rid = db.scalar(
+                text(
+                    "INSERT INTO rd_requirement "
+                    "(requirement_no,title,requirement_type,description,owner_id,"
+                    "created_by,updated_by,status,source,priority,revision,create"
+                    "d_at,updated_at) "
+                    "VALUES "
+                    "('REQ-LEGACY','原有中文需求','FEATURE','保留原数据',:uid,:uid,:uid,'DRA"
+                    "FT','DIRECT','P2',1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) "
+                    "RETURNING id"
+                ),
+                {"uid": user.id},
             )
-            db.add(req)
             if collision:
                 db.add(
                     Role(
@@ -61,7 +65,7 @@ def test_collaboration_existing_postgres_upgrade(monkeypatch, collision):
                     )
                 )
             db.commit()
-            uid, rid = user.id, req.id
+            uid = user.id
         if collision:
             with pytest.raises(RuntimeError, match="role code already exists"):
                 command.upgrade(cfg, "head")
@@ -99,14 +103,20 @@ def test_collaboration_existing_postgres_upgrade(monkeypatch, collision):
             command.check(cfg)
             with engine.connect() as db:
                 assert db.scalar(text("SELECT version_num FROM alembic_version")) == (
-                    "0008_version_role_permissions"
+                    "0011_notification_delivery"
                 )
             with Session(engine) as db:
                 assert set(db.scalars(select(Role.code))) == {"DEVELOPER", "DESIGNER"}
         with Session(engine) as db:
             user = db.get(User, uid)
             assert user.password_hash == digest and not user.must_change_password
-            req = db.get(Requirement, rid)
+            req = db.execute(
+                text(
+                    "SELECT title, owner_id, revision, status, current_version_id FROM "
+                    "rd_requirement WHERE id=:rid"
+                ),
+                {"rid": rid},
+            ).one()
             assert req.title == "原有中文需求" and req.owner_id == uid and req.revision == 1
             assert req.status == "DRAFT" and req.current_version_id is None
     finally:

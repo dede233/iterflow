@@ -1,5 +1,5 @@
 from feedback_reference_acceptance import exercise_feedback_reference_names
-from test_collaboration_postgres import collaboration_pg as collaboration_pg
+from seeded_postgres_fixture import collaboration_pg as collaboration_pg
 
 
 def test_feedback_reference_names_postgres(collaboration_pg):

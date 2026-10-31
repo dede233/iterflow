@@ -39,6 +39,6 @@ it('selector uses paginated scoped API, exposes minimal fields and clears result
   const wrapper = mount(ScopedObjectSelector, { props: { kind: 'requirement', allowed: true, active: true }, global: { plugins: [ElementPlus] }, attachTo: document.body })
   await wrapper.findAll('button').find(x => x.text() === '选择需求')!.trigger('click'); await flushPromises()
   expect(mocks.list).toHaveBeenCalledWith({ keyword: undefined, page: 1, page_size: 20 })
-  const option = document.querySelector<HTMLButtonElement>('.selector-option')!; expect(option.textContent).toContain('已完成'); expect(document.body.textContent).not.toContain('must not render'); option.click(); await flushPromises()
+  const option = document.querySelector<HTMLButtonElement>('.selector-option')!; expect(option.textContent).toContain('待发布'); expect(document.body.textContent).not.toContain('must not render'); option.click(); await flushPromises()
   expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([7]); expect(wrapper.text()).toContain('REQ-7'); wrapper.unmount()
 })

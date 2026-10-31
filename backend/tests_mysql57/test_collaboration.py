@@ -6,6 +6,7 @@ from test_acceptance import mysql_api as mysql_api
 @pytest.mark.parametrize(
     "scenario",
     [
+        "bulk",
         "scope",
         "assignment_race",
         "rollback",

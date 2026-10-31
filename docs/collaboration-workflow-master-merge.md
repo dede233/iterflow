@@ -32,3 +32,11 @@ MySQL 新增微秒 UTC 时间、有效单确认/验收人的生成列唯一索�
 ## 后续验证状态
 
 整合分支、master 合并提交、远端最终 SHA 与八项 CI 结果将在实际完成后追加；本段不表示已经合并或通过远端验证。
+
+### 整合复验与 Fresh Self-Review
+
+- 整合提交 `3f36ae93fa45c8f3135d458ffc8c0f60c571e190` 已推送源分支，运行 [41174107412](https://github.com/dede233/iterflow/actions/runs/41174107412)。
+- 本地 MySQL 全量复验：67 passed（133.22 秒）；初次九个问题全部修复。
+- 自查补充 PostgreSQL 历史迁移与跨库流程专项 16 passed；MySQL 新流程专项 10 passed，覆盖批量添加全成全败、旧 revision、站内投递消费及失效人员。MySQL 历史设计/人员/确认时间迁移及隔离恢复专项 3 passed。
+- 自查修正 MySQL 历史确认快照的 UTC 时区标记；补齐包重启后 worker 启动；恢复证据的触发器数量改为数据库实查值（91），消除旧脚本写死 73 的过时记录。证据见 `docs/evidence/collaboration-workflow/merge-mysql-standard-backup-restore.json`。
+- 冻结的 PostgreSQL 0001–0008 与 MySQL 0001–0006 文件未改写。这里是同一 Agent 的 Fresh Self-Review，不称 independent review。

@@ -113,3 +113,9 @@
 ## 冻结非范围
 
 TEAM、废弃权限删除、trusted IP实现、新migration/permission/entity、状态机/Publish改造、Release回滚、工时/Story Point、独立Mobile、WebSocket/SSE/broker、额外Release搜索、正式发布或Preview部署。
+
+## 2026-10-31 协作优化主线整合
+
+- [x] 核对 master 10f6bfa 无漂移；用户明确取消逐人开发完成门禁。
+- [x] 衔接双数据库迁移，保留历史开发确认、主线版本权限与详情增量；本地回归与专项通过。
+- [ ] 整合分支及最终 master 八项 CI，合并 SHA 和结果记录在 `docs/collaboration-workflow-master-merge.md`；完成后据实际结果更新。

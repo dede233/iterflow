@@ -6,6 +6,7 @@ from seeded_postgres_fixture import collaboration_pg as collaboration_pg
 @pytest.mark.parametrize(
     "scenario",
     [
+        "bulk",
         "scope",
         "assignment_race",
         "rollback",

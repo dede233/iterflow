@@ -1,6 +1,7 @@
 """Simplify requirement workflow while preserving historical completion."""
 
 from uuid import uuid4
+from datetime import UTC
 
 from alembic import op
 import sqlalchemy as sa
@@ -69,7 +70,9 @@ def upgrade():
             "legacy_developers": [
                 {
                     **dict(p),
-                    "completed_at": p["completed_at"].isoformat() if p["completed_at"] else None,
+                    "completed_at": p["completed_at"].replace(tzinfo=UTC).isoformat()
+                    if p["completed_at"]
+                    else None,
                 }
                 for p in people
             ],

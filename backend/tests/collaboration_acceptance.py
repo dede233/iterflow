@@ -2,11 +2,18 @@
 
 from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier
+from uuid import uuid4
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models.entities import CollaborationEvent, Requirement, RequirementParticipant, User
+from app.models.entities import (
+    CollaborationEvent,
+    NotificationDelivery,
+    Requirement,
+    RequirementParticipant,
+    User,
+)
 from app.services.audit_service import AuditService
 from app.services.delivery_service import DeliveryService
 
@@ -128,12 +135,65 @@ def exercise_workflow(fixture, scenario, monkeypatch):
         with Session(engine) as db:
             assert db.scalar(select(func.count(CollaborationEvent.id))) == count
         return
+    if scenario == "bulk":
+        second = ok(
+            client.post(
+                "/api/v1/requirements",
+                headers=admin,
+                json={
+                    "title": "第二条批量需求",
+                    "requirement_type": "FEATURE",
+                    "description": "原子批量",
+                },
+            )
+        )
+        version = ok(
+            client.post(
+                "/api/v1/versions",
+                headers=admin,
+                json={"version_no": "BULK-" + uuid4().hex[:8], "name": "双数据库批量验证"},
+            )
+        )
+        body = {
+            "request_id": str(uuid4()),
+            "version_revision": version["revision"],
+            "items": [
+                {"requirement_id": req["id"], "revision": req["revision"]},
+                {"requirement_id": second["id"], "revision": second["revision"] + 1},
+            ],
+        }
+        endpoint = f"/api/v1/versions/{version['id']}/requirements/batch"
+        assert client.post(endpoint, headers=admin, json=body).status_code == 409
+        assert get()["current_version_id"] is None
+        body["items"][1]["revision"] = second["revision"]
+        ok(client.post(endpoint, headers=admin, json=body))
+        assert get()["current_version_id"] == version["id"]
+        assert (
+            client.get(f"/api/v1/requirements/{second['id']}", headers=admin).json()[
+                "current_version_id"
+            ]
+            == version["id"]
+        )
+        assert client.post(endpoint, headers=admin, json=body).status_code == 409
+        return
     if scenario == "notification":
         with Session(engine) as db:
             service = DeliveryService(db)
             assert service.expand() > 0
             db.commit()
             assert service.expand() == 0
+            sent = 0
+            while service.deliver_one():
+                sent += 1
+            assert sent > 0
+            assert (
+                db.scalar(
+                    select(func.count(NotificationDelivery.id)).where(
+                        NotificationDelivery.status == "SENT"
+                    )
+                )
+                > 0
+            )
         return
     ok(action("CONFIRM"))
     if scenario == "design":

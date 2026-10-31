@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 from uuid import uuid4
 
 import pytest
@@ -81,15 +82,19 @@ def test_mysql_existing_upgrade_preserves_accounts_and_checks_role_collision(
                 role = db.scalar(select(Role).where(Role.code == "DEVELOPER"))
                 assert role.name == "既有自定义角色" and not role.enabled and not role.is_system
         else:
-            command.upgrade(cfg, "mysql57_0004")
+            command.upgrade(cfg, "mysql57_0005")
             with engine.begin() as db:
                 db.execute(
                     text(
                         "INSERT INTO rd_requirement_participant "
-                        "(requirement_id,user_id,discipline) "
-                        "VALUES (:rid,:uid,'DEVELOPMENT')"
+                        "(requirement_id,user_id,discipline,completed_at) "
+                        "VALUES (:rid,:uid,'DEVELOPMENT','2026-10-20 12:34:56')"
                     ),
                     {"rid": rid, "uid": uid},
+                )
+            with engine.begin() as db:
+                db.execute(
+                    text("UPDATE rd_requirement SET status='DESIGNING' WHERE id=:rid"), {"rid": rid}
                 )
             command.upgrade(cfg, "head")
             with engine.connect() as db:
@@ -100,8 +105,20 @@ def test_mysql_existing_upgrade_preserves_accounts_and_checks_role_collision(
                     ),
                     {"rid": rid},
                 ).one()
-                assert row == (uid, "DEVELOPMENT", None), (
-                    "Upgrade must not auto-confirm existing developers"
+                assert row == (uid, "DEVELOPMENT", datetime(2026, 10, 20, 12, 34, 56))
+                assert db.execute(
+                    text("SELECT role,active FROM rd_requirement_actor WHERE requirement_id=:rid"),
+                    {"rid": rid},
+                ).one() == ("DEVELOP", 1)
+                detail = db.scalar(
+                    text("SELECT detail FROM rd_requirement_step WHERE requirement_id=:rid"),
+                    {"rid": rid},
+                )
+                import json
+
+                assert (
+                    json.loads(detail)["legacy_developers"][0]["completed_at"]
+                    == "2026-10-20T12:34:56+00:00"
                 )
             with engine.connect() as db:
                 assert db.scalar(text("SELECT version_num FROM alembic_version")) == "mysql57_0009"
@@ -123,8 +140,12 @@ def test_mysql_existing_upgrade_preserves_accounts_and_checks_role_collision(
                 text("SELECT title, owner_id, revision, status FROM rd_requirement WHERE id=:rid"),
                 {"rid": rid},
             ).one()
-            assert req.title == "原有中文需求" and req.owner_id == uid and req.revision == 1
-            assert req.status == "DRAFT"
+            assert (
+                req.title == "原有中文需求"
+                and req.owner_id == uid
+                and req.revision == (1 if collision else 2)
+            )
+            assert req.status == ("DRAFT" if collision else "CONFIRMED")
     finally:
         engine.dispose()
         get_settings.cache_clear()

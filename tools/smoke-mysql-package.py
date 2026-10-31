@@ -616,6 +616,7 @@ try:
                         "redis",
                         "api",
                         "web",
+                        "notification-worker",
                     )
                     wait_proxy(client, h)
                     assert request("GET", download, h).content == b"package attachment"

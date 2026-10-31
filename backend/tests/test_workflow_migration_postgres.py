@@ -21,6 +21,15 @@ def test_workflow_migration_preserves_history_and_does_not_notify(migration_sche
     with Session(engine) as db:
         ids = _seed_valid_relations(db)
         db.execute(text("UPDATE rd_requirement SET status=:status"), {"status": old_status})
+        db.execute(
+            text(
+                "INSERT INTO rd_requirement_participant "
+                "(requirement_id,user_id,discipline,completed_at) "
+                "VALUES (:rid,:uid,'DEVELOPMENT','2026-10-20T12:34:56+00:00'),"
+                "(:rid,:uid,'DESIGN',NULL)"
+            ),
+            {"rid": ids["requirement_id"], "uid": ids["user_id"]},
+        )
         db.commit()
     command.upgrade(_alembic_config(), "head")
     with engine.connect() as conn:
@@ -36,7 +45,22 @@ def test_workflow_migration_preserves_history_and_does_not_notify(migration_sche
         event = conn.execute(text("SELECT * FROM rd_requirement_step")).mappings().one()
         assert event["action"] == "LEGACY_MIGRATION" and event["actor_id"] is None
         assert event["detail"]["original_status"] == old_status
-        assert conn.scalar(text("SELECT count(*) FROM rd_requirement_participant")) == 0
+        assert {r["discipline"] for r in event["detail"]["legacy_developers"]} == {
+            "DEVELOPMENT",
+            "DESIGN",
+        }
+        assert any(
+            r["completed_at"] == "2026-10-20T12:34:56+00:00"
+            for r in event["detail"]["legacy_developers"]
+        )
+        assert set(conn.execute(text("SELECT role,active FROM rd_requirement_actor"))) == {
+            ("DESIGN", True),
+            ("DEVELOP", True),
+        }
+        assert row["design_status"] == (
+            "IN_PROGRESS" if old_status == "DESIGNING" else "NOT_REQUIRED"
+        )
+        assert conn.scalar(text("SELECT count(*) FROM rd_requirement_participant")) == 2
         assert conn.scalar(text("SELECT count(*) FROM sys_collaboration_event")) == 0
     command.upgrade(_alembic_config(), "head")
     with engine.connect() as conn:

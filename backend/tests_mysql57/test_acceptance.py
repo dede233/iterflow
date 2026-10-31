@@ -1066,6 +1066,13 @@ def test_mysql_restart_and_isolated_backup_restore(mysql_api, monkeypatch, tmp_p
         shutil.copytree(saved_storage, restore_storage)
         with restore_engine.connect() as connection:
             validate_mysql(connection)
+            restored_triggers = connection.scalar(
+                text(
+                    "SELECT COUNT(*) FROM information_schema.triggers "
+                    "WHERE trigger_schema=DATABASE()"
+                )
+            )
+            assert restored_triggers == 91
         with Session(restore_engine) as session:
             assert session.get(Requirement, ids["requirement"]).current_version_id == ids["version"]
             assert session.get(Feedback, ids["feedback"]).main_requirement_id == ids["requirement"]
@@ -1143,7 +1150,7 @@ def test_mysql_restart_and_isolated_backup_restore(mysql_api, monkeypatch, tmp_p
                     ).hexdigest(),
                     "restart_persistence": True,
                     "successful_consecutive_restarts": 3,
-                    "restored_guard_triggers": 73,
+                    "restored_guard_triggers": restored_triggers,
                     "profile": TEST_PROJECT,
                     "restored_function_upload": True,
                     "design_state_and_roster_restored": True,

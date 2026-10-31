@@ -240,6 +240,27 @@ class Requirement(Base, AuditMixin):
     )
     description: Mapped[str] = mapped_column(Text)
     acceptance_criteria: Mapped[str | None] = mapped_column(Text)
+    content_revision: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    confirmed_revision: Mapped[int | None] = mapped_column(Integer)
+    legacy_completed: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=text("false")
+    )
+    design_status: Mapped[str] = mapped_column(
+        String(20), default="NOT_REQUIRED", server_default="NOT_REQUIRED"
+    )
+    paused_from: Mapped[str | None] = mapped_column(String(20))
+
+
+class RequirementStep(Base):
+    __tablename__ = "rd_requirement_step"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    requirement_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("rd_requirement.id"), index=True
+    )
+    action: Mapped[str] = mapped_column(String(64))
+    actor_id: Mapped[int | None] = mapped_column(BigInteger)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    detail: Mapped[dict] = mapped_column(JSON)
 
 
 class Feedback(Base, AuditMixin):

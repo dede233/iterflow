@@ -23,6 +23,7 @@ from app.models.entities import (
     Requirement,
     RequirementFeedback,
     RequirementParticipant,
+    RequirementStep,
     Role,
     RolePermission,
     User,
@@ -63,6 +64,7 @@ def req_api(tmp_path: Path) -> Iterator[Fixture]:
         FeedbackRecipient.__table__,
         CollaborationEvent.__table__,
         Requirement.__table__,
+        RequirementStep.__table__,
         RequirementParticipant.__table__,
         RequirementFeedback.__table__,
     ):
@@ -157,6 +159,14 @@ def req_api(tmp_path: Path) -> Iterator[Fixture]:
 
 def _create_req(client, headers, **overrides) -> dict:
     body = {"title": "需求标题", "requirement_type": "FEATURE", "description": "需求描述内容"}
+    import jwt
+
+    uid = int(
+        jwt.decode(headers["Authorization"].split()[1], options={"verify_signature": False})["sub"]
+    )
+    body["participants"] = [
+        {"user_id": uid, "role": role} for role in ("CONFIRM", "DEVELOP", "ACCEPT")
+    ]
     body.update(overrides)
     r = client.post("/api/v1/requirements", headers=headers, json=body)
     assert r.status_code == 200, r.text
@@ -258,7 +268,7 @@ def test_requirement_status_machine(req_api):
 
     r = status("CONFIRMED", 1)
     assert r.status_code == 200 and r.json()["status"] == "CONFIRMED"
-    r = status("PLANNED", r.json()["revision"])
+    assert status("PLANNED", r.json()["revision"]).status_code == 422
     r = status("DEVELOPING", r.json()["revision"])
     r = status("TESTING", r.json()["revision"])
     r = status("DONE", r.json()["revision"])
@@ -323,7 +333,7 @@ def test_convert_create_new(req_api):
     assert resp.status_code == 200, resp.text
     req = resp.json()
     assert req["source"] == "FEEDBACK"
-    assert req["status"] == "CONFIRMED"
+    assert req["status"] == "DRAFT"
 
     detail = client.get(f"/api/v1/feedbacks/{fb['id']}", headers=headers["alice"]).json()
     assert detail["status"] == "REQUIREMENT_LINKED"

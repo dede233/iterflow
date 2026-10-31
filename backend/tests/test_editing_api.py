@@ -16,6 +16,7 @@ from app.models.entities import (
     Permission,
     Requirement,
     RequirementParticipant,
+    RequirementStep,
     Role,
     RolePermission,
     User,
@@ -52,6 +53,7 @@ def editing_api() -> Iterator[tuple[TestClient, dict[str, dict[str, str]]]]:
         CollaborationEvent.__table__,
         Version.__table__,
         Requirement.__table__,
+        RequirementStep.__table__,
         RequirementParticipant.__table__,
     ):
         table.create(engine)

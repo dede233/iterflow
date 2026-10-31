@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from app.models.entities import Version
 from app.models.enums import RequirementStatus, VersionStatus
 from app.repositories.version_repository import VersionRepository
+from app.services.workflow_service import WorkflowService
 
 # Requirement statuses that block a publish (anything that is not DONE).
 _PUBLISHABLE_REQUIREMENT_STATE = RequirementStatus.DONE
@@ -39,7 +40,10 @@ class PublishCheckService:
 
         active = self.repo.active_requirements(version.id)
         blocking = [
-            r for r in active if RequirementStatus(r.status) != _PUBLISHABLE_REQUIREMENT_STATE
+            r
+            for r in active
+            if RequirementStatus(r.status) != _PUBLISHABLE_REQUIREMENT_STATE
+            or not WorkflowService.confirmed(r)
         ]
         checks.append(
             {

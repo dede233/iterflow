@@ -330,7 +330,7 @@ class FeedbackService:
                 requirement_type=payload.requirement_type,
                 source=RequirementSource.FEEDBACK,
                 priority=payload.priority,
-                status=RequirementStatus.CONFIRMED,
+                status=RequirementStatus.DRAFT,
                 system_id=feedback.system_id,
                 module_id=feedback.module_id,
                 description=payload.description,

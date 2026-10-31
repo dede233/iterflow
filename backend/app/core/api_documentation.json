@@ -1590,11 +1590,12 @@
           ]
         },
         "owner_id": {
-          "title": "负责人 ID",
-          "anyOf": [
-            {},
-            {}
-          ]
+          "title": "历史总负责人编号",
+          "description": "历史总负责人只读；新写入不再接受 owner_id。"
+        },
+        "participants": {
+          "title": "环节人员",
+          "items": {}
         },
         "description": {
           "title": "描述"
@@ -1786,11 +1787,8 @@
           ]
         },
         "owner_id": {
-          "title": "负责人 ID",
-          "anyOf": [
-            {},
-            {}
-          ]
+          "title": "历史总负责人编号",
+          "description": "历史总负责人只读；新写入不再接受 owner_id。"
         },
         "description": {
           "title": "描述",
@@ -2367,9 +2365,103 @@
           "description": "对象的乐观锁修订号；写入时提交最后读取的修订号。"
         }
       }
+    },
+    "WorkflowAction": {
+      "title": "WorkflowAction",
+      "properties": {
+        "revision": {
+          "title": "修订号"
+        },
+        "action": {
+          "title": "动作"
+        },
+        "reason": {
+          "title": "原因",
+          "anyOf": [
+            {},
+            {}
+          ]
+        }
+      }
+    },
+    "WorkflowOut": {
+      "title": "WorkflowOut",
+      "properties": {
+        "revision": {
+          "title": "修订号"
+        },
+        "content_revision": {
+          "title": "内容版本"
+        },
+        "confirmed_revision": {
+          "title": "已确认内容版本",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "needs_confirmation": {
+          "title": "是否待确认"
+        },
+        "legacy_completed": {
+          "title": "历史完成资格"
+        },
+        "design_status": {
+          "title": "设计进度"
+        },
+        "paused_from": {
+          "title": "暂停前阶段",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "records": {
+          "title": "阶段记录",
+          "items": {}
+        }
+      }
+    },
+    "WorkflowRecord": {
+      "title": "WorkflowRecord",
+      "properties": {
+        "id": {
+          "title": "编号"
+        },
+        "action": {
+          "title": "动作"
+        },
+        "actor_id": {
+          "title": "实际操作人",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "created_at": {
+          "title": "发生时间"
+        },
+        "detail": {
+          "title": "详细信息"
+        }
+      }
     }
   },
   "paths": {
+    "/requirements/{requirement_id}/workflow": {
+      "get": {
+        "tags": [
+          "Requirement"
+        ],
+        "summary": "需求详情"
+      },
+      "post": {
+        "tags": [
+          "Requirement"
+        ],
+        "summary": "需求详情"
+      }
+    },
     "/collaboration/people": {
       "get": {
         "tags": [

@@ -59,6 +59,7 @@ declare module 'vue' {
     PageHeader: typeof import('./src/components/ui/PageHeader.vue')['default']
     PeopleSelector: typeof import('./src/components/PeopleSelector.vue')['default']
     PermissionAssignmentDrawer: typeof import('./src/components/PermissionAssignmentDrawer.vue')['default']
+    RequirementProgress: typeof import('./src/components/RequirementProgress.vue')['default']
     RequirementSummaryDialog: typeof import('./src/components/RequirementSummaryDialog.vue')['default']
     RevisionConflictDialog: typeof import('./src/components/RevisionConflictDialog.vue')['default']
     RoleActions: typeof import('./src/components/RoleActions.vue')['default']

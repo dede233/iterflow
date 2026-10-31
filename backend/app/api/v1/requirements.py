@@ -1,3 +1,5 @@
+from typing import Literal
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
@@ -58,6 +60,8 @@ def list_requirements(
     source: RequirementSource | None = Query(None),
     current_version_id: int | None = Query(None, ge=1),
     owner_id: int | None = Query(None, ge=1),
+    participant_id: int | None = Query(None, ge=1),
+    participant_role: Literal["CONFIRM", "DESIGN", "DEVELOP", "ACCEPT"] | None = Query(None),
     db: Session = Depends(get_db),
     user: User = Depends(require_permission("rd.requirement.view")),
 ):
@@ -73,6 +77,8 @@ def list_requirements(
         source=source,
         current_version_id=current_version_id,
         owner_id=owner_id,
+        participant_id=participant_id,
+        participant_role=participant_role,
     )
     return {"items": items, "page": page, "page_size": page_size, "total": total}
 

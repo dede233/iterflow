@@ -22,7 +22,7 @@ const size: Rule = value => positive(value) && Number(value) <= 100 && Number(va
 const page: Rule = value => positive(value) && Number(value) !== 1 ? String(Number(value)) : undefined
 const schemas: Record<string, Record<string, Rule>> = {
   '/feedbacks': { page, page_size: size, keyword, status: enumeration(FEEDBACK_STATUSES), feedback_type: enumeration(FEEDBACK_TYPES), urgency: enumeration(FEEDBACK_URGENCIES), system_id: positive, module_id: positive },
-  '/requirements': { page, page_size: size, keyword, status: enumeration(REQUIREMENT_STATUSES), priority: enumeration(REQUIREMENT_PRIORITIES), source: enumeration([{ value: 'DIRECT' }, { value: 'FEEDBACK' }]), current_version_id: positive, owner_id: positive },
+  '/requirements': { page, page_size: size, keyword, status: enumeration(REQUIREMENT_STATUSES), priority: enumeration(REQUIREMENT_PRIORITIES), source: enumeration([{ value: 'DIRECT' }, { value: 'FEEDBACK' }]), current_version_id: positive, participant_id: positive, participant_role: enumeration(['CONFIRM', 'DESIGN', 'DEVELOP', 'ACCEPT'].map(value => ({ value }))) },
   '/versions': { page, page_size: size, keyword, status: enumeration(VERSION_STATUSES), owner_id: positive, planned_release_from: day, planned_release_to: day },
   '/releases': { page, page_size: size, version_id: positive, date_from: day, date_to: day },
   '/admin/audits': { page, size, entity_type: enumeration(auditEntityOptions), entity_id: positive, action: enumeration(auditActionOptions), operator_id: positive, time_from: instant, time_to: instant },

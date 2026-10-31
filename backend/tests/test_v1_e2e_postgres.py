@@ -180,7 +180,7 @@ def test_full_v1_business_lifecycle_over_http_and_postgresql(
     assert converted.status_code == 200, converted.text
     requirement = converted.json()
     assert requirement["source"] == "FEEDBACK"
-    assert requirement["status"] == "CONFIRMED"
+    assert requirement["status"] == "DRAFT"
 
     version_response = client.post(
         "/api/v1/versions",
@@ -205,8 +205,20 @@ def test_full_v1_business_lifecycle_over_http_and_postgresql(
     planned_response = client.get(f"/api/v1/requirements/{requirement['id']}", headers=headers)
     assert planned_response.status_code == 200, planned_response.text
     current_requirement = planned_response.json()
-    assert current_requirement["status"] == "PLANNED"
-    for status in ("DEVELOPING", "TESTING", "DONE"):
+    assert current_requirement["status"] == "DRAFT"
+    assigned = client.put(
+        f"/api/v1/requirements/{requirement['id']}/participants",
+        headers=headers,
+        json={
+            "revision": current_requirement["revision"],
+            "participants": [
+                {"user_id": user_id, "role": role} for role in ("CONFIRM", "DEVELOP", "ACCEPT")
+            ],
+        },
+    )
+    assert assigned.status_code == 200, assigned.text
+    current_requirement["revision"] = assigned.json()["revision"]
+    for status in ("CONFIRMED", "DEVELOPING", "TESTING", "DONE"):
         response = client.patch(
             f"/api/v1/requirements/{requirement['id']}/status",
             headers=headers,
@@ -335,6 +347,7 @@ def test_concurrent_publish_has_one_http_winner_and_no_duplicate_side_effects(
         updated_by=user_id,
     )
     requirement = Requirement(
+        legacy_completed=True,
         requirement_no=f"REQ-{uuid4().hex[:8]}",
         title="Concurrent publish requirement",
         requirement_type="FEATURE",

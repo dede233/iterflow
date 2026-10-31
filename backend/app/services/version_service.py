@@ -162,8 +162,6 @@ class VersionService:
 
     @staticmethod
     def _planned_status(current: str) -> RequirementStatus:
-        if RequirementStatus(current) in {RequirementStatus.DRAFT, RequirementStatus.CONFIRMED}:
-            return RequirementStatus.PLANNED
         return RequirementStatus(current)
 
     def requirements_view(
@@ -535,6 +533,14 @@ class VersionService:
         if version.revision != payload.revision:
             raise self._version_conflict(version_id)
 
+        # Same version -> requirement lock order as workflow/content changes.
+        self.db.execute(
+            select(Requirement)
+            .where(Requirement.current_version_id == version_id)
+            .order_by(Requirement.id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        ).scalars().all()
         # Centralized pre-publish checks (same checks as POST /publish/check).
         check = PublishCheckService(self.db).evaluate(version)
         if not check["passed"]:

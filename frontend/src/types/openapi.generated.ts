@@ -4,6 +4,24 @@
  */
 
 export interface paths {
+    "/requirements/{requirement_id}/workflow": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 需求详情 */
+        get: operations["workflow_api_v1_requirements__requirement_id__workflow_get"];
+        put?: never;
+        /** 需求详情 */
+        post: operations["workflow_action_api_v1_requirements__requirement_id__workflow_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/collaboration/people": {
         parameters: {
             query?: never;
@@ -1896,7 +1914,7 @@ export interface components {
          * ManualRequirementStatus
          * @enum {string}
          */
-        ManualRequirementStatus: "DRAFT" | "CONFIRMED" | "PLANNED" | "DEVELOPING" | "TESTING" | "DONE" | "PAUSED" | "CANCELED";
+        ManualRequirementStatus: "DRAFT" | "CONFIRMED" | "DEVELOPING" | "TESTING" | "DONE" | "PAUSED" | "CANCELED";
         /**
          * ManualVersionStatus
          * @enum {string}
@@ -2178,8 +2196,13 @@ export interface components {
             system_id?: number | null;
             /** 所属模块 ID */
             module_id?: number | null;
-            /** 负责人 ID */
-            owner_id?: number | null;
+            /**
+             * 历史总负责人编号
+             * @description 历史总负责人只读；新写入不再接受 owner_id。
+             */
+            owner_id?: null;
+            /** 环节人员 */
+            participants?: components["schemas"]["ParticipantInput"][];
             /** 描述 */
             description: string;
             /** 验收标准 */
@@ -2283,8 +2306,11 @@ export interface components {
             system_id?: number | null;
             /** 所属模块 ID */
             module_id?: number | null;
-            /** 负责人 ID */
-            owner_id?: number | null;
+            /**
+             * 历史总负责人编号
+             * @description 历史总负责人只读；新写入不再接受 owner_id。
+             */
+            owner_id?: null;
             /** 描述 */
             description?: string | null;
             /** 验收标准 */
@@ -2630,6 +2656,58 @@ export interface components {
              */
             revision: number;
         };
+        /** WorkflowAction */
+        WorkflowAction: {
+            /** 修订号 */
+            revision: number;
+            /**
+             * 动作
+             * @enum {string}
+             */
+            action: "CONFIRM" | "DESIGN_PENDING" | "DESIGN_START" | "DESIGN_DONE" | "DESIGN_CANCEL";
+            /** 原因 */
+            reason?: string | null;
+        };
+        /** WorkflowOut */
+        WorkflowOut: {
+            /** 修订号 */
+            revision: number;
+            /** 内容版本 */
+            content_revision: number;
+            /** 已确认内容版本 */
+            confirmed_revision: number | null;
+            /** 是否待确认 */
+            needs_confirmation: boolean;
+            /** 历史完成资格 */
+            legacy_completed: boolean;
+            /**
+             * 设计进度
+             * @enum {string}
+             */
+            design_status: "NOT_REQUIRED" | "PENDING" | "IN_PROGRESS" | "DONE";
+            /** 暂停前阶段 */
+            paused_from: string | null;
+            /** 阶段记录 */
+            records: components["schemas"]["WorkflowRecord"][];
+        };
+        /** WorkflowRecord */
+        WorkflowRecord: {
+            /** 编号 */
+            id: string;
+            /** 动作 */
+            action: string;
+            /** 实际操作人 */
+            actor_id: number | null;
+            /**
+             * 发生时间
+             * Format: date-time
+             */
+            created_at: string;
+            /** 详细信息 */
+            detail: {
+                [key: string]: unknown;
+            };
+        };
     };
     responses: never;
     parameters: never;
@@ -2639,6 +2717,108 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    workflow_api_v1_requirements__requirement_id__workflow_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requirement_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    workflow_action_api_v1_requirements__requirement_id__workflow_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requirement_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkflowAction"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     people_api_v1_collaboration_people_get: {
         parameters: {
             query: {
@@ -3990,6 +4170,8 @@ export interface operations {
                 source?: components["schemas"]["RequirementSource"] | null;
                 current_version_id?: number | null;
                 owner_id?: number | null;
+                participant_id?: number | null;
+                participant_role?: ("CONFIRM" | "DESIGN" | "DEVELOP" | "ACCEPT") | null;
             };
             header?: never;
             path?: never;

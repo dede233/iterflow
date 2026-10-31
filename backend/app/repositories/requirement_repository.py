@@ -41,6 +41,8 @@ class RequirementRepository(BaseRepository[Requirement]):
         source: RequirementSource | None = None,
         current_version_id: int | None = None,
         owner_id: int | None = None,
+        participant_id: int | None = None,
+        participant_role: str | None = None,
     ) -> tuple[list[Requirement], int]:
         criteria: list[ColumnElement[bool]] = []
         if data_scope is not DataScope.ALL:
@@ -63,6 +65,15 @@ class RequirementRepository(BaseRepository[Requirement]):
         ):
             if value is not None:
                 criteria.append(column == value)
+        if participant_id is not None or participant_role is not None:
+            members = select(RequirementParticipant.requirement_id).where(
+                RequirementParticipant.active.is_(True)
+            )
+            if participant_id is not None:
+                members = members.where(RequirementParticipant.user_id == participant_id)
+            if participant_role is not None:
+                members = members.where(RequirementParticipant.role == participant_role)
+            criteria.append(Requirement.id.in_(members))
         total = self.db.scalar(select(func.count()).select_from(Requirement).where(*criteria)) or 0
         items = list(
             self.db.scalars(

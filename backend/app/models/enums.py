@@ -69,7 +69,6 @@ class RequirementStatus(StrEnum):
 class ManualRequirementStatus(StrEnum):
     DRAFT = "DRAFT"
     CONFIRMED = "CONFIRMED"
-    PLANNED = "PLANNED"
     DEVELOPING = "DEVELOPING"
     TESTING = "TESTING"
     DONE = "DONE"

@@ -18,8 +18,7 @@ from app.services.version_service import VERSION_TRANSITIONS
 
 def test_requirement_happy_path():
     assert ManualRequirementStatus.CONFIRMED in ALLOWED_TRANSITIONS[RequirementStatus.DRAFT]
-    assert ManualRequirementStatus.PLANNED in ALLOWED_TRANSITIONS[RequirementStatus.CONFIRMED]
-    assert ManualRequirementStatus.DEVELOPING in ALLOWED_TRANSITIONS[RequirementStatus.PLANNED]
+    assert ManualRequirementStatus.DEVELOPING in ALLOWED_TRANSITIONS[RequirementStatus.CONFIRMED]
     assert ManualRequirementStatus.TESTING in ALLOWED_TRANSITIONS[RequirementStatus.DEVELOPING]
     assert ManualRequirementStatus.DONE in ALLOWED_TRANSITIONS[RequirementStatus.TESTING]
 

@@ -214,3 +214,99 @@ def test_two_receivers_cannot_both_accept(collaboration_api):
             )
             == 1
         )
+
+
+def test_workflow_roles_content_reconfirmation_design_and_history(collaboration_api):
+    client, headers, _engine = collaboration_api
+    req = client.post(
+        "/api/v1/requirements",
+        headers=headers[1],
+        json={
+            "title": "完整流程",
+            "description": "原范围",
+            "requirement_type": "FEATURE",
+            "participants": [
+                {"role": role, "user_id": uid}
+                for role, uid in [("CONFIRM", 2), ("DESIGN", 3), ("DEVELOP", 3), ("ACCEPT", 2)]
+            ],
+        },
+    ).json()
+    base = f"/api/v1/requirements/{req['id']}"
+    revision = 1
+
+    def action(name, uid, status=200, **extra):
+        nonlocal revision
+        response = client.post(
+            base + "/workflow",
+            headers=headers[uid],
+            json={"action": name, "revision": revision, **extra},
+        )
+        assert response.status_code == status, response.text
+        if status == 200:
+            revision = response.json()["revision"]
+        return response
+
+    def transition(target, uid, status=200, **extra):
+        nonlocal revision
+        response = client.patch(
+            base + "/status",
+            headers=headers[uid],
+            json={"status": target, "revision": revision, **extra},
+        )
+        assert response.status_code == status, response.text
+        if status == 200:
+            revision = response.json()["revision"]
+        return response
+
+    action("CONFIRM", 1, 403)
+    action("CONFIRM", 2)
+    transition("PLANNED", 2, 422)
+    transition("DEVELOPING", 2, 403)
+    transition("DEVELOPING", 3)
+    action("DESIGN_PENDING", 3)
+    transition("TESTING", 3, 409)
+    action("DESIGN_START", 3)
+    action("DESIGN_DONE", 3)
+    change = client.patch(
+        base, headers=headers[1], json={"revision": revision, "description": "新范围"}
+    )
+    assert change.status_code == 200, change.text
+    revision = change.json()["revision"]
+    transition("TESTING", 3, 409)
+    info = action("CONFIRM", 2).json()
+    confirmations = [r for r in info["records"] if r["action"] == "CONFIRM"]
+    assert {r["detail"]["description"] for r in confirmations} == {"原范围", "新范围"}
+    assert all(r["actor_id"] == 2 and r["detail"]["participants"] for r in confirmations)
+    transition("TESTING", 3)
+    transition("DONE", 3, 403)
+    transition("DEVELOPING", 2, 422)
+    transition("DEVELOPING", 2, reason="验收退回")
+    transition("TESTING", 3)
+    transition("DONE", 2)
+    stale = client.patch(
+        base + "/status",
+        headers=headers[3],
+        json={"status": "DEVELOPING", "revision": 1, "reason": "重新开发"},
+    )
+    assert stale.status_code == 409
+    assert (
+        client.patch(
+            base, headers=headers[1], json={"revision": revision, "owner_id": 3}
+        ).status_code
+        == 422
+    )
+
+
+def test_new_unassigned_requirement_cannot_bypass_confirmation(collaboration_api):
+    client, headers, _engine = collaboration_api
+    req = client.post(
+        "/api/v1/requirements",
+        headers=headers[1],
+        json={"title": "缺少人员", "description": "说明", "requirement_type": "FEATURE"},
+    ).json()
+    base = f"/api/v1/requirements/{req['id']}"
+    response = client.patch(
+        base + "/status", headers=headers[1], json={"status": "CONFIRMED", "revision": 1}
+    )
+    assert response.status_code == 409
+    assert client.get(base, headers=headers[1]).json()["revision"] == 1

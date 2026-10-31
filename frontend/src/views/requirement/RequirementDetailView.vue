@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import CollaborationPeople from '@/components/CollaborationPeople.vue'
+import RequirementProgress from '@/components/RequirementProgress.vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
@@ -28,7 +28,6 @@ import {
   REQUIREMENT_PRIORITIES,
   REQUIREMENT_TYPES,
   type RequirementPriority,
-  availableRequirementStatusActions,
   requirementStatusLabel,
   requirementStatusTagType,
   requirementTypeLabel,
@@ -64,11 +63,7 @@ const feedbacks = ref<LinkedFeedback[]>([])
 const loading = ref(false)
 const failed = ref(false)
 const canEdit = computed(() => can('rd.requirement.edit'))
-const canChangeStatus = computed(() => can('rd.requirement.status'))
 const canViewFeedbacks = computed(() => can('rd.feedback.view'))
-const statusActions = computed<ReqStatusAction[]>(() =>
-  item.value ? availableRequirementStatusActions(item.value.status, canChangeStatus.value) : [],
-)
 
 // --- status dialog ---
 const statusDialog = ref(false)
@@ -184,7 +179,7 @@ onMounted(load)
   <section v-loading="loading" class="page">
     <ErrorState v-if="failed" title="需求加载失败" description="请检查网络或确认需求是否仍可访问。" retry-label="重新加载" @retry="load" />
     <template v-if="item">
-      <CollaborationPeople v-if="can('rd.requirement.view')" kind="requirement" :id="item.id" :revision="item.revision" :editable="canEdit && !['ONLINE', 'CANCELED'].includes(item.status)" @updated="load" />
+
       <PageHeader :title="item.title" :eyebrow="item.requirement_no">
         <template #status>
           <StatusTag :status="item.status" :label="requirementStatusLabel[item.status]" :type="requirementStatusTagType(item.status)" />
@@ -192,18 +187,11 @@ onMounted(load)
         <template #actions>
         <RouterLink class="back-link" :to="backTo" @click="props.embedded && emit('close')">返回列表</RouterLink>
         <el-button v-if="canEdit" @click="openEdit">编辑</el-button>
-        <el-button
-          v-for="action in statusActions"
-          :key="action.target"
-          type="primary"
-          plain
-          @click="openStatusDialog(action)"
-        >
-          {{ action.label }}
-        </el-button>
+
         </template>
       </PageHeader>
 
+      <RequirementProgress :item="item" @updated="load" @status="openStatusDialog" />
       <div class="detail-grid">
       <SectionCard title="需求详情" description="范围与验收标准" class="detail-main">
         <el-descriptions :column="isMobile ? 1 : 2">

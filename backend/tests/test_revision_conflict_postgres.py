@@ -18,6 +18,7 @@ from app.models.entities import (
     OperationLog,
     Requirement,
     RequirementParticipant,
+    RequirementStep,
     User,
     Version,
 )
@@ -37,6 +38,7 @@ POSTGRES_TABLES = [
     OperationLog.__table__,
     Version.__table__,
     Requirement.__table__,
+    RequirementStep.__table__,
     RequirementParticipant.__table__,
     Feedback.__table__,
     FeedbackRecipient.__table__,

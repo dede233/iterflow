@@ -9,6 +9,7 @@ from app.models.enums import (
     RequirementSource,
     RequirementStatus,
 )
+from app.schemas.collaboration import ParticipantInput, ParticipantsChange
 from app.schemas.common import PageResult
 
 
@@ -18,7 +19,8 @@ class RequirementCreate(BaseModel):
     priority: Priority = Priority.P2
     system_id: int | None = None
     module_id: int | None = None
-    owner_id: int | None = None
+    owner_id: None = None
+    participants: list[ParticipantInput] = Field(default_factory=list, max_length=100)
     description: str
     acceptance_criteria: str | None = None
     version_id: int | None = None
@@ -26,6 +28,7 @@ class RequirementCreate(BaseModel):
 
     @model_validator(mode="after")
     def require_version_revision_for_version_relation(self) -> Self:
+        ParticipantsChange(revision=1, participants=self.participants)
         if self.version_id is None and self.version_revision is not None:
             raise ValueError("version_revision requires version_id")
         if self.version_id is not None and self.version_revision is None:
@@ -41,7 +44,7 @@ class RequirementUpdate(BaseModel):
     priority: Priority | None = None
     system_id: int | None = None
     module_id: int | None = None
-    owner_id: int | None = None
+    owner_id: None = None
     description: str | None = None
     acceptance_criteria: str | None = None
     revision: int = Field(ge=1)

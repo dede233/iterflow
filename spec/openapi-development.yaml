@@ -18,6 +18,91 @@ tags:
 - name: System
 - name: File
 paths:
+  /requirements/{requirement_id}/workflow:
+    get:
+      tags:
+      - Requirement
+      summary: 需求详情
+      operationId: workflow_api_v1_requirements__requirement_id__workflow_get
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: requirement_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Requirement Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+      - Requirement
+      summary: 需求详情
+      operationId: workflow_action_api_v1_requirements__requirement_id__workflow_post
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: requirement_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Requirement Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowAction'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /collaboration/people:
     get:
       tags:
@@ -1351,6 +1436,28 @@ paths:
             minimum: 1
           - type: 'null'
           title: Owner Id
+      - name: participant_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+            minimum: 1
+          - type: 'null'
+          title: Participant Id
+      - name: participant_role
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - enum:
+            - CONFIRM
+            - DESIGN
+            - DEVELOP
+            - ACCEPT
+            type: string
+          - type: 'null'
+          title: Participant Role
       responses:
         '200':
           description: Successful Response
@@ -5150,7 +5257,6 @@ components:
       enum:
       - DRAFT
       - CONFIRMED
-      - PLANNED
       - DEVELOPING
       - TESTING
       - DONE
@@ -5676,10 +5782,15 @@ components:
           - type: 'null'
           title: 所属模块 ID
         owner_id:
-          anyOf:
-          - type: integer
-          - type: 'null'
-          title: 负责人 ID
+          type: 'null'
+          title: 历史总负责人编号
+          description: 历史总负责人只读；新写入不再接受 owner_id。
+        participants:
+          items:
+            $ref: '#/components/schemas/ParticipantInput'
+          type: array
+          maxItems: 100
+          title: 环节人员
         description:
           type: string
           title: 描述
@@ -5890,10 +6001,9 @@ components:
           - type: 'null'
           title: 所属模块 ID
         owner_id:
-          anyOf:
-          - type: integer
-          - type: 'null'
-          title: 负责人 ID
+          type: 'null'
+          title: 历史总负责人编号
+          description: 历史总负责人只读；新写入不再接受 owner_id。
         description:
           anyOf:
           - type: string
@@ -6550,6 +6660,110 @@ components:
       required:
       - revision
       title: VersionUpdate
+    WorkflowAction:
+      properties:
+        revision:
+          type: integer
+          minimum: 1.0
+          title: 修订号
+        action:
+          type: string
+          enum:
+          - CONFIRM
+          - DESIGN_PENDING
+          - DESIGN_START
+          - DESIGN_DONE
+          - DESIGN_CANCEL
+          title: 动作
+        reason:
+          anyOf:
+          - type: string
+            maxLength: 500
+          - type: 'null'
+          title: 原因
+      additionalProperties: false
+      type: object
+      required:
+      - revision
+      - action
+      title: WorkflowAction
+    WorkflowOut:
+      properties:
+        revision:
+          type: integer
+          title: 修订号
+        content_revision:
+          type: integer
+          title: 内容版本
+        confirmed_revision:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: 已确认内容版本
+        needs_confirmation:
+          type: boolean
+          title: 是否待确认
+        legacy_completed:
+          type: boolean
+          title: 历史完成资格
+        design_status:
+          type: string
+          enum:
+          - NOT_REQUIRED
+          - PENDING
+          - IN_PROGRESS
+          - DONE
+          title: 设计进度
+        paused_from:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: 暂停前阶段
+        records:
+          items:
+            $ref: '#/components/schemas/WorkflowRecord'
+          type: array
+          title: 阶段记录
+      type: object
+      required:
+      - revision
+      - content_revision
+      - confirmed_revision
+      - needs_confirmation
+      - legacy_completed
+      - design_status
+      - paused_from
+      - records
+      title: WorkflowOut
+    WorkflowRecord:
+      properties:
+        id:
+          type: string
+          title: 编号
+        action:
+          type: string
+          title: 动作
+        actor_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: 实际操作人
+        created_at:
+          type: string
+          format: date-time
+          title: 发生时间
+        detail:
+          additionalProperties: true
+          type: object
+          title: 详细信息
+      type: object
+      required:
+      - id
+      - action
+      - actor_id
+      - created_at
+      - detail
+      title: WorkflowRecord
   securitySchemes:
     bearerAuth:
       type: http

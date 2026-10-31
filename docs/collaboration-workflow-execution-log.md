@@ -71,3 +71,13 @@ AGENTS.md、DEVELOPMENT.md、TASKS.md 已区分本轮开发授权与历史发布
 仅使用本任务独立 Docker 容器 iterflow-workflow-test-db（127.0.0.1:32768）和 iterflow-workflow-test-redis（127.0.0.1:32769）。upgrade head、alembic check 和隔离旧迁移往返测试通过，没有连接或修改真实数据库。旧测试夹具补入新增依赖表，已发布契约冻结改为校验 v1.8.1 文件摘要，开发契约继续完整 runtime parity。
 
 修改文件范围：collaboration schemas／service／router，反馈 service，需求 repository，entities 和 0005 migration，对应后端测试和文档资源，前端 collaboration API、PeopleSelector、CollaborationPeople、反馈与需求详情、生成类型及组件测试。Fresh Self-Review 属于同一 Agent 自查，检查权限、CAS、旧字段与事务边界。未部署、未执行真实数据库操作或远端 CI。后续新状态流程、批量关联和邮件尚未完成。
+
+## 阶段 3 需求六阶段与进度区
+
+完成：0006 迁移保留旧阶段原始记录，将 PLANNED 映射到 CONFIRMED；旧 DONE/ONLINE 保留完成资格。新需求拒绝 owner 写入，普通创建与反馈转换从 DRAFT 开始，关联版本不改变阶段。确认、设计、开发与验收要求环节资格；范围/验收标准变更使确认失效；版本发布与需求内容修改采用版本→需求锁顺序。步骤条展示六阶段、人员、设计进度、真实确认快照及历史；列表改为参与人/环节筛选，创建页支持环节分工。
+
+主要修改：backend 的 workflow schema/service、requirement/version/feedback/publish-check services、models、0006 migration、开发契约与状态规格；frontend 的 RequirementProgress、需求列表/创建/详情、状态词汇与查询参数；历史迁移、流程、主链及组件测试。
+
+实际测试：后端全量 380 passed / 1 skipped（S3 未配置）；随后新增独立 PostgreSQL 旧数据迁移测试 1 passed，验证旧关系/owner 保留、不伪造确认、不发通知、升级不重复记录及拒绝无审核降级。前端 50 文件 / 333 tests passed；vue-tsc/Vite、类型一致性、bundle、Ruff、Mypy 与 diff check 通过。历史迁移测试改用反射出的历史表模型，避免用新增列写入旧数据库；旧状态文案和 owner 筛选测试随新语义同步。测试使用隔离 Docker 数据库，未连接真实库。
+
+Fresh Self-Review（同一 Agent 自查）：确认普通状态入口不能绕开角色和确认；旧确认内容不被覆盖；历史 owner 仅保留读取；发布前检查内容版本。未发现阶段阻断或与本轮授权冲突。摘要人员/精简进度接入、批量事务、邮件和最终五视口及完整门禁继续在阶段 4–6 完成，不代表发布候选已就绪。

@@ -4,7 +4,7 @@ import { detailTarget, listTarget, parseListQuery, sanitizeInternalReturnTarget 
 describe('applied list query contract', () => {
   it.each([
     ['/feedbacks', { status: 'NEW', urgency: 'URGENT', system_id: '003', module_id: '4' }, { status: 'NEW', urgency: 'URGENT', system_id: '3', module_id: '4' }],
-    ['/requirements', { priority: 'P1', source: 'DIRECT', owner_id: 7 }, { priority: 'P1', source: 'DIRECT', owner_id: '7' }],
+    ['/requirements', { priority: 'P1', source: 'DIRECT', participant_id: 7 }, { priority: 'P1', source: 'DIRECT', participant_id: '7' }],
     ['/versions', { status: 'READY', planned_release_from: '2026-10-01', planned_release_to: '2026-10-03' }, { status: 'READY', planned_release_from: '2026-10-01', planned_release_to: '2026-10-03' }],
     ['/releases', { version_id: '8', date_from: '2026-10-01', date_to: '2026-10-03' }, { version_id: '8', date_from: '2026-10-01', date_to: '2026-10-03' }],
     ['/admin/audits', { entity_type: 'REQUIREMENT', entity_id: '7', operator_id: '9', time_from: '2026-10-01T08:00:00+08:00', time_to: '2026-10-03T08:00:00+08:00' }, { entity_type: 'REQUIREMENT', entity_id: '7', operator_id: '9', time_from: '2026-10-01T00:00:00.000Z', time_to: '2026-10-03T00:00:00.000Z' }],
@@ -18,7 +18,7 @@ describe('applied list query contract', () => {
     expect(sanitizeInternalReturnTarget(listTarget(path, result))).toBe(listTarget(path, result))
   })
   it('rejects invalid IDs, enums, page, arrays, oversized keywords and default fields', () => {
-    expect(parseListQuery('/requirements', { page: '-1', page_size: '1000', status: 'invalid', priority: ['P1'], owner_id: '1.5', current_version_id: '9007199254740992', keyword: 'x'.repeat(201) })).toEqual({})
+    expect(parseListQuery('/requirements', { page: '-1', page_size: '1000', status: 'invalid', priority: ['P1'], participant_id: '1.5', current_version_id: '9007199254740992', keyword: 'x'.repeat(201) })).toEqual({})
     expect(parseListQuery('/feedbacks', { page: '1', page_size: '20', system_id: '0', module_id: '-3', status: null })).toEqual({})
     expect(parseListQuery('/requirements', { page: '02', keyword: '  a  ' })).toEqual({ page: '2', keyword: 'a' })
   })

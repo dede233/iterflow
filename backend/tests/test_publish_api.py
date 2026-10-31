@@ -24,6 +24,7 @@ from app.models.entities import (
     Requirement,
     RequirementFeedback,
     RequirementParticipant,
+    RequirementStep,
     Role,
     RolePermission,
     User,
@@ -70,6 +71,7 @@ def pub_api(tmp_path: Path) -> Iterator[Fixture]:
         FeedbackRecipient.__table__,
         CollaborationEvent.__table__,
         Requirement.__table__,
+        RequirementStep.__table__,
         RequirementParticipant.__table__,
         Version.__table__,
         VersionRequirement.__table__,
@@ -166,6 +168,7 @@ def _seed_ready_version(
         updated_by=boss_id,
     )
     requirement = Requirement(
+        legacy_completed=True,
         requirement_no="REQ-1",
         title="需求",
         requirement_type="FEATURE",

@@ -45,6 +45,7 @@ def ready_chain(engine, user_id):
         db.add(version)
         db.flush()
         requirement = Requirement(
+            legacy_completed=True,
             requirement_no=f"P7-{uuid4().hex[:24]}",
             title="Atomic requirement",
             requirement_type="FEATURE",
@@ -222,6 +223,7 @@ def matrix(postgres_e2e_engine, postgres_http_client):
                 created_by=user_id,
             )
             r = Requirement(
+                legacy_completed=True,
                 requirement_no=suffix,
                 title=suffix,
                 requirement_type="FEATURE",

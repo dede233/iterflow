@@ -1,9 +1,11 @@
+from typing import Any
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import AppError, ConflictError, NotFoundError
 from app.core.ids import next_business_no
-from app.models.entities import Requirement, Version
+from app.models.entities import Requirement, RequirementParticipant, Version
 from app.models.enums import (
     DataScope,
     ManualRequirementStatus,
@@ -18,7 +20,9 @@ from app.schemas.requirement import (
     RequirementUpdate,
 )
 from app.services.audit_service import AuditService
+from app.services.collaboration_service import CollaborationService
 from app.services.revision_conflict import revision_conflict_data
+from app.services.workflow_service import WorkflowService
 
 ALLOWED_TRANSITIONS: dict[RequirementStatus, set[ManualRequirementStatus]] = {
     RequirementStatus.DRAFT: {
@@ -26,11 +30,6 @@ ALLOWED_TRANSITIONS: dict[RequirementStatus, set[ManualRequirementStatus]] = {
         ManualRequirementStatus.CANCELED,
     },
     RequirementStatus.CONFIRMED: {
-        ManualRequirementStatus.PLANNED,
-        ManualRequirementStatus.PAUSED,
-        ManualRequirementStatus.CANCELED,
-    },
-    RequirementStatus.PLANNED: {
         ManualRequirementStatus.DEVELOPING,
         ManualRequirementStatus.PAUSED,
         ManualRequirementStatus.CANCELED,
@@ -47,7 +46,6 @@ ALLOWED_TRANSITIONS: dict[RequirementStatus, set[ManualRequirementStatus]] = {
     RequirementStatus.DONE: {ManualRequirementStatus.DEVELOPING},
     RequirementStatus.PAUSED: {
         ManualRequirementStatus.CONFIRMED,
-        ManualRequirementStatus.PLANNED,
         ManualRequirementStatus.DEVELOPING,
         ManualRequirementStatus.CANCELED,
     },
@@ -77,9 +75,18 @@ class RequirementService:
             source=source,
             created_by=operator_id,
             updated_by=operator_id,
-            **payload.model_dump(exclude={"version_id", "version_revision"}),
+            **payload.model_dump(
+                exclude={"version_id", "version_revision", "participants", "owner_id"}
+            ),
+        )
+        collaboration = CollaborationService(self.db)
+        collaboration.validate_people(
+            sorted({p.user_id for p in payload.participants}), "requirement", operator_id
         )
         self.db.add(item)
+        self.db.flush()
+        for person in payload.participants:
+            self.db.add(RequirementParticipant(requirement_id=item.id, **person.model_dump()))
         self.db.flush()
         if payload.version_id is not None:
             # Keep the VersionRequirement relation authoritative and route every
@@ -111,9 +118,19 @@ class RequirementService:
         current = self.repo.get(requirement_id)
         if not current:
             raise NotFoundError("需求不存在")
-        values = payload.model_dump(exclude_unset=True, exclude={"revision"}) | {
+        WorkflowService(self.db).lock(current)
+        values = payload.model_dump(exclude_unset=True, exclude={"revision", "owner_id"}) | {
             "updated_by": operator_id
         }
+        content_changed = any(
+            key in values and values[key] != getattr(current, key)
+            for key in ("description", "acceptance_criteria")
+        )
+        if content_changed:
+            if current.status == RequirementStatus.ONLINE:
+                raise AppError(40961, "已上线需求范围不可修改", 409)
+            values["content_revision"] = current.content_revision + 1
+            values["legacy_completed"] = False
         # Snapshot the real old values of the changed business fields before the
         # atomic UPDATE mutates this in-session object (synchronize_session).
         changed_fields = [key for key in values if key != "updated_by"]
@@ -144,6 +161,8 @@ class RequirementService:
         current = self.repo.get(requirement_id)
         if not current:
             raise NotFoundError("需求不存在")
+        workflow = WorkflowService(self.db)
+        workflow.lock(current)
         if current.revision != payload.revision:
             raise ConflictError("需求状态已被其他用户修改", revision_conflict_data(current))
         current_status = RequirementStatus(current.status)
@@ -151,6 +170,19 @@ class RequirementService:
         previous_status = current.status
         if payload.status not in ALLOWED_TRANSITIONS[current_status]:
             raise AppError(40911, f"不允许从 {current.status} 变更为 {payload.status}", 409)
+        workflow_values: dict[str, Any] = {}
+        if (
+            current.status == RequirementStatus.DRAFT
+            and payload.status == ManualRequirementStatus.CONFIRMED
+        ):
+            workflow_values["confirmed_revision"] = current.content_revision
+        if payload.status == ManualRequirementStatus.PAUSED:
+            workflow_values["paused_from"] = current.status
+        if (
+            current.status == RequirementStatus.DONE
+            and payload.status == ManualRequirementStatus.DEVELOPING
+        ):
+            workflow_values["legacy_completed"] = False
         if (
             current.status == RequirementStatus.DONE
             and payload.status == ManualRequirementStatus.DEVELOPING
@@ -165,11 +197,13 @@ class RequirementService:
                 )
                 if version_status == VersionStatus.RELEASED:
                     raise AppError(40912, "已发布版本中的需求不能退回开发中", 409)
+        workflow.validate_transition(current, payload.status, operator_id, payload.reason)
         if not self.repo.update_with_revision(
             requirement_id,
             payload.revision,
             {
                 "status": RequirementStatus(payload.status.value),
+                **workflow_values,
                 "updated_by": operator_id,
             },
         ):
@@ -178,6 +212,12 @@ class RequirementService:
                 "需求状态已被其他用户修改",
                 revision_conflict_data(self.repo.get(requirement_id)),
             )
+        workflow.record(
+            current,
+            f"STATUS_{payload.status}",
+            operator_id,
+            {"from": previous_status, "to": payload.status, "reason": payload.reason},
+        )
         self.audit.log(
             "REQUIREMENT",
             requirement_id,

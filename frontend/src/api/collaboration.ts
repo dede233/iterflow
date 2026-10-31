@@ -11,3 +11,8 @@ export const setRecipients = (id: number, revision: number, recipient_ids: numbe
 export const transferFeedback = (id: number, revision: number, handler_id: number, reason: string) => api.post<FeedbackCollaboration>(`/feedbacks/${id}/transfer`, { revision, handler_id, reason }).then(r => r.data)
 export const getParticipants = (id: number) => api.get<Participants>(`/requirements/${id}/participants`).then(r => r.data)
 export const setParticipants = (id: number, revision: number, participants: Participant[]) => api.put<Participants>(`/requirements/${id}/participants`, { revision, participants }).then(r => r.data)
+
+export type Workflow = components['schemas']['WorkflowOut']
+export type WorkflowAction = components['schemas']['WorkflowAction']
+export const getWorkflow = (id: number) => api.get<Workflow>(`/requirements/${id}/workflow`).then(r => r.data)
+export const actWorkflow = (id: number, payload: WorkflowAction) => api.post<Workflow>(`/requirements/${id}/workflow`, payload).then(r => r.data)

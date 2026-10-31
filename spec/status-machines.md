@@ -31,9 +31,13 @@ CLOSED            -> NEW        (重开; 需 reason)
 - 所有写操作提交 `revision`，旧 `revision` 返回 409（乐观锁，禁止静默覆盖）。
 
 ## Requirement
-DRAFT -> CONFIRMED -> PLANNED -> DEVELOPING -> TESTING -> DONE -> ONLINE
+DRAFT（待确认） -> CONFIRMED（待开发） -> DEVELOPING（开发中） -> TESTING（待验收） -> DONE（待发布） -> ONLINE（已上线）
 
-旁路：CONFIRMED/PLANNED/DEVELOPING/TESTING 可进入 PAUSED；DRAFT/CONFIRMED/PLANNED/PAUSED 可按规则取消。
+2026-10-31 授权的新工作流：PLANNED 仅保留历史读取枚举，迁移为 CONFIRMED，不再接受人工写入。直接创建／反馈转新需求从 DRAFT 开始；加入版本不改变需求状态。确认、开始开发、提验、验收分别由具备权限的对应环节人员操作；人员分配不等于确认。修改 description／acceptance_criteria 增加内容版本，旧确认失效，继续正向流转或发布前须确认当前内容。设计为可选子进度，启用后提验前须完成或有原因取消。
+
+待验收退回开发、暂停、恢复、取消均记录原因；恢复目标只允许 CONFIRMED／DEVELOPING。终态不增加重开入口。历史已完成需求保留发布资格，缺失的确认人和时间不得伪造。发布前检查与正式发布均检查当前内容确认资格。
+
+旁路：CONFIRMED/DEVELOPING/TESTING 可进入 PAUSED；DRAFT/CONFIRMED/PAUSED 可按规则取消。
 
 - `ONLINE` 只能由成功发布事务自动产生，普通状态接口禁止设置。
 - `DONE -> DEVELOPING` 仅在所属 Version 尚未发布时允许，必须填写原因并写审计日志。

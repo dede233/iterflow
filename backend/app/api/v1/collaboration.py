@@ -16,9 +16,32 @@ from app.schemas.collaboration import (
     PersonPage,
     RecipientsChange,
 )
+from app.schemas.workflow import WorkflowAction, WorkflowOut
 from app.services.collaboration_service import CollaborationService
+from app.services.workflow_service import WorkflowService
 
 router = APIRouter(tags=["collaboration"])
+
+
+@router.get("/requirements/{requirement_id}/workflow", response_model=WorkflowOut)
+def workflow(
+    requirement_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("rd.requirement.view")),
+):
+    return WorkflowService(db).view(_scoped_requirement_or_404(db, user, requirement_id))
+
+
+@router.post("/requirements/{requirement_id}/workflow", response_model=WorkflowOut)
+def workflow_action(
+    requirement_id: int,
+    payload: WorkflowAction,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("rd.requirement.status")),
+):
+    return WorkflowService(db).act(
+        _scoped_requirement_or_404(db, user, requirement_id), payload, user.id
+    )
 
 
 @router.get("/collaboration/people", response_model=PersonPage)

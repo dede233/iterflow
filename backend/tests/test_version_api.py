@@ -14,6 +14,7 @@ from app.core.database import get_db
 from app.core.security import create_access_token
 from app.main import app
 from app.models.entities import (
+    CollaborationEvent,
     OperationLog,
     Permission,
     Requirement,
@@ -56,6 +57,7 @@ def ver_api(tmp_path: Path) -> Iterator[Fixture]:
         RolePermission.__table__,
         OperationLog.__table__,
         Requirement.__table__,
+        CollaborationEvent.__table__,
         RequirementStep.__table__,
         RequirementParticipant.__table__,
         Version.__table__,

@@ -30,6 +30,15 @@ class Settings(BaseSettings):
     s3_secret_key: SecretStr | None = None
     s3_bucket: str = Field(default="iterflow", min_length=1)
     s3_region: str = Field(default="us-east-1", min_length=1)
+    smtp_enabled: bool = False
+    smtp_host: str = ""
+    smtp_port: int = Field(default=587, ge=1, le=65535)
+    smtp_security: Literal["starttls", "ssl", "none"] = "starttls"
+    smtp_username: str = ""
+    smtp_password: SecretStr | None = None
+    smtp_from: str = "iterflow@example.invalid"
+    smtp_allowlist: str = ""
+    app_public_url: str = "http://localhost:8080"
     init_admin_username: str | None = None
     init_admin_password: SecretStr | None = None
 
@@ -63,6 +72,18 @@ class Settings(BaseSettings):
             raise ValueError("ALLOWED_HOSTS cannot contain '*' in production")
         if self.storage_driver == "s3" and bool(self.s3_access_key) != bool(self.s3_secret_key):
             raise ValueError("S3_ACCESS_KEY and S3_SECRET_KEY must be provided together")
+        if self.smtp_enabled:
+            from urllib.parse import urlsplit
+
+            public = urlsplit(self.app_public_url)
+            if not self.smtp_host or not public.hostname or public.scheme not in {"http", "https"}:
+                raise ValueError("SMTP_HOST and valid APP_PUBLIC_URL are required for mail")
+            if self.app_env == "production" and (
+                self.smtp_security == "none" or public.scheme != "https"
+            ):
+                raise ValueError("Production mail requires TLS and an HTTPS site URL")
+            if self.app_env != "production" and not self.smtp_allowlist.strip():
+                raise ValueError("Non-production mail requires an explicit SMTP_ALLOWLIST")
         return self
 
     @property

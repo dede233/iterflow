@@ -108,6 +108,7 @@ class RequirementService:
             "CREATE",
             after={"requirement_no": item.requirement_no},
         )
+        collaboration.requirement_event(item, "CREATED", operator_id)
         self.db.commit()
         self.db.refresh(item)
         return item
@@ -150,6 +151,9 @@ class RequirementService:
             before=before_values,
             after=after_values,
         )
+        if content_changed:
+            self.db.flush()
+            CollaborationService(self.db).requirement_event(current, "RECONFIRM", operator_id)
         self.db.commit()
         updated = self.repo.get(requirement_id)
         assert updated is not None

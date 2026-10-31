@@ -89,3 +89,13 @@ Fresh Self-Review（同一 Agent 自查）：确认普通状态入口不能绕�
 主要文件：version schema/service/router、开发契约与类型、BulkRequirementPicker 及测试、VersionDetailView、RequirementSummaryDialog、协作 PostgreSQL 测试、五视口浏览器用例。
 
 验证：后端全量 383 passed / 1 skipped（S3 待最终隔离门禁）；包含批次回滚、两个版本争抢同组需求、状态不隐式改变、重复请求不重复关系。前端 51 文件 / 334 tests passed，跨页 revision 快照与冲突不重放用例通过；vue-tsc/Vite、Mypy 通过；摘要五视口 Playwright 5 passed。Fresh Self-Review 检查全事务、权限过滤、选择快照与旧异步响应失效，无阶段阻断。请求标识用于审计追踪，revision 是重复写防线；重复提交返回冲突而不伪装成新成功。继续阶段 5。
+
+## 阶段 5 站内通知与邮件
+
+完成：0007 持久偏好/验证挑战/投递记录，确认与验收角色有效唯一索引；业务动作、转需求、版本归属及发布均在原事务写事件。worker 事务扩展事件并去重，重新校验收件资格，站内/邮件独立投递；保留原发布站内通知并避免重复。支持邮箱验证码、偏好、变更地址失效、验证前历史事件不补发、默认 SMTP 关闭及非生产地址白名单。管理员可查看脱敏状态并重试失败记录。新增 Compose worker 定义和运行说明，仅修改配置文件，未启动实际部署。
+
+主要文件：mail schema/router/preferences/delivery services、tasks/mail_worker、0007、config/models、协作/需求/反馈/版本事件接入；MailPreferences 及个人中心；开发契约/类型/中文文档、.env.example、Compose 和 docs/collaboration-notifications.md。
+
+实际验证：后端全量 388 passed / 1 skipped（S3 留待最终门禁）；最终事件操作者修订后版本事务/并发/邮件专项 35 passed。本地 TCP SMTP 收件箱验证真实协议投递、验证码、站内保留、重复消费、地址改变、移除接收人、账号停用、超时结果不确定、稳定 Message-ID、永久失败/手动重试、重试上限和回滚。前端 52 文件 / 335 tests passed；类型/build/bundle、Ruff/Mypy、独立新空库 0001→0007 upgrade 与 Alembic check 均通过。
+
+Fresh Self-Review：不记录 SMTP 原始异常、凭据或验证码；验证码有过期/频率/尝试限制；发信前重新授权；重复请求不自动重放。SMTP 超时仍可能重复，文档明确不保证严格一次投递。旧事件在升级时标记已处理，不补发邮件。无阶段阻断。正式 SMTP、真实地址和站点配置尚未测试，待后续部署授权；继续阶段 6 最终集成、旧数据演练与门禁。

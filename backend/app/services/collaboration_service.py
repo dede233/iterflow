@@ -10,11 +10,13 @@ from app.models.entities import (
     FeedbackRecipient,
     Permission,
     Requirement,
+    RequirementFeedback,
     RequirementParticipant,
     Role,
     RolePermission,
     User,
     UserRole,
+    Version,
 )
 from app.models.enums import DataScope, UserStatus
 from app.repositories.base import BaseRepository
@@ -100,6 +102,41 @@ class CollaborationService:
                 recipient_ids=sorted(set(recipients)),
             )
         )
+
+    def requirement_event(
+        self, item: Requirement, action: str, actor_id: int, *, follow_feedback: bool = False
+    ):
+        ids = list(
+            self.db.scalars(
+                select(RequirementParticipant.user_id).where(
+                    RequirementParticipant.requirement_id == item.id,
+                    RequirementParticipant.active.is_(True),
+                )
+            )
+        )
+        ids.extend([item.created_by] if item.created_by else [])
+        if item.current_version_id:
+            version = self.db.get(Version, item.current_version_id)
+            if (
+                version
+                and version.owner_id
+                and action in {"STATUS_DONE", "RELATION_CHANGE", "PUBLISHED"}
+            ):
+                ids.append(version.owner_id)
+        self.event("REQUIREMENT", item.id, action, actor_id, ids)
+        if follow_feedback:
+            for feedback in self.db.scalars(
+                select(Feedback)
+                .join(RequirementFeedback, RequirementFeedback.feedback_id == Feedback.id)
+                .where(RequirementFeedback.requirement_id == item.id)
+            ):
+                self.event(
+                    "FEEDBACK",
+                    feedback.id,
+                    "REQUIREMENT_" + action,
+                    actor_id,
+                    [feedback.submitter_id, *self.recipient_ids(feedback.id)],
+                )
 
     def recipient_ids(self, feedback_id: int):
         return list(
@@ -200,7 +237,11 @@ class CollaborationService:
             item.id,
             "HANDLER_TRANSFER",
             actor_id,
-            [uid for uid in (before, handler_id, item.submitter_id) if uid is not None],
+            [
+                uid
+                for uid in (before, handler_id, item.submitter_id, *self.recipient_ids(item.id))
+                if uid is not None
+            ],
         )
         self.db.commit()
         return self.feedback_view(item)
@@ -254,6 +295,12 @@ class CollaborationService:
             before={"participants": before},
             after=payload.model_dump(exclude={"revision"}),
         )
-        self.event("REQUIREMENT", item.id, "PARTICIPANTS_CHANGE", actor_id, ids)
+        self.event(
+            "REQUIREMENT",
+            item.id,
+            "PARTICIPANTS_CHANGE",
+            actor_id,
+            [*ids, *[p["user_id"] for p in before]],
+        )
         self.db.commit()
         return self.participants_view(item)

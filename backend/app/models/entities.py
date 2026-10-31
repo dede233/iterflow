@@ -529,3 +529,47 @@ class OperationLog(Base):
 
 Index("ix_feedback_system_module", Feedback.system_id, Feedback.module_id)
 Index("ix_requirement_system_module", Requirement.system_id, Requirement.module_id)
+
+
+class MailPreference(Base):
+    __tablename__ = "sys_mail_preference"
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("sys_user.id"), primary_key=True)
+    revision: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    mode: Mapped[str] = mapped_column(String(16), default="TASKS", server_default="TASKS")
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    verified_email: Mapped[str | None] = mapped_column(String(254))
+    pending_email: Mapped[str | None] = mapped_column(String(254))
+    challenge_id: Mapped[str | None] = mapped_column(String(36))
+    challenge_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    challenge_user_revision: Mapped[int | None] = mapped_column(Integer)
+    challenge_attempts: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class NotificationDelivery(Base):
+    __tablename__ = "sys_notification_delivery"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    event_id: Mapped[str] = mapped_column(String(36), ForeignKey("sys_collaboration_event.id"))
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("sys_user.id"))
+    channel: Mapped[str] = mapped_column(String(16))
+    status: Mapped[str] = mapped_column(String(16), default="PENDING")
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    next_attempt_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, index=True
+    )
+    last_error: Mapped[str | None] = mapped_column(String(64))
+    queued_email: Mapped[str | None] = mapped_column(String(254))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    __table_args__ = (
+        UniqueConstraint("event_id", "user_id", "channel", name="uq_delivery_event_user_channel"),
+    )
+
+
+Index(
+    "uq_requirement_single_actor_role",
+    RequirementParticipant.requirement_id,
+    RequirementParticipant.role,
+    unique=True,
+    postgresql_where=text("active AND role IN ('CONFIRM', 'ACCEPT')"),
+    sqlite_where=text("active AND role IN ('CONFIRM', 'ACCEPT')"),
+)

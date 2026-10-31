@@ -12,6 +12,7 @@ from app.core.exceptions import ConflictError, NotFoundError
 from app.models.entities import (
     BusinessModule,
     BusinessSystem,
+    CollaborationEvent,
     OperationLog,
     Requirement,
     RequirementParticipant,
@@ -39,6 +40,7 @@ POSTGRES_TABLES = [
     OperationLog.__table__,
     Version.__table__,
     Requirement.__table__,
+    CollaborationEvent.__table__,
     RequirementStep.__table__,
     RequirementParticipant.__table__,
     VersionRequirement.__table__,

@@ -72,12 +72,8 @@ class WorkflowService:
                 },
             )
         )
-        self.collaboration.event(
-            "REQUIREMENT",
-            item.id,
-            action,
-            actor_id,
-            [*self.people(item), *([item.created_by] if item.created_by else [])],
+        self.collaboration.requirement_event(
+            item, action, actor_id, follow_feedback=action.startswith("STATUS_")
         )
 
     def validate_transition(

@@ -699,6 +699,47 @@
     "DataScope": {
       "title": "DataScope"
     },
+    "DeliveryOut": {
+      "title": "DeliveryOut",
+      "properties": {
+        "id": {
+          "title": "投递标识"
+        },
+        "event_id": {
+          "title": "事件标识"
+        },
+        "user_id": {
+          "title": "接收用户"
+        },
+        "channel": {
+          "title": "通知渠道"
+        },
+        "status": {
+          "title": "投递状态"
+        },
+        "attempts": {
+          "title": "尝试次数"
+        },
+        "last_error": {
+          "title": "脱敏错误",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "next_attempt_at": {
+          "title": "下次尝试时间"
+        }
+      }
+    },
+    "DeliveryRetry": {
+      "title": "DeliveryRetry",
+      "properties": {
+        "attempts": {
+          "title": "已见尝试次数"
+        }
+      }
+    },
     "EditHeartbeat": {
       "title": "EditHeartbeat",
       "properties": {
@@ -712,6 +753,28 @@
     },
     "EditingEntityType": {
       "title": "EditingEntityType"
+    },
+    "EmailVerificationConfirm": {
+      "title": "EmailVerificationConfirm",
+      "properties": {
+        "revision": {
+          "title": "修订号"
+        },
+        "code": {
+          "title": "验证码"
+        }
+      }
+    },
+    "EmailVerificationRequest": {
+      "title": "EmailVerificationRequest",
+      "properties": {
+        "revision": {
+          "title": "修订号"
+        },
+        "email": {
+          "title": "邮箱"
+        }
+      }
     },
     "ErrorResponse": {
       "title": "ErrorResponse",
@@ -1212,6 +1275,48 @@
       "properties": {
         "ok": {
           "title": "操作是否成功"
+        }
+      }
+    },
+    "MailPreferenceChange": {
+      "title": "MailPreferenceChange",
+      "properties": {
+        "revision": {
+          "title": "修订号"
+        },
+        "mode": {
+          "title": "邮件偏好"
+        }
+      }
+    },
+    "MailPreferencesOut": {
+      "title": "MailPreferencesOut",
+      "properties": {
+        "revision": {
+          "title": "修订号"
+        },
+        "mode": {
+          "title": "邮件偏好"
+        },
+        "email": {
+          "title": "当前邮箱",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "verified": {
+          "title": "邮箱已验证"
+        },
+        "pending_email": {
+          "title": "待验证邮箱",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "smtp_enabled": {
+          "title": "邮件服务已启用"
         }
       }
     },
@@ -2891,6 +2996,52 @@
           "Notification"
         ],
         "summary": "标记通知已读"
+      }
+    },
+    "/me/mail-preferences": {
+      "get": {
+        "tags": [
+          "mail"
+        ],
+        "summary": "get_mail_preferences"
+      },
+      "put": {
+        "tags": [
+          "mail"
+        ],
+        "summary": "change_mail_preferences"
+      }
+    },
+    "/me/email-verification": {
+      "post": {
+        "tags": [
+          "mail"
+        ],
+        "summary": "request_email_verification"
+      }
+    },
+    "/me/email-verification/confirm": {
+      "post": {
+        "tags": [
+          "mail"
+        ],
+        "summary": "confirm_email_verification"
+      }
+    },
+    "/admin/mail-deliveries": {
+      "get": {
+        "tags": [
+          "mail"
+        ],
+        "summary": "list_mail_deliveries"
+      }
+    },
+    "/admin/mail-deliveries/{delivery_id}/retry": {
+      "post": {
+        "tags": [
+          "mail"
+        ],
+        "summary": "retry_mail_delivery"
       }
     },
     "/systems": {

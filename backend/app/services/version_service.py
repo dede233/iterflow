@@ -37,6 +37,7 @@ from app.schemas.version import (
     VersionUpdate,
 )
 from app.services.audit_service import AuditService
+from app.services.collaboration_service import CollaborationService
 from app.services.publish_check_service import PublishCheckService
 from app.services.revision_conflict import revision_conflict_data
 
@@ -251,6 +252,7 @@ class VersionService:
         action: str,
         *,
         version_id: int,
+        operator_id: int,
         requirement_id: int,
         before_version_id: int | None,
         before_current_version_id: int | None,
@@ -275,6 +277,15 @@ class VersionService:
             },
             after=after,
         )
+
+        self.db.flush()
+        requirement = self.db.get(Requirement, requirement_id)
+        if requirement is not None:
+            CollaborationService(self.db).requirement_event(
+                requirement,
+                "RELATION_CHANGE",
+                operator_id,
+            )
 
     def attach_new_requirement(
         self,
@@ -303,6 +314,7 @@ class VersionService:
         )
         self._audit_requirement_relation(
             "VERSION_REQUIREMENT_ADD",
+            operator_id=operator_id,
             version_id=version_id,
             requirement_id=requirement.id,
             before_version_id=None,
@@ -357,6 +369,7 @@ class VersionService:
         )
         self._audit_requirement_relation(
             "VERSION_REQUIREMENT_ADD",
+            operator_id=operator_id,
             version_id=version_id,
             requirement_id=requirement.id,
             before_version_id=None,
@@ -419,6 +432,7 @@ class VersionService:
             )
             self._audit_requirement_relation(
                 "VERSION_REQUIREMENT_ADD",
+                operator_id=operator_id,
                 version_id=version_id,
                 requirement_id=item.id,
                 before_version_id=None,
@@ -478,6 +492,7 @@ class VersionService:
         )
         self._audit_requirement_relation(
             "VERSION_REQUIREMENT_REMOVE",
+            operator_id=operator_id,
             version_id=version_id,
             requirement_id=requirement_id,
             before_version_id=version_id,
@@ -569,6 +584,7 @@ class VersionService:
         )
         self._audit_requirement_relation(
             "VERSION_REQUIREMENT_MOVE",
+            operator_id=operator_id,
             version_id=target_version_id,
             requirement_id=requirement.id,
             before_version_id=old_version_id,
@@ -682,6 +698,11 @@ class VersionService:
                 ).all()
             )
             for rid in online_requirement_ids:
+                requirement = self.db.get(Requirement, rid)
+                assert requirement is not None
+                CollaborationService(self.db).requirement_event(
+                    requirement, "PUBLISHED", operator_id
+                )
                 self.audit.log(
                     "REQUIREMENT",
                     rid,
@@ -721,6 +742,16 @@ class VersionService:
                             "STATUS_CHANGE",
                             before={"status": FeedbackStatus.REQUIREMENT_LINKED},
                             after={"status": FeedbackStatus.ONLINE},
+                        )
+                        CollaborationService(self.db).event(
+                            "FEEDBACK",
+                            feedback.id,
+                            "PUBLISHED",
+                            operator_id,
+                            [
+                                feedback.submitter_id,
+                                *CollaborationService(self.db).recipient_ids(feedback.id),
+                            ],
                         )
                         self.db.add(
                             Notification(

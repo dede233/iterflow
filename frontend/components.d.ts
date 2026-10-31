@@ -56,6 +56,7 @@ declare module 'vue' {
     InfoGrid: typeof import('./src/components/ui/InfoGrid.vue')['default']
     ListCard: typeof import('./src/components/ui/ListCard.vue')['default']
     ListFilterPanel: typeof import('./src/components/ui/ListFilterPanel.vue')['default']
+    MailPreferences: typeof import('./src/components/MailPreferences.vue')['default']
     MobileBottomNav: typeof import('./src/components/MobileBottomNav.vue')['default']
     PageHeader: typeof import('./src/components/ui/PageHeader.vue')['default']
     PeopleSelector: typeof import('./src/components/PeopleSelector.vue')['default']

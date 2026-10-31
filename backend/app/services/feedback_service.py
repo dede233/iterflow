@@ -389,6 +389,16 @@ class FeedbackService:
                 "CREATE_FROM_FEEDBACK",
                 after={"feedback_id": feedback.id, "requirement_no": target.requirement_no},
             )
+        collaboration = CollaborationService(self.db)
+        collaboration.event(
+            "FEEDBACK",
+            feedback.id,
+            "STATUS_REQUIREMENT_LINKED",
+            operator_id,
+            [feedback.submitter_id, *collaboration.recipient_ids(feedback.id)],
+        )
+        if payload.type is FeedbackConvertType.CREATE_NEW:
+            collaboration.requirement_event(target, "CREATED", operator_id)
         self.db.commit()
         self.db.refresh(target)
         return target

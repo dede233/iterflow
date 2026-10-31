@@ -1,0 +1,56 @@
+{
+  "conclusion": "success",
+  "headSha": "68aee01d3a0e529942372ccef0ac5dfb88e64825",
+  "jobs": [
+    {
+      "conclusion": "success",
+      "name": "browser_smoke",
+      "status": "completed",
+      "url": "https://github.com/dede233/iterflow/actions/runs/38070615711/job/114267079030"
+    },
+    {
+      "conclusion": "success",
+      "name": "mysql57 (portable)",
+      "status": "completed",
+      "url": "https://github.com/dede233/iterflow/actions/runs/38070615711/job/114267079161"
+    },
+    {
+      "conclusion": "success",
+      "name": "backend",
+      "status": "completed",
+      "url": "https://github.com/dede233/iterflow/actions/runs/38070615711/job/114267079176"
+    },
+    {
+      "conclusion": "success",
+      "name": "docker_smoke",
+      "status": "completed",
+      "url": "https://github.com/dede233/iterflow/actions/runs/38070615711/job/114267079189"
+    },
+    {
+      "conclusion": "success",
+      "name": "frontend",
+      "status": "completed",
+      "url": "https://github.com/dede233/iterflow/actions/runs/38070615711/job/114267079196"
+    },
+    {
+      "conclusion": "success",
+      "name": "mysql57 (standard)",
+      "status": "completed",
+      "url": "https://github.com/dede233/iterflow/actions/runs/38070615711/job/114267079208"
+    },
+    {
+      "conclusion": "success",
+      "name": "backup_restore",
+      "status": "completed",
+      "url": "https://github.com/dede233/iterflow/actions/runs/38070615711/job/114267079225"
+    },
+    {
+      "conclusion": "success",
+      "name": "s3",
+      "status": "completed",
+      "url": "https://github.com/dede233/iterflow/actions/runs/38070615711/job/114267079247"
+    }
+  ],
+  "status": "completed",
+  "url": "https://github.com/dede233/iterflow/actions/runs/38070615711"
+}

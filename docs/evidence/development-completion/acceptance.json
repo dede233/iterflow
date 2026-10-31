@@ -1,0 +1,106 @@
+{
+  "date": "2026-10-10",
+  "scope": "local synthetic databases and local UI only",
+  "implementation_base": "7ed4fd95f7a61bc3990f1b172e29d7827f99a636",
+  "authorization": "Every assigned developer must personally acknowledge completion before publication",
+  "mysql": {
+    "version": "5.7.44-log",
+    "platform": "linux/amd64 via Colima x86_64 QEMU on macOS",
+    "profile": "portable global innodb_large_prefix OFF / innodb_strict_mode OFF; strict UTC READ COMMITTED application sessions",
+    "full_passed": 62,
+    "full_skipped": 0,
+    "migration_head": "mysql57_0005",
+    "effective_guard_triggers": 73,
+    "supplementary_passed": 3,
+    "supplementary_deselected": 59,
+    "supplementary_scope": "existing participant upgrade without auto-confirmation (2) and strengthened notification rollback (1)"
+  },
+  "postgresql": {
+    "full_passed": 389,
+    "optional_skipped": 1,
+    "skip_reason": "pre-existing optional real S3 test: endpoint not configured; local storage verified",
+    "required_real_postgres_passed": 51,
+    "required_skipped": 0,
+    "migration_head": "0007_development_completion",
+    "alembic_check": "PASS"
+  },
+  "frontend": {
+    "test_files": 48,
+    "passed": 330,
+    "build": "PASS",
+    "generated_types": "PASS",
+    "bundle": "PASS (273.7 KiB)"
+  },
+  "static": {
+    "ruff": "PASS",
+    "format": "PASS",
+    "mypy": "PASS (99 files)",
+    "compileall": "PASS"
+  },
+  "browser": {
+    "result": "PASS",
+    "checks": [
+      "Owner cannot confirm for developers",
+      "Developer confirms own work at 390px",
+      "One of two complete blocks READY/DONE publication",
+      "Second developer confirms at 768px",
+      "Only all confirmations enable publish",
+      "Real publish creates release and requirement ONLINE",
+      "No mobile or tablet overflow"
+    ],
+    "pageerrors": []
+  },
+  "coverage": [
+    "Personal actor enforced; admin cannot confirm for another developer",
+    "Partial completion blocks check and direct publish with 409",
+    "No developers blocks publication; no empty active roster bypass",
+    "Re-entering development clears all acknowledgements",
+    "Unchanged membership preserves acknowledgements; new members pending",
+    "Concurrent acknowledgements: one 200, one 409, explicit refresh required",
+    "Concurrent roster mutation cannot pass requirement locks during publish",
+    "Injected confirmation audit/notification failure rolls back",
+    "Repeated publish conflicts; whole main chain and publication rollback preserved",
+    "SQL CHECK/trigger rejects completion time on DESIGN rows",
+    "Existing accounts/passwords and participant rows preserved through migration; no auto-confirmation",
+    "Three MySQL restarts and isolated database/storage dump-restore preserve completion timestamps"
+  ],
+  "review": {
+    "kind": "Fresh Self-Review by same agent",
+    "result": "PASS",
+    "items": [
+      "Current development contract, immutable historical contracts and migrations",
+      "Actor/RBAC/DataScope, stage eligibility and CAS409",
+      "Atomic acknowledgement/rework/audit/notification",
+      "Publish current reads and locks, roster serialization",
+      "UTC timestamp persistence and effective PG/MySQL domain protection",
+      "Browser desktop/mobile/tablet and local handoff"
+    ]
+  },
+  "boundaries": {
+    "master_unchanged": "a38081af9097f691c8289e9301951a0360ea0af7",
+    "server_or_remote_database_changed": false,
+    "branch_ci": "not pushed or run",
+    "new_deployment_package": "not built",
+    "online_feature_available": false
+  },
+  "log_sha256": {
+    "mysql-final.txt": "42d33076b9049bed638a19188e359f21691ce241be4ec2564e7608ca8626acef",
+    "mysql-supplement.txt": "444f9c60baa1f87477a55ebc158b77bf4d8684c4131a03d5071abea37bb53c16",
+    "pg-final.txt": "dff1d07ac6198e5ed97a8260deb35809e56d9f4ac069f5216fbda98fa86c5ac8",
+    "pg-required-final.txt": "c286ee00fc8402bdaedc23ca71db445d9c1c5751bcc18aa693613225e4347062",
+    "frontend-final.txt": "d67d59a099637bc686b458f08cee33f15fdb36e8aef35a1d08111a9a99fac116",
+    "build-final.txt": "4bd8f3bcaeeebdd30a23f0cafeadfe4bdfe5b92ee3481d606f4d0ee988813978",
+    "ui-final.txt": "a4d4f64774d935e4a3ba1562f6bc378726df4152cbfe50b8e2f8af17c489f153"
+  },
+  "local_handoff": {
+    "api_health_ready": "PASS",
+    "pending_test_requirement_id": 9,
+    "test_version_id": 4,
+    "publisher": "ceshi006",
+    "developers": [
+      "ceshi002",
+      "ceshi003"
+    ],
+    "both_developers_pending": true
+  }
+}

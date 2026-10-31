@@ -1,0 +1,43 @@
+{
+  "status": "PASS",
+  "scope": "known local random secrets, evidence JWT shape, archive file inventory, image environment/layers; no real configuration or test DB/attachments shipped",
+  "text_files_scanned": 46,
+  "image_layer_files_scanned": 32528,
+  "unique_image_layers": 40,
+  "image_configs": [
+    {
+      "tags": [
+        "iterflow-web:mysql57-e319fd700020"
+      ],
+      "config_sha256": "02c63262d311e056de202e37603ea88117ea77d45f7cd6d2fa97d78c534e400b",
+      "platform": "linux/amd64",
+      "secret_env": false
+    },
+    {
+      "tags": [
+        "iterflow-mysql57-redis:8.2.2-amd64"
+      ],
+      "config_sha256": "5d79a9ce29f8b3fe50fd5c07ee1bf654b5cec557b895835825bf6825d525e4f2",
+      "platform": "linux/amd64",
+      "secret_env": false
+    },
+    {
+      "tags": [
+        "iterflow-mysql57-client:5.7.44-amd64"
+      ],
+      "config_sha256": "5107333e08a87b836d48ff7528b1e84b9c86781cc9f1748bbc1b8c42a870d933",
+      "platform": "linux/amd64",
+      "secret_env": false
+    },
+    {
+      "tags": [
+        "iterflow-api:mysql57-e319fd700020"
+      ],
+      "config_sha256": "35b48d7f301009b190d26366cb6c59b6a173e8db103605227cb7736977a23199",
+      "platform": "linux/amd64",
+      "secret_env": false
+    }
+  ],
+  "secret_env": false,
+  "forbidden_image_paths": []
+}

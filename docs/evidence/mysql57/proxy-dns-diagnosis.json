@@ -1,0 +1,8 @@
+{
+  "hostname": "api",
+  "without_live_api_alias": "198.18.8.252",
+  "proof_network": "172.18.0.0/16",
+  "nginx_failed_upstream": "http://198.18.8.252:8000/api/v1/auth/me",
+  "fix": "stop Web/API, restart Redis, start API healthy then Web",
+  "scope": "isolated local QEMU Docker environment; no product or frontend business changes"
+}

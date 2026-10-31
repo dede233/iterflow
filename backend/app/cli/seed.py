@@ -101,6 +101,8 @@ BASE_ROLES = {
                 "rd.version.view",
                 "rd.version.create",
                 "rd.version.edit",
+                "rd.version.status",
+                "rd.version.publish",
                 "rd.release.view",
             }
         ),
@@ -119,6 +121,8 @@ BASE_ROLES = {
                 "rd.version.view",
                 "rd.version.edit",
                 "rd.version.status",
+                "rd.version.create",
+                "rd.version.publish",
                 "rd.release.view",
             }
         ),
@@ -134,6 +138,36 @@ BASE_ROLES = {
                 "rd.requirement.status",
                 "rd.version.view",
                 "rd.version.status",
+                "rd.release.view",
+            }
+        ),
+    ),
+    "DEVELOPER": BaseRoleDefinition(
+        name="开发人员",
+        data_scope=DataScope.SELF,
+        permissions=frozenset(
+            {
+                "dashboard.view",
+                "rd.requirement.view",
+                "rd.requirement.status",
+                "rd.version.view",
+                "rd.version.create",
+                "rd.version.edit",
+                "rd.version.status",
+                "rd.version.publish",
+                "rd.release.view",
+            }
+        ),
+    ),
+    "DESIGNER": BaseRoleDefinition(
+        name="设计人员",
+        data_scope=DataScope.SELF,
+        permissions=frozenset(
+            {
+                "dashboard.view",
+                "rd.requirement.view",
+                "rd.requirement.status",
+                "rd.version.view",
                 "rd.release.view",
             }
         ),

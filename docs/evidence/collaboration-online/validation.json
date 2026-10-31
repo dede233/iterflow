@@ -1,0 +1,156 @@
+{
+  "source_commit": "2b37509aff342f8989ed21f61721d76c980141cb",
+  "ci": {
+    "url": "https://github.com/dede233/iterflow/actions/runs/38067092032",
+    "conclusion": "success",
+    "jobs": [
+      {
+        "name": "backup_restore",
+        "conclusion": "success",
+        "url": "https://github.com/dede233/iterflow/actions/runs/38067092032/job/114256831411"
+      },
+      {
+        "name": "mysql57 (standard)",
+        "conclusion": "success",
+        "url": "https://github.com/dede233/iterflow/actions/runs/38067092032/job/114256831498"
+      },
+      {
+        "name": "s3",
+        "conclusion": "success",
+        "url": "https://github.com/dede233/iterflow/actions/runs/38067092032/job/114256831501"
+      },
+      {
+        "name": "browser_smoke",
+        "conclusion": "success",
+        "url": "https://github.com/dede233/iterflow/actions/runs/38067092032/job/114256831515"
+      },
+      {
+        "name": "backend",
+        "conclusion": "success",
+        "url": "https://github.com/dede233/iterflow/actions/runs/38067092032/job/114256831526"
+      },
+      {
+        "name": "docker_smoke",
+        "conclusion": "success",
+        "url": "https://github.com/dede233/iterflow/actions/runs/38067092032/job/114256831539"
+      },
+      {
+        "name": "frontend",
+        "conclusion": "success",
+        "url": "https://github.com/dede233/iterflow/actions/runs/38067092032/job/114256831544"
+      },
+      {
+        "name": "mysql57 (portable)",
+        "conclusion": "success",
+        "url": "https://github.com/dede233/iterflow/actions/runs/38067092032/job/114256831572"
+      }
+    ]
+  },
+  "package": {
+    "path": "iterflow-collaboration-2b37509-linux-amd64.tar.gz",
+    "sha256": "14053e4450443f7ef6c20b0e69c833044d4adc0971fcacd91fc0f1f520d18cb0",
+    "bytes": 276792434,
+    "manifest": {
+      "source_commit": "2b37509aff342f8989ed21f61721d76c980141cb",
+      "platform": "linux/amd64",
+      "images": [
+        {
+          "tag": "iterflow-api:mysql57-2b37509aff34",
+          "id": "sha256:a3306b3d30a37033c025c290b4c325929c15fff2f017a30b33205e25b0f249df",
+          "architecture": "amd64",
+          "os": "linux",
+          "registry_digests": [
+            "iterflow-api@sha256:a3306b3d30a37033c025c290b4c325929c15fff2f017a30b33205e25b0f249df"
+          ],
+          "size": 93234267
+        },
+        {
+          "tag": "iterflow-web:mysql57-2b37509aff34",
+          "id": "sha256:3cb92e8e0fd01f7a32a5649f5fb8aeea7d1317ccb6a44a29b86c641ca34d959d",
+          "architecture": "amd64",
+          "os": "linux",
+          "registry_digests": [
+            "iterflow-web@sha256:3cb92e8e0fd01f7a32a5649f5fb8aeea7d1317ccb6a44a29b86c641ca34d959d"
+          ],
+          "size": 23047536
+        },
+        {
+          "tag": "iterflow-mysql57-redis:8.2.2-amd64",
+          "id": "sha256:3f835dae62fe5012baf5a768293967c93bc09cf9e848d415351dfba04ee87537",
+          "architecture": "amd64",
+          "os": "linux",
+          "registry_digests": [
+            "iterflow-mysql57-redis@sha256:3f835dae62fe5012baf5a768293967c93bc09cf9e848d415351dfba04ee87537",
+            "redis@sha256:3f835dae62fe5012baf5a768293967c93bc09cf9e848d415351dfba04ee87537"
+          ],
+          "size": 27493963
+        },
+        {
+          "tag": "iterflow-mysql57-client:5.7.44-amd64",
+          "id": "sha256:dab0a802b44617303694fb17d166501de279c3031ddeb28c56ecf7fcab5ef0da",
+          "architecture": "amd64",
+          "os": "linux",
+          "registry_digests": [
+            "iterflow-mysql57-client@sha256:dab0a802b44617303694fb17d166501de279c3031ddeb28c56ecf7fcab5ef0da",
+            "mysql@sha256:dab0a802b44617303694fb17d166501de279c3031ddeb28c56ecf7fcab5ef0da"
+          ],
+          "size": 137908880
+        }
+      ],
+      "offline_images": true,
+      "remote_verified": false
+    },
+    "verification": {
+      "status": "PASS",
+      "source_commit": "2b37509aff342f8989ed21f61721d76c980141cb",
+      "platform": "linux/amd64",
+      "scope": "isolated local empty database, synthetic accounts and separate volumes only",
+      "remote_verified": false,
+      "validation_commit": "2b37509aff342f8989ed21f61721d76c980141cb",
+      "proxy_readiness_probes": [
+        [
+          200
+        ],
+        [
+          200
+        ],
+        [
+          200
+        ],
+        [
+          200
+        ],
+        [
+          200
+        ]
+      ],
+      "local_ports": {
+        "api": 58000,
+        "web": 58080,
+        "restore_api": 58001,
+        "restore_web": 58081
+      },
+      "database_profile": "iterflow-mysql57-portable",
+      "global_innodb_settings": [
+        0,
+        0
+      ],
+      "mysql_version": "5.7.44",
+      "empty_migration_seed": true,
+      "least_privilege_runtime": true,
+      "full_chain_15_steps": true,
+      "revision_409": true,
+      "notification_audit": true,
+      "file_permissions": true,
+      "package_restart_persistence": true,
+      "package_consecutive_restarts": 3,
+      "backup_database_sha256": "46a865d27eb85e783e942bc1ccf81df12ebb25294d0d5e27575cdae5c6bd0a8c",
+      "backup_storage_sha256": "fee18343094ba0ba01e6984217c318a62f2063ecacd974f5852f9afbee7d2942",
+      "package_isolated_restore": true,
+      "restored_guard_triggers": 73,
+      "restored_function_runtime_upload": true,
+      "package_post_restore_backup_sha256": "e55edc8adb2cf69237a058a133cb696992010ab5c55adf85aeb050e17969f591"
+    }
+  },
+  "scope": "CI and isolated local verification only; server deployment recorded separately"
+}

@@ -1,0 +1,80 @@
+{
+  "status": "PASS",
+  "target": "https://sx-kc.xyz:8443",
+  "completed_utc": "2026-10-10T16:53:18Z",
+  "deployed_commit": "2b37509aff342f8989ed21f61721d76c980141cb",
+  "previous_commit": "a147f4cf8da002a55097f6b58d2261d740d9e2bc",
+  "server_directory": "/opt/iterflow/releases/iterflow-collaboration-2b37509",
+  "mysql_version": "5.7.44-log",
+  "charset": "utf8mb4",
+  "collation": "utf8mb4_bin",
+  "migration_before": "mysql57_0002",
+  "migration_after": "mysql57_0005",
+  "triggers_before": 68,
+  "triggers_after": 73,
+  "existing_rows_unchanged_during_migration": true,
+  "preserved_counts": {
+    "sys_user": 1,
+    "rd_feedback": 0,
+    "rd_requirement": 1,
+    "rd_version": 0,
+    "rd_release": 0,
+    "sys_file": 0,
+    "sys_operation_log": 15
+  },
+  "account_reset": false,
+  "seed_performed": false,
+  "remote_restore_performed": false,
+  "production_business_test_data_created": false,
+  "health": {
+    "status": "ok",
+    "version": "1.8.1",
+    "build_sha": "2b37509aff342f8989ed21f61721d76c980141cb"
+  },
+  "ready": {
+    "mysql": "ok",
+    "redis": "ok",
+    "storage": "ok"
+  },
+  "pre_backup": {
+    "path": "/opt/iterflow/backups/collaboration-pre-2b37509-20261010T165140Z",
+    "sha256": {
+      "database.sql": "2fad3db62184053d247277241aacc92eef5610c5c33dc711251cf9e45c0b31ad",
+      "uploads.tar": "876254a937ebda48875cfde9bd1ce72a68ca4744cad84e422bfc868b824e0bfb"
+    }
+  },
+  "post_backup": {
+    "path": "/opt/iterflow/backups/collaboration-post-2b37509-20261010T165236Z",
+    "sha256": {
+      "database.sql": "22d48e8a0d2d8b6eb173dac2c7be70a4704a043ed15ebbb0c8b232a2d613c0fd",
+      "uploads.tar": "781032422588d1ce32556a3a9e47c845baaa887a38e0e4dceed7d3c9f2cfb4d3"
+    }
+  },
+  "backup_directory_mode": "0700",
+  "backup_file_mode": "0600",
+  "uploads_volume_preserved": "iterflow-mysql57_uploads",
+  "original_vhost_sha256": "491c4c78c19aac43e04bd75a73ff7155edf5a899deb029b0e3cb0749df5b7836",
+  "original_vhost_unchanged": true,
+  "original_production_redis_container_unchanged": true,
+  "ui_checks": [
+    "Existing administrator session retained after reload",
+    "Eight roles include DEVELOPER and DESIGNER",
+    "Existing canceled requirement retained; collaborator panel loads",
+    "Protected documentation lists 75 operations including start-stage and development-completion",
+    "Development completion documentation includes own confirmation and DONE/publish gates"
+  ],
+  "upgrade_helper": {
+    "original_sha256": "8e8e3c154ba5531856a96b6c9c38f5011fc30cb0652967942b16e05972afc9dd",
+    "executed_sha256": "cf10e6af09814ff700710395985b390134a8605487b59e5d7523a78ee462a0f4",
+    "first_failure": "Image ID representation differs between containerd and classic stores; stopped before service pause or DDL",
+    "repair": "Verify OCI index/manifest/config digests, architecture and every RootFS layer; reuse only identical staged configuration links"
+  },
+  "server_image_config_ids": {
+    "iterflow-api:mysql57-2b37509aff34": "sha256:0fc629a4956f5ea55ef88c20418fa3dc782aa9eff7c75a8720386504a14d3d05",
+    "iterflow-web:mysql57-2b37509aff34": "sha256:86a6079ea8d8d597e563c7006b5aa6c773f4dc9eaf2743fa06f815f9a0eeab49",
+    "iterflow-mysql57-redis:8.2.2-amd64": "sha256:5d79a9ce29f8b3fe50fd5c07ee1bf654b5cec557b895835825bf6825d525e4f2",
+    "iterflow-mysql57-client:5.7.44-amd64": "sha256:5107333e08a87b836d48ff7528b1e84b9c86781cc9f1748bbc1b8c42a870d933"
+  },
+  "scope": "Server migration, data preservation, image content, HTTPS, authentication rejection, restart, backups and read-only administrator UI; full multi-account business chain exercised only in isolated local and CI databases",
+  "evidence_source": "Observed authenticated Safari server terminal and application UI; sanitized summary of protected server receipt, without copied account/credential/backup contents"
+}

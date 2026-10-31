@@ -1,0 +1,15 @@
+{
+  "status": "PASS",
+  "scope": "isolated local synthetic database and storage only",
+  "mysql_version": "5.7.44-log",
+  "source_database": "iterflow_mysql57_185b16c1ab9d4b06a0e83de446d63d10",
+  "restore_database": "iterflow_mysql57_185b16c1ab9d4b06a0e83de446d63d10_restore",
+  "pre_backup_sha256": "0210504f38972f0c20d7736897d12b06838a60b56824462d523ef5a46ebf3d66",
+  "post_backup_sha256": "ed675f30a501508c8ee534e0c96903489b40a093f9e6e13e636b542de65593fc",
+  "storage_sha256": "a03e2ce07067fb9755f7c19aca3a8f3be9548644a864e30a10b62b703a914b43",
+  "restart_persistence": true,
+  "successful_consecutive_restarts": 3,
+  "restored_guard_triggers": 68,
+  "profile": "iterflow-mysql57-portable",
+  "restored_function_upload": true
+}

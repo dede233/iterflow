@@ -1,0 +1,82 @@
+{
+  "status": "PASS",
+  "source_commit": "3fe3a42c6116024acf2636921c7849f48f952bc8",
+  "ci_head": "e4c6f8d5942e14cfcdc294cd50f965a8c1d3f939",
+  "completed_utc": "2026-10-12T10:17:31Z",
+  "production_url": "https://sx-kc.xyz:8443",
+  "test_url": "https://sx-kc.xyz:8444",
+  "release_directory": "/opt/iterflow/releases/iterflow-reference-display-3fe3a42",
+  "server_evidence": "/opt/iterflow/upgrade-evidence/reference-display-3fe3a42/deployment.json",
+  "images": {
+    "api": {
+      "tag": "iterflow-api:mysql57-3fe3a42c6116",
+      "id": "sha256:735bd73784c2f5e57b6f4b47de0e93c9fe082a3b19cd052ecadaea9af3a62de4"
+    },
+    "web": {
+      "tag": "iterflow-web:mysql57-3fe3a42c6116",
+      "id": "sha256:5c8f46817a40a4ea7037aaa116d8f913a1ded5b96e8e84b8fbd9d228c928670"
+    }
+  },
+  "pre_backup": {
+    "path": "/opt/iterflow/backups/reference-display-pre-3fe3a42-20261012T101559Z",
+    "sha256": {
+      "database.sql": "fbe72d7485c73c0c2a1d431b01145a19b3f7588cf2eaee46c7a8b02c06b396a4",
+      "uploads.tar": "781032422588d1ce32556a3a9e47c845baaa887a38e0e4dceed7d3c9f2cfb4d3"
+    }
+  },
+  "post_backup": {
+    "path": "/opt/iterflow/backups/reference-display-post-3fe3a42-20261012T101648Z",
+    "sha256": {
+      "database.sql": "e0f93fd445a4a57413ea345573cd9a955ff182fb72cbcb241d9716b1f4bbabbe",
+      "uploads.tar": "781032422588d1ce32556a3a9e47c845baaa887a38e0e4dceed7d3c9f2cfb4d3"
+    }
+  },
+  "tables_compared": 24,
+  "files_compared": 0,
+  "all_database_tables_and_files_unchanged_during_deployment": true,
+  "existing_accounts_preserved": true,
+  "test_environment_preserved": true,
+  "production_redis_preserved": true,
+  "vhost_preserved": true,
+  "no_migration_seed_restore": true,
+  "health": {
+    "status": "ok",
+    "version": "1.8.1",
+    "build_sha": "3fe3a42c6116024acf2636921c7849f48f952bc8"
+  },
+  "ready": {
+    "mysql": "ok",
+    "redis": "ok",
+    "storage": "ok"
+  },
+  "anonymous_auth_me_and_openapi": 401,
+  "api_web_restart": "PASS",
+  "first_attempt": {
+    "status": "FAILED_RECOVERED",
+    "reason": "部署助手向单空格缩进的只读脚本注入四空格，触发 IndentationError",
+    "before_backup_or_image_switch": true,
+    "old_application_restarted_and_healthy": true,
+    "failure_evidence_preserved": true,
+    "fixed_helper_sha256": "58b2d530f45455064e35b5a71d09f819775166ad5160a92770a8a35e764308f3",
+    "old_new_readonly_snapshot_equal_before_retry": true
+  },
+  "verification_method": "authenticated Safari native UI and server protected receipts; sanitized summary manually transcribed",
+  "ui": {
+    "production_admin_existing_session_after_refresh": "PASS",
+    "existing_account_count": 1,
+    "production_feedback_list_empty": true,
+    "protected_openapi_loaded": true,
+    "feedback_response_fields": [
+      "submitter_display_name",
+      "system_name",
+      "module_name"
+    ],
+    "production_business_records_created": false,
+    "test_page_after_refresh": "PASS",
+    "test_feedback_count": 4
+  },
+  "limits": [
+    "正式库没有反馈，本次未在正式库创建数据来验证名称详情；名称完整页和抽屉及多角色验收在独立8444完成。",
+    "测试入口重启自动恢复和定期备份尚未配置。"
+  ]
+}

@@ -4,7 +4,8 @@ import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 import { listVersions } from '@/api/versions'
 import VersionCreateView from './VersionCreateView.vue'
-import VersionDetailView from './VersionDetailView.vue'
+import ReleaseVersionDrawer from '@/components/ReleaseVersionDrawer.vue'
+import { listTarget } from '@/utils/listQuery'
 import { useListQuery } from '@/composables/useListQuery'
 import { useResponsive } from '@/composables/useResponsive'
 import { usePermission } from '@/composables/usePermission'
@@ -82,11 +83,6 @@ onBeforeUnmount(() => { requestSequence++ })
 function openDetail(id: number): void {
   activeVersionId.value = id
   detailDrawer.value = true
-}
-
-function openFullScreen(id: number): void {
-  detailDrawer.value = false
-  void router.push(queryState.detail(`/versions/${id}`))
 }
 
 async function onVersionCreated(id: number): Promise<void> {
@@ -190,46 +186,19 @@ const queryState = useListQuery({
       <VersionCreateView v-if="createDialog" embedded @cancel="createDialog = false" @created="onVersionCreated" />
     </el-dialog>
 
-    <!-- Scheme C: Detail Drawer with full-screen expansion support -->
-    <el-drawer
+    <ReleaseVersionDrawer
       v-model="detailDrawer"
-      title="版本详情"
-      direction="rtl"
-      size="min(960px, 94vw)"
-      destroy-on-close
-      class="detail-drawer"
-    >
-      <template #header>
-        <div class="drawer-header-custom">
-          <span class="drawer-title">版本详情</span>
-          <el-button
-            v-if="activeVersionId"
-            size="small"
-            class="expand-btn"
-            @click="openFullScreen(activeVersionId)"
-          >
-            新标签/全屏直达
-          </el-button>
-        </div>
-      </template>
-      <VersionDetailView
-        v-if="activeVersionId && detailDrawer"
-        :key="activeVersionId"
-        embedded
-        :embedded-id="activeVersionId"
-        @updated="load"
-        @close="detailDrawer = false"
-      />
-    </el-drawer>
+      kind="version"
+      :id="activeVersionId"
+      :return-to="listTarget('/versions', queryState.applied())"
+      @updated="load"
+    />
   </section>
 </template>
 
 <style scoped>
 .cards { display: grid; gap: 8px; padding: var(--if-space-3); }
 .pager { margin-top: var(--if-space-4); justify-content: flex-end; }
-.drawer-header-custom { display: flex; align-items: center; justify-content: space-between; width: 100%; padding-right: 28px; }
-.drawer-title { font-size: 16px; font-weight: 600; color: var(--if-text-primary); }
-.expand-btn { margin-left: auto; }
 @media (max-width: 767px) { .pager { justify-content: center; } }
 </style>
 

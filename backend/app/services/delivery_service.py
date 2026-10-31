@@ -168,7 +168,7 @@ class DeliveryService:
                 .where(CollaborationEvent.processed_at.is_(None))
                 .order_by(CollaborationEvent.created_at, CollaborationEvent.id)
                 .limit(limit)
-                .with_for_update(skip_locked=True)
+                .with_for_update(skip_locked=self.db.get_bind().dialect.name != "mysql")
             )
         )
         for event in events:
@@ -232,7 +232,7 @@ class DeliveryService:
             )
             .order_by(NotificationDelivery.next_attempt_at, NotificationDelivery.id)
             .limit(1)
-            .with_for_update(skip_locked=True)
+            .with_for_update(skip_locked=self.db.get_bind().dialect.name != "mysql")
         )
         if row is None:
             self.db.rollback()

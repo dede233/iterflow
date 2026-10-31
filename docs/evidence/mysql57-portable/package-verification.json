@@ -1,0 +1,51 @@
+{
+  "status": "PASS",
+  "source_commit": "a147f4cf8da002a55097f6b58d2261d740d9e2bc",
+  "platform": "linux/amd64",
+  "scope": "isolated local empty database, synthetic accounts and separate volumes only",
+  "remote_verified": false,
+  "validation_commit": "e5f6771d211f7670ac9e74b2e00d30b4e7a3688c",
+  "proxy_readiness_probes": [
+    [
+      200
+    ],
+    [
+      200
+    ],
+    [
+      200
+    ],
+    [
+      200
+    ],
+    [
+      200
+    ]
+  ],
+  "local_ports": {
+    "api": 57430,
+    "web": 57480,
+    "restore_api": 57431,
+    "restore_web": 57481
+  },
+  "database_profile": "iterflow-mysql57-portable",
+  "global_innodb_settings": [
+    0,
+    0
+  ],
+  "mysql_version": "5.7.44",
+  "empty_migration_seed": true,
+  "least_privilege_runtime": true,
+  "full_chain_15_steps": true,
+  "revision_409": true,
+  "notification_audit": true,
+  "file_permissions": true,
+  "package_restart_persistence": true,
+  "package_consecutive_restarts": 3,
+  "backup_database_sha256": "4ad99ca665ab69cefdd28a854eeaa644181e4c95ac63d7d488e71581094fcda6",
+  "backup_storage_sha256": "4b248e0663a432414336951a852a7f5a3c8f8855914bea7e3004d3cc80f5a8b5",
+  "package_isolated_restore": true,
+  "restored_guard_triggers": 68,
+  "restored_function_runtime_upload": true,
+  "package_post_restore_backup_sha256": "79fc94cd8df74e2df934c6b678162f95f04379c10140db4580ee4a5651c1ddcf"
+}

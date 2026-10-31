@@ -69,7 +69,7 @@ sentinel_after="$("${COMPOSE[@]}" exec -T db psql -U iterflow -d iterflow -tAc \
 [[ "$sentinel_after" == t ]]
 revision="$("${COMPOSE[@]}" exec -T db psql -U iterflow -d iterflow -tAc \
   'SELECT version_num FROM alembic_version')"
-[[ "$revision" == 0007_notification_delivery ]]
+[[ "$revision" == 0011_notification_delivery ]]
 stage="restored administrator login"
 restored_login="$(curl --fail --silent --show-error -H 'Content-Type: application/json' \
   -d "$(jq -nc --arg u "$username" --arg p "$new_password" '{username:$u,password:$p}')" \

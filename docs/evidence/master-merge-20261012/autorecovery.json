@@ -1,0 +1,44 @@
+{
+  "status": "PASS",
+  "completed_utc": "2026-10-12T10:55:47Z",
+  "project": "iterflow-acceptance-20261012-753ebd",
+  "test_url": "https://sx-kc.xyz:8444",
+  "units": [
+    "iterflow-test-stack.service",
+    "iterflow-test-nginx.service"
+  ],
+  "enabled": true,
+  "active": true,
+  "container_restart_policy": "unless-stopped",
+  "cold_start_all_four_services": true,
+  "nginx_unexpected_exit_auto_recovered": true,
+  "nginx_reload": true,
+  "main_pid_before": 510351,
+  "main_pid_after": 511667,
+  "tables_compared": 24,
+  "files_compared": 1,
+  "all_database_tables_and_files_unchanged": true,
+  "containers_images_and_all_mount_attributes_preserved": true,
+  "production_baseline_preserved": true,
+  "permanent_public_zone_port_added": "8444/tcp",
+  "runtime_firewall_unchanged": true,
+  "host_reboot_performed": false,
+  "docker_firewalld_or_production_services_restarted": false,
+  "no_migration_seed_restore": true,
+  "backup": {
+    "path": "/opt/iterflow/acceptance-evidence/iterflow-acceptance-20261012-753ebd/autorecovery-20261012/rehearsal-20261012T105420Z",
+    "sha256": {
+      "database-before.sql": "94f018469d151897b21e954eae7e2c09d0d69bc02cfd6aea41f3821ccb30c9fe",
+      "uploads-before.tar": "32d309fb2fbb97602d9305d8616b75523a40bf8d987dfdc11c767bcc40543348"
+    }
+  },
+  "first_rehearsal": {
+    "status": "FAILED",
+    "reason": "原始Docker Mounts数组比较未通过；复核各容器ID、镜像及所有挂载属性一致，修改为按Destination排序比较全部属性后完整重跑。",
+    "failure_and_original_script_and_snapshots_preserved": true,
+    "fixed_installer_sha256": "335e398cd2525d3a3df12db48149ad25b06748b553fa06314f354c0fae7da159"
+  },
+  "server_receipt": "/opt/iterflow/acceptance-evidence/iterflow-acceptance-20261012-753ebd/autorecovery-20261012/rehearsal.json",
+  "verification_method": "server protected receipt observed through authenticated Safari terminal; sanitized summary manually transcribed",
+  "periodic_backup_configured": false
+}

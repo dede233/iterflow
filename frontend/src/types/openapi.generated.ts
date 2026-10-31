@@ -310,7 +310,7 @@ export interface paths {
         head?: never;
         /**
          * 编辑反馈
-         * @description 必须携带 revision；过期 revision 返回 409。
+         * @description 需要反馈编辑权限、数据范围和最新 revision；旧 revision 返回 409。CLOSED 仍可编辑保存，但保存不会重开；再次提交需另行重开到 NEW，填写非空原因，保留原编号与历史。
          */
         patch: operations["update_feedback_api_v1_feedbacks__feedback_id__patch"];
         trace?: never;
@@ -330,7 +330,7 @@ export interface paths {
         head?: never;
         /**
          * 反馈状态变更
-         * @description 集中式状态机；必须携带 revision；非法迁移返回 409；ManualFeedbackStatus 之外的值返回 422。
+         * @description 集中式状态机、权限与数据范围检查；必须携带 revision，旧 revision 或非法迁移返回 409。受理无需 reason；重复需可见且非自身的 duplicate_of_id，无需 reason；无法复现、关闭和重开需非空 reason。CLOSED/DUPLICATE/CANNOT_REPRODUCE 可重开 NEW，重开重复反馈清除重复指向。事务产出状态不可人工设置，非法枚举返回 422。
          */
         patch: operations["change_feedback_status_api_v1_feedbacks__feedback_id__status_patch"];
         trace?: never;
@@ -489,7 +489,10 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** 变更需求状态 */
+        /**
+         * 变更需求状态
+         * @description 六阶段流转：开发参与人提交验收，指定验收人确认 DONE；不再要求每名开发人员单独确认。人员资格、内容确认、revision CAS、原因、审计及事务回滚统一校验。ONLINE 仅由成功发布产生。
+         */
         patch: operations["change_status_api_v1_requirements__requirement_id__status_patch"];
         trace?: never;
     };
@@ -528,7 +531,10 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** 编辑版本 */
+        /**
+         * 编辑版本
+         * @description 需要版本编辑权限、数据范围和最新 revision。当前实现允许已发布版本修改 name、owner_id、planned_release_date、description；不修改版本号、状态、需求清单或已有 Release 的说明、结果与发布时间。基础信息修改写审计，旧 revision 返回 409；前端编辑页面提供名称、计划日期和说明。
+         */
         patch: operations["update_version_api_v1_versions__version_id__patch"];
         trace?: never;
     };
@@ -647,7 +653,7 @@ export interface paths {
         put?: never;
         /**
          * 发布前检查
-         * @description 运行与 publish 相同的前置检查；通过返回 200，未通过返回 409 并含 checks。
+         * @description 需要 rd.version.publish 及 Version 数据范围。基础开发人员、产品负责人和研发负责人保留完整版本权限；SELF 仍限本人创建或负责的版本。检查 READY、全部有效需求 DONE 与当前内容确认资格；通过 200，否则 409。逐人开发完成确认已取消。
          */
         post: operations["check_version_publish_api_v1_versions__version_id__publish_check_post"];
         delete?: never;
@@ -667,7 +673,7 @@ export interface paths {
         put?: never;
         /**
          * 发布版本
-         * @description 只允许 READY，且 V1.5 仅支持成功发布。Release(SUCCESS) + Version + DONE Requirement -> ONLINE + Feedback -> ONLINE 同一业务事务。
+         * @description 需要 rd.version.publish 及数据范围。重新锁定校验 READY、全部有效需求 DONE 和内容确认资格。Release(SUCCESS)、Version、Requirement/Feedback ONLINE、通知事件和审计原子提交；异常回滚，重复发布 409。
          */
         post: operations["publish_version_api_v1_versions__version_id__publish_post"];
         delete?: never;
@@ -1877,6 +1883,21 @@ export interface components {
         };
         /** FeedbackOut */
         FeedbackOut: {
+            /**
+             * 提交人显示名称
+             * @description 当前反馈提交人的显示名称；仅随已授权的反馈返回，不提供用户管理信息。
+             */
+            submitter_display_name?: string | null;
+            /**
+             * 所属系统名称
+             * @description 当前反馈关联的系统名称，包括已停用的历史关联。
+             */
+            system_name?: string | null;
+            /**
+             * 所属模块名称
+             * @description 当前反馈关联的模块名称，包括已停用的历史关联。
+             */
+            module_name?: string | null;
             /** 反馈 ID */
             id: number;
             /** 反馈编号 */
@@ -2476,7 +2497,7 @@ export interface components {
          * RequirementStatus
          * @enum {string}
          */
-        RequirementStatus: "DRAFT" | "CONFIRMED" | "PLANNED" | "DEVELOPING" | "TESTING" | "DONE" | "ONLINE" | "PAUSED" | "CANCELED";
+        RequirementStatus: "DRAFT" | "CONFIRMED" | "PLANNED" | "DESIGNING" | "DEVELOPING" | "TESTING" | "DONE" | "ONLINE" | "PAUSED" | "CANCELED";
         /** RequirementStatusChange */
         RequirementStatusChange: {
             /** 需求状态 */

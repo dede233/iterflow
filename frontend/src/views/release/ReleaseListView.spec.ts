@@ -22,18 +22,21 @@ describe('release list entries', () => {
   it.each([[false, false], [false, true], [true, false], [true, true]])('mobile=%s version permission=%s', async (mobile, version) => {
     mocks.mobile = mobile
     mocks.version = version
-    const wrapper = mount(ReleaseListView, { global: { plugins: [ElementPlus] } })
+    const wrapper = mount(ReleaseListView, { global: { plugins: [ElementPlus], stubs: { ReleaseVersionDrawer: true } } })
     await flushPromises()
     const buttons = wrapper.findAll('button')
     const detail = buttons.find(button => button.text() === '查看详情')!
     expect(detail).toBeDefined()
     await detail.trigger('click')
-    expect(mocks.push).toHaveBeenCalledWith('/releases/123?return_to=%2Freleases')
+    const drawer = wrapper.getComponent({ name: 'ReleaseVersionDrawer' })
+    expect(drawer.props()).toMatchObject({ modelValue: true, kind: 'release', id: 123, returnTo: '/releases' })
+    expect(mocks.push).not.toHaveBeenCalled()
     const versionButton = buttons.find(button => button.text() === '查看版本')
     expect(!!versionButton).toBe(version)
     if (versionButton) {
       await versionButton.trigger('click')
-      expect(mocks.push).toHaveBeenCalledWith('/versions/456?return_to=%2Freleases')
+      expect(drawer.props()).toMatchObject({ modelValue: true, kind: 'version', id: 456 })
+      expect(mocks.push).not.toHaveBeenCalled()
     }
     wrapper.unmount()
   })

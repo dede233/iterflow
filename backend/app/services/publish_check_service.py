@@ -1,6 +1,7 @@
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.entities import Version
+from app.models.entities import Requirement, Version, VersionRequirement
 from app.models.enums import RequirementStatus, VersionStatus
 from app.repositories.version_repository import VersionRepository
 from app.services.workflow_service import WorkflowService
@@ -21,7 +22,7 @@ class PublishCheckService:
         self.db = db
         self.repo = VersionRepository(db)
 
-    def evaluate(self, version: Version) -> dict:
+    def evaluate(self, version: Version, *, lock: bool = False) -> dict:
         checks: list[dict] = []
 
         version_ok = VersionStatus(version.status) == VersionStatus.READY
@@ -38,7 +39,22 @@ class PublishCheckService:
             }
         )
 
-        active = self.repo.active_requirements(version.id)
+        if lock:
+            active = list(
+                self.db.scalars(
+                    select(Requirement)
+                    .join(VersionRequirement, VersionRequirement.requirement_id == Requirement.id)
+                    .where(
+                        VersionRequirement.version_id == version.id,
+                        VersionRequirement.active.is_(True),
+                    )
+                    .order_by(Requirement.id)
+                    .with_for_update()
+                    .execution_options(populate_existing=True)
+                )
+            )
+        else:
+            active = self.repo.active_requirements(version.id)
         blocking = [
             r
             for r in active
@@ -74,7 +90,8 @@ class PublishCheckService:
 
     @staticmethod
     def blocking_requirements(result: dict) -> list[dict]:
+        blockers = {}
         for check in result["checks"]:
-            if check["type"] == "REQUIREMENT_STATUS_CHECK":
-                return check["blocking_requirements"]
-        return []
+            for requirement in check["blocking_requirements"]:
+                blockers[requirement["id"]] = requirement
+        return list(blockers.values())

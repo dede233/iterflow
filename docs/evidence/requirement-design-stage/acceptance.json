@@ -1,0 +1,78 @@
+{
+  "date": "2026-10-10",
+  "branch": "codex/requirement-collaboration",
+  "implementation_base": "4294a27bb8dff195ff4a0d8148b8aa917a58f38d",
+  "approved_scope": "optional design, one owner, multiple designers/developers selected when entering their stage; local-only",
+  "mysql": {
+    "version": "5.7.44-log",
+    "runtime": "linux/amd64 Colima x86_64 QEMU",
+    "profile": "independent portable OFF/OFF, application sessions strict and UTC",
+    "full": {
+      "passed": 58,
+      "skipped": 0
+    },
+    "supplementary_final": {
+      "passed": 2,
+      "deselected": 57,
+      "skipped": 0,
+      "subjects": [
+        "design blocks publish",
+        "design state and staff restore; stage transition after restore"
+      ]
+    },
+    "unique_test_cases_verified": 59,
+    "head": "mysql57_0004",
+    "guards": 71
+  },
+  "postgres": {
+    "full": {
+      "passed": 386,
+      "skipped": 1
+    },
+    "skip_reason": "existing optional real S3 endpoint not configured; local storage tested",
+    "real_pg_required": {
+      "passed": 48,
+      "skipped": 0
+    },
+    "head": "0006_requirement_design_stage",
+    "alembic_check": "PASS"
+  },
+  "frontend": {
+    "passed": 327,
+    "files": 48,
+    "api_types": "PASS",
+    "typecheck_build": "PASS",
+    "bundle": "PASS",
+    "largest_js_kib": 273.7
+  },
+  "static": {
+    "ruff": "PASS",
+    "format": "PASS",
+    "mypy_files": 99,
+    "compile": "PASS"
+  },
+  "browser": {
+    "result": "PASS",
+    "checks": [
+      "Owner only selected initially",
+      "Confirm and plan through real UI",
+      "Optional design or direct development actions",
+      "Design starts with two designers, no upfront developers",
+      "Designer SELF access and stage notification",
+      "Mobile development dialog has only developer picker",
+      "Design participants preserved after development",
+      "Developer can test assigned requirement",
+      "Designer not notified for development/test stages",
+      "768/390 dialogs without overflow"
+    ],
+    "pageerrors": []
+  },
+  "api_compatibility": "legacy PLANNED -> DEVELOPING status API preserved; new UI uses mandatory staff stage endpoint; manual entry into DESIGNING or DESIGNING -> DEVELOPING checks existing staff",
+  "fresh_self_review": "PASS, same agent, not independent review",
+  "published_history_changed": false,
+  "master_changed": false,
+  "server_or_remote_db_operated": false,
+  "ci": "not pushed or run; existing branch trigger configured",
+  "new_linux_amd64_package": "not built or validated",
+  "production_deployed": false
+}

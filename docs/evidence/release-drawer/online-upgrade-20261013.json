@@ -1,0 +1,48 @@
+{
+  "status": "PASS",
+  "web_source": "428d75c13baa2b7436c3c0bebd9ab5aef116f9c5",
+  "web_image": "sha256:37a1bca756eb2813c9078a71fd9c2e2cd84891b16a62201dbf85d6cae5da3285",
+  "environments": {
+    "test": {
+      "url": "https://sx-kc.xyz:8444",
+      "tables": 24,
+      "files": 1,
+      "before_after_equal": true,
+      "pre_backup": "/opt/iterflow/backups/release-drawer-test-pre-20261013T025546Z",
+      "post_backup": "/opt/iterflow/backups/release-drawer-test-post-20261013T025603Z"
+    },
+    "production": {
+      "url": "https://sx-kc.xyz:8443",
+      "tables": 24,
+      "files": 0,
+      "before_after_equal": true,
+      "counts": {
+        "sys_user": 1,
+        "rd_requirement": 1,
+        "rd_feedback": 0,
+        "rd_version": 0,
+        "rd_release": 0
+      },
+      "pre_backup": "/opt/iterflow/backups/release-drawer-production-pre-20261013T031733Z",
+      "post_backup": "/opt/iterflow/backups/release-drawer-production-post-20261013T031811Z"
+    }
+  },
+  "https": 200,
+  "web_restart_https": 200,
+  "api_database_redis_preserved": true,
+  "protected_server_evidence": "/opt/iterflow/upgrade-evidence/release-drawer-428d75c/",
+  "production_write_tests": false,
+  "restore": false,
+  "migration": false,
+  "seed": false,
+  "all_eight_containers_healthy": true,
+  "restart_policy": "unless-stopped",
+  "test_units_enabled_active": [
+    "iterflow-test-stack.service",
+    "iterflow-test-nginx.service"
+  ],
+  "retention_keep": true,
+  "cleanup_hold": true,
+  "native_safari_production_pages": true,
+  "native_safari_test_drawer": true
+}

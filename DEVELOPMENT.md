@@ -4,6 +4,21 @@
 `docs/collaboration-workflow-improvement-plan.md`，阶段结果见
 `docs/collaboration-workflow-execution-log.md`。下文 v1.8.1 发布目标为历史记录；
 本轮包版本暂不变，不执行正式发布或真实数据库升级。
+2026-10-23 用户确认开发人员、产品负责人、研发负责人均需完整版本流程权限。独立分支 `codex/version-role-permissions`，范围为默认角色授权、双数据库追加迁移、回归及当前文档，详见 [版本角色权限](docs/version-role-permissions.md)。保留原 DataScope、发布事务、全员开发确认、revision 与审计；已合并并按测试先行顺序部署至 8444/8443，见 [部署记录](docs/version-role-deployment-2026-10-23.md)。
+
+## 当前开发文档
+
+2026-10-12 当前主线已合入反馈关联名称修复；8443/8444产品源为3fe3a42。保留测试环境已配置开机恢复和异常恢复，操作与验证范围见 [中文合并与运维记录](docs/master-merge-and-autorecovery-2026-10-12.md)。后文2026-10-11部署事实保留为历史，不代表当前产品源。
+
+2026-10-12 后续部署规则：[测试环境保留与更新流程](docs/test-environment-workflow.md)。保留8444独立测试环境，每次更新先通过测试验收，再按对应授权更新8443正式环境；必要门禁失败时停止正式更新。
+
+2026-10-11 协作版本文档入口：[用户操作手册](docs/user-manual.md)、[接口集成指南](docs/api-guide.md)、[全员开发确认与验收](docs/development-completion.md)、[线上升级记录](docs/collaboration-online-upgrade-2026-10-11.md)、[主分支合并记录](docs/master-merge-2026-10-11.md)。当前契约为 `spec/openapi-development.yaml`；按阶段分工、可选设计、完成与发布全员确认门禁已部署 sx-kc.xyz:8443，实际源 commit 为 `2b37509`。随后按用户授权合入 master；本次未创建新的正式 tag/Release，已发布历史契约和下述发布证据保持不变。
+
+当前追加[全员开发完成发布门禁](docs/development-completion.md)，该文档包含操作与验收；前述阶段记录保留为历史证据。
+
+需求协作已按用户要求追加可选设计阶段与按阶段分配，当前操作与门禁见 `docs/requirement-design-stage.md`。
+
+2026-10-10 用户授权的本地增量：一名总负责人、多名开发、多名设计及定向站内通知，见 `docs/requirement-collaboration.md`。开发契约仍为 `spec/openapi-development.yaml`；新增迁移不改历史发布快照。本地测试通过不构成线上部署事实。
 
 
 ## 项目命名
@@ -180,7 +195,7 @@ alembic upgrade head
 python -m app.cli.seed
 ```
 
-首次管理员登录并修改密码后，在「系统设置 → 系统与模块」创建至少一个业务系统及模块。反馈表单只显示已启用的选项；停用不会删除历史关联。修改现有系统或模块时需提交当前 `revision`，冲突返回 409。
+首次管理员登录并修改密码后，在「系统设置 → 业务系统」创建至少一个业务系统及模块。反馈表单只显示已启用的选项；停用不会删除历史关联。修改现有系统或模块时需提交当前 `revision`，冲突返回 409。
 
 启动：
 

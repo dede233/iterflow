@@ -1,0 +1,19 @@
+[Unit]
+Description=IterFlow retained test HTTPS 8444
+Requires=iterflow-test-stack.service firewalld.service
+Wants=network-online.target
+After=iterflow-test-stack.service firewalld.service network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/iterflow/acceptance/iterflow-acceptance-20261012-753ebd
+ExecStart=/usr/bin/python3 /opt/iterflow/acceptance/iterflow-acceptance-20261012-753ebd/autorecovery.py nginx
+ExecReload=/usr/bin/python3 /opt/iterflow/acceptance/iterflow-acceptance-20261012-753ebd/autorecovery.py reload
+KillSignal=SIGQUIT
+TimeoutStopSec=30
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,12 @@
+
+> iterflow-web@1.8.1 test
+> vitest run
+
+
+ RUN  v4.1.11 /Users/xiaweiyi/Developer/worktrees/iterflow/mysql-57-adaptation/frontend
+
+
+ Test Files  47 passed (47)
+      Tests  320 passed (320)
+   Start at  12:15:56
+   Duration  8.47s (transform 4.95s, setup 0ms, import 25.45s, tests 14.16s, environment 27.67s)

@@ -1,0 +1,53 @@
+{
+  "date": "2026-10-10",
+  "scope": "Local documentation synchronization only",
+  "implementation_base": "6f9e689364b599fdef326ca287ed5c5bd4a7b7a9",
+  "branch": "codex/requirement-collaboration",
+  "master": "a38081af9097f691c8289e9301951a0360ea0af7",
+  "contract_changes": {
+    "operation_descriptions": 7,
+    "shape_unchanged": true,
+    "historical_snapshots_unchanged": true
+  },
+  "backend_documentation_and_contract_tests": {
+    "passed": 20,
+    "skipped": 0,
+    "note": "Existing documentation authorization fixtures and runtime contract checks; no business database suite repeated for this prose-only change."
+  },
+  "frontend_documentation_tests": {
+    "passed": 4,
+    "files": 2
+  },
+  "type_generation_build_bundle": "PASS; largest JavaScript chunk 273.7 KiB",
+  "live_local_mysql_documentation": {
+    "result": "PASS",
+    "checks": [
+      "真实本地 MySQL 管理员文档读取 200",
+      "完成与发布共同门禁说明",
+      "已发布版本编辑范围说明",
+      "页面搜索及展开",
+      "下载与受保护 API 完全一致",
+      "390px 无横向溢出",
+      "匿名 401、普通成员 403",
+      "无页面异常"
+    ]
+  },
+  "artifact_review": {
+    "pages": 6,
+    "all_pages_visually_reviewed": true,
+    "font_issue_fixed": "Explicit task-local fontconfig with available Heiti SC and bundled LibreOffice; first rendering retained only as diagnostics.",
+    "sha256": {
+      "docs/user-manual.md": "0d577d5b5aeaac3564c4fb4e6f79e42378881e255d3713218a6194a0d10c9d87",
+      "data/deliverables/IterFlow操作手册-本地开发快照.docx": "a168c5ee978ba8d0bc90c1769c92aa5686ebbca279db6b7459f249f120462aad",
+      "data/deliverables/IterFlow操作手册-本地开发快照.pdf": "7b811bf96927de8144fa302ee7e425602f4ee4d36b0eb941fa532b692bab0f90"
+    }
+  },
+  "fresh_self_review": "Same agent review; not an independent external review. Compared prose against current services, default roles, state policies, frontend fields and completed local evidence; retained frozen history and corrected stale entry points.",
+  "not_performed": [
+    "Remote database/server operations",
+    "Account or business data cleanup",
+    "Deployment package build",
+    "New CI runs",
+    "Push/merge/tag/Release"
+  ]
+}

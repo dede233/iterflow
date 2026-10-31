@@ -1,0 +1,11 @@
+{
+  "status": "PASS",
+  "source": "198f831d67e8b475975915b1824d711b949fb998",
+  "base_url": "https://sx-kc.xyz:8444",
+  "tests": 6,
+  "failed": 0,
+  "skipped": 0,
+  "mocks": false,
+  "report_sha256": "2e9d99b08b58d3581ff34fd6e4a57c0f8edb86c51e89097bb6a8fd6239abcc01",
+  "coverage": "Three pure roles: UI create/edit/status/publish-check and five responsive widths; three unauthorized roles: UI and route rejection. Actual publish covered by live HTTP acceptance."
+}

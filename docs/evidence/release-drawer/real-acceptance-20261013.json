@@ -1,0 +1,29 @@
+{
+  "status": "PASS",
+  "version_id": 7,
+  "requirement_id": 8,
+  "feedback_id": 7,
+  "release_id": 5,
+  "roles": [
+    "ceshi002",
+    "ceshi003",
+    "ceshi012"
+  ],
+  "stale_revision": 409,
+  "duplicate_publish": 409,
+  "notification": true,
+  "audit": true,
+  "environment": "https://sx-kc.xyz:8444",
+  "web_source": "428d75c13baa2b7436c3c0bebd9ab5aef116f9c5",
+  "viewport_cases": [
+    375,
+    390,
+    768,
+    1280,
+    1440
+  ],
+  "self_and_no_permission": true,
+  "fixtures": false,
+  "case_set": "five viewport + permission + real business; affected cases rerun after assertion corrections",
+  "failed_attempts_retained": true
+}

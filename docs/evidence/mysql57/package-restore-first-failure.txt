@@ -1,0 +1,198 @@
+ Volume iterflow-mysql57-package-628aa1af857c_uploads Creating
+ Network iterflow-mysql57-package-628aa1af857c_default Creating
+ Network iterflow-mysql57-package-628aa1af857c_default Creating
+ Volume iterflow-mysql57-package-628aa1af857c_uploads Creating
+ Volume iterflow-mysql57-package-628aa1af857c_uploads Created
+ Volume iterflow-mysql57-package-628aa1af857c_uploads Created
+ Network iterflow-mysql57-package-628aa1af857c_default Created
+ Network iterflow-mysql57-package-628aa1af857c_default Created
+ Container iterflow-mysql57-package-628aa1af857c-migrate-run-3f5c31493da7 Creating
+ Container iterflow-mysql57-package-628aa1af857c-migrate-run-3f5c31493da7 Created
+{"version": "5.7.44", "vendor": "MySQL Community Server (GPL)", "table_count": 0, "scope": "read-only local/pre-deploy checks; full acceptance required separately"}
+ Container iterflow-mysql57-package-628aa1af857c-migrate-run-b00c2bd96a44 Creating
+ Container iterflow-mysql57-package-628aa1af857c-migrate-run-b00c2bd96a44 Created
+INFO  [alembic.runtime.migration] Context impl MySQLImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> mysql57_0001, MySQL 5.7 standalone baseline; PostgreSQL revisions remain immutable.
+ Container iterflow-mysql57-package-628aa1af857c-migrate-run-435558396128 Creating
+ Container iterflow-mysql57-package-628aa1af857c-migrate-run-435558396128 Created
+{"version": "5.7.44", "vendor": "MySQL Community Server (GPL)", "table_count": 22, "scope": "read-only local/pre-deploy checks; full acceptance required separately"}
+ Container iterflow-mysql57-package-628aa1af857c-seed-run-dcb2a7820172 Creating
+ Container iterflow-mysql57-package-628aa1af857c-seed-run-dcb2a7820172 Created
+seed complete, admin=pkg-admin
+ Volume iterflow-mysql57-package-628aa1af857c_redisdata Creating
+ Volume iterflow-mysql57-package-628aa1af857c_redisdata Creating
+ Volume iterflow-mysql57-package-628aa1af857c_redisdata Created
+ Volume iterflow-mysql57-package-628aa1af857c_redisdata Created
+ Container iterflow-mysql57-package-628aa1af857c-redis-1 Creating
+ Container iterflow-mysql57-package-628aa1af857c-redis-1 Created
+ Container iterflow-mysql57-package-628aa1af857c-api-1 Creating
+ Container iterflow-mysql57-package-628aa1af857c-api-1 Created
+ Container iterflow-mysql57-package-628aa1af857c-web-1 Creating
+ Container iterflow-mysql57-package-628aa1af857c-web-1 Created
+ Container iterflow-mysql57-package-628aa1af857c-redis-1 Starting
+ Container iterflow-mysql57-package-628aa1af857c-redis-1 Started
+ Container iterflow-mysql57-package-628aa1af857c-redis-1 Waiting
+ Container iterflow-mysql57-package-628aa1af857c-redis-1 Healthy
+ Container iterflow-mysql57-package-628aa1af857c-api-1 Starting
+ Container iterflow-mysql57-package-628aa1af857c-api-1 Started
+ Container iterflow-mysql57-package-628aa1af857c-api-1 Waiting
+ Container iterflow-mysql57-package-628aa1af857c-api-1 Healthy
+ Container iterflow-mysql57-package-628aa1af857c-web-1 Starting
+ Container iterflow-mysql57-package-628aa1af857c-web-1 Started
+ Container iterflow-mysql57-package-628aa1af857c-web-1 Waiting
+ Container iterflow-mysql57-package-628aa1af857c-redis-1 Waiting
+ Container iterflow-mysql57-package-628aa1af857c-api-1 Waiting
+ Container iterflow-mysql57-package-628aa1af857c-redis-1 Healthy
+ Container iterflow-mysql57-package-628aa1af857c-api-1 Healthy
+ Container iterflow-mysql57-package-628aa1af857c-web-1 Healthy
+ Container iterflow-mysql57-package-628aa1af857c-web-1 Stopping
+ Container iterflow-mysql57-package-628aa1af857c-web-1 Stopped
+ Container iterflow-mysql57-package-628aa1af857c-api-1 Stopping
+ Container iterflow-mysql57-package-628aa1af857c-api-1 Stopped
+ Container iterflow-mysql57-package-628aa1af857c-redis-1 Restarting
+ Container iterflow-mysql57-package-628aa1af857c-redis-1 Started
+ Container iterflow-mysql57-package-628aa1af857c-redis-1 Running
+ Container iterflow-mysql57-package-628aa1af857c-redis-1 Waiting
+ Container iterflow-mysql57-package-628aa1af857c-redis-1 Healthy
+ Container iterflow-mysql57-package-628aa1af857c-api-1 Starting
+ Container iterflow-mysql57-package-628aa1af857c-api-1 Started
+ Container iterflow-mysql57-package-628aa1af857c-api-1 Waiting
+ Container iterflow-mysql57-package-628aa1af857c-api-1 Healthy
+ Container iterflow-mysql57-package-628aa1af857c-web-1 Starting
+ Container iterflow-mysql57-package-628aa1af857c-web-1 Started
+ Container iterflow-mysql57-package-628aa1af857c-web-1 Waiting
+ Container iterflow-mysql57-package-628aa1af857c-redis-1 Waiting
+ Container iterflow-mysql57-package-628aa1af857c-api-1 Waiting
+ Container iterflow-mysql57-package-628aa1af857c-api-1 Healthy
+ Container iterflow-mysql57-package-628aa1af857c-redis-1 Healthy
+ Container iterflow-mysql57-package-628aa1af857c-web-1 Healthy
+ Container iterflow-mysql57-package-628aa1af857c-web-1 Stopping
+ Container iterflow-mysql57-package-628aa1af857c-web-1 Stopped
+ Container iterflow-mysql57-package-628aa1af857c-api-1 Stopping
+ Container iterflow-mysql57-package-628aa1af857c-api-1 Stopped
+ Container iterflow-mysql57-package-628aa1af857c-redis-1 Restarting
+ Container iterflow-mysql57-package-628aa1af857c-redis-1 Started
+ Container iterflow-mysql57-package-628aa1af857c-redis-1 Running
+ Container iterflow-mysql57-package-628aa1af857c-redis-1 Waiting
+ Container iterflow-mysql57-package-628aa1af857c-redis-1 Healthy
+ Container iterflow-mysql57-package-628aa1af857c-api-1 Starting
+ Container iterflow-mysql57-package-628aa1af857c-api-1 Started
+ Container iterflow-mysql57-package-628aa1af857c-api-1 Waiting
+ Container iterflow-mysql57-package-628aa1af857c-api-1 Healthy
+ Container iterflow-mysql57-package-628aa1af857c-web-1 Starting
+ Container iterflow-mysql57-package-628aa1af857c-web-1 Started
+ Container iterflow-mysql57-package-628aa1af857c-web-1 Waiting
+ Container iterflow-mysql57-package-628aa1af857c-redis-1 Waiting
+ Container iterflow-mysql57-package-628aa1af857c-api-1 Waiting
+ Container iterflow-mysql57-package-628aa1af857c-api-1 Healthy
+ Container iterflow-mysql57-package-628aa1af857c-redis-1 Healthy
+ Container iterflow-mysql57-package-628aa1af857c-web-1 Healthy
+ Container iterflow-mysql57-package-628aa1af857c-web-1 Stopping
+ Container iterflow-mysql57-package-628aa1af857c-web-1 Stopped
+ Container iterflow-mysql57-package-628aa1af857c-api-1 Stopping
+ Container iterflow-mysql57-package-628aa1af857c-api-1 Stopped
+ Container iterflow-mysql57-package-628aa1af857c-redis-1 Restarting
+ Container iterflow-mysql57-package-628aa1af857c-redis-1 Started
+ Container iterflow-mysql57-package-628aa1af857c-redis-1 Running
+ Container iterflow-mysql57-package-628aa1af857c-redis-1 Waiting
+ Container iterflow-mysql57-package-628aa1af857c-redis-1 Healthy
+ Container iterflow-mysql57-package-628aa1af857c-api-1 Starting
+ Container iterflow-mysql57-package-628aa1af857c-api-1 Started
+ Container iterflow-mysql57-package-628aa1af857c-api-1 Waiting
+ Container iterflow-mysql57-package-628aa1af857c-api-1 Healthy
+ Container iterflow-mysql57-package-628aa1af857c-web-1 Starting
+ Container iterflow-mysql57-package-628aa1af857c-web-1 Started
+ Container iterflow-mysql57-package-628aa1af857c-redis-1 Waiting
+ Container iterflow-mysql57-package-628aa1af857c-api-1 Waiting
+ Container iterflow-mysql57-package-628aa1af857c-web-1 Waiting
+ Container iterflow-mysql57-package-628aa1af857c-redis-1 Healthy
+ Container iterflow-mysql57-package-628aa1af857c-api-1 Healthy
+ Container iterflow-mysql57-package-628aa1af857c-web-1 Healthy
+ Container iterflow-mysql57-package-628aa1af857c-api-1 Stopping
+ Container iterflow-mysql57-package-628aa1af857c-api-1 Stopped
+ Container iterflow-mysql57-package-628aa1af857c-client-run-fa473b3f46f4 Creating
+ Container iterflow-mysql57-package-628aa1af857c-client-run-fa473b3f46f4 Created
+ Container iterflow-mysql57-package-628aa1af857c-storage-backup-run-ceae3546dcd6 Creating
+ Container iterflow-mysql57-package-628aa1af857c-storage-backup-run-ceae3546dcd6 Created
+ Container iterflow-mysql57-package-628aa1af857c-redis-1 Waiting
+ Container iterflow-mysql57-package-628aa1af857c-redis-1 Healthy
+ Container iterflow-mysql57-package-628aa1af857c-api-1 Starting
+ Container iterflow-mysql57-package-628aa1af857c-api-1 Started
+ Container iterflow-mysql57-package-628aa1af857c-web-1 Running
+ Container iterflow-mysql57-package-628aa1af857c-redis-1 Running
+ Container iterflow-mysql57-package-628aa1af857c-api-1 Running
+ Container iterflow-mysql57-package-628aa1af857c-redis-1 Waiting
+ Container iterflow-mysql57-package-628aa1af857c-redis-1 Healthy
+ Container iterflow-mysql57-package-628aa1af857c-api-1 Waiting
+ Container iterflow-mysql57-package-628aa1af857c-api-1 Healthy
+ Container iterflow-mysql57-package-628aa1af857c-web-1 Waiting
+ Container iterflow-mysql57-package-628aa1af857c-redis-1 Waiting
+ Container iterflow-mysql57-package-628aa1af857c-api-1 Waiting
+ Container iterflow-mysql57-package-628aa1af857c-api-1 Healthy
+ Container iterflow-mysql57-package-628aa1af857c-web-1 Healthy
+ Container iterflow-mysql57-package-628aa1af857c-redis-1 Healthy
+ Container iterflow-mysql57-package-628aa1af857c-web-1 Stopping
+ Container iterflow-mysql57-package-628aa1af857c-web-1 Stopped
+ Container iterflow-mysql57-package-628aa1af857c-api-1 Stopping
+ Container iterflow-mysql57-package-628aa1af857c-api-1 Stopped
+ Network iterflow-mysql57-package-628aa1af857c-restore_default Creating
+ Network iterflow-mysql57-package-628aa1af857c-restore_default Creating
+ Network iterflow-mysql57-package-628aa1af857c-restore_default Created
+ Network iterflow-mysql57-package-628aa1af857c-restore_default Created
+ Container iterflow-mysql57-package-628aa1af857c-restore-client-run-98778b7d6bd3 Creating
+ Container iterflow-mysql57-package-628aa1af857c-restore-client-run-98778b7d6bd3 Created
+ Volume iterflow-mysql57-package-628aa1af857c-restore_uploads Creating
+ Volume iterflow-mysql57-package-628aa1af857c-restore_uploads Creating
+ Volume iterflow-mysql57-package-628aa1af857c-restore_uploads Created
+ Volume iterflow-mysql57-package-628aa1af857c-restore_uploads Created
+ Container iterflow-mysql57-package-628aa1af857c-restore-storage-backup-run-0adc80a63b4e Creating
+ Container iterflow-mysql57-package-628aa1af857c-restore-storage-backup-run-0adc80a63b4e Created
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/local/lib/python3.12/tarfile.py", line 2323, in extractall
+    self._extract_one(tarinfo, path, set_attrs=not tarinfo.isdir(),
+  File "/usr/local/lib/python3.12/tarfile.py", line 2432, in _extract_one
+    self._handle_fatal_error(e)
+  File "/usr/local/lib/python3.12/tarfile.py", line 2426, in _extract_one
+    self._extract_member(tarinfo, os.path.join(path, tarinfo.name),
+  File "/usr/local/lib/python3.12/tarfile.py", line 2517, in _extract_member
+    self.makedir(tarinfo, targetpath)
+  File "/usr/local/lib/python3.12/tarfile.py", line 2549, in makedir
+    os.mkdir(targetpath)
+OSError: [Errno 30] Read-only file system: '/app/data/uploads/uploads'
+
+ Network iterflow-mysql57-package-628aa1af857c-restore_default Removing
+ Volume iterflow-mysql57-package-628aa1af857c-restore_uploads Removing
+ Volume iterflow-mysql57-package-628aa1af857c-restore_uploads Removed
+ Network iterflow-mysql57-package-628aa1af857c-restore_default Removed
+ Container iterflow-mysql57-package-628aa1af857c-web-1 Stopping
+ Container iterflow-mysql57-package-628aa1af857c-web-1 Stopped
+ Container iterflow-mysql57-package-628aa1af857c-web-1 Removing
+ Container iterflow-mysql57-package-628aa1af857c-web-1 Removed
+ Container iterflow-mysql57-package-628aa1af857c-api-1 Stopping
+ Container iterflow-mysql57-package-628aa1af857c-api-1 Stopped
+ Container iterflow-mysql57-package-628aa1af857c-api-1 Removing
+ Container iterflow-mysql57-package-628aa1af857c-api-1 Removed
+ Container iterflow-mysql57-package-628aa1af857c-redis-1 Stopping
+ Container iterflow-mysql57-package-628aa1af857c-redis-1 Stopped
+ Container iterflow-mysql57-package-628aa1af857c-redis-1 Removing
+ Container iterflow-mysql57-package-628aa1af857c-redis-1 Removed
+ Volume iterflow-mysql57-package-628aa1af857c_redisdata Removing
+ Volume iterflow-mysql57-package-628aa1af857c_uploads Removing
+ Network iterflow-mysql57-package-628aa1af857c_default Removing
+ Volume iterflow-mysql57-package-628aa1af857c_redisdata Removed
+ Volume iterflow-mysql57-package-628aa1af857c_uploads Removed
+ Network iterflow-mysql57-package-628aa1af857c_default Removed
+Traceback (most recent call last):
+  File "/Users/xiaweiyi/Developer/worktrees/iterflow/mysql-57-adaptation/tools/smoke-mysql-package.py", line 573, in <module>
+    restored_proof = restore_package(
+                     ^^^^^^^^^^^^^^^^
+  File "/Users/xiaweiyi/Developer/worktrees/iterflow/mysql-57-adaptation/tools/smoke-mysql-package.py", line 150, in restore_package
+    dc(
+  File "/Users/xiaweiyi/Developer/worktrees/iterflow/mysql-57-adaptation/tools/smoke-mysql-package.py", line 124, in dc
+    return subprocess.run([*compose, *arguments], check=True, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Applications/ServBay/package/python/3.12/3.12.14/Python.framework/Versions/3.12/lib/python3.12/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['docker', 'compose', '-p', 'iterflow-mysql57-package-628aa1af857c-restore', '--env-file', '/Users/xiaweiyi/Developer/worktrees/iterflow/mysql-57-adaptation/data/mysql57-package-smoke/isolated-xiu1yp30/restore/images.env', '-f', '/Users/xiaweiyi/Developer/worktrees/iterflow/mysql-57-adaptation/data/mysql57-package-smoke/isolated-xiu1yp30/restore/compose.yml', '-f', '/Users/xiaweiyi/Developer/worktrees/iterflow/mysql-57-adaptation/data/mysql57-package-smoke/isolated-xiu1yp30/restore/test-network.yml', '--profile', 'ops', 'run', '--rm', '-T', '--entrypoint', 'python', '-v', 'iterflow-mysql57-package-628aa1af857c-restore_uploads:/app/data/uploads', 'storage-backup', '-c', "import sys,tarfile; tarfile.open(fileobj=sys.stdin.buffer,mode='r|').extractall('/app/data',filter='data')"]' returned non-zero exit status 1.

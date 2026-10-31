@@ -1,0 +1,10 @@
+# A separate protected backup configuration, mode 600, ignored by Git/package.
+[client]
+host=
+port=3306
+user=
+password=
+default-character-set=utf8mb4
+# If required, mount the administrator-provided CA in ./tls and enable:
+# ssl-mode=VERIFY_IDENTITY
+# ssl-ca=/run/iterflow/tls/ca.pem

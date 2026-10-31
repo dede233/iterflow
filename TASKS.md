@@ -15,6 +15,41 @@
 范围见 `docs/collaboration-workflow-improvement-plan.md`；实际验证记录见
 `docs/collaboration-workflow-execution-log.md`。以上勾选只代表已验证结果，
 不以实现文件存在代替测试通过。以下保留历史发布任务。
+2026-10-23 用户确认开发人员、产品负责人、研发负责人均需完整版本流程权限。独立分支 `codex/version-role-permissions`，范围为默认角色授权、双数据库追加迁移、回归及当前文档，详见 [版本角色权限](docs/version-role-permissions.md)。保留原 DataScope、发布事务、全员开发确认、revision 与审计；已合并并按测试先行顺序部署至 8444/8443，见 [部署记录](docs/version-role-deployment-2026-10-23.md)。
+
+## 当前开发文档
+
+2026-10-13 本地导航文案：将“系统与模块”统一为四字“业务系统”，同步PC/移动入口、页面主标题及开发文档。分支 `codex/business-system-label`；构建/类型检查、11项导航测试和4项浏览器回归通过（含五种屏宽），首次同名标题选择器失败已修正为一级主标题并完整重跑。Fresh Self-Review确认仅文案及既有测试定位调整，无路由、权限、API或数据库变更；本轮未合并master或部署服务器。
+
+2026-10-13 发布记录与版本详情交互增量，见 [抽屉操作与本地验证](docs/release-detail-drawer.md)。
+
+- [x] 补齐发布记录/版本双向抽屉、移动全屏、返回上下文和前端回归。
+- [x] 8444多账号实机验收、master八项CI、正式8443升级及两环境Web重启验证；中文记录及手册已同步。
+
+2026-10-12 用户确认：[测试环境保留与更新流程](docs/test-environment-workflow.md)。8444继续保留，后续先测试验收再更新8443。
+
+- [x] 记录环境隔离、保留保护及测试先行的部署规则。
+- [x] 2026-10-12 配置测试环境开机恢复，完成四服务冷启动、Nginx异常恢复和数据保全演练，见 [中文记录](docs/master-merge-and-autorecovery-2026-10-12.md)。
+- [ ] 配置测试环境定期备份；本次未执行。
+
+2026-10-11 协作版本文档入口：[用户操作手册](docs/user-manual.md)、[接口集成指南](docs/api-guide.md)、[全员开发确认与验收](docs/development-completion.md)、[线上升级记录](docs/collaboration-online-upgrade-2026-10-11.md)、[主分支合并记录](docs/master-merge-2026-10-11.md)。当前契约为 `spec/openapi-development.yaml`；按阶段分工、可选设计、完成与发布全员确认门禁已部署 sx-kc.xyz:8443，实际源 commit 为 `2b37509`。随后按用户授权合入 master；本次未创建新的正式 tag/Release，已发布历史契约和下述发布证据保持不变。
+
+当前追加[全员开发完成发布门禁](docs/development-completion.md)，该文档包含操作与验收；前述阶段记录保留为历史证据。
+
+## 2026-10-10 需求开发、设计协作（本地）
+
+后续用户确认设计可按需跳过，追加 DESIGNING 与阶段分配；当前增量见 `docs/requirement-design-stage.md`，本段为首轮本地记录；后续线上升级见顶部入口。
+
+用户确认保留一名总负责人，可绑定多名开发、多名设计；本轮仅本地实现与验收，范围见 `docs/requirement-collaboration.md`。以下增量不改变历史发布范围记录。
+
+- [x] 开发契约、分工关联、两类基础角色及双数据库追加迁移。
+- [x] revision CAS、SELF/RBAC、事务审计和定向站内通知。
+- [x] 需求详情分配界面与 PC/Tablet/Mobile 验收。
+- [x] 真实 MySQL 5.7、PostgreSQL 回归、迁移和独立备份恢复。
+- [x] Fresh Self-Review 与操作说明。
+- [x] 2026-10-11 Branch 八项 CI、新 amd64 包、线上追加迁移与双份备份验收。
+- [x] 2026-10-11 最新分支八项 CI 全通过后，no-ff 合并 29 个提交并进行文档收口；最终 master CI 以合并记录中的 Checks 入口实际结果为准。
+- [ ] 本轮未执行外部独立审查；Fresh Self-Review 为同一 Agent 复查。
 
 > 本次正式发布目标为 `v1.8.1`，Hotfix 外部独立终审 PASS，用户已授权 Final Release + Cloudflare Preview Resume。正式发布成立条件为新的 Release Branch / Final Master 六项 CI PASS、annotated v1.8.1 tag 与正式 GitHub Release；发布事实以最终 master commit、标签和 Release 为准，不提前记录 tag SHA。发布 base：`df9e1ba1a5ee1a4c763098d8e180250f409bedd3`；包、FastAPI、health、Frontend 与当前契约元数据同步 1.8.1，当前契约 `spec/openapi-v1.8.1.yaml`，API shape 不变。v1.8.0 及更早正式标签/Release/契约不可变；本轮只发布已审查的共享 PageHeader 平板响应式修复，随后将正式版本合入独立 Preview 并恢复验收，不部署 Production。证据见 `docs/v1.8.1-release-readiness.md`。
 

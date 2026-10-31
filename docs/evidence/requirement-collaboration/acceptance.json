@@ -1,0 +1,71 @@
+{
+  "date": "2026-10-10",
+  "branch": "codex/requirement-collaboration",
+  "implementation_base": "197df96720aac291c079c561faa9a40dad822ea2",
+  "scope": "local-only requirement owner + multiple developers/designers and station notifications",
+  "mysql": {
+    "version": "5.7.44-log",
+    "architecture": "linux/amd64",
+    "mac_runtime": "Colima x86_64 QEMU",
+    "profile": "isolated portable OFF/OFF binlogged",
+    "port": 57358,
+    "full": {
+      "passed": 56,
+      "skipped": 0
+    },
+    "final_notification_change": {
+      "passed": 8,
+      "deselected": 48,
+      "skipped": 0
+    }
+  },
+  "postgres": {
+    "full": {
+      "passed": 383,
+      "skipped": 1
+    },
+    "skip_reason": "optional real S3 endpoint not configured; local storage acceptance passed",
+    "required_real_pg": {
+      "passed": 15,
+      "skipped": 0
+    },
+    "final_notification_change": {
+      "passed": 8,
+      "skipped": 0
+    },
+    "existing_upgrade_and_alembic_check": "PASS"
+  },
+  "frontend": {
+    "passed": 325,
+    "files": 48,
+    "api_types": "PASS",
+    "build": "PASS",
+    "bundle_gate": "PASS",
+    "largest_js_kib": 273.7
+  },
+  "static": {
+    "ruff": "PASS",
+    "format": "PASS",
+    "mypy_files": 99,
+    "compile": "PASS"
+  },
+  "browser": {
+    "result": "PASS",
+    "checks": [
+      "Real MySQL UI login: PM, developer, designer, unrelated member",
+      "Single owner + two developers + two designers persisted",
+      "Developer and designer SELF reads, editor hidden",
+      "Developer state change and designer targeted notification",
+      "Unrelated member forbidden",
+      "Desktop 1280, tablet 768, mobile 390; no horizontal overflow; mobile fullscreen"
+    ],
+    "pageerrors": []
+  },
+  "fresh_self_review": "PASS, same agent; not independent review",
+  "published_history_modified": false,
+  "master_modified": false,
+  "remote_db_or_server_operated": false,
+  "ci": "configured branch trigger, not pushed or executed",
+  "new_amd64_deployment_package": "not built or verified",
+  "deployment_status": "not deployed; CI, package validation and protected pre-upgrade backup required"
+}

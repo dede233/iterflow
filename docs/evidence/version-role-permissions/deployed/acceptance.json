@@ -1,0 +1,53 @@
+{
+  "status": "PASS",
+  "source": "198f831d67e8b475975915b1824d711b949fb998",
+  "database": "iterflow_acceptance",
+  "transport": "live HTTP via deployed Web/API; no mocks",
+  "checks": [
+    "三类纯角色账号与首次改密、原数据范围",
+    "成员、设计、测试角色不能创建或发布版本",
+    "DEVELOPER：创建编辑、安排迁移移出重加、历史、状态、确认门禁、CAS、发布、通知审计",
+    "PRODUCT_MANAGER：创建编辑、安排迁移移出重加、历史、状态、确认门禁、CAS、发布、通知审计",
+    "DEVELOPMENT_LEAD：创建编辑、安排迁移移出重加、历史、状态、确认门禁、CAS、发布、通知审计"
+  ],
+  "accounts": [
+    {
+      "username": "ceshi014",
+      "id": 15,
+      "role": "DEVELOPER"
+    },
+    {
+      "username": "ceshi015",
+      "id": 16,
+      "role": "PRODUCT_MANAGER"
+    },
+    {
+      "username": "ceshi016",
+      "id": 17,
+      "role": "DEVELOPMENT_LEAD"
+    }
+  ],
+  "objects": [
+    {
+      "role": "DEVELOPER",
+      "username": "ceshi014",
+      "version_id": 11,
+      "requirement_id": 9,
+      "feedback_id": 9
+    },
+    {
+      "role": "PRODUCT_MANAGER",
+      "username": "ceshi015",
+      "version_id": 13,
+      "requirement_id": 10,
+      "feedback_id": 10
+    },
+    {
+      "role": "DEVELOPMENT_LEAD",
+      "username": "ceshi016",
+      "version_id": 15,
+      "requirement_id": 11,
+      "feedback_id": 11
+    }
+  ]
+}

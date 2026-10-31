@@ -197,3 +197,7 @@ CI 的 push 过滤只有 master、phase/**、fix/**，因此使用现有 workflo
 本节记录已经完成的实现提交及其远端证据。提交/推送本次文档收口后，仍需对分支最新 SHA 再运行六项 CI；最终分支检查以 [CI 工作流该分支的实际 Run](https://github.com/dede233/iterflow/actions/workflows/ci.yml?query=branch%3Acodex%2Fcollaboration-workflow) 与最终交付消息中的 SHA/Run 为准，不预写尚未发生的 PASS。
 
 推送目标仅为 GitHub origin 的当前功能分支。核验 origin/master 仍为 `10f6bfa6410c7836d7d43e402a175d56ad9577c7`；未推送 master、未合并、未创建 PR/tag/Release、未部署、未修改真实数据库、未发真实邮件。CI 使用一次性 runner 的数据库、S3、volume 和测试账号。临时本地 HTTP 验证服务已停止，工作区代码修复和所有记录均纳入当前分支。
+
+## master 合并整合
+
+用户授权合并并推送 master；确认 master 为冻结的 10f6bfa。发现源分支与主线存在双数据库和旧逐人确认规则差异，用户明确选择新验收方案后继续整合。兼容取舍、迁移衔接、测试和远端结果集中记录于 `docs/collaboration-workflow-master-merge.md`，此处不预先宣告合并完成。

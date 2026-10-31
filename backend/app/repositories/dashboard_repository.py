@@ -12,6 +12,7 @@ from app.models.enums import (
     RequirementStatus,
     VersionStatus,
 )
+from app.repositories.requirement_repository import RequirementRepository
 
 
 class DashboardReleaseRecord(NamedTuple):
@@ -36,6 +37,7 @@ class DashboardRepository:
         {
             RequirementStatus.CONFIRMED,
             RequirementStatus.PLANNED,
+            RequirementStatus.DESIGNING,
             RequirementStatus.DEVELOPING,
             RequirementStatus.TESTING,
         }
@@ -60,7 +62,7 @@ class DashboardRepository:
     def _requirement_scope(user_id: int, data_scope: DataScope) -> list[ColumnElement[bool]]:
         if data_scope is DataScope.ALL:
             return []
-        return [or_(Requirement.owner_id == user_id, Requirement.created_by == user_id)]
+        return [RequirementRepository.self_criterion(user_id)]
 
     @staticmethod
     def _version_scope(user_id: int, data_scope: DataScope) -> list[ColumnElement[bool]]:

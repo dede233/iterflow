@@ -1,0 +1,48 @@
+{
+  "mysql57": {
+    "version": "5.7.44-log",
+    "profile": "portable",
+    "architecture": "amd64 via Colima x86_64 QEMU",
+    "first_run": {
+      "passed": 63,
+      "failed": 2,
+      "seconds": 578.89,
+      "failures": [
+        {
+          "test": "test_mysql_restart_and_isolated_backup_restore",
+          "cause": "Docker context default colima could not find isolated container; no restore executed"
+        },
+        {
+          "test": "test_mysql_upgrade_legacy_0001_preserves_full_keys",
+          "cause": "independent ON-profile MySQL 57357 was not started"
+        }
+      ]
+    },
+    "retry": {
+      "passed": 2,
+      "seconds": 78.05,
+      "command": "DOCKER_CONTEXT=colima-iterflow-mysql57 .venv/bin/python tools/run-mysql-tests.py --portable -q -k \"restart_and_isolated_backup_restore or upgrade_legacy_0001_preserves_full_keys\""
+    },
+    "necessary_cases_passed": 65,
+    "skipped": 0
+  },
+  "postgresql": {
+    "version": "17.7",
+    "passed": 15,
+    "seconds": 257.68
+  },
+  "api_contract_docs": {
+    "passed": 56
+  },
+  "frontend": {
+    "files": 48,
+    "passed": 336,
+    "types_build_bundle": "PASS"
+  },
+  "ruff_format_mypy": "PASS",
+  "fresh_self_review": "PASS by implementation agent; not independent review",
+  "remote_ci": "not run",
+  "production_deployment": "not performed",
+  "historical_contracts": "unchanged",
+  "migration_seed_permissions": "no changes"
+}

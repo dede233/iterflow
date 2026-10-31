@@ -1,0 +1,10 @@
+{
+  "status": "PASS",
+  "pages": 8,
+  "all_pages_visually_inspected": true,
+  "runtime": "bundled LibreOffice and Poppler; bundled Python python-docx",
+  "east_asia_font": "Arial Unicode MS",
+  "docx_sha256": "6e82c2a0bacf292ad03db803add6dadcae3a21395867f6b79084a823a1909b52",
+  "pdf_sha256": "4e0344c3626f13722cb57c9ab2a42acb108ce18250c284caaa3e670039eb23f7",
+  "initial_render_failed": "Chinese glyphs blank under Heiti SC; switched font and explicit local fontconfig; rerendered all pages"
+}

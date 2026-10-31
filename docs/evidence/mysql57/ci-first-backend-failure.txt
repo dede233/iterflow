@@ -1,0 +1,868 @@
+﻿2026-10-09T16:49:22.2557776Z Current runner version: '2.337.0'
+2026-10-09T16:49:22.2582296Z ##[group]Runner Image Provisioner
+2026-10-09T16:49:22.2583184Z Hosted Compute Agent
+2026-10-09T16:49:22.2583725Z Version: 20261002.596
+2026-10-09T16:49:22.2584255Z Commit: c3d12f3313a95f25162a1503be624f3b0617f8c0
+2026-10-09T16:49:22.2584900Z Build Date: 2026-10-02T22:28:27Z
+2026-10-09T16:49:22.2585470Z Worker ID: {f01822c3-4654-482f-9275-4286338dfdac}
+2026-10-09T16:49:22.2586092Z Region: northcentralus
+2026-10-09T16:49:22.2586625Z Cloud: Azure
+2026-10-09T16:49:22.2587103Z ##[endgroup]
+2026-10-09T16:49:22.2588264Z ##[group]Operating System
+2026-10-09T16:49:22.2588776Z Ubuntu
+2026-10-09T16:49:22.2589202Z 24.04.5
+2026-10-09T16:49:22.2589739Z LTS
+2026-10-09T16:49:22.2590197Z ##[endgroup]
+2026-10-09T16:49:22.2590822Z ##[group]Runner Image
+2026-10-09T16:49:22.2591312Z Image: ubuntu-24.04
+2026-10-09T16:49:22.2591774Z Version: 20261004.327.1
+2026-10-09T16:49:22.2592907Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261004.327/images/ubuntu/Ubuntu2404-Readme.md
+2026-10-09T16:49:22.2594196Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261004.327
+2026-10-09T16:49:22.2594974Z ##[endgroup]
+2026-10-09T16:49:22.2596009Z ##[group]GITHUB_TOKEN Permissions
+2026-10-09T16:49:22.2598074Z Contents: read
+2026-10-09T16:49:22.2598594Z Metadata: read
+2026-10-09T16:49:22.2599139Z Packages: read
+2026-10-09T16:49:22.2599610Z ##[endgroup]
+2026-10-09T16:49:22.2601611Z Secret source: Actions
+2026-10-09T16:49:22.2602390Z Cache mode: write
+2026-10-09T16:49:22.2603269Z Prepare workflow directory
+2026-10-09T16:49:22.2949427Z Prepare all required actions
+2026-10-09T16:49:22.2988122Z Getting action download info
+2026-10-09T16:49:22.5243709Z Download action repository 'actions/checkout@v4' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+2026-10-09T16:49:22.6712888Z Download action repository 'actions/setup-python@v5' (SHA:a26af69be951a213d495a4c3e4e4022e16d87065)
+2026-10-09T16:49:23.3305801Z Complete job name: backend
+2026-10-09T16:49:23.3749265Z ##[group]Checking docker version
+2026-10-09T16:49:23.3759833Z ##[command]/usr/bin/docker version --format '{{.Server.APIVersion}}'
+2026-10-09T16:49:23.4592976Z '1.48'
+2026-10-09T16:49:23.4606796Z Docker daemon API version: '1.48'
+2026-10-09T16:49:23.4607471Z ##[command]/usr/bin/docker version --format '{{.Client.APIVersion}}'
+2026-10-09T16:49:23.4735616Z '1.48'
+2026-10-09T16:49:23.4746302Z Docker client API version: '1.48'
+2026-10-09T16:49:23.4750991Z ##[endgroup]
+2026-10-09T16:49:23.4753047Z ##[group]Clean up resources from previous jobs
+2026-10-09T16:49:23.4757720Z ##[command]/usr/bin/docker ps --all --quiet --no-trunc --filter "label=d16684"
+2026-10-09T16:49:23.4875019Z ##[command]/usr/bin/docker network prune --force --filter "label=d16684"
+2026-10-09T16:49:23.4980525Z ##[endgroup]
+2026-10-09T16:49:23.4981007Z ##[group]Create local container network
+2026-10-09T16:49:23.4988756Z ##[command]/usr/bin/docker network create --label d16684 github_network_d29141f6334843d980e278966b16c638
+2026-10-09T16:49:23.6153358Z bf84f84c4ace3a2250d126c1b63b75237eac8ddb66f4952d444fe26ac863953b
+2026-10-09T16:49:23.6171258Z ##[endgroup]
+2026-10-09T16:49:23.6192307Z ##[group]Starting postgres service container
+2026-10-09T16:49:23.6208736Z ##[command]/usr/bin/docker pull postgres:17.7-alpine3.22
+2026-10-09T16:49:24.0537892Z 17.7-alpine3.22: Pulling from library/postgres
+2026-10-09T16:49:24.7791994Z d49a2dee86fb: Pulling fs layer
+2026-10-09T16:49:24.7793952Z 85aec37af180: Pulling fs layer
+2026-10-09T16:49:24.7795653Z 2201b8e8a61e: Pulling fs layer
+2026-10-09T16:49:24.7797110Z f26cc44de396: Pulling fs layer
+2026-10-09T16:49:24.7798563Z 9cebd94b171b: Pulling fs layer
+2026-10-09T16:49:24.7800000Z d27c9d73697f: Pulling fs layer
+2026-10-09T16:49:24.7801685Z 2dc121384798: Pulling fs layer
+2026-10-09T16:49:24.7802887Z c5fa2ad95c7a: Pulling fs layer
+2026-10-09T16:49:24.7803962Z 93300567c591: Pulling fs layer
+2026-10-09T16:49:24.7805027Z a99f8849fd36: Pulling fs layer
+2026-10-09T16:49:24.7806108Z d27c9d73697f: Waiting
+2026-10-09T16:49:24.7807416Z 2dc121384798: Waiting
+2026-10-09T16:49:24.7808454Z c5fa2ad95c7a: Waiting
+2026-10-09T16:49:24.7809665Z 93300567c591: Waiting
+2026-10-09T16:49:24.7811332Z a99f8849fd36: Waiting
+2026-10-09T16:49:24.7812715Z f26cc44de396: Waiting
+2026-10-09T16:49:24.7813816Z 9cebd94b171b: Waiting
+2026-10-09T16:49:24.8598624Z 85aec37af180: Verifying Checksum
+2026-10-09T16:49:24.8600242Z 85aec37af180: Download complete
+2026-10-09T16:49:24.8785038Z 2201b8e8a61e: Verifying Checksum
+2026-10-09T16:49:24.8786715Z 2201b8e8a61e: Download complete
+2026-10-09T16:49:24.8916560Z d49a2dee86fb: Verifying Checksum
+2026-10-09T16:49:24.8918693Z d49a2dee86fb: Download complete
+2026-10-09T16:49:24.9542945Z f26cc44de396: Verifying Checksum
+2026-10-09T16:49:24.9546216Z f26cc44de396: Download complete
+2026-10-09T16:49:24.9755985Z d27c9d73697f: Verifying Checksum
+2026-10-09T16:49:24.9757263Z d27c9d73697f: Download complete
+2026-10-09T16:49:25.0463131Z 2dc121384798: Verifying Checksum
+2026-10-09T16:49:25.0465513Z 2dc121384798: Download complete
+2026-10-09T16:49:25.0568550Z c5fa2ad95c7a: Verifying Checksum
+2026-10-09T16:49:25.0571627Z c5fa2ad95c7a: Download complete
+2026-10-09T16:49:25.0873888Z d49a2dee86fb: Pull complete
+2026-10-09T16:49:25.1183484Z 93300567c591: Verifying Checksum
+2026-10-09T16:49:25.1184914Z 93300567c591: Download complete
+2026-10-09T16:49:25.1310618Z a99f8849fd36: Verifying Checksum
+2026-10-09T16:49:25.1311946Z a99f8849fd36: Download complete
+2026-10-09T16:49:25.2674868Z 9cebd94b171b: Verifying Checksum
+2026-10-09T16:49:25.2676126Z 9cebd94b171b: Download complete
+2026-10-09T16:49:33.4530636Z 85aec37af180: Pull complete
+2026-10-09T16:49:33.4963823Z 2201b8e8a61e: Pull complete
+2026-10-09T16:49:33.5749024Z f26cc44de396: Pull complete
+2026-10-09T16:49:37.3937727Z 9cebd94b171b: Pull complete
+2026-10-09T16:49:37.4060039Z d27c9d73697f: Pull complete
+2026-10-09T16:49:37.4174415Z 2dc121384798: Pull complete
+2026-10-09T16:49:37.4300083Z c5fa2ad95c7a: Pull complete
+2026-10-09T16:49:37.4413839Z 93300567c591: Pull complete
+2026-10-09T16:49:37.4478539Z a99f8849fd36: Pull complete
+2026-10-09T16:49:37.4508397Z Digest: sha256:6b591f995765a189e69276dd55e0b362342d65d10d0359bb1fab67bc3391f20f
+2026-10-09T16:49:37.4520111Z Status: Downloaded newer image for postgres:17.7-alpine3.22
+2026-10-09T16:49:37.4527262Z docker.io/library/postgres:17.7-alpine3.22
+2026-10-09T16:49:37.4579539Z ##[command]/usr/bin/docker create --name bc214b3b9a254befb43398b3a06fbc30_postgres177alpine322_9c65e8 --label d16684 --network github_network_d29141f6334843d980e278966b16c638 --network-alias postgres -p 5432:5432 --health-cmd "pg_isready -U iterflow -d iterflow_test" --health-interval 5s --health-timeout 5s --health-retries 12 -e "POSTGRES_DB=iterflow_test" -e "POSTGRES_USER=iterflow" -e "POSTGRES_HOST_AUTH_METHOD=trust" -e GITHUB_ACTIONS=true -e CI=true postgres:17.7-alpine3.22
+2026-10-09T16:49:37.4788142Z 67468ef9c52ca909b895a411f8e751618b6518478b66b86396424cb13dc9518c
+2026-10-09T16:49:37.4806692Z ##[command]/usr/bin/docker start 67468ef9c52ca909b895a411f8e751618b6518478b66b86396424cb13dc9518c
+2026-10-09T16:49:37.6601693Z 67468ef9c52ca909b895a411f8e751618b6518478b66b86396424cb13dc9518c
+2026-10-09T16:49:37.6617998Z ##[command]/usr/bin/docker ps --all --filter id=67468ef9c52ca909b895a411f8e751618b6518478b66b86396424cb13dc9518c --filter status=running --no-trunc --format "{{.ID}} {{.Status}}"
+2026-10-09T16:49:37.6733360Z 67468ef9c52ca909b895a411f8e751618b6518478b66b86396424cb13dc9518c Up Less than a second (health: starting)
+2026-10-09T16:49:37.6753352Z ##[command]/usr/bin/docker port 67468ef9c52ca909b895a411f8e751618b6518478b66b86396424cb13dc9518c
+2026-10-09T16:49:37.6864060Z 5432/tcp -> 0.0.0.0:5432
+2026-10-09T16:49:37.6874834Z 5432/tcp -> [::]:5432
+2026-10-09T16:49:37.6904853Z ##[endgroup]
+2026-10-09T16:49:37.6905931Z ##[group]Starting redis service container
+2026-10-09T16:49:37.6907147Z ##[command]/usr/bin/docker pull redis:8.2.2-alpine3.22
+2026-10-09T16:49:38.1183535Z 8.2.2-alpine3.22: Pulling from library/redis
+2026-10-09T16:49:38.2510748Z 2d35ebdb57d9: Pulling fs layer
+2026-10-09T16:49:38.2511509Z fdae656e2df8: Pulling fs layer
+2026-10-09T16:49:38.2512144Z 52f6ffdb6a45: Pulling fs layer
+2026-10-09T16:49:38.2512477Z ada91f8fbee2: Pulling fs layer
+2026-10-09T16:49:38.2513594Z 0d40f9dbd95c: Pulling fs layer
+2026-10-09T16:49:38.2514025Z 4f4fb700ef54: Pulling fs layer
+2026-10-09T16:49:38.2514354Z 4af236257a30: Pulling fs layer
+2026-10-09T16:49:38.2514651Z 0d40f9dbd95c: Waiting
+2026-10-09T16:49:38.2514916Z 4f4fb700ef54: Waiting
+2026-10-09T16:49:38.2515195Z 4af236257a30: Waiting
+2026-10-09T16:49:38.2515466Z ada91f8fbee2: Waiting
+2026-10-09T16:49:38.3227677Z 52f6ffdb6a45: Download complete
+2026-10-09T16:49:38.3348883Z fdae656e2df8: Verifying Checksum
+2026-10-09T16:49:38.3354414Z fdae656e2df8: Download complete
+2026-10-09T16:49:38.3409319Z 2d35ebdb57d9: Verifying Checksum
+2026-10-09T16:49:38.3410521Z 2d35ebdb57d9: Download complete
+2026-10-09T16:49:38.4090088Z 4f4fb700ef54: Download complete
+2026-10-09T16:49:38.4141552Z 0d40f9dbd95c: Verifying Checksum
+2026-10-09T16:49:38.4142063Z 0d40f9dbd95c: Download complete
+2026-10-09T16:49:38.4734035Z ada91f8fbee2: Verifying Checksum
+2026-10-09T16:49:38.4734411Z ada91f8fbee2: Download complete
+2026-10-09T16:49:38.4907329Z 4af236257a30: Verifying Checksum
+2026-10-09T16:49:38.4907839Z 4af236257a30: Download complete
+2026-10-09T16:49:38.8764761Z 2d35ebdb57d9: Pull complete
+2026-10-09T16:49:39.6737253Z fdae656e2df8: Pull complete
+2026-10-09T16:49:39.7938690Z 52f6ffdb6a45: Pull complete
+2026-10-09T16:49:40.3701342Z ada91f8fbee2: Pull complete
+2026-10-09T16:49:40.3777379Z 0d40f9dbd95c: Pull complete
+2026-10-09T16:49:40.3838041Z 4f4fb700ef54: Pull complete
+2026-10-09T16:49:40.3912827Z 4af236257a30: Pull complete
+2026-10-09T16:49:40.3939394Z Digest: sha256:59b6e694653476de2c992937ebe1c64182af4728e54bb49e9b7a6c26614d8933
+2026-10-09T16:49:40.3949795Z Status: Downloaded newer image for redis:8.2.2-alpine3.22
+2026-10-09T16:49:40.3956028Z docker.io/library/redis:8.2.2-alpine3.22
+2026-10-09T16:49:40.3969696Z ##[command]/usr/bin/docker create --name 72a9162f0ceb450eb5112ef3091c3cb0_redis822alpine322_e5f317 --label d16684 --network github_network_d29141f6334843d980e278966b16c638 --network-alias redis -p 6379:6379 --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 3s --health-retries 12 -e GITHUB_ACTIONS=true -e CI=true redis:8.2.2-alpine3.22
+2026-10-09T16:49:40.4149186Z 35878ee29b524e626bfd67578a28f0042bf6a08ecc13883e077160b86530677a
+2026-10-09T16:49:40.4160122Z ##[command]/usr/bin/docker start 35878ee29b524e626bfd67578a28f0042bf6a08ecc13883e077160b86530677a
+2026-10-09T16:49:40.5215117Z 35878ee29b524e626bfd67578a28f0042bf6a08ecc13883e077160b86530677a
+2026-10-09T16:49:40.5236080Z ##[command]/usr/bin/docker ps --all --filter id=35878ee29b524e626bfd67578a28f0042bf6a08ecc13883e077160b86530677a --filter status=running --no-trunc --format "{{.ID}} {{.Status}}"
+2026-10-09T16:49:40.5351681Z 35878ee29b524e626bfd67578a28f0042bf6a08ecc13883e077160b86530677a Up Less than a second (health: starting)
+2026-10-09T16:49:40.5357007Z ##[command]/usr/bin/docker port 35878ee29b524e626bfd67578a28f0042bf6a08ecc13883e077160b86530677a
+2026-10-09T16:49:40.5465197Z 6379/tcp -> 0.0.0.0:6379
+2026-10-09T16:49:40.5465522Z 6379/tcp -> [::]:6379
+2026-10-09T16:49:40.5477742Z ##[endgroup]
+2026-10-09T16:49:40.5486033Z ##[group]Waiting for all services to be ready
+2026-10-09T16:49:40.5496825Z ##[command]/usr/bin/docker inspect --format="{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}" 67468ef9c52ca909b895a411f8e751618b6518478b66b86396424cb13dc9518c
+2026-10-09T16:49:40.5595902Z starting
+2026-10-09T16:49:40.5612537Z postgres service is starting, waiting 2 seconds before checking again.
+2026-10-09T16:49:42.5617077Z ##[command]/usr/bin/docker inspect --format="{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}" 67468ef9c52ca909b895a411f8e751618b6518478b66b86396424cb13dc9518c
+2026-10-09T16:49:42.5718924Z starting
+2026-10-09T16:49:42.5730000Z postgres service is starting, waiting 3 seconds before checking again.
+2026-10-09T16:49:46.3291663Z ##[command]/usr/bin/docker inspect --format="{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}" 67468ef9c52ca909b895a411f8e751618b6518478b66b86396424cb13dc9518c
+2026-10-09T16:49:46.3449698Z healthy
+2026-10-09T16:49:46.3463553Z postgres service is healthy.
+2026-10-09T16:49:46.3464224Z ##[command]/usr/bin/docker inspect --format="{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}" 35878ee29b524e626bfd67578a28f0042bf6a08ecc13883e077160b86530677a
+2026-10-09T16:49:46.3558736Z healthy
+2026-10-09T16:49:46.3569800Z redis service is healthy.
+2026-10-09T16:49:46.3570123Z ##[endgroup]
+2026-10-09T16:49:46.3802084Z ##[group]Run actions/checkout@v4
+2026-10-09T16:49:46.3802488Z with:
+2026-10-09T16:49:46.3802669Z   repository: dede233/iterflow
+2026-10-09T16:49:46.3804968Z   token: ***
+2026-10-09T16:49:46.3805150Z   ssh-strict: true
+2026-10-09T16:49:46.3805324Z   ssh-user: git
+2026-10-09T16:49:46.3805501Z   persist-credentials: true
+2026-10-09T16:49:46.3805690Z   clean: true
+2026-10-09T16:49:46.3805868Z   sparse-checkout-cone-mode: true
+2026-10-09T16:49:46.3806092Z   fetch-depth: 1
+2026-10-09T16:49:46.3806261Z   fetch-tags: false
+2026-10-09T16:49:46.3806441Z   show-progress: true
+2026-10-09T16:49:46.3806625Z   lfs: false
+2026-10-09T16:49:46.3806778Z   submodules: false
+2026-10-09T16:49:46.3806947Z   set-safe-directory: true
+2026-10-09T16:49:46.3807145Z   allow-unsafe-pr-checkout: false
+2026-10-09T16:49:46.3807460Z env:
+2026-10-09T16:49:46.3807733Z   DATABASE_URL: postgresql+psycopg://iterflow@localhost:5432/iterflow_test
+2026-10-09T16:49:46.3808227Z   ITERFLOW_TEST_POSTGRES_URL: postgresql+psycopg://iterflow@localhost:5432/iterflow_test
+2026-10-09T16:49:46.3808589Z   REDIS_URL: redis://localhost:6379/15
+2026-10-09T16:49:46.3808897Z   JWT_SECRET: [redacted]
+2026-10-09T16:49:46.3809197Z   STORAGE_DRIVER: local
+2026-10-09T16:49:46.3809393Z   LOCAL_STORAGE_PATH: ./data/ci-uploads
+2026-10-09T16:49:46.3809602Z   APP_ENV: test
+2026-10-09T16:49:46.3809763Z ##[endgroup]
+2026-10-09T16:49:46.4594142Z Syncing repository: dede233/iterflow
+2026-10-09T16:49:46.4595716Z ##[group]Getting Git version info
+2026-10-09T16:49:46.4596212Z Working directory is '/home/runner/work/iterflow/iterflow'
+2026-10-09T16:49:46.4596911Z [command]/usr/bin/git version
+2026-10-09T16:49:46.4619364Z git version 2.55.0
+2026-10-09T16:49:46.4634912Z ##[endgroup]
+2026-10-09T16:49:46.4645905Z Temporarily overriding HOME='/home/runner/work/_temp/ccb61127-f264-4088-aee6-e9642f66e066' before making global git config changes
+2026-10-09T16:49:46.4646981Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-09T16:49:46.4650705Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/iterflow/iterflow
+2026-10-09T16:49:46.4691808Z Deleting the contents of '/home/runner/work/iterflow/iterflow'
+2026-10-09T16:49:46.4694590Z ##[group]Initializing the repository
+2026-10-09T16:49:46.4704655Z [command]/usr/bin/git init /home/runner/work/iterflow/iterflow
+2026-10-09T16:49:46.4771075Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-10-09T16:49:46.4771757Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-10-09T16:49:46.4772379Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-10-09T16:49:46.4772859Z hint: call:
+2026-10-09T16:49:46.4773117Z hint:
+2026-10-09T16:49:46.4773443Z hint: 	git config --global init.defaultBranch <name>
+2026-10-09T16:49:46.4773839Z hint:
+2026-10-09T16:49:46.4774219Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-10-09T16:49:46.4774837Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-10-09T16:49:46.4775339Z hint:
+2026-10-09T16:49:46.4776440Z hint: 	git branch -m <name>
+2026-10-09T16:49:46.4776755Z hint:
+2026-10-09T16:49:46.4777784Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-10-09T16:49:46.4778484Z Initialized empty Git repository in /home/runner/work/iterflow/iterflow/.git/
+2026-10-09T16:49:46.4783947Z [command]/usr/bin/git remote add origin https://github.com/dede233/iterflow
+2026-10-09T16:49:46.4821295Z ##[endgroup]
+2026-10-09T16:49:46.4821825Z ##[group]Disabling automatic garbage collection
+2026-10-09T16:49:46.4824843Z [command]/usr/bin/git config --local gc.auto 0
+2026-10-09T16:49:46.4850547Z ##[endgroup]
+2026-10-09T16:49:46.4851290Z ##[group]Setting up auth
+2026-10-09T16:49:46.4855967Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-09T16:49:46.4882806Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-09T16:49:46.5174185Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-09T16:49:46.5206438Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-09T16:49:46.5414595Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-09T16:49:46.5446683Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-09T16:49:46.5637105Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-10-09T16:49:46.5671355Z ##[endgroup]
+2026-10-09T16:49:46.5671894Z ##[group]Fetching the repository
+2026-10-09T16:49:46.5679113Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +d4bfd4d336d0c4a625d02d0e0aabd908c1521da3:refs/remotes/origin/codex/mysql-57-adaptation
+2026-10-09T16:49:47.4042091Z From https://github.com/dede233/iterflow
+2026-10-09T16:49:47.4042783Z  * [new ref]         d4bfd4d336d0c4a625d02d0e0aabd908c1521da3 -> origin/codex/mysql-57-adaptation
+2026-10-09T16:49:47.4046289Z ##[endgroup]
+2026-10-09T16:49:47.4046632Z ##[group]Determining the checkout info
+2026-10-09T16:49:47.4048356Z ##[endgroup]
+2026-10-09T16:49:47.4053378Z [command]/usr/bin/git sparse-checkout disable
+2026-10-09T16:49:47.4096869Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-10-09T16:49:47.4123571Z ##[group]Checking out the ref
+2026-10-09T16:49:47.4127737Z [command]/usr/bin/git checkout --progress --force -B codex/mysql-57-adaptation refs/remotes/origin/codex/mysql-57-adaptation
+2026-10-09T16:49:47.4452967Z Switched to a new branch 'codex/mysql-57-adaptation'
+2026-10-09T16:49:47.4456745Z branch 'codex/mysql-57-adaptation' set up to track 'origin/codex/mysql-57-adaptation'.
+2026-10-09T16:49:47.4463339Z ##[endgroup]
+2026-10-09T16:49:47.4500563Z [command]/usr/bin/git log -1 --format=%H
+2026-10-09T16:49:47.4522937Z d4bfd4d336d0c4a625d02d0e0aabd908c1521da3
+2026-10-09T16:49:47.4727776Z ##[group]Run actions/setup-python@v5
+2026-10-09T16:49:47.4728008Z with:
+2026-10-09T16:49:47.4728193Z   python-version: 3.12
+2026-10-09T16:49:47.4728377Z   check-latest: false
+2026-10-09T16:49:47.4730739Z   token: ***
+2026-10-09T16:49:47.4730921Z   update-environment: true
+2026-10-09T16:49:47.4731123Z   allow-prereleases: false
+2026-10-09T16:49:47.4731310Z   freethreaded: false
+2026-10-09T16:49:47.4731481Z env:
+2026-10-09T16:49:47.4731752Z   DATABASE_URL: postgresql+psycopg://iterflow@localhost:5432/iterflow_test
+2026-10-09T16:49:47.4732204Z   ITERFLOW_TEST_POSTGRES_URL: postgresql+psycopg://iterflow@localhost:5432/iterflow_test
+2026-10-09T16:49:47.4732564Z   REDIS_URL: redis://localhost:6379/15
+2026-10-09T16:49:47.4732878Z   JWT_SECRET: [redacted]
+2026-10-09T16:49:47.4733177Z   STORAGE_DRIVER: local
+2026-10-09T16:49:47.4733369Z   LOCAL_STORAGE_PATH: ./data/ci-uploads
+2026-10-09T16:49:47.4733580Z   APP_ENV: test
+2026-10-09T16:49:47.4733776Z ##[endgroup]
+2026-10-09T16:49:47.5776750Z ##[group]Installed versions
+2026-10-09T16:49:47.5847554Z (node:2674) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-10-09T16:49:47.5848361Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-10-09T16:49:47.5848893Z Successfully set up CPython (3.12.15)
+2026-10-09T16:49:47.5849287Z ##[endgroup]
+2026-10-09T16:49:47.5993911Z ##[group]Run python -m pip install -e '.[dev]'
+2026-10-09T16:49:47.5994266Z [36;1mpython -m pip install -e '.[dev]'[0m
+2026-10-09T16:49:47.6221130Z shell: /usr/bin/bash -e {0}
+2026-10-09T16:49:47.6221386Z env:
+2026-10-09T16:49:47.6221685Z   DATABASE_URL: postgresql+psycopg://iterflow@localhost:5432/iterflow_test
+2026-10-09T16:49:47.6222133Z   ITERFLOW_TEST_POSTGRES_URL: postgresql+psycopg://iterflow@localhost:5432/iterflow_test
+2026-10-09T16:49:47.6222500Z   REDIS_URL: redis://localhost:6379/15
+2026-10-09T16:49:47.6222815Z   JWT_SECRET: [redacted]
+2026-10-09T16:49:47.6223159Z   STORAGE_DRIVER: local
+2026-10-09T16:49:47.6223377Z   LOCAL_STORAGE_PATH: ./data/ci-uploads
+2026-10-09T16:49:47.6223589Z   APP_ENV: test
+2026-10-09T16:49:47.6223823Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-09T16:49:47.6224189Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib/pkgconfig
+2026-10-09T16:49:47.6224604Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-09T16:49:47.6224911Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-09T16:49:47.6225214Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-09T16:49:47.6225524Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib
+2026-10-09T16:49:47.6225781Z ##[endgroup]
+2026-10-09T16:49:48.9394807Z Obtaining file:///home/runner/work/iterflow/iterflow/backend
+2026-10-09T16:49:48.9407206Z   Installing build dependencies: started
+2026-10-09T16:49:49.5036948Z   Installing build dependencies: finished with status 'done'
+2026-10-09T16:49:49.5042071Z   Checking if build backend supports build_editable: started
+2026-10-09T16:49:49.7539377Z   Checking if build backend supports build_editable: finished with status 'done'
+2026-10-09T16:49:49.7545520Z   Getting requirements to build editable: started
+2026-10-09T16:49:50.0305642Z   Getting requirements to build editable: finished with status 'done'
+2026-10-09T16:49:50.0312988Z   Preparing editable metadata (pyproject.toml): started
+2026-10-09T16:49:50.1988660Z   Preparing editable metadata (pyproject.toml): finished with status 'done'
+2026-10-09T16:49:50.6050935Z Collecting fastapi<1.0,>=0.116 (from iterflow-api==1.8.1)
+2026-10-09T16:49:50.6399006Z   Downloading fastapi-0.143.0-py3-none-any.whl.metadata (26 kB)
+2026-10-09T16:49:50.6646758Z Collecting uvicorn<1.0,>=0.35 (from uvicorn[standard]<1.0,>=0.35->iterflow-api==1.8.1)
+2026-10-09T16:49:50.6676295Z   Downloading uvicorn-0.54.0-py3-none-any.whl.metadata (6.6 kB)
+2026-10-09T16:49:50.8832742Z Collecting sqlalchemy<3.0,>=2.0 (from iterflow-api==1.8.1)
+2026-10-09T16:49:50.8864303Z   Downloading sqlalchemy-2.1.4-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (9.7 kB)
+2026-10-09T16:49:50.9909558Z Collecting greenlet<4.0,>=3.5 (from iterflow-api==1.8.1)
+2026-10-09T16:49:50.9940058Z   Downloading greenlet-3.5.6-cp312-cp312-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl.metadata (3.8 kB)
+2026-10-09T16:49:51.0063257Z Collecting psycopg<4.0,>=3.2 (from psycopg[binary]<4.0,>=3.2->iterflow-api==1.8.1)
+2026-10-09T16:49:51.0091078Z   Downloading psycopg-3.3.6-py3-none-any.whl.metadata (4.4 kB)
+2026-10-09T16:49:51.0381616Z Collecting PyMySQL==1.2.3 (from iterflow-api==1.8.1)
+2026-10-09T16:49:51.0408594Z   Downloading pymysql-1.2.3-py3-none-any.whl.metadata (4.2 kB)
+2026-10-09T16:49:51.0554060Z Collecting alembic<2.0,>=1.16 (from iterflow-api==1.8.1)
+2026-10-09T16:49:51.0581803Z   Downloading alembic-1.20.0-py3-none-any.whl.metadata (7.3 kB)
+2026-10-09T16:49:51.1274382Z Collecting pydantic<3.0,>=2.11 (from iterflow-api==1.8.1)
+2026-10-09T16:49:51.1303454Z   Downloading pydantic-2.14.0-py3-none-any.whl.metadata (131 kB)
+2026-10-09T16:49:51.1494130Z Collecting pydantic-settings<3.0,>=2.10 (from iterflow-api==1.8.1)
+2026-10-09T16:49:51.1521689Z   Downloading pydantic_settings-2.15.0-py3-none-any.whl.metadata (3.9 kB)
+2026-10-09T16:49:51.2316425Z Collecting pyjwt<3.0,>=2.10 (from iterflow-api==1.8.1)
+2026-10-09T16:49:51.2343924Z   Downloading pyjwt-2.15.1-py3-none-any.whl.metadata (3.5 kB)
+2026-10-09T16:49:51.2628701Z Collecting pwdlib<1.0,>=0.2 (from pwdlib[argon2]<1.0,>=0.2->iterflow-api==1.8.1)
+2026-10-09T16:49:51.2656700Z   Downloading pwdlib-0.3.1-py3-none-any.whl.metadata (5.6 kB)
+2026-10-09T16:49:51.3413484Z Collecting redis<7.0,>=6.0 (from iterflow-api==1.8.1)
+2026-10-09T16:49:51.3442227Z   Downloading redis-6.4.0-py3-none-any.whl.metadata (10 kB)
+2026-10-09T16:49:51.3541152Z Collecting python-multipart<1.0,>=0.0.20 (from iterflow-api==1.8.1)
+2026-10-09T16:49:51.3567751Z   Downloading python_multipart-0.0.32-py3-none-any.whl.metadata (2.1 kB)
+2026-10-09T16:49:51.5809230Z Collecting boto3<2.0,>=1.40 (from iterflow-api==1.8.1)
+2026-10-09T16:49:51.5839093Z   Downloading boto3-1.43.110-py3-none-any.whl.metadata (6.6 kB)
+2026-10-09T16:49:51.6037359Z Collecting pytest<10.0,>=9.0.3 (from iterflow-api==1.8.1)
+2026-10-09T16:49:51.6120070Z   Downloading pytest-9.1.1-py3-none-any.whl.metadata (7.6 kB)
+2026-10-09T16:49:51.6869323Z Collecting pytest-cov<7.0,>=6.2 (from iterflow-api==1.8.1)
+2026-10-09T16:49:51.6898925Z   Downloading pytest_cov-6.3.0-py3-none-any.whl.metadata (30 kB)
+2026-10-09T16:49:51.7034574Z Collecting httpx<1.0,>=0.28 (from iterflow-api==1.8.1)
+2026-10-09T16:49:51.7065152Z   Downloading httpx-0.28.1-py3-none-any.whl.metadata (7.1 kB)
+2026-10-09T16:49:51.8113182Z Collecting httpx2<3.0,>=2.13 (from iterflow-api==1.8.1)
+2026-10-09T16:49:51.8141939Z   Downloading httpx2-2.13.1-py3-none-any.whl.metadata (9.8 kB)
+2026-10-09T16:49:51.8269617Z Collecting pip-audit<3.0,>=2.7 (from iterflow-api==1.8.1)
+2026-10-09T16:49:51.8296924Z   Downloading pip_audit-2.10.1-py3-none-any.whl.metadata (28 kB)
+2026-10-09T16:49:52.0596978Z Collecting ruff<1.0,>=0.12 (from iterflow-api==1.8.1)
+2026-10-09T16:49:52.0628469Z   Downloading ruff-0.16.10-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (20 kB)
+2026-10-09T16:49:52.1614820Z Collecting mypy<2.0,>=1.17 (from iterflow-api==1.8.1)
+2026-10-09T16:49:52.1648563Z   Downloading mypy-1.20.2-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (2.4 kB)
+2026-10-09T16:49:52.1948570Z Collecting Mako (from alembic<2.0,>=1.16->iterflow-api==1.8.1)
+2026-10-09T16:49:52.1975268Z   Downloading mako-1.4.3-py3-none-any.whl.metadata (2.9 kB)
+2026-10-09T16:49:52.2084132Z Collecting typing-extensions>=4.12 (from alembic<2.0,>=1.16->iterflow-api==1.8.1)
+2026-10-09T16:49:52.2112227Z   Downloading typing_extensions-4.16.0-py3-none-any.whl.metadata (3.3 kB)
+2026-10-09T16:49:52.4176339Z Collecting botocore<1.44.0,>=1.43.110 (from boto3<2.0,>=1.40->iterflow-api==1.8.1)
+2026-10-09T16:49:52.4206043Z   Downloading botocore-1.43.110-py3-none-any.whl.metadata (5.6 kB)
+2026-10-09T16:49:52.4296476Z Collecting jmespath<2.0.0,>=0.7.1 (from boto3<2.0,>=1.40->iterflow-api==1.8.1)
+2026-10-09T16:49:52.4324555Z   Downloading jmespath-1.1.0-py3-none-any.whl.metadata (7.6 kB)
+2026-10-09T16:49:52.4455312Z Collecting s3transfer<0.20.0,>=0.19.0 (from boto3<2.0,>=1.40->iterflow-api==1.8.1)
+2026-10-09T16:49:52.4463482Z   Downloading s3transfer-0.19.2-py3-none-any.whl.metadata (1.7 kB)
+2026-10-09T16:49:52.4562146Z Collecting python-dateutil<3.0.0,>=2.1 (from botocore<1.44.0,>=1.43.110->boto3<2.0,>=1.40->iterflow-api==1.8.1)
+2026-10-09T16:49:52.4593939Z   Downloading python_dateutil-2.9.0.post0-py2.py3-none-any.whl.metadata (8.4 kB)
+2026-10-09T16:49:52.5355613Z Collecting urllib3!=2.2.0,<3,>=1.25.4 (from botocore<1.44.0,>=1.43.110->boto3<2.0,>=1.40->iterflow-api==1.8.1)
+2026-10-09T16:49:52.5385248Z   Downloading urllib3-2.8.0-py3-none-any.whl.metadata (7.4 kB)
+2026-10-09T16:49:52.5559584Z Collecting starlette>=0.46.0 (from fastapi<1.0,>=0.116->iterflow-api==1.8.1)
+2026-10-09T16:49:52.5587028Z   Downloading starlette-1.7.0-py3-none-any.whl.metadata (6.6 kB)
+2026-10-09T16:49:52.5703997Z Collecting typing-inspection>=0.4.2 (from fastapi<1.0,>=0.116->iterflow-api==1.8.1)
+2026-10-09T16:49:52.5732434Z   Downloading typing_inspection-0.4.4-py3-none-any.whl.metadata (2.6 kB)
+2026-10-09T16:49:52.5804191Z Collecting annotated-doc>=0.0.2 (from fastapi<1.0,>=0.116->iterflow-api==1.8.1)
+2026-10-09T16:49:52.5831052Z   Downloading annotated_doc-0.0.5-py3-none-any.whl.metadata (6.5 kB)
+2026-10-09T16:49:52.6503572Z Collecting opentelemetry-api>=1.44.0 (from fastapi<1.0,>=0.116->iterflow-api==1.8.1)
+2026-10-09T16:49:52.6533317Z   Downloading opentelemetry_api-1.45.1-py3-none-any.whl.metadata (1.4 kB)
+2026-10-09T16:49:52.6669124Z Collecting anyio (from httpx<1.0,>=0.28->iterflow-api==1.8.1)
+2026-10-09T16:49:52.6697328Z   Downloading anyio-4.15.1-py3-none-any.whl.metadata (4.7 kB)
+2026-10-09T16:49:52.6839328Z Collecting certifi (from httpx<1.0,>=0.28->iterflow-api==1.8.1)
+2026-10-09T16:49:52.6867269Z   Downloading certifi-2026.7.22-py3-none-any.whl.metadata (2.5 kB)
+2026-10-09T16:49:52.6977771Z Collecting httpcore==1.* (from httpx<1.0,>=0.28->iterflow-api==1.8.1)
+2026-10-09T16:49:52.7005644Z   Downloading httpcore-1.0.9-py3-none-any.whl.metadata (21 kB)
+2026-10-09T16:49:52.7115544Z Collecting idna (from httpx<1.0,>=0.28->iterflow-api==1.8.1)
+2026-10-09T16:49:52.7143012Z   Downloading idna-3.20-py3-none-any.whl.metadata (7.2 kB)
+2026-10-09T16:49:52.7227982Z Collecting h11>=0.16 (from httpcore==1.*->httpx<1.0,>=0.28->iterflow-api==1.8.1)
+2026-10-09T16:49:52.7256430Z   Downloading h11-0.16.0-py3-none-any.whl.metadata (8.3 kB)
+2026-10-09T16:49:52.7360219Z Collecting httpcore2==2.13.1 (from httpx2<3.0,>=2.13->iterflow-api==1.8.1)
+2026-10-09T16:49:52.7398061Z   Downloading httpcore2-2.13.1-py3-none-any.whl.metadata (26 kB)
+2026-10-09T16:49:52.7511048Z Collecting truststore>=0.10 (from httpx2<3.0,>=2.13->iterflow-api==1.8.1)
+2026-10-09T16:49:52.7538749Z   Downloading truststore-0.10.4-py3-none-any.whl.metadata (4.4 kB)
+2026-10-09T16:49:52.7741204Z Collecting mypy_extensions>=1.0.0 (from mypy<2.0,>=1.17->iterflow-api==1.8.1)
+2026-10-09T16:49:52.7768895Z   Downloading mypy_extensions-1.1.0-py3-none-any.whl.metadata (1.1 kB)
+2026-10-09T16:49:52.7856563Z Collecting pathspec>=1.0.0 (from mypy<2.0,>=1.17->iterflow-api==1.8.1)
+2026-10-09T16:49:52.7884064Z   Downloading pathspec-1.1.1-py3-none-any.whl.metadata (14 kB)
+2026-10-09T16:49:52.8791195Z Collecting librt>=0.8.0 (from mypy<2.0,>=1.17->iterflow-api==1.8.1)
+2026-10-09T16:49:52.8824730Z   Downloading librt-0.16.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (1.3 kB)
+2026-10-09T16:49:52.9287484Z Collecting CacheControl>=0.13.0 (from CacheControl[filecache]>=0.13.0->pip-audit<3.0,>=2.7->iterflow-api==1.8.1)
+2026-10-09T16:49:52.9314849Z   Downloading cachecontrol-0.14.4-py3-none-any.whl.metadata (3.1 kB)
+2026-10-09T16:49:52.9956845Z Collecting cyclonedx-python-lib<12,>=5 (from pip-audit<3.0,>=2.7->iterflow-api==1.8.1)
+2026-10-09T16:49:52.9987619Z   Downloading cyclonedx_python_lib-11.12.0-py3-none-any.whl.metadata (6.9 kB)
+2026-10-09T16:49:53.0427496Z Collecting packaging>=23.0.0 (from pip-audit<3.0,>=2.7->iterflow-api==1.8.1)
+2026-10-09T16:49:53.0457492Z   Downloading packaging-26.3-py3-none-any.whl.metadata (3.5 kB)
+2026-10-09T16:49:53.0546872Z Collecting pip-api>=0.0.28 (from pip-audit<3.0,>=2.7->iterflow-api==1.8.1)
+2026-10-09T16:49:53.0573800Z   Downloading pip_api-0.0.35-py3-none-any.whl.metadata (17 kB)
+2026-10-09T16:49:53.1066070Z Collecting pip-requirements-parser>=32.0.0 (from pip-audit<3.0,>=2.7->iterflow-api==1.8.1)
+2026-10-09T16:49:53.1095468Z   Downloading pip_requirements_parser-32.0.1-py3-none-any.whl.metadata (9.3 kB)
+2026-10-09T16:49:53.1995254Z Collecting requests>=2.31.0 (from pip-audit<3.0,>=2.7->iterflow-api==1.8.1)
+2026-10-09T16:49:53.2023756Z   Downloading requests-2.34.2-py3-none-any.whl.metadata (4.8 kB)
+2026-10-09T16:49:53.2230171Z Collecting rich>=12.4 (from pip-audit<3.0,>=2.7->iterflow-api==1.8.1)
+2026-10-09T16:49:53.2257816Z   Downloading rich-15.0.0-py3-none-any.whl.metadata (18 kB)
+2026-10-09T16:49:53.2457373Z Collecting tomli>=2.2.1 (from pip-audit<3.0,>=2.7->iterflow-api==1.8.1)
+2026-10-09T16:49:53.2486861Z   Downloading tomli-2.5.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (10 kB)
+2026-10-09T16:49:53.2563915Z Collecting tomli-w>=1.2.0 (from pip-audit<3.0,>=2.7->iterflow-api==1.8.1)
+2026-10-09T16:49:53.2592110Z   Downloading tomli_w-1.2.0-py3-none-any.whl.metadata (5.7 kB)
+2026-10-09T16:49:53.2729298Z Collecting platformdirs>=4.2.0 (from pip-audit<3.0,>=2.7->iterflow-api==1.8.1)
+2026-10-09T16:49:53.2756926Z   Downloading platformdirs-4.12.4-py3-none-any.whl.metadata (5.5 kB)
+2026-10-09T16:49:53.2865960Z Collecting license-expression<31,>=30 (from cyclonedx-python-lib<12,>=5->pip-audit<3.0,>=2.7->iterflow-api==1.8.1)
+2026-10-09T16:49:53.2892816Z   Downloading license_expression-30.4.4-py3-none-any.whl.metadata (11 kB)
+2026-10-09T16:49:53.3012900Z Collecting packageurl-python<2,>=0.11 (from cyclonedx-python-lib<12,>=5->pip-audit<3.0,>=2.7->iterflow-api==1.8.1)
+2026-10-09T16:49:53.3044710Z   Downloading packageurl_python-0.17.6-py3-none-any.whl.metadata (5.1 kB)
+2026-10-09T16:49:53.3218257Z Collecting py-serializable<3.0.0,>=2.1.0 (from cyclonedx-python-lib<12,>=5->pip-audit<3.0,>=2.7->iterflow-api==1.8.1)
+2026-10-09T16:49:53.3245232Z   Downloading py_serializable-2.1.0-py3-none-any.whl.metadata (4.3 kB)
+2026-10-09T16:49:53.3448789Z Collecting sortedcontainers<3.0.0,>=2.4.0 (from cyclonedx-python-lib<12,>=5->pip-audit<3.0,>=2.7->iterflow-api==1.8.1)
+2026-10-09T16:49:53.3476208Z   Downloading sortedcontainers-2.4.0-py2.py3-none-any.whl.metadata (10 kB)
+2026-10-09T16:49:53.3606925Z Collecting boolean.py>=4.0 (from license-expression<31,>=30->cyclonedx-python-lib<12,>=5->pip-audit<3.0,>=2.7->iterflow-api==1.8.1)
+2026-10-09T16:49:53.3635104Z   Downloading boolean_py-5.0-py3-none-any.whl.metadata (2.3 kB)
+2026-10-09T16:49:53.4709274Z Collecting psycopg-binary==3.3.6 (from psycopg[binary]<4.0,>=3.2->iterflow-api==1.8.1)
+2026-10-09T16:49:53.4739671Z   Downloading psycopg_binary-3.3.6-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (2.7 kB)
+2026-10-09T16:49:53.4895178Z Collecting argon2-cffi>=23.1.0 (from pwdlib[argon2]<1.0,>=0.2->iterflow-api==1.8.1)
+2026-10-09T16:49:53.4923788Z   Downloading argon2_cffi-25.1.0-py3-none-any.whl.metadata (4.1 kB)
+2026-10-09T16:49:53.5708434Z Collecting defusedxml<0.8.0,>=0.7.1 (from py-serializable<3.0.0,>=2.1.0->cyclonedx-python-lib<12,>=5->pip-audit<3.0,>=2.7->iterflow-api==1.8.1)
+2026-10-09T16:49:53.5736914Z   Downloading defusedxml-0.7.1-py2.py3-none-any.whl.metadata (32 kB)
+2026-10-09T16:49:53.5842385Z Collecting annotated-types>=0.6.0 (from pydantic<3.0,>=2.11->iterflow-api==1.8.1)
+2026-10-09T16:49:53.5869107Z   Downloading annotated_types-0.8.0-py3-none-any.whl.metadata (15 kB)
+2026-10-09T16:49:54.2859919Z Collecting pydantic-core==2.50.0 (from pydantic<3.0,>=2.11->iterflow-api==1.8.1)
+2026-10-09T16:49:54.2890991Z   Downloading pydantic_core-2.50.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (6.5 kB)
+2026-10-09T16:49:54.3043150Z Collecting python-dotenv>=0.21.0 (from pydantic-settings<3.0,>=2.10->iterflow-api==1.8.1)
+2026-10-09T16:49:54.3070717Z   Downloading python_dotenv-1.2.4-py3-none-any.whl.metadata (29 kB)
+2026-10-09T16:49:54.3176176Z Collecting iniconfig>=1.0.1 (from pytest<10.0,>=9.0.3->iterflow-api==1.8.1)
+2026-10-09T16:49:54.3203408Z   Downloading iniconfig-2.3.1-py3-none-any.whl.metadata (2.8 kB)
+2026-10-09T16:49:54.3295004Z Collecting pluggy<2,>=1.5 (from pytest<10.0,>=9.0.3->iterflow-api==1.8.1)
+2026-10-09T16:49:54.3322716Z   Downloading pluggy-1.6.0-py3-none-any.whl.metadata (4.8 kB)
+2026-10-09T16:49:54.4558958Z Collecting pygments>=2.7.2 (from pytest<10.0,>=9.0.3->iterflow-api==1.8.1)
+2026-10-09T16:49:54.4586070Z   Downloading pygments-2.21.0-py3-none-any.whl.metadata (2.5 kB)
+2026-10-09T16:49:54.8239026Z Collecting coverage>=7.5 (from coverage[toml]>=7.5->pytest-cov<7.0,>=6.2->iterflow-api==1.8.1)
+2026-10-09T16:49:54.8270047Z   Downloading coverage-7.16.2-cp312-cp312-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl.metadata (8.2 kB)
+2026-10-09T16:49:54.8730841Z Collecting six>=1.5 (from python-dateutil<3.0.0,>=2.1->botocore<1.44.0,>=1.43.110->boto3<2.0,>=1.40->iterflow-api==1.8.1)
+2026-10-09T16:49:54.8757577Z   Downloading six-1.17.0-py2.py3-none-any.whl.metadata (1.7 kB)
+2026-10-09T16:49:54.9059578Z Collecting click>=7.0 (from uvicorn<1.0,>=0.35->uvicorn[standard]<1.0,>=0.35->iterflow-api==1.8.1)
+2026-10-09T16:49:54.9087643Z   Downloading click-8.5.0-py3-none-any.whl.metadata (2.6 kB)
+2026-10-09T16:49:54.9308762Z Collecting httptools>=0.8.0 (from uvicorn[standard]<1.0,>=0.35->iterflow-api==1.8.1)
+2026-10-09T16:49:54.9338490Z   Downloading httptools-0.8.0-cp312-cp312-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl.metadata (3.5 kB)
+2026-10-09T16:49:54.9597891Z Collecting pyyaml>=5.1 (from uvicorn[standard]<1.0,>=0.35->iterflow-api==1.8.1)
+2026-10-09T16:49:54.9627511Z   Downloading pyyaml-6.0.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (2.4 kB)
+2026-10-09T16:49:54.9889756Z Collecting uvloop>=0.15.1 (from uvicorn[standard]<1.0,>=0.35->iterflow-api==1.8.1)
+2026-10-09T16:49:54.9918965Z   Downloading uvloop-0.23.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (5.1 kB)
+2026-10-09T16:49:55.0439588Z Collecting watchfiles>=0.20 (from uvicorn[standard]<1.0,>=0.35->iterflow-api==1.8.1)
+2026-10-09T16:49:55.0468388Z   Downloading watchfiles-1.3.0-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (4.9 kB)
+2026-10-09T16:49:55.1262114Z Collecting websockets>=13.0 (from uvicorn[standard]<1.0,>=0.35->iterflow-api==1.8.1)
+2026-10-09T16:49:55.1293382Z   Downloading websockets-17.2-cp312-cp312-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl.metadata (6.3 kB)
+2026-10-09T16:49:55.2173169Z Collecting argon2-cffi-bindings (from argon2-cffi>=23.1.0->pwdlib[argon2]<1.0,>=0.2->iterflow-api==1.8.1)
+2026-10-09T16:49:55.2203208Z   Downloading argon2_cffi_bindings-26.1.0-cp310-abi3-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl.metadata (7.5 kB)
+2026-10-09T16:49:55.2761711Z Collecting msgpack<2.0.0,>=0.5.2 (from CacheControl>=0.13.0->CacheControl[filecache]>=0.13.0->pip-audit<3.0,>=2.7->iterflow-api==1.8.1)
+2026-10-09T16:49:55.2791826Z   Downloading msgpack-1.2.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (8.3 kB)
+2026-10-09T16:49:55.4691631Z Collecting filelock>=3.8.0 (from CacheControl[filecache]>=0.13.0->pip-audit<3.0,>=2.7->iterflow-api==1.8.1)
+2026-10-09T16:49:55.4718167Z   Downloading filelock-4.0.12-py3-none-any.whl.metadata (2.0 kB)
+2026-10-09T16:49:55.4818364Z Requirement already satisfied: pip in /opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/site-packages (from pip-api>=0.0.28->pip-audit<3.0,>=2.7->iterflow-api==1.8.1) (26.2.1)
+2026-10-09T16:49:55.4968665Z Collecting pyparsing (from pip-requirements-parser>=32.0.0->pip-audit<3.0,>=2.7->iterflow-api==1.8.1)
+2026-10-09T16:49:55.4997004Z   Downloading pyparsing-3.3.3-py3-none-any.whl.metadata (5.9 kB)
+2026-10-09T16:49:55.7605263Z Collecting charset_normalizer<4,>=2 (from requests>=2.31.0->pip-audit<3.0,>=2.7->iterflow-api==1.8.1)
+2026-10-09T16:49:55.7735877Z   Downloading charset_normalizer-3.5.2-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (46 kB)
+2026-10-09T16:49:55.8382304Z Collecting markdown-it-py>=2.2.0 (from rich>=12.4->pip-audit<3.0,>=2.7->iterflow-api==1.8.1)
+2026-10-09T16:49:55.8409540Z   Downloading markdown_it_py-4.2.0-py3-none-any.whl.metadata (7.4 kB)
+2026-10-09T16:49:55.8521498Z Collecting mdurl~=0.1 (from markdown-it-py>=2.2.0->rich>=12.4->pip-audit<3.0,>=2.7->iterflow-api==1.8.1)
+2026-10-09T16:49:55.8548045Z   Downloading mdurl-0.1.2-py3-none-any.whl.metadata (1.6 kB)
+2026-10-09T16:49:55.9358766Z Collecting cffi>=1.0.1 (from argon2-cffi-bindings->argon2-cffi>=23.1.0->pwdlib[argon2]<1.0,>=0.2->iterflow-api==1.8.1)
+2026-10-09T16:49:55.9389755Z   Downloading cffi-2.1.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (2.5 kB)
+2026-10-09T16:49:55.9481878Z Collecting pycparser (from cffi>=1.0.1->argon2-cffi-bindings->argon2-cffi>=23.1.0->pwdlib[argon2]<1.0,>=0.2->iterflow-api==1.8.1)
+2026-10-09T16:49:55.9508702Z   Downloading pycparser-3.11-py3-none-any.whl.metadata (8.2 kB)
+2026-10-09T16:49:55.9896918Z Collecting MarkupSafe>=2.0 (from Mako->alembic<2.0,>=1.16->iterflow-api==1.8.1)
+2026-10-09T16:49:55.9926315Z   Downloading markupsafe-3.0.4-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (2.7 kB)
+2026-10-09T16:49:56.1020177Z Downloading pymysql-1.2.3-py3-none-any.whl (46 kB)
+2026-10-09T16:49:56.1063159Z Downloading alembic-1.20.0-py3-none-any.whl (268 kB)
+2026-10-09T16:49:56.1134568Z Downloading boto3-1.43.110-py3-none-any.whl (140 kB)
+2026-10-09T16:49:56.1176055Z Downloading botocore-1.43.110-py3-none-any.whl (16.0 MB)
+2026-10-09T16:49:56.2327632Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 16.0/16.0 MB 139.9 MB/s  0:00:00
+2026-10-09T16:49:56.2359275Z Downloading fastapi-0.143.0-py3-none-any.whl (144 kB)
+2026-10-09T16:49:56.2403694Z Downloading greenlet-3.5.6-cp312-cp312-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl (621 kB)
+2026-10-09T16:49:56.2457847Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 621.4/621.4 kB 95.1 MB/s  0:00:00
+2026-10-09T16:49:56.2493636Z Downloading httpx-0.28.1-py3-none-any.whl (73 kB)
+2026-10-09T16:49:56.2535510Z Downloading httpcore-1.0.9-py3-none-any.whl (78 kB)
+2026-10-09T16:49:56.2577713Z Downloading httpx2-2.13.1-py3-none-any.whl (95 kB)
+2026-10-09T16:49:56.2625447Z Downloading httpcore2-2.13.1-py3-none-any.whl (83 kB)
+2026-10-09T16:49:56.2665698Z Downloading jmespath-1.1.0-py3-none-any.whl (20 kB)
+2026-10-09T16:49:56.2706091Z Downloading mypy-1.20.2-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (14.7 MB)
+2026-10-09T16:49:56.4770067Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 14.7/14.7 MB 70.9 MB/s  0:00:00
+2026-10-09T16:49:56.4801295Z Downloading pip_audit-2.10.1-py3-none-any.whl (62 kB)
+2026-10-09T16:49:56.4844853Z Downloading cyclonedx_python_lib-11.12.0-py3-none-any.whl (529 kB)
+2026-10-09T16:49:56.4896112Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 529.5/529.5 kB 76.1 MB/s  0:00:00
+2026-10-09T16:49:56.4925522Z Downloading license_expression-30.4.4-py3-none-any.whl (120 kB)
+2026-10-09T16:49:56.4967103Z Downloading packageurl_python-0.17.6-py3-none-any.whl (36 kB)
+2026-10-09T16:49:56.5009717Z Downloading psycopg-3.3.6-py3-none-any.whl (215 kB)
+2026-10-09T16:49:56.5056866Z Downloading psycopg_binary-3.3.6-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (5.2 MB)
+2026-10-09T16:49:56.5389824Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 5.2/5.2 MB 158.1 MB/s  0:00:00
+2026-10-09T16:49:56.5429587Z Downloading pwdlib-0.3.1-py3-none-any.whl (9.3 kB)
+2026-10-09T16:49:56.6084022Z Downloading py_serializable-2.1.0-py3-none-any.whl (23 kB)
+2026-10-09T16:49:56.6125867Z Downloading defusedxml-0.7.1-py2.py3-none-any.whl (25 kB)
+2026-10-09T16:49:56.6165858Z Downloading pydantic-2.14.0-py3-none-any.whl (487 kB)
+2026-10-09T16:49:56.6235846Z Downloading pydantic_core-2.50.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (2.2 MB)
+2026-10-09T16:49:56.6401113Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.2/2.2 MB 129.5 MB/s  0:00:00
+2026-10-09T16:49:56.6428719Z Downloading pydantic_settings-2.15.0-py3-none-any.whl (69 kB)
+2026-10-09T16:49:56.6473445Z Downloading pyjwt-2.15.1-py3-none-any.whl (33 kB)
+2026-10-09T16:49:56.6513267Z Downloading pytest-9.1.1-py3-none-any.whl (386 kB)
+2026-10-09T16:49:56.6573846Z Downloading pluggy-1.6.0-py3-none-any.whl (20 kB)
+2026-10-09T16:49:56.6615848Z Downloading pytest_cov-6.3.0-py3-none-any.whl (25 kB)
+2026-10-09T16:49:56.7561632Z Downloading python_dateutil-2.9.0.post0-py2.py3-none-any.whl (229 kB)
+2026-10-09T16:49:56.7606951Z Downloading python_multipart-0.0.32-py3-none-any.whl (30 kB)
+2026-10-09T16:49:56.7648298Z Downloading redis-6.4.0-py3-none-any.whl (279 kB)
+2026-10-09T16:49:56.7694844Z Downloading ruff-0.16.10-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (10.4 MB)
+2026-10-09T16:49:56.8417181Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 10.4/10.4 MB 144.2 MB/s  0:00:00
+2026-10-09T16:49:56.8447669Z Downloading s3transfer-0.19.2-py3-none-any.whl (90 kB)
+2026-10-09T16:49:56.8490871Z Downloading sortedcontainers-2.4.0-py2.py3-none-any.whl (29 kB)
+2026-10-09T16:49:57.0221740Z Downloading sqlalchemy-2.1.4-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (4.7 MB)
+2026-10-09T16:49:57.0543341Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.7/4.7 MB 148.7 MB/s  0:00:00
+2026-10-09T16:49:57.0573934Z Downloading typing_extensions-4.16.0-py3-none-any.whl (45 kB)
+2026-10-09T16:49:57.0616289Z Downloading urllib3-2.8.0-py3-none-any.whl (135 kB)
+2026-10-09T16:49:57.1274871Z Downloading uvicorn-0.54.0-py3-none-any.whl (87 kB)
+2026-10-09T16:49:57.1317435Z Downloading annotated_doc-0.0.5-py3-none-any.whl (5.3 kB)
+2026-10-09T16:49:57.1501315Z Downloading annotated_types-0.8.0-py3-none-any.whl (13 kB)
+2026-10-09T16:49:57.1542761Z Downloading anyio-4.15.1-py3-none-any.whl (132 kB)
+2026-10-09T16:49:57.1584265Z Downloading argon2_cffi-25.1.0-py3-none-any.whl (14 kB)
+2026-10-09T16:49:57.1624524Z Downloading boolean_py-5.0-py3-none-any.whl (26 kB)
+2026-10-09T16:49:57.1664005Z Downloading cachecontrol-0.14.4-py3-none-any.whl (22 kB)
+2026-10-09T16:49:57.1703927Z Downloading msgpack-1.2.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (472 kB)
+2026-10-09T16:49:57.1752816Z Downloading click-8.5.0-py3-none-any.whl (125 kB)
+2026-10-09T16:49:57.1797429Z Downloading coverage-7.16.2-cp312-cp312-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl (258 kB)
+2026-10-09T16:49:57.1841140Z Downloading filelock-4.0.12-py3-none-any.whl (111 kB)
+2026-10-09T16:49:57.1885008Z Downloading h11-0.16.0-py3-none-any.whl (37 kB)
+2026-10-09T16:49:57.1925301Z Downloading httptools-0.8.0-cp312-cp312-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl (523 kB)
+2026-10-09T16:49:57.1994699Z Downloading idna-3.20-py3-none-any.whl (69 kB)
+2026-10-09T16:49:57.2144685Z Downloading iniconfig-2.3.1-py3-none-any.whl (7.6 kB)
+2026-10-09T16:49:57.2187039Z Downloading librt-0.16.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (531 kB)
+2026-10-09T16:49:57.2235960Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 532.0/532.0 kB 85.8 MB/s  0:00:00
+2026-10-09T16:49:57.2264196Z Downloading mypy_extensions-1.1.0-py3-none-any.whl (5.0 kB)
+2026-10-09T16:49:57.2304119Z Downloading opentelemetry_api-1.45.1-py3-none-any.whl (60 kB)
+2026-10-09T16:49:57.2520588Z Downloading packaging-26.3-py3-none-any.whl (129 kB)
+2026-10-09T16:49:57.2563844Z Downloading pathspec-1.1.1-py3-none-any.whl (57 kB)
+2026-10-09T16:49:57.2604824Z Downloading pip_api-0.0.35-py3-none-any.whl (123 kB)
+2026-10-09T16:49:57.2989020Z Downloading pip_requirements_parser-32.0.1-py3-none-any.whl (35 kB)
+2026-10-09T16:49:57.3029602Z Downloading platformdirs-4.12.4-py3-none-any.whl (32 kB)
+2026-10-09T16:49:57.3070111Z Downloading pygments-2.21.0-py3-none-any.whl (1.3 MB)
+2026-10-09T16:49:57.3158505Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.3/1.3 MB 139.4 MB/s  0:00:00
+2026-10-09T16:49:57.3186121Z Downloading python_dotenv-1.2.4-py3-none-any.whl (23 kB)
+2026-10-09T16:49:57.3226661Z Downloading pyyaml-6.0.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (807 kB)
+2026-10-09T16:49:57.3276375Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 807.9/807.9 kB 163.3 MB/s  0:00:00
+2026-10-09T16:49:57.3303511Z Downloading requests-2.34.2-py3-none-any.whl (73 kB)
+2026-10-09T16:49:57.3344869Z Downloading charset_normalizer-3.5.2-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (257 kB)
+2026-10-09T16:49:57.3388141Z Downloading certifi-2026.7.22-py3-none-any.whl (136 kB)
+2026-10-09T16:49:57.3429435Z Downloading rich-15.0.0-py3-none-any.whl (310 kB)
+2026-10-09T16:49:57.3476195Z Downloading markdown_it_py-4.2.0-py3-none-any.whl (91 kB)
+2026-10-09T16:49:57.3517421Z Downloading mdurl-0.1.2-py3-none-any.whl (10.0 kB)
+2026-10-09T16:49:57.3557767Z Downloading six-1.17.0-py2.py3-none-any.whl (11 kB)
+2026-10-09T16:49:57.3598149Z Downloading starlette-1.7.0-py3-none-any.whl (78 kB)
+2026-10-09T16:49:57.3687065Z Downloading tomli-2.5.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (286 kB)
+2026-10-09T16:49:57.3732178Z Downloading tomli_w-1.2.0-py3-none-any.whl (6.7 kB)
+2026-10-09T16:49:57.3771952Z Downloading truststore-0.10.4-py3-none-any.whl (18 kB)
+2026-10-09T16:49:57.3812221Z Downloading typing_inspection-0.4.4-py3-none-any.whl (14 kB)
+2026-10-09T16:49:57.4020809Z Downloading uvloop-0.23.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (4.5 MB)
+2026-10-09T16:49:57.4319559Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.5/4.5 MB 152.0 MB/s  0:00:00
+2026-10-09T16:49:57.4348392Z Downloading watchfiles-1.3.0-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (458 kB)
+2026-10-09T16:49:57.4413740Z Downloading websockets-17.2-cp312-cp312-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl (225 kB)
+2026-10-09T16:49:57.4457694Z Downloading argon2_cffi_bindings-26.1.0-cp310-abi3-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl (26 kB)
+2026-10-09T16:49:57.4497730Z Downloading cffi-2.1.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (221 kB)
+2026-10-09T16:49:57.4542346Z Downloading mako-1.4.3-py3-none-any.whl (80 kB)
+2026-10-09T16:49:57.4583807Z Downloading markupsafe-3.0.4-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (22 kB)
+2026-10-09T16:49:57.4622651Z Downloading pycparser-3.11-py3-none-any.whl (51 kB)
+2026-10-09T16:49:57.4859808Z Downloading pyparsing-3.3.3-py3-none-any.whl (126 kB)
+2026-10-09T16:49:57.6872834Z Building wheels for collected packages: iterflow-api
+2026-10-09T16:49:57.6879730Z   Building editable for iterflow-api (pyproject.toml): started
+2026-10-09T16:49:57.8736347Z   Building editable for iterflow-api (pyproject.toml): finished with status 'done'
+2026-10-09T16:49:57.8740713Z   Created wheel for iterflow-api: filename=iterflow_api-1.8.1-0.editable-py3-none-any.whl size=3028 sha256=3a28ec035ec561d73d03b4c3233aa49cfe98a144397015d3a78666dec78e9c98
+2026-10-09T16:49:57.8742060Z   Stored in directory: /tmp/pip-ephem-wheel-cache-lm8u8uvo/wheels/7a/bd/bf/5e305b7cc82a12cc8cda0a058136aad0ffe885040ffe63d468
+2026-10-09T16:49:57.8754835Z Successfully built iterflow-api
+2026-10-09T16:49:58.0606128Z Installing collected packages: sortedcontainers, boolean.py, websockets, uvloop, urllib3, typing-extensions, truststore, tomli-w, tomli, six, ruff, redis, pyyaml, python-multipart, python-dotenv, pyparsing, PyMySQL, pyjwt, pygments, pycparser, pwdlib, psycopg-binary, pluggy, platformdirs, pip-api, pathspec, packaging, packageurl-python, mypy_extensions, msgpack, mdurl, MarkupSafe, license-expression, librt, jmespath, iniconfig, idna, httptools, h11, greenlet, filelock, defusedxml, coverage, click, charset_normalizer, certifi, annotated-types, annotated-doc, uvicorn, typing-inspection, sqlalchemy, requests, python-dateutil, pytest, pydantic-core, py-serializable, psycopg, pip-requirements-parser, opentelemetry-api, mypy, markdown-it-py, Mako, httpcore2, httpcore, cffi, anyio, watchfiles, starlette, rich, pytest-cov, pydantic, httpx2, httpx, cyclonedx-python-lib, CacheControl, botocore, argon2-cffi-bindings, alembic, s3transfer, pydantic-settings, fastapi, argon2-cffi, pip-audit, boto3, iterflow-api
+2026-10-09T16:50:07.0217330Z
+2026-10-09T16:50:07.0268115Z Successfully installed CacheControl-0.14.4 Mako-1.4.3 MarkupSafe-3.0.4 PyMySQL-1.2.3 alembic-1.20.0 annotated-doc-0.0.5 annotated-types-0.8.0 anyio-4.15.1 argon2-cffi-25.1.0 argon2-cffi-bindings-26.1.0 boolean.py-5.0 boto3-1.43.110 botocore-1.43.110 certifi-2026.7.22 cffi-2.1.1 charset_normalizer-3.5.2 click-8.5.0 coverage-7.16.2 cyclonedx-python-lib-11.12.0 defusedxml-0.7.1 fastapi-0.143.0 filelock-4.0.12 greenlet-3.5.6 h11-0.16.0 httpcore-1.0.9 httpcore2-2.13.1 httptools-0.8.0 httpx-0.28.1 httpx2-2.13.1 idna-3.20 iniconfig-2.3.1 iterflow-api-1.8.1 jmespath-1.1.0 librt-0.16.0 license-expression-30.4.4 markdown-it-py-4.2.0 mdurl-0.1.2 msgpack-1.2.3 mypy-1.20.2 mypy_extensions-1.1.0 opentelemetry-api-1.45.1 packageurl-python-0.17.6 packaging-26.3 pathspec-1.1.1 pip-api-0.0.35 pip-audit-2.10.1 pip-requirements-parser-32.0.1 platformdirs-4.12.4 pluggy-1.6.0 psycopg-3.3.6 psycopg-binary-3.3.6 pwdlib-0.3.1 py-serializable-2.1.0 pycparser-3.11 pydantic-2.14.0 pydantic-core-2.50.0 pydantic-settings-2.15.0 pygments-2.21.0 pyjwt-2.15.1 pyparsing-3.3.3 pytest-9.1.1 pytest-cov-6.3.0 python-dateutil-2.9.0.post0 python-dotenv-1.2.4 python-multipart-0.0.32 pyyaml-6.0.3 redis-6.4.0 requests-2.34.2 rich-15.0.0 ruff-0.16.10 s3transfer-0.19.2 six-1.17.0 sortedcontainers-2.4.0 sqlalchemy-2.1.4 starlette-1.7.0 tomli-2.5.0 tomli-w-1.2.0 truststore-0.10.4 typing-extensions-4.16.0 typing-inspection-0.4.4 urllib3-2.8.0 uvicorn-0.54.0 uvloop-0.23.0 watchfiles-1.3.0 websockets-17.2
+2026-10-09T16:50:07.3267434Z ##[group]Run python -m pip_audit
+2026-10-09T16:50:07.3267722Z [36;1mpython -m pip_audit[0m
+2026-10-09T16:50:07.3326256Z shell: /usr/bin/bash -e {0}
+2026-10-09T16:50:07.3326479Z env:
+2026-10-09T16:50:07.3326762Z   DATABASE_URL: postgresql+psycopg://iterflow@localhost:5432/iterflow_test
+2026-10-09T16:50:07.3327214Z   ITERFLOW_TEST_POSTGRES_URL: postgresql+psycopg://iterflow@localhost:5432/iterflow_test
+2026-10-09T16:50:07.3327572Z   REDIS_URL: redis://localhost:6379/15
+2026-10-09T16:50:07.3327883Z   JWT_SECRET: [redacted]
+2026-10-09T16:50:07.3328188Z   STORAGE_DRIVER: local
+2026-10-09T16:50:07.3328391Z   LOCAL_STORAGE_PATH: ./data/ci-uploads
+2026-10-09T16:50:07.3328599Z   APP_ENV: test
+2026-10-09T16:50:07.3328821Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-09T16:50:07.3329149Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib/pkgconfig
+2026-10-09T16:50:07.3329514Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-09T16:50:07.3329828Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-09T16:50:07.3330121Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-09T16:50:07.3330587Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib
+2026-10-09T16:50:07.3330845Z ##[endgroup]
+2026-10-09T16:50:08.4885576Z No known vulnerabilities found
+2026-10-09T16:50:08.4894521Z Name         Skip Reason
+2026-10-09T16:50:08.4894954Z ------------ ---------------------------------------------------------------------------
+2026-10-09T16:50:08.4895594Z iterflow-api Dependency not found on PyPI and could not be audited: iterflow-api (1.8.1)
+2026-10-09T16:50:08.5299729Z ##[group]Run python -m pytest -W error::DeprecationWarning -q
+2026-10-09T16:50:08.5300112Z [36;1mpython -m pytest -W error::DeprecationWarning -q[0m
+2026-10-09T16:50:08.5357688Z shell: /usr/bin/bash -e {0}
+2026-10-09T16:50:08.5357890Z env:
+2026-10-09T16:50:08.5358170Z   DATABASE_URL: postgresql+psycopg://iterflow@localhost:5432/iterflow_test
+2026-10-09T16:50:08.5358629Z   ITERFLOW_TEST_POSTGRES_URL: postgresql+psycopg://iterflow@localhost:5432/iterflow_test
+2026-10-09T16:50:08.5358988Z   REDIS_URL: redis://localhost:6379/15
+2026-10-09T16:50:08.5359297Z   JWT_SECRET: [redacted]
+2026-10-09T16:50:08.5359593Z   STORAGE_DRIVER: local
+2026-10-09T16:50:08.5359792Z   LOCAL_STORAGE_PATH: ./data/ci-uploads
+2026-10-09T16:50:08.5360006Z   APP_ENV: test
+2026-10-09T16:50:08.5360228Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-09T16:50:08.5360732Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib/pkgconfig
+2026-10-09T16:50:08.5361095Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-09T16:50:08.5361408Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-09T16:50:08.5361703Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-09T16:50:08.5361992Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib
+2026-10-09T16:50:08.5362421Z ##[endgroup]
+2026-10-09T16:50:19.5011185Z ........................................................................ [ 19%]
+2026-10-09T16:50:26.2739835Z ........................................................................ [ 38%]
+2026-10-09T16:50:31.9160905Z ........................................................................ [ 57%]
+2026-10-09T16:50:41.5348677Z ......................................................................s. [ 76%]
+2026-10-09T16:50:45.2873529Z ........................................................................ [ 95%]
+2026-10-09T16:50:47.9310611Z ................                                                         [100%]
+2026-10-09T16:50:47.9311019Z 375 passed, 1 skipped in 38.33s
+2026-10-09T16:50:49.5491435Z ##[group]Run set -o pipefail
+2026-10-09T16:50:49.5491841Z [36;1mset -o pipefail[0m
+2026-10-09T16:50:49.5492407Z [36;1mpython -m pytest -q -rs tests/test_*postgres.py | tee /tmp/iterflow-postgres-tests.log[0m
+2026-10-09T16:50:49.5493218Z [36;1mif grep -Eq '[1-9][0-9]* skipped' /tmp/iterflow-postgres-tests.log; then exit 1; fi[0m
+2026-10-09T16:50:49.5569353Z shell: /usr/bin/bash -e {0}
+2026-10-09T16:50:49.5569574Z env:
+2026-10-09T16:50:49.5569862Z   DATABASE_URL: postgresql+psycopg://iterflow@localhost:5432/iterflow_test
+2026-10-09T16:50:49.5570315Z   ITERFLOW_TEST_POSTGRES_URL: postgresql+psycopg://iterflow@localhost:5432/iterflow_test
+2026-10-09T16:50:49.5570900Z   REDIS_URL: redis://localhost:6379/15
+2026-10-09T16:50:49.5571226Z   JWT_SECRET: [redacted]
+2026-10-09T16:50:49.5571526Z   STORAGE_DRIVER: local
+2026-10-09T16:50:49.5571723Z   LOCAL_STORAGE_PATH: ./data/ci-uploads
+2026-10-09T16:50:49.5571933Z   APP_ENV: test
+2026-10-09T16:50:49.5572188Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-09T16:50:49.5572521Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib/pkgconfig
+2026-10-09T16:50:49.5572842Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-09T16:50:49.5573140Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-09T16:50:49.5573433Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-09T16:50:49.5573735Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib
+2026-10-09T16:50:49.5573994Z ##[endgroup]
+2026-10-09T16:50:55.7571017Z .....................................                                    [100%]
+2026-10-09T16:50:55.7571503Z 37 passed in 5.81s
+2026-10-09T16:50:56.1647414Z ##[group]Run python -m ruff check app tests
+2026-10-09T16:50:56.1647732Z [36;1mpython -m ruff check app tests[0m
+2026-10-09T16:50:56.1647986Z [36;1mpython -m ruff format --check app tests[0m
+2026-10-09T16:50:56.1648240Z [36;1mpython -m mypy app[0m
+2026-10-09T16:50:56.1648450Z [36;1mpython -m compileall -q app[0m
+2026-10-09T16:50:56.1706452Z shell: /usr/bin/bash -e {0}
+2026-10-09T16:50:56.1706662Z env:
+2026-10-09T16:50:56.1706947Z   DATABASE_URL: postgresql+psycopg://iterflow@localhost:5432/iterflow_test
+2026-10-09T16:50:56.1707413Z   ITERFLOW_TEST_POSTGRES_URL: postgresql+psycopg://iterflow@localhost:5432/iterflow_test
+2026-10-09T16:50:56.1707770Z   REDIS_URL: redis://localhost:6379/15
+2026-10-09T16:50:56.1708087Z   JWT_SECRET: [redacted]
+2026-10-09T16:50:56.1708399Z   STORAGE_DRIVER: local
+2026-10-09T16:50:56.1708598Z   LOCAL_STORAGE_PATH: ./data/ci-uploads
+2026-10-09T16:50:56.1708808Z   APP_ENV: test
+2026-10-09T16:50:56.1709059Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-09T16:50:56.1709394Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib/pkgconfig
+2026-10-09T16:50:56.1709723Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-09T16:50:56.1710014Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-09T16:50:56.1710315Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-09T16:50:56.1710728Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib
+2026-10-09T16:50:56.1711176Z ##[endgroup]
+2026-10-09T16:50:56.2184485Z All checks passed!
+2026-10-09T16:50:56.2569003Z 140 files already formatted
+2026-10-09T16:51:05.1146220Z app/services/version_service.py:722: error: Incompatible return value type (got "list[object]", expected "list[int]")  [return-value]
+2026-10-09T16:51:05.2135294Z Found 1 error in 1 file (checked 98 source files)
+2026-10-09T16:51:05.2346804Z ##[error]Process completed with exit code 1.
+2026-10-09T16:51:05.2449331Z Post job cleanup.
+2026-10-09T16:51:05.3111338Z [command]/usr/bin/git version
+2026-10-09T16:51:05.3147927Z git version 2.55.0
+2026-10-09T16:51:05.3176786Z Temporarily overriding HOME='/home/runner/work/_temp/803a4b46-e93a-469c-bd45-a9beb8872542' before making global git config changes
+2026-10-09T16:51:05.3177865Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-09T16:51:05.3180009Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/iterflow/iterflow
+2026-10-09T16:51:05.3211283Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-09T16:51:05.3239093Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-09T16:51:05.3452886Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-09T16:51:05.3482385Z http.https://github.com/.extraheader
+2026-10-09T16:51:05.3491364Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-10-09T16:51:05.3523502Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-09T16:51:05.3744017Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-09T16:51:05.3783652Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-09T16:51:05.4096170Z Print service container logs: bc214b3b9a254befb43398b3a06fbc30_postgres177alpine322_9c65e8
+2026-10-09T16:51:05.4099551Z ##[command]/usr/bin/docker logs --details 67468ef9c52ca909b895a411f8e751618b6518478b66b86396424cb13dc9518c
+2026-10-09T16:51:05.4205438Z  ********************************************************************************
+2026-10-09T16:51:05.4205845Z  WARNING: POSTGRES_HOST_AUTH_METHOD has been set to "trust". This will allow
+2026-10-09T16:51:05.4206260Z           anyone with access to the Postgres port to access your database without
+2026-10-09T16:51:05.4206652Z           a password, even if POSTGRES_PASSWORD is set. See PostgreSQL
+2026-10-09T16:51:05.4206947Z           documentation about "trust":
+2026-10-09T16:51:05.4207244Z           https://www.postgresql.org/docs/current/auth-trust.html
+2026-10-09T16:51:05.4207587Z           In Docker's default configuration, this is effectively any other
+2026-10-09T16:51:05.4207891Z           container on the same system.
+2026-10-09T16:51:05.4208162Z
+2026-10-09T16:51:05.4208398Z           It is not recommended to use POSTGRES_HOST_AUTH_METHOD=trust. Replace
+2026-10-09T16:51:05.4208789Z           it with "-e POSTGRES_PASSWORD=password" instead to set a password in
+2026-10-09T16:51:05.4209074Z           "docker run".
+2026-10-09T16:51:05.4209285Z  ********************************************************************************
+2026-10-09T16:51:05.4209534Z  sh: locale: not found
+2026-10-09T16:51:05.4209784Z  2026-10-09 16:49:38.021 UTC [37] WARNING:  no usable system locales were found
+2026-10-09T16:51:05.4210136Z  initdb: warning: enabling "trust" authentication for local connections
+2026-10-09T16:51:05.4210863Z  initdb: hint: You can change this by editing pg_hba.conf or using the option -A, or --auth-local and --auth-host, the next time you run initdb.
+2026-10-09T16:51:05.4211513Z  2026-10-09 16:49:40.002 UTC [1] LOG:  starting PostgreSQL 17.7 on x86_64-pc-linux-musl, compiled by gcc (Alpine 14.2.0) 14.2.0, 64-bit
+2026-10-09T16:51:05.4212571Z  2026-10-09 16:49:40.003 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+2026-10-09T16:51:05.4213069Z  2026-10-09 16:49:40.003 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+2026-10-09T16:51:05.4213466Z  2026-10-09 16:49:40.003 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2026-10-09T16:51:05.4213890Z  2026-10-09 16:49:40.007 UTC [59] LOG:  database system was shut down at 2026-10-09 16:49:39 UTC
+2026-10-09T16:51:05.4214271Z  2026-10-09 16:49:40.019 UTC [1] LOG:  database system is ready to accept connections
+2026-10-09T16:51:05.4214749Z  2026-10-09 16:50:25.240 UTC [130] ERROR:  duplicate key value violates unique constraint "uq_release_version_id"
+2026-10-09T16:51:05.4215170Z  2026-10-09 16:50:25.240 UTC [130] DETAIL:  Key (version_id)=(1) already exists.
+2026-10-09T16:51:05.4216244Z  2026-10-09 16:50:25.240 UTC [130] STATEMENT:  INSERT INTO rd_release (version_id, released_at, result, release_notes, rollback_notes, created_at, created_by, updated_at, updated_by, revision) VALUES ($1::BIGINT, $2::TIMESTAMP WITH TIME ZONE, $3, $4::VARCHAR, $5::VARCHAR, $6::TIMESTAMP WITH TIME ZONE, $7::BIGINT, $8::TIMESTAMP WITH TIME ZONE, $9::BIGINT, $10::INTEGER) RETURNING rd_release.id
+2026-10-09T16:51:05.4217414Z  2026-10-09 16:50:25.246 UTC [130] ERROR:  duplicate key value violates unique constraint "uq_attachment_entity_file"
+2026-10-09T16:51:05.4217929Z  2026-10-09 16:50:25.246 UTC [130] DETAIL:  Key (entity_type, entity_id, file_id)=(FEEDBACK, 1, 1) already exists.
+2026-10-09T16:51:05.4218699Z  2026-10-09 16:50:25.246 UTC [130] STATEMENT:  INSERT INTO sys_attachment_relation (file_id, entity_type, entity_id, created_at) VALUES ($1::BIGINT, $2::VARCHAR, $3::BIGINT, $4::TIMESTAMP WITH TIME ZONE) RETURNING sys_attachment_relation.id
+2026-10-09T16:51:05.4219508Z  2026-10-09 16:50:25.247 UTC [130] ERROR:  duplicate key value violates unique constraint "uq_requirement_feedback_pair"
+2026-10-09T16:51:05.4220178Z  2026-10-09 16:50:25.247 UTC [130] DETAIL:  Key (requirement_id, feedback_id)=(1, 1) already exists.
+2026-10-09T16:51:05.4221172Z  2026-10-09 16:50:25.247 UTC [130] STATEMENT:  INSERT INTO rd_requirement_feedback (requirement_id, feedback_id, is_primary, created_at) VALUES ($1::BIGINT, $2::BIGINT, $3, $4::TIMESTAMP WITH TIME ZONE) RETURNING rd_requirement_feedback.id
+2026-10-09T16:51:05.4222524Z  2026-10-09 16:50:25.248 UTC [130] ERROR:  Requirement 1 has an inconsistent active version relation
+2026-10-09T16:51:05.4223402Z  2026-10-09 16:50:25.248 UTC [130] CONTEXT:  PL/pgSQL function iterflow_assert_requirement_version_consistency(bigint) line 20 at RAISE
+2026-10-09T16:51:05.4224253Z  	SQL statement "SELECT iterflow_assert_requirement_version_consistency(NEW.id)"
+2026-10-09T16:51:05.4224916Z  	PL/pgSQL function iterflow_check_requirement_version_trigger() line 3 at PERFORM
+2026-10-09T16:51:05.4225357Z  2026-10-09 16:50:25.248 UTC [130] STATEMENT:  COMMIT
+2026-10-09T16:51:05.4225722Z  2026-10-09 16:50:25.251 UTC [130] ERROR:  Feedback 1 has an inconsistent primary requirement relation
+2026-10-09T16:51:05.4226243Z  2026-10-09 16:50:25.251 UTC [130] CONTEXT:  PL/pgSQL function iterflow_assert_feedback_primary_consistency(bigint) line 21 at RAISE
+2026-10-09T16:51:05.4226742Z  	SQL statement "SELECT iterflow_assert_feedback_primary_consistency(NEW.id)"
+2026-10-09T16:51:05.4227121Z  	PL/pgSQL function iterflow_check_feedback_main_trigger() line 3 at PERFORM
+2026-10-09T16:51:05.4227435Z  2026-10-09 16:50:25.251 UTC [130] STATEMENT:  COMMIT
+2026-10-09T16:51:05.4227803Z  2026-10-09 16:50:51.082 UTC [205] ERROR:  duplicate key value violates unique constraint "uq_release_version_id"
+2026-10-09T16:51:05.4228227Z  2026-10-09 16:50:51.082 UTC [205] DETAIL:  Key (version_id)=(1) already exists.
+2026-10-09T16:51:05.4229277Z  2026-10-09 16:50:51.082 UTC [205] STATEMENT:  INSERT INTO rd_release (version_id, released_at, result, release_notes, rollback_notes, created_at, created_by, updated_at, updated_by, revision) VALUES ($1::BIGINT, $2::TIMESTAMP WITH TIME ZONE, $3, $4::VARCHAR, $5::VARCHAR, $6::TIMESTAMP WITH TIME ZONE, $7::BIGINT, $8::TIMESTAMP WITH TIME ZONE, $9::BIGINT, $10::INTEGER) RETURNING rd_release.id
+2026-10-09T16:51:05.4230675Z  2026-10-09 16:50:51.089 UTC [205] ERROR:  duplicate key value violates unique constraint "uq_attachment_entity_file"
+2026-10-09T16:51:05.4231191Z  2026-10-09 16:50:51.089 UTC [205] DETAIL:  Key (entity_type, entity_id, file_id)=(FEEDBACK, 1, 1) already exists.
+2026-10-09T16:51:05.4231966Z  2026-10-09 16:50:51.089 UTC [205] STATEMENT:  INSERT INTO sys_attachment_relation (file_id, entity_type, entity_id, created_at) VALUES ($1::BIGINT, $2::VARCHAR, $3::BIGINT, $4::TIMESTAMP WITH TIME ZONE) RETURNING sys_attachment_relation.id
+2026-10-09T16:51:05.4232751Z  2026-10-09 16:50:51.090 UTC [205] ERROR:  duplicate key value violates unique constraint "uq_requirement_feedback_pair"
+2026-10-09T16:51:05.4233224Z  2026-10-09 16:50:51.090 UTC [205] DETAIL:  Key (requirement_id, feedback_id)=(1, 1) already exists.
+2026-10-09T16:51:05.4233963Z  2026-10-09 16:50:51.090 UTC [205] STATEMENT:  INSERT INTO rd_requirement_feedback (requirement_id, feedback_id, is_primary, created_at) VALUES ($1::BIGINT, $2::BIGINT, $3, $4::TIMESTAMP WITH TIME ZONE) RETURNING rd_requirement_feedback.id
+2026-10-09T16:51:05.4234695Z  2026-10-09 16:50:51.091 UTC [205] ERROR:  Requirement 1 has an inconsistent active version relation
+2026-10-09T16:51:05.4235213Z  2026-10-09 16:50:51.091 UTC [205] CONTEXT:  PL/pgSQL function iterflow_assert_requirement_version_consistency(bigint) line 20 at RAISE
+2026-10-09T16:51:05.4235713Z  	SQL statement "SELECT iterflow_assert_requirement_version_consistency(NEW.id)"
+2026-10-09T16:51:05.4236113Z  	PL/pgSQL function iterflow_check_requirement_version_trigger() line 3 at PERFORM
+2026-10-09T16:51:05.4236449Z  2026-10-09 16:50:51.091 UTC [205] STATEMENT:  COMMIT
+2026-10-09T16:51:05.4236800Z  2026-10-09 16:50:51.094 UTC [205] ERROR:  Feedback 1 has an inconsistent primary requirement relation
+2026-10-09T16:51:05.4237449Z  2026-10-09 16:50:51.094 UTC [205] CONTEXT:  PL/pgSQL function iterflow_assert_feedback_primary_consistency(bigint) line 21 at RAISE
+2026-10-09T16:51:05.4237975Z  	SQL statement "SELECT iterflow_assert_feedback_primary_consistency(NEW.id)"
+2026-10-09T16:51:05.4238355Z  	PL/pgSQL function iterflow_check_feedback_main_trigger() line 3 at PERFORM
+2026-10-09T16:51:05.4238681Z  2026-10-09 16:50:51.094 UTC [205] STATEMENT:  COMMIT
+2026-10-09T16:51:05.4239008Z  The files belonging to this database system will be owned by user "postgres".
+2026-10-09T16:51:05.4239329Z  This user must also own the server process.
+2026-10-09T16:51:05.4239559Z
+2026-10-09T16:51:05.4239790Z  The database cluster will be initialized with locale "en_US.utf8".
+2026-10-09T16:51:05.4240130Z  The default database encoding has accordingly been set to "UTF8".
+2026-10-09T16:51:05.4240604Z  The default text search configuration will be set to "english".
+2026-10-09T16:51:05.4240866Z
+2026-10-09T16:51:05.4241032Z  Data page checksums are disabled.
+2026-10-09T16:51:05.4241230Z
+2026-10-09T16:51:05.4241478Z  fixing permissions on existing directory /var/lib/postgresql/data ... ok
+2026-10-09T16:51:05.4241783Z  creating subdirectories ... ok
+2026-10-09T16:51:05.4242041Z  selecting dynamic shared memory implementation ... posix
+2026-10-09T16:51:05.4242314Z  selecting default "max_connections" ... 100
+2026-10-09T16:51:05.4242554Z  selecting default "shared_buffers" ... 128MB
+2026-10-09T16:51:05.4242789Z  selecting default time zone ... UTC
+2026-10-09T16:51:05.4243015Z  creating configuration files ... ok
+2026-10-09T16:51:05.4243231Z  running bootstrap script ... ok
+2026-10-09T16:51:05.4243465Z  performing post-bootstrap initialization ... ok
+2026-10-09T16:51:05.4243709Z  syncing data to disk ... ok
+2026-10-09T16:51:05.4243893Z
+2026-10-09T16:51:05.4244034Z
+2026-10-09T16:51:05.4244221Z  Success. You can now start the database server using:
+2026-10-09T16:51:05.4244463Z
+2026-10-09T16:51:05.4244777Z      pg_ctl -D /var/lib/postgresql/data -l logfile start
+2026-10-09T16:51:05.4245018Z
+2026-10-09T16:51:05.4245446Z  waiting for server to start....2026-10-09 16:49:39.717 UTC [43] LOG:  starting PostgreSQL 17.7 on x86_64-pc-linux-musl, compiled by gcc (Alpine 14.2.0) 14.2.0, 64-bit
+2026-10-09T16:51:05.4246045Z  2026-10-09 16:49:39.717 UTC [43] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2026-10-09T16:51:05.4246478Z  2026-10-09 16:49:39.720 UTC [46] LOG:  database system was shut down at 2026-10-09 16:49:38 UTC
+2026-10-09T16:51:05.4246860Z  2026-10-09 16:49:39.725 UTC [43] LOG:  database system is ready to accept connections
+2026-10-09T16:51:05.4247148Z   done
+2026-10-09T16:51:05.4247308Z  server started
+2026-10-09T16:51:05.4247477Z  CREATE DATABASE
+2026-10-09T16:51:05.4247631Z
+2026-10-09T16:51:05.4247772Z
+2026-10-09T16:51:05.4248029Z  /usr/local/bin/docker-entrypoint.sh: ignoring /docker-entrypoint-initdb.d/*
+2026-10-09T16:51:05.4248327Z
+2026-10-09T16:51:05.4248604Z  waiting for server to shut down....2026-10-09 16:49:39.881 UTC [43] LOG:  received fast shutdown request
+2026-10-09T16:51:05.4249001Z  2026-10-09 16:49:39.881 UTC [43] LOG:  aborting any active transactions
+2026-10-09T16:51:05.4249432Z  2026-10-09 16:49:39.885 UTC [43] LOG:  background worker "logical replication launcher" (PID 49) exited with exit code 1
+2026-10-09T16:51:05.4249841Z  2026-10-09 16:49:39.887 UTC [44] LOG:  shutting down
+2026-10-09T16:51:05.4250135Z  2026-10-09 16:49:39.887 UTC [44] LOG:  checkpoint starting: shutdown immediate
+2026-10-09T16:51:05.4251091Z  2026-10-09 16:49:39.970 UTC [44] LOG:  checkpoint complete: wrote 925 buffers (5.6%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.066 s, sync=0.017 s, total=0.084 s; sync files=301, longest=0.011 s, average=0.001 s; distance=4255 kB, estimate=4255 kB; lsn=0/1915040, redo lsn=0/1915040
+2026-10-09T16:51:05.4251853Z  2026-10-09 16:49:39.978 UTC [43] LOG:  database system is shut down
+2026-10-09T16:51:05.4252101Z   done
+2026-10-09T16:51:05.4252263Z  server stopped
+2026-10-09T16:51:05.4252422Z
+2026-10-09T16:51:05.4252715Z  PostgreSQL init process complete; ready for start up.
+2026-10-09T16:51:05.4252953Z
+2026-10-09T16:51:05.4257171Z Stop and remove container: bc214b3b9a254befb43398b3a06fbc30_postgres177alpine322_9c65e8
+2026-10-09T16:51:05.4261242Z ##[command]/usr/bin/docker rm --force 67468ef9c52ca909b895a411f8e751618b6518478b66b86396424cb13dc9518c
+2026-10-09T16:51:05.8211703Z 67468ef9c52ca909b895a411f8e751618b6518478b66b86396424cb13dc9518c
+2026-10-09T16:51:05.8231558Z Print service container logs: 72a9162f0ceb450eb5112ef3091c3cb0_redis822alpine322_e5f317
+2026-10-09T16:51:05.8232675Z ##[command]/usr/bin/docker logs --details 35878ee29b524e626bfd67578a28f0042bf6a08ecc13883e077160b86530677a
+2026-10-09T16:51:05.8336571Z  Starting Redis Server
+2026-10-09T16:51:05.8339353Z  1:C 09 Oct 2026 16:49:40.534 # WARNING Memory overcommit must be enabled! Without it, a background save or replication may fail under low memory condition. Being disabled, it can also cause failures without low memory condition, see https://github.com/jemalloc/jemalloc/issues/1328. To fix this issue add 'vm.overcommit_memory = 1' to /etc/sysctl.conf and then reboot or run the command 'sysctl vm.overcommit_memory=1' for this to take effect.
+2026-10-09T16:51:05.8341347Z  1:C 09 Oct 2026 16:49:40.534 * oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+2026-10-09T16:51:05.8342017Z  1:C 09 Oct 2026 16:49:40.534 * Redis version=8.2.2, bits=64, commit=00000000, modified=1, pid=1, just started
+2026-10-09T16:51:05.8342620Z  1:C 09 Oct 2026 16:49:40.534 * Configuration loaded
+2026-10-09T16:51:05.8343065Z  1:M 09 Oct 2026 16:49:40.534 * monotonic clock: POSIX clock_gettime
+2026-10-09T16:51:05.8343572Z  1:M 09 Oct 2026 16:49:40.535 * Running mode=standalone, port=6379.
+2026-10-09T16:51:05.8344069Z  1:M 09 Oct 2026 16:49:40.535 * <bf> RedisBloom version 8.2.3 (Git=unknown)
+2026-10-09T16:51:05.8344569Z  1:M 09 Oct 2026 16:49:40.535 * <bf> Registering configuration options: [
+2026-10-09T16:51:05.8345310Z  1:M 09 Oct 2026 16:49:40.535 * <bf> 	{ bf-error-rate       :      0.01 }
+2026-10-09T16:51:05.8345800Z  1:M 09 Oct 2026 16:49:40.535 * <bf> 	{ bf-initial-size     :       100 }
+2026-10-09T16:51:05.8346270Z  1:M 09 Oct 2026 16:49:40.535 * <bf> 	{ bf-expansion-factor :         2 }
+2026-10-09T16:51:05.8346749Z  1:M 09 Oct 2026 16:49:40.535 * <bf> 	{ cf-bucket-size      :         2 }
+2026-10-09T16:51:05.8347224Z  1:M 09 Oct 2026 16:49:40.535 * <bf> 	{ cf-initial-size     :      1024 }
+2026-10-09T16:51:05.8347690Z  1:M 09 Oct 2026 16:49:40.535 * <bf> 	{ cf-max-iterations   :        20 }
+2026-10-09T16:51:05.8348225Z  1:M 09 Oct 2026 16:49:40.535 * <bf> 	{ cf-expansion-factor :         1 }
+2026-10-09T16:51:05.8348724Z  1:M 09 Oct 2026 16:49:40.535 * <bf> 	{ cf-max-expansions   :        32 }
+2026-10-09T16:51:05.8349132Z  1:M 09 Oct 2026 16:49:40.535 * <bf> ]
+2026-10-09T16:51:05.8349631Z  1:M 09 Oct 2026 16:49:40.536 * Module 'bf' loaded from /usr/local/lib/redis/modules//redisbloom.so
+2026-10-09T16:51:05.8350457Z  1:M 09 Oct 2026 16:49:40.538 * <search> Redis version found by RedisSearch : 8.2.2 - oss
+2026-10-09T16:51:05.8351072Z  1:M 09 Oct 2026 16:49:40.538 * <search> RediSearch version 8.2.5 (Git=222ad3b)
+2026-10-09T16:51:05.8351650Z  1:M 09 Oct 2026 16:49:40.538 * <search> Low level api version 1 initialized successfully
+2026-10-09T16:51:05.8353444Z  1:M 09 Oct 2026 16:49:40.538 * <search> gc: ON, prefix min length: 2, min word length to stem: 4, prefix max expansions: 200, query timeout (ms): 500, timeout policy: return, cursor read size: 1000, cursor max idle (ms): 300000, max doctable size: 1000000, max number of search results:  1000000,
+2026-10-09T16:51:05.8354693Z  1:M 09 Oct 2026 16:49:40.538 * <search> Initialized thread pools!
+2026-10-09T16:51:05.8355022Z  1:M 09 Oct 2026 16:49:40.538 * <search> Disabled workers threadpool of size 0
+2026-10-09T16:51:05.8355354Z  1:M 09 Oct 2026 16:49:40.538 * <search> Subscribe to config changes
+2026-10-09T16:51:05.8355668Z  1:M 09 Oct 2026 16:49:40.538 * <search> Enabled role change notification
+2026-10-09T16:51:05.8356264Z  1:M 09 Oct 2026 16:49:40.539 * <search> Cluster configuration: AUTO partitions, type: 0, coordinator timeout: 0ms
+2026-10-09T16:51:05.8356684Z  1:M 09 Oct 2026 16:49:40.539 * <search> Register write commands
+2026-10-09T16:51:05.8357056Z  1:M 09 Oct 2026 16:49:40.539 * Module 'search' loaded from /usr/local/lib/redis/modules//redisearch.so
+2026-10-09T16:51:05.8357573Z  1:M 09 Oct 2026 16:49:40.539 * <timeseries> RedisTimeSeries version 80200, git_sha=1439d4a439ca9c063e6ef124a510abff09a5d493
+2026-10-09T16:51:05.8358079Z  1:M 09 Oct 2026 16:49:40.539 * <timeseries> Redis version found by RedisTimeSeries : 8.2.2 - oss
+2026-10-09T16:51:05.8358502Z  1:M 09 Oct 2026 16:49:40.539 * <timeseries> Registering configuration options: [
+2026-10-09T16:51:05.8358878Z  1:M 09 Oct 2026 16:49:40.539 * <timeseries> 	{ ts-compaction-policy   :              }
+2026-10-09T16:51:05.8359239Z  1:M 09 Oct 2026 16:49:40.539 * <timeseries> 	{ ts-num-threads         :            3 }
+2026-10-09T16:51:05.8359588Z  1:M 09 Oct 2026 16:49:40.539 * <timeseries> 	{ ts-retention-policy    :            0 }
+2026-10-09T16:51:05.8359928Z  1:M 09 Oct 2026 16:49:40.539 * <timeseries> 	{ ts-duplicate-policy    :        block }
+2026-10-09T16:51:05.8360268Z  1:M 09 Oct 2026 16:49:40.539 * <timeseries> 	{ ts-chunk-size-bytes    :         4096 }
+2026-10-09T16:51:05.8360803Z  1:M 09 Oct 2026 16:49:40.539 * <timeseries> 	{ ts-encoding            :   compressed }
+2026-10-09T16:51:05.8361153Z  1:M 09 Oct 2026 16:49:40.539 * <timeseries> 	{ ts-ignore-max-time-diff:            0 }
+2026-10-09T16:51:05.8361499Z  1:M 09 Oct 2026 16:49:40.539 * <timeseries> 	{ ts-ignore-max-val-diff :     0.000000 }
+2026-10-09T16:51:05.8361796Z  1:M 09 Oct 2026 16:49:40.539 * <timeseries> ]
+2026-10-09T16:51:05.8362058Z  1:M 09 Oct 2026 16:49:40.539 * <timeseries> Detected redis oss
+2026-10-09T16:51:05.8362374Z  1:M 09 Oct 2026 16:49:40.539 * <timeseries> Enabled diskless replication
+2026-10-09T16:51:05.8362785Z  1:M 09 Oct 2026 16:49:40.539 * Module 'timeseries' loaded from /usr/local/lib/redis/modules//redistimeseries.so
+2026-10-09T16:51:05.8363332Z  1:M 09 Oct 2026 16:49:40.540 * <ReJSON> Created new data type 'ReJSON-RL'
+2026-10-09T16:51:05.8363676Z  1:M 09 Oct 2026 16:49:40.540 * <ReJSON> version: 80201 git sha: unknown branch: unknown
+2026-10-09T16:51:05.8364010Z  1:M 09 Oct 2026 16:49:40.540 * <ReJSON> Exported RedisJSON_V1 API
+2026-10-09T16:51:05.8364312Z  1:M 09 Oct 2026 16:49:40.540 * <ReJSON> Exported RedisJSON_V2 API
+2026-10-09T16:51:05.8364595Z  1:M 09 Oct 2026 16:49:40.540 * <ReJSON> Exported RedisJSON_V3 API
+2026-10-09T16:51:05.8364875Z  1:M 09 Oct 2026 16:49:40.540 * <ReJSON> Exported RedisJSON_V4 API
+2026-10-09T16:51:05.8365153Z  1:M 09 Oct 2026 16:49:40.540 * <ReJSON> Exported RedisJSON_V5 API
+2026-10-09T16:51:05.8365443Z  1:M 09 Oct 2026 16:49:40.540 * <ReJSON> Enabled diskless replication
+2026-10-09T16:51:05.8365797Z  1:M 09 Oct 2026 16:49:40.540 * <ReJSON> Initialized shared string cache, thread safe: false.
+2026-10-09T16:51:05.8366245Z  1:M 09 Oct 2026 16:49:40.540 * Module 'ReJSON' loaded from /usr/local/lib/redis/modules//rejson.so
+2026-10-09T16:51:05.8366614Z  1:M 09 Oct 2026 16:49:40.540 * <search> Acquired RedisJSON_V5 API
+2026-10-09T16:51:05.8366877Z  1:M 09 Oct 2026 16:49:40.541 * Server initialized
+2026-10-09T16:51:05.8367142Z  1:M 09 Oct 2026 16:49:40.541 * Ready to accept connections tcp
+2026-10-09T16:51:05.8368114Z Stop and remove container: 72a9162f0ceb450eb5112ef3091c3cb0_redis822alpine322_e5f317
+2026-10-09T16:51:05.8368730Z ##[command]/usr/bin/docker rm --force 35878ee29b524e626bfd67578a28f0042bf6a08ecc13883e077160b86530677a
+2026-10-09T16:51:06.1509831Z 35878ee29b524e626bfd67578a28f0042bf6a08ecc13883e077160b86530677a
+2026-10-09T16:51:06.1529910Z Remove container network: github_network_d29141f6334843d980e278966b16c638
+2026-10-09T16:51:06.1534067Z ##[command]/usr/bin/docker network rm github_network_d29141f6334843d980e278966b16c638
+2026-10-09T16:51:06.3166226Z github_network_d29141f6334843d980e278966b16c638
+2026-10-09T16:51:06.3233680Z Cleaning up orphan processes
+2026-10-09T16:51:06.3591522Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4, actions/setup-python@v5. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

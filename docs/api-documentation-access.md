@@ -20,14 +20,14 @@
 
 本次修复的本地门禁：后端 warnings-as-errors 338 passed / 38 环境依赖项 skipped，独立 PostgreSQL 门禁交由 CI；前端 320 passed / 47 files，类型 / 生产构建 / bundle 通过；文档浏览器 5 项通过。真实本地 API / 页面 10 项检查通过，375px / 1440px 分页响应子字段显示中文，搜索 / 下载与原账号登录正常。同一 Agent 的 Fresh Self-Review 验证了运行时 OpenAPI 缓存不被修改、下载及显示标签一致、契约生成不丢说明、剔除文档注释后响应 shape 不变、角色检查保持原样和递归终止；并非外部独立终审。此提交时 branch / master / Preview CI 和线上部署待执行，实际结果记录到独立备份证据目录。
 
-`spec/openapi-development.yaml` 是当前未发布开发快照。相对已发布的 `spec/openapi-v1.8.1.yaml`，仅增加文档读取路径和 AuthMe 可选资格字段；主链、revision、状态机、数据范围和各业务权限保持原样。后端 parity / 同步脚本与前端类型生成入口统一指向开发快照。测试验证剔除这两项增量后，快照与 V1.8.1 完全相同。没有创建新 Release / Tag，也没有新增角色、permission 或 migration。
+`spec/openapi-development.yaml` 是当前未发布开发快照。以下描述是接口文档入口初次增量的历史记录；当前还包含已授权的阶段分工、DESIGNING、本人开发确认及 DONE/发布门禁，见 [当前接口指南](api-guide.md) 和 [操作手册](user-manual.md)。初次入口增量相对已发布的 `spec/openapi-v1.8.1.yaml`，仅增加文档读取路径和 AuthMe 可选资格字段；主链、revision、状态机、数据范围和各业务权限保持原样。后端 parity / 同步脚本与前端类型生成入口统一指向开发快照。测试验证剔除这两项增量后，快照与 V1.8.1 完全相同。没有创建新 Release / Tag，也没有新增角色、permission 或 migration。
 
 中文说明从开发契约生成到 `backend/app/core/api_documentation.json` 并随 API 包 / 镜像安装；线上返回真实运行时 OpenAPI 结构，只覆盖中文说明，避免文档接口结构与实现脱节。更新契约后运行：
 
 ```bash
 cd backend
-.venv/bin/python -m scripts.sync_openapi
-.venv/bin/python scripts/build_api_documentation.py
+../.venv/bin/python -m scripts.sync_openapi
+../.venv/bin/python -m scripts.build_api_documentation
 cd ../frontend
 npm run generate:api-types
 ```

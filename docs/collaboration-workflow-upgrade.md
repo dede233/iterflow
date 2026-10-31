@@ -1,5 +1,12 @@
 # 协作流程优化：兼容与升级准备
 
+合并修订：以 master `10f6bfa` 为当前升级基线。PostgreSQL 保留部署过的 0001–0008，追加 0009_collaboration_people → 0010_requirement_workflow → 0011_notification_delivery；MySQL 5.7 保留 mysql57_0001–0006，追加 mysql57_0007 → mysql57_0008 → mysql57_0009。以下历史阶段记录的 0005/0006/0007 对应本次重新衔接后的 0009/0010/0011，旧功能分支从未部署，不存在需要原地兼容其旧 revision 的真实库。
+
+旧 `rd_requirement_participant` 与 `completed_at` 完整保留；新工作流使用 `rd_requirement_actor`，迁移复制旧设计/开发分工。旧总负责人仅保留读取/DataScope，不推断为确认人或验收人。PLANNED/DESIGNING 映射为 CONFIRMED，DESIGNING 的设计子进度设为 IN_PROGRESS；迁移记录保存原状态、旧负责人和原开发确认时间。每人确认不再作为完成或发布门禁。旧 collaborators / start-stage / development-completion 接口已被 participants / workflow / status 代替；客户端必须同步升级，旧接口不允许绕过新工作流。
+
+MySQL 保留现有精确文件键、有效关系及域校验，新增表采用 DATETIME(6)、InnoDB/DYNAMIC、单确认/验收人生成列唯一约束。其 worker 使用行锁顺序消费（5.7 无 SKIP LOCKED），PostgreSQL 保持 SKIP LOCKED。验证迁移只在本任务新建容器或 CI 一次性数据库执行。
+
+
 本文件是后续环境升级的操作准备，不代表已经部署或操作真实数据库。本轮实现位于 `codex/collaboration-workflow`，产品版本号仍为 1.8.1；开发接口契约为 `spec/openapi-development.yaml`。已发布契约与标签不变。实际验证结果见 `collaboration-workflow-execution-log.md`。
 
 ## 兼容口径

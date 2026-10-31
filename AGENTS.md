@@ -2,6 +2,8 @@
 
 ## 当前开发授权 2026-10-31
 
+最新授权：核对 master 无漂移后合并并推送，跑完原六项及既有双 MySQL 配置 CI，修复并记录结果；不发布、不部署、不修改真实数据库。用户明确确认取消逐人开发完成门禁，改由开发人员提交验收、验收人确认。此规则替代下文历史逐人确认／总负责人／DESIGNING 主阶段规则；旧记录保留，双数据库及其他主链约束不变。
+
 用户已批准按 `docs/collaboration-workflow-improvement-plan.md` 开工，范围为反馈表单精简、多人接收单人受理、需求六阶段与环节人员、邮件通知、版本批量关联及摘要弹窗。按方案推荐默认值实施；反馈接收人暂不自动扩展 DataScope，不新增系统角色或 permission。允许为该范围更新开发契约、实现必要 Alembic migration 并在隔离测试数据库验证；不得对真实数据执行迁移。
 
 该授权替代下文历史版本授权中针对本轮范围的“不开发新功能／不新增 migration／不调整需求状态”限制；其他主链、事务、revision、RBAC 和技术栈规则不变。取消需求总负责人须保留历史读取兼容；版本负责人保留。仅更新 `spec/openapi-development.yaml`，已发布契约不变。
@@ -41,8 +43,17 @@ Redis 服务：iterflow-redis
 
 ## 0. 适用范围
 
+2026-10-23 用户明确批准开发人员、产品负责人、研发负责人具备完整版本流程：创建、安排需求、推进版本状态、检查及发布。允许补齐已有权限及双数据库追加迁移；不扩展 DataScope 或需求分工管理权限，不放松发布门禁。实施与验收见 `docs/version-role-permissions.md`，2026-10-23 已按测试先行顺序完成双环境部署，凭据见 `docs/version-role-deployment-2026-10-23.md`，既有历史发布授权保持为历史记录。
+
+
 本文件是“需求与版本管理系统”仓库内所有开发 Agent、代码生成工具和人工开发者的最高优先级工程说明之一。
 进入仓库后应先阅读本文件，再阅读 `DEVELOPMENT.md`、`TASKS.md`、`docs/` 与 `spec/`。
+
+2026-10-12 用户进一步授权合并反馈名称分支并配置保留测试环境的开机恢复。no-ff合并及后续恢复配置见 `docs/master-merge-and-autorecovery-2026-10-12.md`，最终master需自身八项CI和双远端SHA核验通过。本次不新增tag/Release，不再次更新正式应用或重启整台服务器；历史部署与发布记录保留。
+
+2026-10-12 用户确认后续部署顺序：保留 `https://sx-kc.xyz:8444` 独立测试环境，后续更新先在该环境完成验收，通过后再按当次更新授权范围更新 `https://sx-kc.xyz:8443` 正式环境。必要门禁或测试验收未通过时不得更新正式环境。测试账号、数据库及附件与正式环境隔离，不导入生产；未经用户新的明确移除指令不得清理测试环境。流程和当前基础设施限制见 `docs/test-environment-workflow.md`；本次记录不构成立即部署正式环境或新的 tag/Release 授权。
+
+2026-10-11 当前开发主线：用户已明确授权将 MySQL 5.7 适配和需求协作分支合入并推送 master，合并记录见 `docs/master-merge-2026-10-11.md`。当前开发契约为 `spec/openapi-development.yaml`，保留 PostgreSQL 路径；本次仅同步 Git 主线与文档，不重新部署服务器或操作数据库，不创建 tag/Release。以下 V1.8.1 正式发布说明及各版本授权章节保留为历史记录，不代表本次又进行正式发布。
 
 版本状态：本次正式发布目标为 `v1.8.1`，Hotfix 外部独立终审 PASS，用户已授权 Final Release + Cloudflare Preview Resume。正式发布成立条件为新的 Release Branch / Final Master 六项 CI PASS、annotated v1.8.1 tag 与正式 GitHub Release；发布事实以最终 master commit、标签和 Release 为准，不提前记录 tag SHA。发布 base：`df9e1ba1a5ee1a4c763098d8e180250f409bedd3`；包、FastAPI、health、Frontend 与当前契约元数据同步 1.8.1，当前契约 `spec/openapi-v1.8.1.yaml`，API shape 不变。v1.8.0 及更早正式标签/Release/契约不可变；本轮只发布已审查的共享 PageHeader 平板响应式修复，随后将正式版本合入独立 Preview 并恢复验收，不部署 Production。证据见 `docs/v1.8.1-release-readiness.md`。
 
@@ -142,6 +153,12 @@ Redis 的“正在编辑”标记只用于提示，不是强制排他锁。建�
 状态、优先级、负责人、版本迁移等高频变更优先使用独立 API，避免整页覆盖。
 
 ## 5. 状态机：必须集中管理
+
+2026-10-10 用户批准本地需求协作增量：保留一名总负责人、多名开发/设计，人员按阶段选择，并增加可选 DESIGNING（设计中）。PLANNED 可进入 DESIGNING 或直接 DEVELOPING；详细规则与 API 兼容边界以更新后的 `spec/status-machines.md`、`spec/openapi-development.yaml` 和 `docs/requirement-design-stage.md` 为准。这是既有需求状态机的明确授权增量；不改变 Publish/Release、CAS、核心实体关系及 RBAC，不自动授权线上升级或历史发布重写。
+
+2026-10-10 用户进一步明确授权：绑定的每名开发人员本人确认完成后才可发布。新增发布门禁、个人确认和双数据库追加迁移，规则见 `docs/development-completion.md`；不自动授权服务器操作。
+
+2026-10-10 用户指出未确认开发人员时产品仍可完成需求。本地补充：进入 DONE 也必须至少一名开发人员且全部本人确认，后端在状态事务内强制校验，失败 409 且不提交任何业务写入；提测规则、历史已完成记录和发布门禁保留。本次无需新增迁移，不自动授权线上升级。
 
 禁止在 Controller / Router 内散落业务状态判断。
 

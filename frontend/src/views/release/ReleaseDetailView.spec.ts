@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({ getRelease: vi.fn(), getVersion: vi.fn(), can:
 vi.mock('@/api/releases', () => ({ getRelease: mocks.getRelease }))
 vi.mock('@/api/versions', () => ({ getVersion: mocks.getVersion }))
 vi.mock('@/composables/usePermission', () => ({ usePermission: () => ({ can: mocks.can }) }))
-vi.mock('vue-router', () => ({ useRoute: () => mocks.route }))
+vi.mock('vue-router', () => ({ useRoute: () => mocks.route, useRouter: () => ({ push: vi.fn() }) }))
 import ReleaseDetailView from './ReleaseDetailView.vue'
 
 const release: ReleaseItem = {
@@ -17,10 +17,11 @@ const release: ReleaseItem = {
   release_notes: '完整发布说明\n第二行 https://example.com/' + 'long-path'.repeat(30), rollback_notes: '历史回滚说明\n保留原文',
 }
 
-function view() {
-  return mount(ReleaseDetailView, { global: {
+function view(props = {}) {
+  return mount(ReleaseDetailView, { props, global: {
     directives: { loading: () => {} },
     stubs: {
+      ReleaseVersionDrawer: true,
       RouterLink: { props: ['to'], template: '<a :href="to"><slot /></a>' },
       'el-button': { template: '<button><slot /></button>' },
     },
@@ -63,7 +64,9 @@ describe('read-only release detail', () => {
     mocks.can.mockReturnValue(true)
     const wrapper = view()
     await flushPromises()
-    expect(wrapper.get('a[href="/versions/456?return_to=%2Freleases"]').text()).toBe('版本 #456')
+    expect(wrapper.get('button.version-link').text()).toBe('版本 #456')
+    await wrapper.get('button.version-link').trigger('click')
+    expect(wrapper.getComponent({ name: 'ReleaseVersionDrawer' }).props('modelValue')).toBe(true)
     expect(wrapper.text()).toContain('V1.6.0 · 版本名称')
     expect(mocks.getVersion).toHaveBeenCalledWith(456)
     wrapper.unmount()
@@ -136,3 +139,16 @@ describe('read-only release detail', () => {
     wrapper.unmount()
   })
 })
+
+ it('embedded detail loads its explicit ID and emits navigation and close without changing the route', async () => {
+  mocks.can.mockReturnValue(true)
+  const wrapper = view({ embedded: true, embeddedId: 123, returnTo: '/releases?page=2&version_id=456' })
+  await flushPromises()
+  expect(mocks.getRelease).toHaveBeenCalledWith(123)
+  await wrapper.get('button.version-link').trigger('click')
+  expect(wrapper.emitted('open-version')).toEqual([[456]])
+  await wrapper.findAll('button').find(button => button.text() === '关闭详情')!.trigger('click')
+  expect(wrapper.emitted('close')).toEqual([[]])
+  expect(wrapper.find('a').exists()).toBe(false)
+  wrapper.unmount()
+ })

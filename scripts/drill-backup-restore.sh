@@ -43,6 +43,14 @@ storage_key="$("${COMPOSE[@]}" exec -T db psql -U iterflow -d iterflow -tAc \
   "SELECT storage_key FROM sys_file WHERE id=$file_id")"
 [[ "$storage_key" == uploads/* ]]
 
+stage="backup schema verification"
+expected_revision="$("${COMPOSE[@]}" exec -T api python -c \
+  'from alembic.config import Config; from alembic.script import ScriptDirectory; print(ScriptDirectory.from_config(Config("alembic.ini")).get_current_head())')"
+[[ -n "$expected_revision" && "$expected_revision" != None ]]
+backup_revision="$("${COMPOSE[@]}" exec -T db psql -U iterflow -d iterflow -tAc \
+  'SELECT version_num FROM alembic_version')"
+[[ "$backup_revision" == "$expected_revision" ]]
+
 stage="database-only backup creation"
 bash deploy/scripts/backup-database.sh "$TEMP_DIR/database-only"
 jq -e '.objects_included == false and .storage_mode == "local"' "$TEMP_DIR/database-only/manifest.json"
@@ -69,7 +77,7 @@ sentinel_after="$("${COMPOSE[@]}" exec -T db psql -U iterflow -d iterflow -tAc \
 [[ "$sentinel_after" == t ]]
 revision="$("${COMPOSE[@]}" exec -T db psql -U iterflow -d iterflow -tAc \
   'SELECT version_num FROM alembic_version')"
-[[ "$revision" == 0011_notification_delivery ]]
+[[ "$revision" == "$backup_revision" && "$revision" == "$expected_revision" ]]
 stage="restored administrator login"
 restored_login="$(curl --fail --silent --show-error -H 'Content-Type: application/json' \
   -d "$(jq -nc --arg u "$username" --arg p "$new_password" '{username:$u,password:$p}')" \

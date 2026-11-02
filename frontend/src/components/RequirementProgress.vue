@@ -1,16 +1,17 @@
 <script setup lang="ts">
 import { computed, onScopeDispose, ref, useId, watch } from 'vue'
-import { actWorkflow, getWorkflow, getParticipants, type Workflow, type WorkflowAction, type Participants } from '@/api/collaboration'
+import { actWorkflow, getWorkflow, getParticipants, type Workflow, type WorkflowAction, type Participants, type Participant } from '@/api/collaboration'
 import { useAuthStore } from '@/stores/auth'
 import { availableRequirementStatusActions, requirementStatusLabel, type ReqStatusAction } from '@/constants/requirement'
 import { formatLocalDateTime } from '@/utils/dates'
 import type { Requirement } from '@/types/domain'
-import CollaborationPeople from './CollaborationPeople.vue'
+import RequirementPeopleDialog from './RequirementPeopleDialog.vue'
 import SectionCard from './ui/SectionCard.vue'
 const props = defineProps<{ item: Requirement; readonly?: boolean }>()
 const emit = defineEmits<{ updated: []; status: [action: ReqStatusAction] }>()
 const auth = useAuthStore()
 const expanded = ref(false)
+const peopleEditor = ref<{ title: string; roles: Participant['role'][] } | null>(null)
 const bodyId = useId()
 const flow = ref<Workflow | null>(null)
 const people = ref<Participants['participants']>([])
@@ -23,7 +24,7 @@ const roles = ['CONFIRM', 'DEVELOP', 'DEVELOP', 'ACCEPT', '', '']
 const designLabels = { NOT_REQUIRED: '不需要设计', PENDING: '未开始', IN_PROGRESS: '进行中', DONE: '已完成' }
 const actionLabels: Record<string, string> = { CONFIRM: '确认当前内容', REQUEST_CHANGES: '要求补充说明', DESIGN_PENDING: '启用 / 重新打开设计', DESIGN_START: '开始设计', DESIGN_DONE: '完成设计', DESIGN_CANCEL: '取消设计要求', LEGACY_MIGRATION: '历史数据迁入（未补造确认）' }
 const identity = computed(() => `${auth.user?.id}:${auth.accessToken}:${auth.permissionCodes.join(',')}`)
-watch(() => [props.item.id, identity.value], () => { expanded.value = false })
+watch([() => props.item.id, identity], () => { expanded.value = false; peopleEditor.value = null }, { flush: 'sync' })
 let sequence = 0
 async function load() {
   const request = ++sequence
@@ -40,6 +41,16 @@ watch(() => [props.item.id, props.item.revision, identity.value], load, { immedi
 onScopeDispose(() => { sequence++ })
 const current = computed(() => steps.indexOf(props.item.status === 'PAUSED' ? flow.value?.paused_from || '' : props.item.status))
 const canAct = computed(() => !props.readonly && auth.hasPermission('rd.requirement.status') && !['ONLINE', 'CANCELED'].includes(props.item.status))
+const canEditPeople = computed(() => !props.readonly && auth.hasPermission('rd.requirement.edit') && auth.hasPermission('rd.requirement.view') && !['ONLINE', 'CANCELED'].includes(props.item.status))
+watch(canEditPeople, allowed => { if (!allowed) peopleEditor.value = null }, { flush: 'sync' })
+function editPeople(step: string) {
+  if (!canEditPeople.value) return
+  peopleEditor.value = step === 'DRAFT'
+    ? { title: '选择需求确认人', roles: ['CONFIRM'] }
+    : step === 'TESTING'
+      ? { title: '调整验收人员', roles: ['ACCEPT'] }
+      : { title: '安排设计、开发与验收人员', roles: ['DESIGN', 'DEVELOP', 'ACCEPT'] }
+}
 const canRole = (role: string) => people.value.some(p => p.role === role && p.active && p.user_id === auth.user?.id) || !!auth.user?.can_view_api_docs
 const names = (role: string) => people.value.filter(p => p.role === role).map(p => p.display_name + (p.active ? '' : '（已停用）')).join('、') || '待分配'
 const summaryDetail = computed(() => {
@@ -94,11 +105,20 @@ function recordLabel(action: string) { return actionLabels[action] || requiremen
         <li v-for="(step, index) in steps" :key="step" :class="{ current: current === index, completed: current > index }" :aria-current="current === index ? 'step' : undefined">
           <span class="step-dot" aria-hidden="true">{{ current > index ? '✓' : current === index ? '●' : index + 1 }}</span>
           <div><strong>{{ requirementStatusLabel[step] }}</strong><small>{{ current === index ? (item.status === 'PAUSED' ? '暂停于此' : '当前阶段') : current > index ? '已流转' : '尚未到达' }}</small>
-            <p v-if="roles[index]">{{ names(roles[index]!) }}</p>
+            <template v-if="step === 'CONFIRMED'">
+              <p>开发：{{ names('DEVELOP') }}</p>
+              <p>设计：{{ names('DESIGN') }}</p>
+              <p>验收：{{ names('ACCEPT') }}</p>
+            </template>
+            <p v-else-if="roles[index]">{{ step === 'DRAFT' ? '确认：' : step === 'TESTING' ? '验收：' : '开发：' }}{{ names(roles[index]!) }}</p>
             <p v-if="step === 'DRAFT'">{{ flow.needs_confirmation ? '等待确认当前内容' : flow.records.some(r => r.action === 'CONFIRM' || r.action === 'STATUS_CONFIRMED') ? '当前内容已确认' : '历史阶段兼容，未补造确认' }}</p>
             <p v-if="step === 'DEVELOPING'">设计：{{ designLabels[flow.design_status] }} · {{ names('DESIGN') }}</p>
             <p v-if="step === 'DONE'">{{ item.current_version_id ? `所属版本 #${item.current_version_id}` : '尚未关联版本，无法发布' }}</p>
             <p v-if="step === 'ONLINE'">{{ item.status === 'ONLINE' ? '版本已实际发布' : '等待版本实际发布' }}</p>
+            <el-button v-if="canEditPeople && step === 'DRAFT'" class="step-people-button" size="small" @click="editPeople(step)">调整确认人</el-button>
+            <el-button v-if="canEditPeople && step === 'CONFIRMED' && current >= 1" class="step-people-button" size="small" @click="editPeople(step)">选择 / 调整人员</el-button>
+            <small v-if="step === 'CONFIRMED' && current === 0">需求确认后，在此安排人员</small>
+            <el-button v-if="canEditPeople && step === 'TESTING' && current >= 3" class="step-people-button" size="small" @click="editPeople(step)">调整验收人</el-button>
           </div>
         </li>
       </ol>
@@ -108,9 +128,6 @@ function recordLabel(action: string) { return actionLabels[action] || requiremen
         <el-button v-for="action in actions" :key="action.target" @click="emit('status', action)">{{ action.label }}</el-button>
         <el-button v-for="action in designActions" :key="action" @click="begin(action)">{{ actionLabels[action] }}</el-button>
       </div>
-      <details v-if="!readonly" class="progress-people"><summary>查看 / 调整环节人员</summary>
-        <CollaborationPeople kind="requirement" :id="item.id" :revision="item.revision" :editable="auth.hasPermission('rd.requirement.edit') && !['ONLINE', 'CANCELED'].includes(item.status)" @updated="emit('updated')" />
-      </details>
       <details class="progress-history"><summary>查看流转与确认记录（最近 {{ flow.records.length }} 条）</summary>
         <p v-if="!flow.records.length">尚无确认或流转记录。</p>
         <article v-for="record in flow.records" :key="record.id"><strong>{{ recordLabel(record.action) }}</strong> · {{ record.actor_id ? `${record.detail.actor_name || '实际操作人'} #${record.actor_id}` : '历史迁移' }} · {{ formatLocalDateTime(record.created_at) }}<p v-if="record.detail.reason">{{ record.detail.reason }}</p><details v-if="record.detail.description"><summary>当时确认的内容</summary><p class="multiline">{{ record.detail.description }}</p><p class="multiline">{{ record.detail.acceptance_criteria }}</p></details></article>
@@ -119,6 +136,7 @@ function recordLabel(action: string) { return actionLabels[action] || requiremen
     <p v-else>正在加载进度…</p>
     </template>
     </div>
+    <RequirementPeopleDialog v-if="peopleEditor && canEditPeople" :id="item.id" :roles="peopleEditor.roles" :title="peopleEditor.title" @close="peopleEditor = null" @updated="emit('updated')" />
     <el-dialog :model-value="pending !== null" :title="pending ? actionLabels[pending] : ''" width="min(520px, calc(100vw - 24px))" append-to-body @close="pending = null">
       <el-form label-position="top" @submit.prevent="submit"><el-form-item label="说明（取消、重开设计或管理员代操作必填）"><el-input v-model="reason" type="textarea" maxlength="500" /></el-form-item><el-button type="primary" native-type="submit" :loading="busy">确认操作</el-button></el-form>
     </el-dialog>
@@ -126,7 +144,7 @@ function recordLabel(action: string) { return actionLabels[action] || requiremen
 </template>
 <style scoped>
 .requirement-progress { margin-bottom: var(--if-space-4); }
-.progress-people { margin-top: 16px; }.progress-people > summary { margin-bottom: 8px; }
+.step-people-button { margin-top: 8px; max-width: 100%; min-height: 32px; height: auto; white-space: normal; }
 .progress-toggle { width: 100%; min-height: 56px; display: flex; align-items: center; gap: 12px; padding: 12px var(--if-space-5); border: 0; border-radius: var(--if-radius); background: transparent; color: var(--if-text-primary); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
 .progress-toggle:hover { background: var(--if-bg-muted); }
 .progress-toggle:focus-visible { outline: 2px solid var(--el-color-primary); outline-offset: 2px; }

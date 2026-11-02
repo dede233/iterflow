@@ -144,7 +144,7 @@ function recordLabel(action: string) { return actionLabels[action] || requiremen
 </template>
 <style scoped>
 .requirement-progress { margin-bottom: var(--if-space-4); }
-.step-people-button { margin-top: 8px; max-width: 100%; min-height: 32px; height: auto; white-space: normal; }
+.step-people-button { margin-top: 8px; max-width: 100%; min-height: 32px; padding-inline: 8px; white-space: nowrap; }
 .progress-toggle { width: 100%; min-height: 56px; display: flex; align-items: center; gap: 12px; padding: 12px var(--if-space-5); border: 0; border-radius: var(--if-radius); background: transparent; color: var(--if-text-primary); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
 .progress-toggle:hover { background: var(--if-bg-muted); }
 .progress-toggle:focus-visible { outline: 2px solid var(--el-color-primary); outline-offset: 2px; }
@@ -154,20 +154,23 @@ function recordLabel(action: string) { return actionLabels[action] || requiremen
 .progress-notice { flex-shrink: 0; color: var(--el-color-warning-dark-2); font-size: 12px; }
 .progress-toggle-label { flex-shrink: 0; display: flex; align-items: center; gap: 6px; margin-left: auto; color: var(--el-color-primary); }
 .progress-chevron { display: inline-block; font-size: 18px; line-height: 1; }.progress-chevron.expanded { transform: rotate(180deg); }
-.progress-body { border-top: 1px solid var(--if-border); padding: var(--if-space-4) var(--if-space-5); }
-.progress-steps { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; list-style: none; padding: 16px 0; margin: 0; }
+.progress-body { container: requirement-progress / inline-size; border-top: 1px solid var(--if-border); padding: var(--if-space-4) var(--if-space-5); }
+.progress-steps { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; list-style: none; padding: 16px 0; margin: 0; }
 .progress-steps li { min-width: 0; padding: 12px; border: 1px solid var(--if-border); border-radius: 8px; font-size: 12px; }
 .progress-steps li.current { border-color: var(--el-color-primary); background: var(--el-color-primary-light-9); }
 .step-dot { width: 24px; height: 24px; margin-bottom: 8px; border-radius: 50%; display: grid; place-items: center; background: var(--if-bg-muted, #eee); }
 .current .step-dot { background: var(--el-color-primary); color: white; }.completed .step-dot { background: var(--el-color-success-light-8); color: var(--el-color-success-dark-2); }
 small { display: block; margin-top: 4px; color: var(--if-text-3); }p { margin: 8px 0; overflow-wrap: anywhere; }.progress-actions { display: flex; gap: 8px; flex-wrap: wrap; }.progress-actions .el-button { margin: 0; }.progress-history { margin-top: 20px; }.progress-history article { border-top: 1px solid var(--if-border, #eee); padding: 12px 0; }.multiline { white-space: pre-wrap; }summary { cursor: pointer; }
-@media (max-width: 1199px) { .progress-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+/* Keep each card at least 144px wide, including inside a desktop detail drawer. */
+@container requirement-progress (min-width: 300px) { .progress-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@container requirement-progress (min-width: 456px) { .progress-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@container requirement-progress (min-width: 924px) { .progress-steps { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
 @media (max-width: 767px) {
   .progress-toggle { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; gap: 8px; padding: 12px var(--if-space-4); }
   .progress-toggle-label { grid-column: 4; grid-row: 1; min-height: 24px; }
   .progress-summary { grid-column: 1 / -1; grid-row: 2; }
   .progress-notice { grid-column: 3; grid-row: 1; min-width: 0; font-size: 11px; }
   .progress-body { padding: var(--if-space-4); }
-  .progress-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .progress-steps { gap: 8px; }
 }
 </style>

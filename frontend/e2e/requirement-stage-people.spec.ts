@@ -1,7 +1,8 @@
 import { expect, test } from '@playwright/test'
 
-for (const width of [375, 768, 1440]) {
-  test(`assign people from planned stage at ${width}px`, async ({ page }, testInfo) => {
+for (const layout of ['page', 'drawer']) {
+for (const width of [320, 375, 768, 1200, 1440, 1800]) {
+  test(`assign people from planned stage at ${width}px in ${layout}`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 900 })
     await page.addInitScript(() => {
       localStorage.setItem('iterflow.access_token', 'stage-people-mock')
@@ -37,16 +38,34 @@ for (const width of [375, 768, 1440]) {
         '/api/v1/requirements/1/feedbacks': [],
         '/api/v1/collaboration/people': { items: people, total: people.length, page: 1, page_size: 20 },
       }
+      responses['/api/v1/requirements'] = { items: [responses['/api/v1/requirements/1']], total: 1, page: 1, page_size: 20 }
       if (!(path in responses) || route.request().method() !== 'GET') {
         unexpected.push(`${route.request().method()} ${path}`)
         return route.fulfill({ status: 500, json: { message: 'Unexpected request' } })
       }
       return route.fulfill({ json: responses[path] })
     })
-    await page.goto('/#/requirements/1')
+    await page.goto(layout === 'drawer' ? '/#/requirements' : '/#/requirements/1')
+    if (layout === 'drawer') await page.getByText('在进度卡片中安排人员', { exact: true }).click()
     await page.getByRole('button', { name: '展开需求进度', exact: true }).click()
     const card = page.getByRole('list', { name: '需求阶段' }).locator('li').nth(1)
     await expect(card).toContainText('当前阶段')
+    for (const button of await page.locator('.step-people-button').all()) {
+      const geometry = await button.evaluate(element => {
+        const bounds = element.getBoundingClientRect()
+        const cardBounds = element.closest('li')!.getBoundingClientRect()
+        const label = element.querySelector('span')!
+        const range = document.createRange()
+        range.selectNodeContents(label)
+        const lines = [...range.getClientRects()]
+        return {
+          lines: new Set(lines.map(rect => Math.round(rect.top))).size,
+          insideCard: bounds.left >= cardBounds.left && bounds.right <= cardBounds.right,
+          textFits: lines.every(rect => rect.left >= bounds.left && rect.right <= bounds.right),
+        }
+      })
+      expect(geometry).toEqual({ lines: 1, insideCard: true, textFits: true })
+    }
     await card.getByRole('button', { name: '选择 / 调整人员', exact: true }).click()
     const dialog = page.getByRole('dialog', { name: '安排设计、开发与验收人员' })
     await expect(dialog).toBeVisible()
@@ -74,4 +93,5 @@ for (const width of [375, 768, 1440]) {
     expect(unexpected).toEqual([])
     expect(errors).toEqual([])
   })
+}
 }

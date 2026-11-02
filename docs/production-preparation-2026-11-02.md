@@ -38,3 +38,5 @@
 候选 2c503bf 的 [CI 41389217401](https://github.com/dede233/iterflow/actions/runs/41389217401) 中 backup_restore 失败：恢复库实际已为 `0012_multiple_acceptance`，但演练脚本硬编码旧 `0011_notification_delivery`。修复为从已运行镜像读取 Alembic 唯一 head，备份前确认实际版本等于该 head，恢复后同时核对备份版本和 head；不放宽门禁、不跳过恢复或用重跑掩盖真实失败。`bash -n` 与 diff check PASS，新提交重新运行完整八项 CI。其余首轮结果及最终结果随后记录。
 
 本地离线包构建首次被系统旧 Python 的 extractall(filter=...) 不支持拦截；改用已安装 Python 3.12，保留失败日志。后续 Docker 构建出现外部包 DNS 问题，处理与最终产物验证结果另记；不能将构建中视为已交付。
+
+首轮 browser_smoke 为 186 PASS / 1 FAIL：真实发布主链脚本确认内容后直接点击“开始开发”，被新增的自动人员弹窗正确拦住。更新用例，明确断言人员弹窗出现、取消后关闭且需求仍为 CONFIRMED，再执行原开发/验收/发布/CAS/通知断言；没有 force click、跳过或移除业务门禁。该修复与恢复脚本修复一起进入新的完整八项 CI；中间 1565d0e 已启动的运行保留其结果，不视为最终门禁。

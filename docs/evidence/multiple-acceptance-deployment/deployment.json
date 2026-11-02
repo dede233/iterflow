@@ -1,0 +1,20 @@
+{
+  "status": "PASS",
+  "source": "cd1f7ee24b933b0adafb1b9513cfa033194deae7",
+  "completed_utc": "2026-11-02T03:47:18Z",
+  "head": "mysql57_0010",
+  "public_url": "https://sx-kc.xyz:8444",
+  "tables_preserved": 29,
+  "files_preserved": 1,
+  "production_unchanged": true,
+  "mail_config_unchanged": true,
+  "services": {
+    "api": "healthy",
+    "web": "healthy",
+    "notification-worker": "running"
+  },
+  "pre_backup": "/opt/iterflow/backups/collaboration-test-multi-accept-pre-20261102T033334Z",
+  "post_backup": "/opt/iterflow/backups/collaboration-test-multi-accept-post-migration-20261102T034646Z",
+  "server_evidence": "/opt/iterflow/upgrade-evidence/multi-accept-bc6f9b2",
+  "evidence_method": "Server closeout.json displayed in authenticated terminal; local screenshot server-closeout.png retained"
+}

@@ -1,0 +1,16 @@
+{
+  "status": "PASS",
+  "requirement_id": 17,
+  "number": "REQ-20261102-0001",
+  "final_status": "DONE",
+  "checks": [
+    "browser_assignment_saved_with_two_acceptors_and_original_confirmer",
+    "save_keeps_CONFIRMED",
+    "developer_DEVELOPING",
+    "developer_TESTING",
+    "second_acceptor_alone_completes",
+    "stale_other_acceptor_returns_409",
+    "single_success_record_actual_actor_and_two_acceptor_snapshot"
+  ],
+  "published": false
+}

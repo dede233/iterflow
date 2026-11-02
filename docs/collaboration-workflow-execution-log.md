@@ -284,3 +284,7 @@ Fresh Self-Review（同一 Agent）：确认和人员保存仍是独立显式事
 - 修复运行时只接受 0010，迁移预检允许从 0009 升级，保留旧版本兼容路径和 completion trigger 校验。扩展迁移回归，实际调用部署 CLI 并重复执行，检查旧 head 的运行时拒绝及新 head 的完整校验。
 - 新建本地隔离 MySQL：standard **17 PASS（35.73s）**、portable **17 PASS（36.78s）**，覆盖协作、多人验收、完整发布主链、旧数据迁移和 preflight。首次本地容器启动退出 139，测试连接失败已保留；重建／启动并确认认证 TCP 就绪后测试通过。Ruff、mypy 与 diff check PASS。
 - 未调整发布事务、权限、数据范围或已发布契约；未修改正式环境。后续实际部署结果另记，不将本节作为部署成功证明。
+
+### 测试环境部署完成
+
+部署源码 `cd1f7ee24b933b0adafb1b9513cfa033194deae7`，2026-11-02 11:47:18 +08:00 完成 TEST API／worker／Web 和 MySQL 0010 升级。隔离恢复迁移、29 表内容与附件保留、服务健康及正式环境不变核验通过。实际浏览器自动选人／两名验收人保存和真实 HTTPS 单人验收、旧 revision 409、唯一实际操作者记录通过。专用需求 ID 17 保留待发布，未发布版本。完整备份、首次失败及最终验证见 `docs/test-deployment-multiple-acceptance-2026-11-02.md`。

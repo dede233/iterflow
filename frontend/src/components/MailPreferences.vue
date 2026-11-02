@@ -10,12 +10,14 @@ const auth = useAuthStore()
 const item = ref<Preferences | null>(null)
 const mode = ref<Preferences['mode']>('TASKS'), email = ref(''), code = ref('')
 const failed = ref(false), busy = ref(false), message = ref('')
+const reverifying = ref(false)
+const showVerification = computed(() => !item.value?.verified || reverifying.value)
 const deliveries = ref<Delivery[]>([]), page = ref(1), deliveriesOpen = ref(false), deliveryFailed = ref(false)
 const admin = computed(() => auth.canViewApiDocs && auth.hasPermission('sys.user.edit'))
 const identity = computed(() => `${auth.user?.id}:${auth.accessToken}:${auth.permissionCodes.join(',')}`)
 let sequence = 0
 async function load() {
-  const request = ++sequence; failed.value = false; busy.value = false; item.value = null; deliveries.value = []; deliveriesOpen.value = false
+  const request = ++sequence; failed.value = false; busy.value = false; item.value = null; deliveries.value = []; deliveriesOpen.value = false; reverifying.value = false
   if (!auth.user) return
   try { const { data } = await api.get<Preferences>('/me/mail-preferences'); if (request !== sequence) return; item.value = data; mode.value = data.mode; email.value = data.pending_email || data.email || ''; code.value = '' }
   catch { if (request === sequence) failed.value = true }
@@ -31,7 +33,7 @@ async function mutate(path: string, data: object, method: 'post' | 'put' = 'post
     if (request !== sequence) return
     item.value = response.data; mode.value = response.data.mode; code.value = ''
     message.value = path.endsWith('confirm') ? '邮箱验证完成' : path.endsWith('email-verification') ? '验证邮件已排队，请查看邮箱；验证码 15 分钟内有效。' : '邮件偏好已保存'
-    if (path.endsWith('confirm')) await auth.loadCurrentUser()
+    if (path.endsWith('confirm')) { reverifying.value = false; await auth.loadCurrentUser() }
   } catch { /* Shared API handler displays failure; leave inputs for manual retry. */ }
   finally { if (request === sequence) busy.value = false }
 }
@@ -58,8 +60,17 @@ const statusLabels: Record<string, string> = { PENDING: '待发送', SENDING: '�
       <p>当前邮箱：{{ item.email || '未设置' }} · {{ item.verified ? '已验证' : '未验证，不发送进度邮件' }}</p>
       <p>默认仅发送待办与上线；验证后启用所选偏好，不补发历史进度。修改邮箱需重新验证。</p>
       <el-form-item label="通知邮箱"><el-input v-model="email" type="email" autocomplete="email" maxlength="254" /></el-form-item>
-      <el-button :loading="busy" :disabled="!item.smtp_enabled || !email" @click="mutate('/me/email-verification', { email })">发送验证码</el-button>
-      <template v-if="item.pending_email"><p>待验证地址：{{ item.pending_email }}</p><el-form-item label="六位验证码"><el-input v-model="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" /></el-form-item><el-button :loading="busy" :disabled="!/^\d{6}$/.test(code)" @click="mutate('/me/email-verification/confirm', { code })">验证邮箱</el-button></template>
+      <template v-if="showVerification">
+        <p v-if="item.pending_email">待验证地址：{{ item.pending_email }}</p>
+        <el-form-item label="六位验证码" for="mail-verification-code">
+          <div class="verification-row">
+            <el-input id="mail-verification-code" v-model="code" :disabled="!item.pending_email" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="请输入验证码" />
+            <el-button :loading="busy" :disabled="!item.smtp_enabled || !email" @click="mutate('/me/email-verification', { email })">发送验证码</el-button>
+          </div>
+        </el-form-item>
+        <el-button v-if="item.pending_email" :loading="busy" :disabled="!/^\d{6}$/.test(code)" @click="mutate('/me/email-verification/confirm', { code })">验证邮箱</el-button>
+      </template>
+      <el-button v-else :disabled="busy" @click="reverifying = true">重新验证</el-button>
       <p role="status">{{ message }}</p>
     </el-form>
     <template v-if="admin">
@@ -70,4 +81,10 @@ const statusLabels: Record<string, string> = { PENDING: '待发送', SENDING: '�
 </template>
 <style scoped>
 .el-form { max-width: 560px; }.el-form-item { margin-top: 16px; }.el-select { width: 100%; }.mail-deliveries p { overflow-wrap: anywhere; border-bottom: 1px solid var(--if-border, #eee); padding: 10px 0; }
+.verification-row { display: flex; align-items: stretch; gap: 8px; width: 100%; min-width: 0; }
+.verification-row .el-input { flex: 1; min-width: 0; }
+.verification-row .el-button { flex: none; margin: 0; white-space: nowrap; }
+@media (max-width: 767px) {
+  .verification-row .el-input, .verification-row .el-button { min-height: 44px; }
+}
 </style>

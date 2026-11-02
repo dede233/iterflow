@@ -1,13 +1,14 @@
 # 协作流程优化：兼容与升级准备
 
-合并修订：以 master `10f6bfa` 为当前升级基线。PostgreSQL 保留部署过的 0001–0008，追加 0009_collaboration_people → 0010_requirement_workflow → 0011_notification_delivery；MySQL 5.7 保留 mysql57_0001–0006，追加 mysql57_0007 → mysql57_0008 → mysql57_0009。以下历史阶段记录的 0005/0006/0007 对应本次重新衔接后的 0009/0010/0011，旧功能分支从未部署，不存在需要原地兼容其旧 revision 的真实库。
+2026-11-02 更新：当前准备范围为协作流程优化、需求进度卡片、确认后自动安排人员、多名验收人任意一人通过，以及邮箱验证界面。本轮授权测试部署、八项 CI、master 合并和双远端同步；不部署正式环境、不修改正式数据库、不创建 tag/Release。
 
-旧 `rd_requirement_participant` 与 `completed_at` 完整保留；新工作流使用 `rd_requirement_actor`，迁移复制旧设计/开发分工。旧总负责人仅保留读取/DataScope，不推断为确认人或验收人。PLANNED/DESIGNING 映射为 CONFIRMED，DESIGNING 的设计子进度设为 IN_PROGRESS；迁移记录保存原状态、旧负责人和原开发确认时间。每人确认不再作为完成或发布门禁。旧 collaborators / start-stage / development-completion 接口已被 participants / workflow / status 代替；客户端必须同步升级，旧接口不允许绕过新工作流。
+正式环境于 2026-11-02 只读核对为源码 `198f831d67e8b475975915b1824d711b949fb998`、MySQL `mysql57_0006`，health/ready 正常。测试环境已迁移到 `mysql57_0010`。这是不同环境的实际基线，不得把测试迁移成功视为正式库已经升级。正式执行前必须重新核对基线。
 
-MySQL 保留现有精确文件键、有效关系及域校验，新增表采用 DATETIME(6)、InnoDB/DYNAMIC、单确认/验收人生成列唯一约束。其 worker 使用行锁顺序消费（5.7 无 SKIP LOCKED），PostgreSQL 保持 SKIP LOCKED。验证迁移只在本任务新建容器或 CI 一次性数据库执行。
+旧 `rd_requirement_participant` 与 `completed_at` 保留；新工作流使用 `rd_requirement_actor`，复制旧设计/开发分工。旧总负责人保留历史读取/DataScope，不推断为确认人或验收人。PLANNED/DESIGNING 映射为 CONFIRMED，设计中转为 IN_PROGRESS 子进度；迁移快照保存原状态、旧负责人和真实开发确认时间。取消逐人开发完成门禁，由开发人员提交验收、有效验收人任意一人通过。确认人仍单人，设计/开发/验收可多人。
 
+旧 collaborators / start-stage / development-completion 写入口已由 participants / workflow / status 代替，API 和 Web 必须配套升级。MySQL 新表使用 DATETIME(6)、InnoDB/DYNAMIC，唯一生成列仅限制有效 CONFIRM；worker 以行锁顺序消费（5.7 无 SKIP LOCKED），PostgreSQL 保留 SKIP LOCKED。
 
-本文件是后续环境升级的操作准备，不代表已经部署或操作真实数据库。本轮实现位于 `codex/collaboration-workflow`，产品版本号仍为 1.8.1；开发接口契约为 `spec/openapi-development.yaml`。已发布契约与标签不变。实际验证结果见 `collaboration-workflow-execution-log.md`。
+产品版本号仍为 1.8.1 开发基线，开发契约为 `spec/openapi-development.yaml`；不改写已发布契约、标签或 Release。本次上线准备证据见 [准备记录](production-preparation-2026-11-02.md)。
 
 ## 兼容口径
 
@@ -31,24 +32,55 @@ MySQL 保留现有精确文件键、有效关系及域校验，新增表采用 D
 
 角色关系不授予权限码。反馈候选人仍须有原有对象读取资格，SELF 用户不能仅因被指定而读取别人的反馈。需求有效参与人扩展本条需求 SELF 可见性，移除后按剩余资格重新判断；不扩展版本和来源反馈权限。
 
-## 数据库变更
+## 数据库迁移清单
 
-按顺序使用 Alembic：`0004_integrity` → `0005_collaboration_people` → `0006_requirement_workflow` → `0007_notification_delivery`。新增接收/环节关系、真实流程记录、事务通知事件、邮箱偏好/验证与投递记录；没有删除历史业务字段。
+已部署历史迁移保持不可变，按 Alembic 正常顺序追加：
 
-0006 将已有需求生成一条历史迁入说明，记录原状态，不使用当前操作者冒充历史确认人。0007 为旧账号创建默认 TASKS 偏好，并将升级前事件标为已处理，防止 worker 启动后补发历史通知。确认/验收有效分工唯一索引与原关系完整性约束继续生效。
+| 内容 | PostgreSQL（基线 0008） | MySQL（正式基线 0006） |
+| --- | --- | --- |
+| 多人接收与环节人员 | 0009_collaboration_people | mysql57_0007 |
+| 六阶段、历史快照与内容确认 | 0010_requirement_workflow | mysql57_0008 |
+| 邮箱偏好、事件与投递记录 | 0011_notification_delivery | mysql57_0009 |
+| 多验收人，确认人仍单人 | 0012_multiple_acceptance | mysql57_0010 |
 
-自动 downgrade 不能安全恢复旧业务语义，0006/0007 主动拒绝。不能仅回滚应用镜像，让旧程序继续写入新协作数据。出现升级失败时应停止 Web/API/worker，保留现场，依据经过审核的备份恢复方案处理。
+新增六张表：`rd_feedback_recipient`、`rd_requirement_actor`、`rd_requirement_step`、`sys_collaboration_event`、`sys_mail_preference`、`sys_notification_delivery`。旧业务字段不删除；历史需求生成迁入说明，操作者为空，不补造确认/验收事实。旧账号获得默认 TASKS 偏好，邮箱仍需验证；升级前通知事件标为已处理，避免补发。
 
-## 后续获准升级时的顺序
+正式运行账号须按现有账号/host 对上述六表具备所需 DML，保留其余原授权；模板见 `deploy/mysql57/runtime-grants.sql`，不可原样执行占位用户名，更不能给运行账号补 SUPER/DDL/GRANT。迁移账号另需目标库 DDL、触发器/函数能力及元数据读取权限。正式库为 RDS，不能照搬测试 Docker root-client 或数据库 hostname。
 
-1. 确认目标环境、当前镜像与 Alembic revision，检查容量、账号、原有关系完整性及重复有效确认/验收人员。确认所有接口消费者已支持新提交字段和六阶段语义。
-2. 记录升级前状态计数、关系计数、Release 数量和抽样历史字段。停止 Web/API/notification-worker 的业务写入，备份数据库与对象存储，并校验清单与 SHA256。
-3. 在复制出的隔离恢复库先执行迁移；比较前后对象/关系/发布计数和状态映射，抽查旧负责人读取、历史反馈字段、旧 DONE 发布资格、不产生虚假确认或补发邮件。
-4. 同步升级 API、Web、notification-worker。执行 Alembic upgrade head 和 alembic check，确认健康、角色与数据范围、登录、单人受理 CAS、需求流转、批量关联、发布和附件访问。
-5. SMTP 初始保持关闭。先验收站内事件消费；启用真实邮件须配置站点地址、TLS、发件身份和明确测试地址，完成邮箱验证、退信与重试验收后再开放给业务用户。
-6. 检查 worker 积压/失败、操作审计及页面响应式；重启后验证已提交数据仍在、已投递记录不重复创建。升级后再备份，记录实际镜像与数据库版本。
+## 获准正式升级时的操作顺序
 
-上述步骤本轮仅在一次性测试环境演练；正式部署、生产备份/恢复、真实 SMTP 和远端发布需另行授权。备份/恢复脚本已将 notification-worker 纳入停写与恢复范围，防止后台消费与数据库快照并发。
+以下是待执行操作清单，本轮不在正式环境执行。
+
+1. **冻结产物与基线**：记录源 SHA、分支及最终 master 八项 CI、测试验收、linux/amd64 API/Web config 和层摘要。API 与 worker 使用同一镜像。正式 8443 与测试 8444 的配置/网络/库/存储逐一核对，禁止复制测试库、账号、JWT 或附件。检查磁盘、内存、RDS 容量/连接额度和备份空间。
+2. **正式数据演练**：在后续获准的备份范围内，取得正式库与附件的一致备份，记录时间与摘要；在不连接正式数据库的新建隔离实例恢复，关闭 SMTP 和邮件 worker 外发，按 0006→0010 迁移。核对行/关系/Release/附件、历史字段、旧状态映射、旧 DONE 兼容和新约束。记录耗时，才可估计维护窗口。当前测试副本与 CI 演练不等同于正式数据演练。
+3. **维护停写与最终备份**：通知维护窗口后阻断业务入口，停止 Web/API/notification-worker（旧正式环境若无 worker 则明确记录），核对其他写入者已暂停；备份正式 RDS、附件、配置、镜像清单。校验备份可读、hash 和恢复路径。保留触发器 DEFINER。无可靠备份则停止。
+4. **迁移与权限**：仅使用已核准的正式迁移配置执行 `python -m app.cli.migrate`，目标 `mysql57_0010`，再执行 `python -m app.cli.mysql_preflight`。不得运行 seed、create_all、stamp 或清库。依据已有实际授权补齐六张表 DML。MySQL DDL 非原子，失败后立即停止，读取真实结构和 revision 判定，禁止盲目重跑或自动降级。
+5. **同步启动服务**：安装候选 Compose/运行配置，保留正式 JWT、RDS/TLS、Redis、附件和端口。先启动 API 并通过 health/ready，再启动 Web，最后在邮件放行检查后启动 worker。API/Web/worker 固定镜像；核对正式反向代理的 upstream，按需 reload 正式站点，不重启整台服务器。worker 纳入开机恢复、备份停写及故障恢复。
+6. **正式验收**：核对 health SHA、ready、镜像身份、账户/角色/权限/旧详情、附件及审计可读；核对允许的迁移差异，其余行与附件保持。业务发布主链在隔离库/测试环境完成，不在正式环境创建虚假需求或 Release 来证明成功。保留测试环境。
+7. **恢复服务与观察**：数据与只读验收通过后开放业务。检查 API 错误、worker 积压/失败/UNCERTAIN、邮件链接和实际收件，记录重启后健康和持久性。完成升级后备份及版本记录；有异常按下节处理。
+
+## 正式邮件准备
+
+沿用用户选定的 Brevo 身份 `iterflow-emil@luqingyao.cc.cd`。只将必要 SMTP 参数安全写入正式受保护配置，不能复制整个测试 `.env.runtime`，不在仓库、包或日志记录密钥。
+
+- `APP_ENV=production`、`APP_PUBLIC_URL=https://sx-kc.xyz:8443`；核对正式 ALLOWED_HOSTS/CORS，邮件不得跳往测试站点。
+- 使用已核实的 SMTP_HOST/PORT/SECURITY/USERNAME/PASSWORD/FROM，保持 TLS 证书验证；先 `SMTP_ENABLED=false` 完成应用和数据检查。启用时 API 和 worker 的配置必须一致。
+- 核对 Brevo 当前发件身份/DKIM/DMARC、可用额度和近期失败情况；共用账号时测试发信也消耗同一额度。测试环境继续保留收件白名单。
+- 正式首次启用可先限制为用户指定验证收件地址，确认邮箱验证、进度通知及链接均正确后开放预定业务范围。旧正式用户需自己验证邮箱，不能继承测试验证状态；不补发历史事件。
+- 退信、有限重试和 UNCERTAIN 可观测；不盲目重发不确定结果，避免重复邮件。关闭 SMTP 的业务事件不会承诺后续补发，启用窗口需明确。
+
+## 回退与故障处理
+
+| 失败时点 | 处理方式 |
+| --- | --- |
+| 尚未开始 DDL | 保留证据，恢复原配置/镜像和服务；确认没有数据库结构变化 |
+| DDL 已开始或部分完成 | 停止全部写入及 worker，保留现场；MySQL 不能依赖事务整体撤销。核对结构、revision、触发器与备份；优先小范围前向修复，恢复必须另获明确授权 |
+| 迁移完成、尚未开放业务 | 不直接把旧 API 连接新 schema。经批准，将备份恢复到独立目标库并核验附件、配置与旧应用后再切换；保留失败现场，禁止原地覆盖或删卷 |
+| 已开放业务并有新写入 | 立即停写并记录切换时间；优先前向修复。旧备份会丢失窗口内数据，必须列明受影响记录、恢复点和可接受损失，不能自动 restore |
+| 仅 Web 展示问题，API/schema 未变 | 可以回退到明确兼容当前 API/schema 的上一 Web 镜像；记录镜像与配置备份，不降级数据库 |
+| 邮件异常 | 暂停外发/worker，保留投递记录与不确定状态；不重置 attempts、processed_at 或去重标识，不重放历史事件 |
+
+MySQL 0007–0009 对自动 downgrade 明确拒绝；0010 在存在多名有效验收人时拒绝有损降级。PostgreSQL 同样遵循历史保留约束。不得删除人员来强行降级。数据库和附件恢复必须对应同一备份边界；切回旧应用还需校验原配置、权限、触发器 DEFINER、镜像及健康。
 
 ## 运维与已知边界
 

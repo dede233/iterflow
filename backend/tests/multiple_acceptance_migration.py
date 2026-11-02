@@ -30,7 +30,24 @@ def exercise_migration(engine, req_id, extra_user):
     before = rows()
     command.downgrade(config, previous)
     assert rows() == before
-    command.upgrade(config, "head")
+    if mysql:
+        from unittest.mock import patch
+
+        from app.cli import migrate
+        from app.core.mysql_preflight import validate_mysql
+
+        with engine.connect() as db:
+            validate_mysql(db, allow_legacy=True)
+            with pytest.raises(RuntimeError, match="Alembic head"):
+                validate_mysql(db)
+        # Exercise the deployment entry point, including its post-upgrade preflight.
+        with patch.object(migrate, "engine", engine):
+            migrate.main()
+            migrate.main()  # A completed deployment must also be safe to rerun.
+        with engine.connect() as db:
+            validate_mysql(db)
+    else:
+        command.upgrade(config, "head")
     assert rows() == before
     with engine.begin() as db:
         db.execute(

@@ -91,7 +91,7 @@ def validate_mysql(
             }
             and allow_legacy
         )
-        if head != "mysql57_0009" and not legacy:
+        if not (head == "mysql57_0010" or legacy or (allow_legacy and head == "mysql57_0009")):
             raise RuntimeError("MySQL Alembic head is missing or unsupported")
         portable = "iterflow_file_key_node" in tables
         business_tables = set(Base.metadata.tables)
@@ -132,7 +132,7 @@ def validate_mysql(
                     "domain_iterflow_file_key_node_" + event
                     for event in ("insert", "update", "delete")
                 } | {"storage_key_sys_file_insert", "storage_key_sys_file_update"}
-            if head in {"mysql57_0005", "mysql57_0006", "mysql57_0009"}:
+            if head in {"mysql57_0005", "mysql57_0006", "mysql57_0009", "mysql57_0010"}:
                 expected |= {
                     "completion_rd_requirement_participant_" + event
                     for event in ("insert", "update")

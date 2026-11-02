@@ -15,6 +15,7 @@ async function fixture(page: Page, permissions = ['rd.release.view', 'rd.version
     const json = (body: unknown, status = 200) => route.fulfill({ status, json: body })
     if (route.request().method() !== 'GET') { unexpected.push(route.request().method() + ' ' + path); return json({}, 500) }
     if (path === '/auth/me') return json({ id: 1, username: 'viewer', display_name: '验收查看者', status: 'ACTIVE', revision: 1, must_change_password: false, data_scope: 'SELF', role_ids: [], permission_codes: permissions })
+    if (path === '/me/mail-preferences') return json({ revision: 1, mode: 'TASKS', email: null, verified: false, pending_email: null, smtp_enabled: false, notice_acknowledged: false })
     if (path === '/notifications/unread-count') return json({ unread_count: 0 })
     if (path === '/releases') return json({ items: [release(123), release(124)], total: 42, page: 2, page_size: 20 })
     if (path === '/releases/123' || path === '/releases/124') return json(release(Number(path.split('/').at(-1))))

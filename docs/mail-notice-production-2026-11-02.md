@@ -18,3 +18,9 @@
 ## 恢复边界
 
 维护前在线备份用于隔离演练；停写后另取数据库/附件一致备份。先迁移后配套更新服务，成功核验后恢复入口。迁移开始后失败不自动恢复或降级，保留检查点。0011 已有知晓记录时拒绝有损 downgrade，旧 API 的启动检查不接受新 schema；界面可先退兼容 Web，后端应前向修复或使用经验证兼容包，不手改 Alembic head。
+
+## 首轮门禁与修复
+
+分支 `6a6987b` 的 [CI 41424891154](https://github.com/dede233/iterflow/actions/runs/41424891154) browser_smoke 为 174 PASS / 21 FAIL。三个旧夹具（发布版本抽屉、确认人分配、阶段人员）未处理新增布局读取 `/me/mail-preferences`，所有失败均为 unexpected request 断言。补齐契约字段完整、SMTP 关闭的明确响应，保留 unexpected/error 及原业务断言；不跳过测试、不修改产品代码，新提交重新执行完整八项 CI。
+
+正式只读预检与在线备份通过，剩余磁盘 21.53 GiB。在线演练备份 `/opt/iterflow/backups/mail-notice-production-96ba96e-online-rehearsal-20261102T100054Z` 仅保留在服务器。独立 internal 网络、独立数据库/附件卷中恢复后迁移 0010 → 0011 耗时 5.89 秒，29 张业务表原有字段、1 个附件及 91 个触发器均保留；MySQL preflight 通过。隔离副本禁用 SMTP、未连接正式 Redis，演练后已停止。正式与 TEST 容器、配置均未变。

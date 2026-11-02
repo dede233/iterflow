@@ -30,6 +30,7 @@ for (const width of [320, 375, 768, 1200, 1440, 1800]) {
       }
       const responses: Record<string, unknown> = {
         '/api/v1/auth/me': { id: 1, username: 'stage-tester', display_name: '需求确认人', status: 'ACTIVE', must_change_password: false, data_scope: 'ALL', permission_codes: ['*'], role_ids: [], revision: 1 },
+        '/api/v1/me/mail-preferences': { revision: 1, mode: 'TASKS', email: null, verified: false, pending_email: null, smtp_enabled: false, notice_acknowledged: false },
         '/api/v1/notifications/unread-count': { unread_count: 0 },
         '/api/v1/systems': { systems: [], modules: [] },
         '/api/v1/requirements/1': { id: 1, requirement_no: 'REQ-STAGE-001', title: '在进度卡片中安排人员', requirement_type: 'FEATURE', source: 'DIRECT', priority: 'P1', status: 'CONFIRMED', owner_id: null, current_version_id: null, description: '需求确认后，直接在待开发卡片选择设计、开发和验收人员。', acceptance_criteria: '保留需求确认人，人员分配不自动推进阶段。', system_id: null, module_id: null, created_at: '2026-11-02T00:00:00Z', updated_at: '2026-11-02T00:00:00Z', updated_by: 1, revision },

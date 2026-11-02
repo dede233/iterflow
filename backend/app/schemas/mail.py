@@ -13,6 +13,11 @@ class MailPreferencesOut(BaseModel):
     verified: bool
     pending_email: str | None
     smtp_enabled: bool
+    notice_acknowledged: bool
+
+
+class MailNoticeAcknowledge(BaseModel):
+    revision: int = Field(ge=1)
 
 
 class MailPreferenceChange(BaseModel):

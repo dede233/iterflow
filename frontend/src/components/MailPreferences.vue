@@ -51,7 +51,7 @@ async function retry(row: Delivery) {
 const statusLabels: Record<string, string> = { PENDING: '待发送', SENDING: '发送中', RETRY: '等待重试', UNCERTAIN: '结果不确定，等待重试', FAILED: '发送失败', SKIPPED: '已跳过', SENT: '已发送' }
 </script>
 <template>
-  <SectionCard title="邮件通知" description="站内通知独立保留；邮件送达不代表业务确认。">
+  <SectionCard id="mail-notifications" title="邮件通知" description="站内通知独立保留；邮件送达不代表业务确认。">
     <p v-if="failed">邮件设置加载失败 <el-button link @click="load">重试</el-button></p>
     <el-form v-else-if="item" label-position="top" @submit.prevent>
       <el-alert v-if="!item.smtp_enabled" title="邮件服务尚未启用，设置可先保存；启用后需验证邮箱才会发送。" type="info" :closable="false" />

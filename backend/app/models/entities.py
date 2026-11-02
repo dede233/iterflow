@@ -605,6 +605,7 @@ class MailPreference(Base):
     challenge_user_revision: Mapped[int | None] = mapped_column(Integer)
     challenge_attempts: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     requested_at: Mapped[datetime | None] = mapped_column(timestamp_type())
+    notice_acknowledged_at: Mapped[datetime | None] = mapped_column(timestamp_type())
 
 
 class NotificationDelivery(Base):

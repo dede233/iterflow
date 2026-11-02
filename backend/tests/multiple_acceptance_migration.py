@@ -48,6 +48,9 @@ def exercise_migration(engine, req_id, extra_user):
             validate_mysql(db)
     else:
         command.upgrade(config, "head")
+    # Exercise this historical revision's guard in isolation. MySQL DDL cannot
+    # roll back a later, successful downgrade when an earlier revision refuses.
+    command.downgrade(config, current)
     assert rows() == before
     with engine.begin() as db:
         db.execute(

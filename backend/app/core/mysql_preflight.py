@@ -91,8 +91,16 @@ def validate_mysql(
             }
             and allow_legacy
         )
-        if not (head == "mysql57_0010" or legacy or (allow_legacy and head == "mysql57_0009")):
+        if not (
+            head == "mysql57_0011"
+            or legacy
+            or (allow_legacy and head in {"mysql57_0009", "mysql57_0010"})
+        ):
             raise RuntimeError("MySQL Alembic head is missing or unsupported")
+        if head == "mysql57_0011" and "notice_acknowledged_at" not in {
+            c["name"] for c in inspect(connection).get_columns("sys_mail_preference")
+        }:
+            raise RuntimeError("Mail notice acknowledgement column is missing")
         portable = "iterflow_file_key_node" in tables
         business_tables = set(Base.metadata.tables)
         if legacy:
@@ -132,7 +140,13 @@ def validate_mysql(
                     "domain_iterflow_file_key_node_" + event
                     for event in ("insert", "update", "delete")
                 } | {"storage_key_sys_file_insert", "storage_key_sys_file_update"}
-            if head in {"mysql57_0005", "mysql57_0006", "mysql57_0009", "mysql57_0010"}:
+            if head in {
+                "mysql57_0005",
+                "mysql57_0006",
+                "mysql57_0009",
+                "mysql57_0010",
+                "mysql57_0011",
+            }:
                 expected |= {
                     "completion_rd_requirement_participant_" + event
                     for event in ("insert", "update")

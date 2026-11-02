@@ -2755,6 +2755,46 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
       security:
       - bearerAuth: []
+  /me/mail-notice/acknowledge:
+    post:
+      tags:
+      - mail
+      summary: 知晓邮件通知引导
+      operationId: acknowledge_mail_notice
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MailNoticeAcknowledge'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MailPreferencesOut'
+        '409':
+          description: 业务状态或 revision 冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearerAuth: []
+      description: 仅记录当前账号已知晓；跨设备生效，不修改邮箱、验证状态或邮件偏好。
   /me/email-verification:
     post:
       tags:
@@ -5665,6 +5705,16 @@ components:
           default: true
       type: object
       title: LogoutResponse
+    MailNoticeAcknowledge:
+      properties:
+        revision:
+          type: integer
+          minimum: 1.0
+          title: 修订号
+      type: object
+      required:
+      - revision
+      title: MailNoticeAcknowledge
     MailPreferenceChange:
       properties:
         revision:
@@ -5711,6 +5761,9 @@ components:
         smtp_enabled:
           type: boolean
           title: 邮件服务已启用
+        notice_acknowledged:
+          type: boolean
+          title: 已知晓邮件通知引导
       type: object
       required:
       - revision
@@ -5719,6 +5772,7 @@ components:
       - verified
       - pending_email
       - smtp_enabled
+      - notice_acknowledged
       title: MailPreferencesOut
     ManualFeedbackStatus:
       type: string

@@ -38,6 +38,7 @@ for (const width of [375, 1440]) {
       }
       const responses: Record<string, unknown> = {
         '/api/v1/auth/me': { id: 1, username: 'confirm-tester', display_name: '测试确认人', status: 'ACTIVE', must_change_password: false, data_scope: 'ALL', permission_codes: ['*'], can_view_api_docs: true, role_ids: [], revision: 1 },
+        '/api/v1/me/mail-preferences': { revision: 1, mode: 'TASKS', email: null, verified: false, pending_email: null, smtp_enabled: false, notice_acknowledged: false },
         '/api/v1/notifications/unread-count': { unread_count: 0 },
         '/api/v1/systems': { systems: [], modules: [] },
         '/api/v1/requirements': { items: [item], total: 1, page: 1, page_size: 20 },

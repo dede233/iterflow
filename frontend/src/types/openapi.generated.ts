@@ -811,6 +811,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/mail-notice/acknowledge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 知晓邮件通知引导
+         * @description 仅记录当前账号已知晓；跨设备生效，不修改邮箱、验证状态或邮件偏好。
+         */
+        post: operations["acknowledge_mail_notice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/me/email-verification": {
         parameters: {
             query?: never;
@@ -2086,6 +2106,11 @@ export interface components {
              */
             ok: boolean;
         };
+        /** MailNoticeAcknowledge */
+        MailNoticeAcknowledge: {
+            /** 修订号 */
+            revision: number;
+        };
         /** MailPreferenceChange */
         MailPreferenceChange: {
             /** 修订号 */
@@ -2113,6 +2138,8 @@ export interface components {
             pending_email: string | null;
             /** 邮件服务已启用 */
             smtp_enabled: boolean;
+            /** 已知晓邮件通知引导 */
+            notice_acknowledged: boolean;
         };
         /**
          * ManualFeedbackStatus
@@ -5807,6 +5834,57 @@ export interface operations {
             };
             /** @description 未登录或登录凭证不可用 */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    acknowledge_mail_notice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MailNoticeAcknowledge"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MailPreferencesOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或 revision 冲突 */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

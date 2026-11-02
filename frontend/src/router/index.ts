@@ -15,6 +15,9 @@ declare module 'vue-router' {
 
 export const router = createRouter({
   history: createWebHashHistory(import.meta.env.BASE_URL),
+  scrollBehavior(to) {
+    if (to.path === '/profile' && to.hash === '#mail-notifications') return { el: '#mail-notifications' }
+  },
   routes: [
     { path: '/login', name: 'login', component: () => import('@/views/auth/LoginView.vue'), meta: { public: true } },
     {

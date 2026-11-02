@@ -53,6 +53,7 @@ class MailPreferencesService:
             verified=bool(user.email and item.verified_email == user.email),
             pending_email=item.pending_email,
             smtp_enabled=get_settings().smtp_enabled,
+            notice_acknowledged=item.notice_acknowledged_at is not None,
         )
 
     def get(self, user: User):
@@ -65,6 +66,15 @@ class MailPreferencesService:
         item.mode = mode
         item.revision += 1
         AuditService(self.db).log("USER", user.id, "MAIL_PREFERENCE", after={"mode": mode})
+        self.db.commit()
+        return self.view(user, item)
+
+    def acknowledge_notice(self, user: User, revision: int):
+        item = self.lock(user, revision)
+        if item.notice_acknowledged_at is None:
+            item.notice_acknowledged_at = datetime.now(UTC)
+            item.revision += 1
+            AuditService(self.db).log("USER", user.id, "MAIL_NOTICE_ACKNOWLEDGED")
         self.db.commit()
         return self.view(user, item)
 

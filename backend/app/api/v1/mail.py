@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.api.deps import current_user, require_permission
+from app.api.openapi import api_error_responses
 from app.core.database import get_db
 from app.core.exceptions import PermissionDenied
 from app.models.entities import User
@@ -11,6 +12,7 @@ from app.schemas.mail import (
     DeliveryRetry,
     EmailVerificationConfirm,
     EmailVerificationRequest,
+    MailNoticeAcknowledge,
     MailPreferenceChange,
     MailPreferencesOut,
 )
@@ -30,6 +32,19 @@ def change_mail_preferences(
     payload: MailPreferenceChange, db: Session = Depends(get_db), user: User = Depends(current_user)
 ):
     return MailPreferencesService(db).change(user, payload.revision, payload.mode)
+
+
+@router.post(
+    "/me/mail-notice/acknowledge",
+    response_model=MailPreferencesOut,
+    responses=api_error_responses(409),
+)
+def acknowledge_mail_notice(
+    payload: MailNoticeAcknowledge,
+    db: Session = Depends(get_db),
+    user: User = Depends(current_user),
+):
+    return MailPreferencesService(db).acknowledge_notice(user, payload.revision)
 
 
 @router.post("/me/email-verification", response_model=MailPreferencesOut)

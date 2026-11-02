@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import MobileBottomNav from '@/components/MobileBottomNav.vue'
+import MailSetupNotice from '@/components/MailSetupNotice.vue'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationsStore } from '@/stores/notifications'
@@ -136,6 +137,7 @@ async function logout(): Promise<void> {
     </main>
 
     <MobileBottomNav />
+    <MailSetupNotice />
   </div>
 </template>
 

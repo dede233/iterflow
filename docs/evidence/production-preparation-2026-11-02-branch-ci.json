@@ -1,0 +1,55 @@
+{
+  "branch": "2cc10094ccc1bd2cb47687f40bee65f2786071c6",
+  "run_id": 41389886932,
+  "jobs": [
+    {
+      "id": 125098725718,
+      "name": "backend",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 125098725975,
+      "name": "docker_smoke",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 125098726016,
+      "name": "browser_smoke",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 125098726034,
+      "name": "mysql57 (portable)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 125098726069,
+      "name": "frontend",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 125098726074,
+      "name": "mysql57 (standard)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 125098726085,
+      "name": "backup_restore",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 125098726123,
+      "name": "s3",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "browser_passed": 187
+}

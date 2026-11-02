@@ -1,6 +1,6 @@
 # 迭程 IterFlow：MySQL 5.7 空库部署包
 
-2026-10-31 未发布的协作流程优化已在开发主线整合：当前目标迁移为 mysql57_0009，共 91 个完整性触发器；新增通知 worker 和六张协作/邮件表，runtime 授权模板已补齐（仅 SQL 模板，本轮不对真实数据库执行）。取消逐人开发确认，旧记录保留。升级顺序、旧客户端限制和历史兼容见 [协作升级准备](../../docs/collaboration-workflow-upgrade.md)；以下已部署事实为历史记录，不代表本次已部署。
+2026-10-31 未发布的协作流程优化已在开发主线整合：当前目标迁移为 mysql57_0010，共 91 个完整性触发器；新增通知 worker 和六张协作/邮件表；2026-11-02 追加多名验收人支持（确认人仍单人），runtime 授权模板已补齐（仅 SQL 模板，本轮不对真实数据库执行）。取消逐人开发确认，旧记录保留。升级顺序、旧客户端限制和历史兼容见 [协作升级准备](../../docs/collaboration-workflow-upgrade.md)；以下已部署事实为历史记录，不代表本次已部署。
 
 
 2026-10-23 已部署增量：mysql57_0006 为三类基础角色补齐完整版本权限，不新增表或触发器。已有库升级前备份，执行正式 Alembic upgrade head；无需重跑 seed。保留用户、角色启停、自定义授权和数据范围，权限变更写审计。8444/8443 均已完成该迁移，凭据见 `docs/version-role-deployment-2026-10-23.md`。
@@ -27,7 +27,7 @@ MySQL 双指针改为关系事实派生：API 字段不变，数据库生成列�
 - 迁移账号具有目标库 CREATE/ALTER/INDEX/REFERENCES/TRIGGER/CREATE ROUTINE/EXECUTE、DML、
   读 schema 元数据权限；binary logging 开启时由 DBA 确认创建 trigger/function 的能力，
   本路径预检要求 log_bin_trust_function_creators=ON。不要自行授予运行账号 SUPER。
-- 推荐运行账号只拥有 `runtime-grants.sql` 的 21 业务表 DML、Alembic 与键登记表 SELECT，
+- 推荐运行账号只拥有 `runtime-grants.sql` 的 28 业务表 DML、Alembic 与键登记表 SELECT，
   没有 DDL/TRIGGER/GRANT/管理权限或其他继承授权。用户已明确接受此次使用现有高权限
   iterflow 账号的例外；它可删除数据库保护对象，不属于最小权限验证通过。
 - 保留触发器 DEFINER 账号及必要权限，不能在迁移后删除该账号。
@@ -68,7 +68,7 @@ images.env 只有镜像/commit/端口/库名，没有秘密。编辑其中 MYSQL
 ./dc.sh --profile init run --rm migrate
 ./dc.sh --profile init run --rm migrate python -m app.cli.mysql_preflight
 ./dc.sh --profile init run --rm seed
-./dc.sh up -d --wait redis api web
+./dc.sh up -d --wait redis api web notification-worker
 curl --fail http://127.0.0.1:8000/ready
 curl --fail http://127.0.0.1:8080/
 ```
@@ -76,7 +76,7 @@ curl --fail http://127.0.0.1:8080/
 先执行正式迁移，然后 seed；不使用 create_all、stamp head 或 PG 历史迁移。
 MySQL DDL 不原子：失败即停，保留现场；不要 stamp/盲目续跑。由 DBA 确认仅针对自己的空库
 清理失败初始化后重建。seed 只创建基础角色、权限和新管理员，首次登录必须改密。
-迁移后必须检查 mysql57_0009、91 个 trigger、键登记函数及完整唯一约束；runtime readiness
+迁移后必须检查 mysql57_0010、91 个 trigger、键登记函数及完整唯一约束；runtime readiness
 只用低权限检查。长键保持原 500 字符/2000 字节范围，分成 512 字节二进制段，以
 UNIQUE(parent_id,segment) 确定路径，再以文件 leaf_id UNIQUE 保证完整键唯一；无哈希/前缀误判。
 登记节点不可修改或删除，文件删除后可复用路径；节点积累需要计入存储容量。

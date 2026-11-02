@@ -22,6 +22,7 @@ import { getRequirement } from '@/api/requirements'
 import ScopedRelationLink from '@/components/ScopedRelationLink.vue'
 import { useDetailNavigation } from '@/composables/useDetailNavigation'
 import { usePermission } from '@/composables/usePermission'
+import { useAuthStore } from '@/stores/auth'
 import { useEditingPresence } from '@/composables/useEditingPresence'
 import { useRevisionConflict } from '@/composables/useRevisionConflict'
 import {
@@ -64,6 +65,7 @@ const route = useRoute()
 const router = useRouter()
 const { backTo, related } = useDetailNavigation('/feedbacks')
 const { can } = usePermission()
+const auth = useAuthStore()
 const { isMobile } = useResponsive()
 const feedbackId = Number(props.embedded ? props.embeddedId : route.params.id)
 const { start: startPresence, stop: stopPresence, existingEditor } = useEditingPresence('FEEDBACK', feedbackId)
@@ -102,6 +104,9 @@ const statusActions = computed<StatusAction[]>(() =>
 )
 
 // --- convert to requirement dialog ---
+const defaultConfirmPeople = computed(() => auth.user && can('rd.requirement.view')
+  ? [{ id: auth.user.id, display_name: auth.user.display_name }]
+  : [])
 const convertRoles = reactive<Record<Participant['role'], number[]>>({ CONFIRM: [], DESIGN: [], DEVELOP: [], ACCEPT: [] })
 const roleLabels = { CONFIRM: '需求确认人', DESIGN: '设计人员（可选）', DEVELOP: '开发人员', ACCEPT: '验收人员' }
 const convertDialog = ref(false)
@@ -118,7 +123,7 @@ const convertForm = reactive({
 
 function openConvert(): void {
   if (!item.value) return
-  Object.assign(convertRoles, { CONFIRM: [], DESIGN: [], DEVELOP: [], ACCEPT: [] })
+  Object.assign(convertRoles, { CONFIRM: defaultConfirmPeople.value.map(person => person.id), DESIGN: [], DEVELOP: [], ACCEPT: [] })
   Object.assign(convertForm, {
     type: 'CREATE_NEW',
     requirement_title: item.value.title,
@@ -573,7 +578,7 @@ onMounted(async () => {
           <el-form-item label="验收标准">
             <el-input v-model="convertForm.acceptance_criteria" type="textarea" :rows="3" />
           </el-form-item>
-          <el-form-item v-for="(label, role) in roleLabels" :key="role" :label="label"><PeopleSelector v-model="convertRoles[role]" kind="requirement" :multiple="role === 'DESIGN' || role === 'DEVELOP'" /></el-form-item>
+          <el-form-item v-for="(label, role) in roleLabels" :key="role" :label="label"><PeopleSelector v-model="convertRoles[role]" kind="requirement" :selected="role === 'CONFIRM' ? defaultConfirmPeople : []" :multiple="role !== 'CONFIRM'" /></el-form-item>
         </template>
         <el-form-item v-else label="目标需求" required>
           <ScopedObjectSelector v-model="convertForm.requirement_id" kind="requirement" :allowed="canLinkExisting" :active="convertDialog && convertForm.type === 'LINK_EXISTING'" :disabled="convertSubmitting" />

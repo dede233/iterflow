@@ -156,6 +156,7 @@ for (const width of [1280, 390]) {
       await expect(page.getByText(originalTitle, { exact: true })).toHaveCount(0)
       await page.getByText(newTitle, { exact: true }).click()
       drawer = page.getByRole('dialog', { name: `${entry.label}详情`, exact: true })
+      if (entry.path === '/requirements') await drawer.getByRole('button', { name: '展开需求进度', exact: true }).click()
       await drawer.getByRole('button', { name: entry.action, exact: true }).click()
       const statusDialog = page.getByRole('dialog', { name: entry.action, exact: true })
       await statusDialog.getByRole('button', { name: '确定', exact: true }).click()

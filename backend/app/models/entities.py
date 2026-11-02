@@ -369,7 +369,7 @@ class RequirementParticipant(Base):
         single_actor_role: Mapped[str | None] = mapped_column(
             String(16),
             Computed(
-                "CASE WHEN active = 1 AND role IN ('CONFIRM', 'ACCEPT') THEN role ELSE NULL END",
+                "CASE WHEN active = 1 AND role = 'CONFIRM' THEN role ELSE NULL END",
                 persisted=True,
             ),
         )
@@ -630,8 +630,8 @@ if not MYSQL:
         RequirementParticipant.requirement_id,
         RequirementParticipant.role,
         unique=True,
-        postgresql_where=text("active AND role IN ('CONFIRM', 'ACCEPT')"),
-        sqlite_where=text("active AND role IN ('CONFIRM', 'ACCEPT')"),
+        postgresql_where=text("active AND role = 'CONFIRM'"),
+        sqlite_where=text("active AND role = 'CONFIRM'"),
     )
 
 if MYSQL:

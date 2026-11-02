@@ -216,8 +216,17 @@ test('Phase 7 real restricted users: presence, conflict, publish, notification a
     await selector.getByRole('button', { name: '添加 1 条需求', exact: true }).click()
     expect((await relation).status()).toBe(200)
     await pageB.reload()
+    await pageB.getByRole('button', { name: '展开需求进度', exact: true }).click()
     await pageB.getByRole('button', { name: '确认当前内容', exact: true }).click()
     await pageB.getByRole('dialog', { name: '确认当前内容', exact: true }).getByRole('button', { name: '确认操作' }).click()
+    const assignment = pageB.getByRole('dialog', { name: '安排设计、开发与验收人员', exact: true })
+    await expect(assignment).toBeVisible()
+    await expect(assignment.getByText('验收人员可多选，任意一人验收通过即可。')).toBeVisible()
+    // Participants were assigned above; dismissing the new automatic editor must
+    // preserve that assignment and the successful content confirmation.
+    await assignment.getByRole('button', { name: '取消', exact: true }).click()
+    await expect(assignment).toHaveCount(0)
+    expect((await api(request, b.token, 'GET', `/requirements/${requirement.id}`)).status).toBe('CONFIRMED')
     await expect(pageB.getByRole('button', { name: '开始开发', exact: true })).toBeVisible()
     for (const label of ['开始开发', '提交验收', '验收通过']) await status(pageB, label, `/requirements/${requirement.id}`)
     for (const label of ['开始开发', '提测', '待发布']) await status(pageA, label, `/versions/${version.id}`)

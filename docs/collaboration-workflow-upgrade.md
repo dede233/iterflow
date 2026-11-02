@@ -1,6 +1,6 @@
 # 协作流程优化：兼容与升级准备
 
-2026-11-02 后续邮件引导补丁（已部署 TEST，未部署正式）：新增账号知晓状态及 PostgreSQL `0013_mail_notice` / MySQL `mysql57_0011`，详见 [弹窗规则、测试与升级/回退边界](mail-setup-notice-2026-11-02.md)。TEST 已按用户新授权升级为 `96ba96e` / `mysql57_0011`，见 [测试部署记录](mail-notice-test-deployment-2026-11-02.md)。下述正式环境 0010 基线保持不变，不能把 TEST 升级视为正式库已升级。
+2026-11-02 后续邮件引导补丁（TEST 验收后已按新授权上线正式）：新增账号知晓状态及 PostgreSQL `0013_mail_notice` / MySQL `mysql57_0011`，详见 [弹窗规则、测试与升级/回退边界](mail-setup-notice-2026-11-02.md)。TEST 和正式当前均为 `96ba96e` / `mysql57_0011`，各自独立备份演练与迁移，数据保持隔离；记录见 [测试部署](mail-notice-test-deployment-2026-11-02.md)及 [正式上线](mail-notice-production-2026-11-02.md)。master `5f5d74e` 双远端一致且自身八项 CI PASS。下述 0010 等基线与“本轮不执行”为前阶段历史；本次 0011 新增知晓记录后禁止有损 downgrade，旧 API 不接受该 schema，不得直接回退 API 或覆盖正式库。
 
 2026-11-02 正式执行补充：用户随后授权上线并选择演练通过后立即维护，已完成正式迁移和配套 API/Web/worker 更新，当前运行源码 `2c503bf`（master `a1c90dd` 对应冻结产品代码）、MySQL `mysql57_0010`。维护前后备份、验收和首次 reload 探测 503 处理见 [正式执行记录](production-deployment-2026-11-02.md)。以下“本轮不执行”均为上一准备阶段记录，不表示正式升级尚未执行；后续新升级仍需当次授权。
 

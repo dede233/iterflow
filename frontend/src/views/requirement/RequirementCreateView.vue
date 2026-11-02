@@ -82,7 +82,7 @@ async function submit(): Promise<void> {
         <el-form-item label="验收标准" class="span-2">
           <el-input v-model="form.acceptance_criteria" type="textarea" :rows="3" />
         </el-form-item>
-        <el-form-item v-for="(label, role) in roleLabels" :key="role" :label="label"><PeopleSelector v-model="roles[role]" kind="requirement" :multiple="role === 'DESIGN' || role === 'DEVELOP'" /></el-form-item>
+        <el-form-item v-for="(label, role) in roleLabels" :key="role" :label="label"><PeopleSelector v-model="roles[role]" kind="requirement" :multiple="role !== 'CONFIRM'" /></el-form-item>
         </div>
         <div class="editor-actions">
           <el-button @click="cancel">取消</el-button>

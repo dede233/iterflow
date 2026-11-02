@@ -491,7 +491,7 @@ export interface paths {
         head?: never;
         /**
          * 变更需求状态
-         * @description 六阶段流转：开发参与人提交验收，指定验收人确认 DONE；不再要求每名开发人员单独确认。人员资格、内容确认、revision CAS、原因、审计及事务回滚统一校验。ONLINE 仅由成功发布产生。
+         * @description 六阶段流转：开发参与人提交验收，可指定多名验收人，其中任意一名有效验收人确认即可进入 DONE，其他验收人无需重复确认；不再要求每名开发人员单独确认。记录实际操作人，并通过 revision CAS 防止重复流转。人员资格、内容确认、原因、审计及事务回滚统一校验。ONLINE 仅由成功发布产生。
          */
         patch: operations["change_status_api_v1_requirements__requirement_id__status_patch"];
         trace?: never;
@@ -2188,7 +2188,10 @@ export interface components {
             /** 未读通知数 */
             unread_count: number;
         };
-        /** ParticipantInput */
+        /**
+         * ParticipantInput
+         * @description 环节人员。CONFIRM 最多一人；DESIGN、DEVELOP、ACCEPT 可多人。同一人员与环节组合不能重复。ACCEPT 任意一名有效人员验收通过即可完成需求。
+         */
         ParticipantInput: {
             /** 人员编号 */
             user_id: number;

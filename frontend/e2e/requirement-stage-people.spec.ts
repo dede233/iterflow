@@ -10,7 +10,7 @@ for (const width of [320, 375, 768, 1200, 1440, 1800]) {
     })
     const people = [
       { id: 1, display_name: '需求确认人' }, { id: 2, display_name: '开发小林' },
-      { id: 3, display_name: '验收小李' }, { id: 4, display_name: '设计小王' },
+      { id: 3, display_name: '验收小李' }, { id: 5, display_name: '验收小陈' }, { id: 4, display_name: '设计小王' },
     ]
     let participants = [{ role: 'CONFIRM', user_id: 1, display_name: '需求确认人', active: true }]
     let revision = 8
@@ -69,7 +69,7 @@ for (const width of [320, 375, 768, 1200, 1440, 1800]) {
     await card.getByRole('button', { name: '选择 / 调整人员', exact: true }).click()
     const dialog = page.getByRole('dialog', { name: '安排设计、开发与验收人员' })
     await expect(dialog).toBeVisible()
-    for (const [label, person] of [['设计人员（可选）', '设计小王'], ['开发人员', '开发小林'], ['验收人员', '验收小李']]) {
+    for (const [label, person] of [['设计人员（可选）', '设计小王'], ['开发人员', '开发小林'], ['验收人员', '验收小李'], ['验收人员', '验收小陈']]) {
       await dialog.locator('.el-form-item').filter({ has: page.getByText(label!, { exact: true }) }).locator('.el-select__wrapper').click()
       const listId = await dialog.getByRole('combobox', { name: label, exact: true }).getAttribute('aria-controls')
       await page.locator(`[id="${listId}"]`).getByRole('option', { name: person, exact: true }).click()
@@ -81,11 +81,11 @@ for (const width of [320, 375, 768, 1200, 1440, 1800]) {
     await expect(dialog).not.toBeVisible()
     await expect(card).toContainText('开发：开发小林')
     await expect(card).toContainText('设计：设计小王')
-    await expect(card).toContainText('验收：验收小李')
+    await expect(card).toContainText('验收：验收小李、验收小陈')
     await expect(card).toContainText('当前阶段')
     expect(writes).toEqual([{ revision: 8, participants: [
       { role: 'CONFIRM', user_id: 1 }, { role: 'DESIGN', user_id: 4 },
-      { role: 'DEVELOP', user_id: 2 }, { role: 'ACCEPT', user_id: 3 },
+      { role: 'DEVELOP', user_id: 2 }, { role: 'ACCEPT', user_id: 3 }, { role: 'ACCEPT', user_id: 5 },
     ] }])
     await expect(page.getByText('查看 / 调整环节人员', { exact: true })).toHaveCount(0)
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width + 1)

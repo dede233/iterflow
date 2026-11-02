@@ -4,6 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier
 from uuid import uuid4
 
+from multiple_acceptance_migration import exercise_migration
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -12,6 +13,7 @@ from app.models.entities import (
     NotificationDelivery,
     Requirement,
     RequirementParticipant,
+    RequirementStep,
     User,
 )
 from app.services.audit_service import AuditService
@@ -23,7 +25,7 @@ class RedactedHeaders(dict):
         return "<authorization redacted>"
 
 
-def setup_team(fixture):
+def setup_team(fixture, multiple_acceptance=False):
     client, engine, admin_id, admin = fixture
     roles = {r["code"]: r["id"] for r in client.get("/api/v1/roles", headers=admin).json()}
     people, headers = {}, {}
@@ -54,6 +56,8 @@ def setup_team(fixture):
         {"role": "ACCEPT", "user_id": people["accept"]},
         {"role": "DESIGN", "user_id": people["dev2"]},
     ]
+    if multiple_acceptance:
+        payload.append({"role": "ACCEPT", "user_id": people["other"]})
     result = client.post(
         "/api/v1/requirements",
         headers=admin,
@@ -70,7 +74,11 @@ def setup_team(fixture):
 
 def exercise_workflow(fixture, scenario, monkeypatch):
     client, engine, _, admin = fixture
-    people, headers, req, payload = setup_team(fixture)
+    multiple_acceptance = scenario in {"acceptance_multiple", "acceptance_race"}
+    people, headers, req, payload = setup_team(fixture, multiple_acceptance)
+    if scenario == "acceptance_migration":
+        exercise_migration(engine, req["id"], people["other"])
+        return
     path = f"/api/v1/requirements/{req['id']}"
 
     def get():
@@ -195,6 +203,18 @@ def exercise_workflow(fixture, scenario, monkeypatch):
                 > 0
             )
         return
+    if multiple_acceptance:
+        assigned = ok(
+            client.put(
+                path + "/participants",
+                headers=admin,
+                json={"revision": get()["revision"], "participants": payload},
+            )
+        )
+        assert {p["user_id"] for p in assigned["participants"] if p["role"] == "ACCEPT"} == {
+            people["accept"],
+            people["other"],
+        }
     ok(action("CONFIRM"))
     if scenario == "design":
         ok(action("DESIGN_PENDING", headers["dev2"]))
@@ -230,6 +250,70 @@ def exercise_workflow(fixture, scenario, monkeypatch):
         ).status_code
         == 404
     )
+    if multiple_acceptance:
+        before_revision = get()["revision"]
+        with Session(engine) as db:
+            event = db.scalar(
+                select(CollaborationEvent).where(
+                    CollaborationEvent.entity_id == req["id"],
+                    CollaborationEvent.action == "STATUS_TESTING",
+                )
+            )
+            assert {people["accept"], people["other"]} <= set(event.recipient_ids)
+            assert all(
+                DeliveryService(db).is_task(event, people[name]) for name in ("accept", "other")
+            )
+            DeliveryService(db).expand()
+            assert set(
+                db.scalars(
+                    select(NotificationDelivery.user_id).where(
+                        NotificationDelivery.event_id == event.id,
+                        NotificationDelivery.channel == "SITE",
+                    )
+                )
+            ) >= {people["accept"], people["other"]}
+        if scenario == "acceptance_race":
+            barrier = Barrier(2)
+
+            def accept(name):
+                barrier.wait()
+                result = client.patch(
+                    path + "/status",
+                    headers=headers[name],
+                    json={"status": "DONE", "revision": before_revision},
+                )
+                return name, result.status_code
+
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                results = list(pool.map(accept, ["accept", "other"]))
+            assert sorted(code for _, code in results) == [200, 409]
+            winner = people[next(name for name, code in results if code == 200)]
+        else:
+            ok(status("DONE", headers["other"]))
+            winner = people["other"]
+        assert get()["status"] == "DONE" and get()["revision"] == before_revision + 1
+        assert status("DONE", headers["accept"]).status_code == 409
+        with Session(engine) as db:
+            records = list(
+                db.scalars(
+                    select(RequirementStep).where(
+                        RequirementStep.requirement_id == req["id"],
+                        RequirementStep.action == "STATUS_DONE",
+                    )
+                )
+            )
+            assert len(records) == 1 and records[0].actor_id == winner
+            assert len([p for p in records[0].detail["participants"] if p["role"] == "ACCEPT"]) == 2
+            assert (
+                db.scalar(
+                    select(func.count(CollaborationEvent.id)).where(
+                        CollaborationEvent.entity_id == req["id"],
+                        CollaborationEvent.action == "STATUS_DONE",
+                    )
+                )
+                == 1
+            )
+        return
     ok(status("DONE", headers["accept"]))
     if scenario == "return":
         assert status("DEVELOPING", headers["dev1"]).status_code == 422

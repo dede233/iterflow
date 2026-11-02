@@ -55,3 +55,10 @@ PLANNING -> DEVELOPING -> TESTING -> READY -> RELEASED
 
 ## Concurrency
 关键对象写操作必须提交 `revision`。旧 revision 写入返回 HTTP 409，禁止静默覆盖。
+
+## 2026-11-02 多人验收与确认后安排人员
+
+- ACCEPT 可指定多人，任意一名有权限的有效验收人员通过即可 TESTING → DONE，不进行逐人会签；退回仍须原因。CONFIRM 仍最多一人。
+- 提交验收通知所有验收人员，邮件遵循验证与偏好；确认记录保留实际操作者和当时人员快照。并发或重复确认不得重复推进状态、写记录或发通知，旧 revision 返回 409。
+- 本人确认成功从 DRAFT 进入 CONFIRMED 后，具备人员编辑权限的操作者自动看到人员选择弹窗。关闭不撤销确认，保存人员不代表开始开发；后续重新确认不改变已有阶段。
+- 追加 0012_multiple_acceptance / mysql57_0010 仅放开 ACCEPT 唯一约束，保留 CONFIRM 唯一约束及全部历史行；已有单人验收无需补写。存在多人有效验收时拒绝降级，不自动删人。MySQL DDL 升级需停止写入并备份；本次仅隔离验证。

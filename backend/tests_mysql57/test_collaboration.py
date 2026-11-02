@@ -16,6 +16,9 @@ from test_acceptance import mysql_api as mysql_api
         "revocation",
         "return",
         "acceptance",
+        "acceptance_multiple",
+        "acceptance_race",
+        "acceptance_migration",
     ],
 )
 def test_workflow_mysql(mysql_api, scenario, monkeypatch):

@@ -27,14 +27,14 @@ function panel() {
 it('saves using the fetched revision and preserves confirmation when arranging later roles', async () => {
   const wrapper = panel(); await flushPromises()
   const selectors = wrapper.findAllComponents(PeopleSelector)
-  expect(selectors.map(s => s.props('multiple'))).toEqual([true, true, false])
+  expect(selectors.map(s => s.props('multiple'))).toEqual([true, true, true])
   selectors[0]!.vm.$emit('update:modelValue', [4])
   selectors[1]!.vm.$emit('update:modelValue', [2, 5])
-  selectors[2]!.vm.$emit('update:modelValue', [6])
+  selectors[2]!.vm.$emit('update:modelValue', [6, 7])
   await wrapper.find('form').trigger('submit'); await flushPromises()
   expect(mocks.save).toHaveBeenCalledExactlyOnceWith(1, 12, [
     { role: 'CONFIRM', user_id: 1 }, { role: 'DESIGN', user_id: 4 },
-    { role: 'DEVELOP', user_id: 2 }, { role: 'DEVELOP', user_id: 5 }, { role: 'ACCEPT', user_id: 6 },
+    { role: 'DEVELOP', user_id: 2 }, { role: 'DEVELOP', user_id: 5 }, { role: 'ACCEPT', user_id: 6 }, { role: 'ACCEPT', user_id: 7 },
   ])
   expect(wrapper.emitted('updated')).toHaveLength(1)
   expect(wrapper.emitted('close')).toHaveLength(1)

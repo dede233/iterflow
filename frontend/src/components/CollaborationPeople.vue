@@ -79,7 +79,7 @@ async function transfer() {
       <el-button v-if="editable && !editing" @click="editing = true">调整人员</el-button>
       <el-form v-if="editing && editable" label-position="top">
         <el-form-item v-if="kind === 'feedback'" label="反馈接收人" required><PeopleSelector v-model="recipients" kind="feedback" :feedback-id="id" :selected="selected" multiple /></el-form-item>
-        <template v-else><el-form-item v-for="(label, role) in roleLabels" :key="role" :label="label"><PeopleSelector v-model="roles[role]!" kind="requirement" :selected="selected" :multiple="role === 'DESIGN' || role === 'DEVELOP'" /></el-form-item></template>
+        <template v-else><el-form-item v-for="(label, role) in roleLabels" :key="role" :label="label"><PeopleSelector v-model="roles[role]!" kind="requirement" :selected="selected" :multiple="role !== 'CONFIRM'" /></el-form-item></template>
         <el-button :disabled="saving" @click="load">取消</el-button><el-button type="primary" :loading="saving" @click="save">保存人员</el-button>
         <template v-if="kind === 'feedback' && feedback?.accepted_by">
           <el-divider />

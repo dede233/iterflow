@@ -304,3 +304,10 @@ Fresh Self-Review（同一 Agent）：确认和人员保存仍是独立显式事
 - 镜像源码／config／公网产物一致性、API/Web 健康和 ready、worker 运行全部 PASS。正式容器及配置、测试 API/worker/DB/Redis 和邮件配置前后核对一致；未执行数据库操作。
 - 实际测试页面完成已验证默认隐藏 → 点击重新验证展开 → 刷新收起检查；375px 输入框与按钮同一行、44px 高、无横向溢出，PASS。没有发送邮件或重新提交验证。
 - 完整范围、证据与回退记录：[验证码布局测试部署](test-deployment-mail-layout-2026-11-02.md)。无规格冲突或未解决部署问题；本次不运行远端 CI、不推送合并、不部署正式环境。
+
+## 2026-11-02 重新验证前隐藏通知邮箱输入区
+
+- 用户补充要求已验证邮箱在点击“重新验证”前，也隐藏“通知邮箱”标签和输入框。
+- `frontend/src/components/MailPreferences.vue` 将通知邮箱表单项移入既有 `showVerification` 条件块，与验证码行一同展开／收起；未验证时直接展示，当前邮箱及验证状态文字保留。无 API、数据库或验证请求逻辑变更。
+- 既有 MailPreferences／ProfileView 测试 5 PASS；Vue／TypeScript 与 Vite 生产构建 PASS；git diff --check PASS。此轮未重跑浏览器或邮件投递测试。
+- Fresh Self-Review：仅调整模板条件范围，确认成功和用户切换仍沿用既有收起逻辑，无规格冲突或未解决问题。本轮未部署；测试环境仍为 1923a22，正式环境未操作。

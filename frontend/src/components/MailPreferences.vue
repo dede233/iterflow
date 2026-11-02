@@ -59,8 +59,8 @@ const statusLabels: Record<string, string> = { PENDING: '待发送', SENDING: '�
       <el-button :loading="busy" @click="mutate('/me/mail-preferences', { mode }, 'put')">保存偏好</el-button>
       <p>当前邮箱：{{ item.email || '未设置' }} · {{ item.verified ? '已验证' : '未验证，不发送进度邮件' }}</p>
       <p>默认仅发送待办与上线；验证后启用所选偏好，不补发历史进度。修改邮箱需重新验证。</p>
-      <el-form-item label="通知邮箱"><el-input v-model="email" type="email" autocomplete="email" maxlength="254" /></el-form-item>
       <template v-if="showVerification">
+        <el-form-item label="通知邮箱"><el-input v-model="email" type="email" autocomplete="email" maxlength="254" /></el-form-item>
         <p v-if="item.pending_email">待验证地址：{{ item.pending_email }}</p>
         <el-form-item label="六位验证码" for="mail-verification-code">
           <div class="verification-row">

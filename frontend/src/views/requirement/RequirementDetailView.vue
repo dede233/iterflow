@@ -2,6 +2,7 @@
 import RequirementProgress from '@/components/RequirementProgress.vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
+import { actionErrorMessage } from '@/utils/actionError'
 import { useRoute, useRouter } from 'vue-router'
 import {
   changeRequirementStatus,
@@ -70,21 +71,23 @@ const statusDialog = ref(false)
 const statusSubmitting = ref(false)
 const currentAction = ref<ReqStatusAction | null>(null)
 const statusReason = ref('')
+const statusError = ref('')
 
 function openStatusDialog(action: ReqStatusAction): void {
   currentAction.value = action
   statusReason.value = ''
+  statusError.value = ''
   statusDialog.value = true
 }
 
 async function submitStatus(): Promise<void> {
-  if (!item.value || !currentAction.value) return
+  if (!item.value || !currentAction.value || statusSubmitting.value || !can('rd.requirement.status')) return
   const action = currentAction.value
   if (action.needsReason && statusReason.value.trim().length < 2) {
     ElMessage.warning('请填写原因（至少 2 个字符）')
     return
   }
-  statusSubmitting.value = true
+  statusSubmitting.value = true; statusError.value = ''
   try {
     await changeRequirementStatus(
       item.value.id,
@@ -98,6 +101,7 @@ async function submitStatus(): Promise<void> {
     await load()
   } catch (error) {
     await showConflict(error, item.value.revision, () => { statusDialog.value = false })
+    statusError.value = actionErrorMessage(error)
   } finally {
     statusSubmitting.value = false
   }
@@ -238,9 +242,10 @@ onMounted(load)
       destroy-on-close
     >
       <el-form label-position="top">
-        <el-form-item label="原因" :required="currentAction?.needsReason">
+        <el-form-item :label="currentAction?.reasonLabel || (currentAction?.needsReason ? '原因（必填）' : '原因（选填）')" :required="currentAction?.needsReason">
           <el-input v-model="statusReason" type="textarea" :rows="3" />
         </el-form-item>
+        <p v-if="statusError" role="alert">{{ statusError }}</p>
       </el-form>
       <template #footer>
         <el-button @click="statusDialog = false">取消</el-button>

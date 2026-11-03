@@ -23,6 +23,8 @@ import ScopedRelationLink from '@/components/ScopedRelationLink.vue'
 import { useDetailNavigation } from '@/composables/useDetailNavigation'
 import { usePermission } from '@/composables/usePermission'
 import { useAuthStore } from '@/stores/auth'
+import type { FeedbackCollaboration } from '@/api/collaboration'
+import { actionErrorMessage } from '@/utils/actionError'
 import { useEditingPresence } from '@/composables/useEditingPresence'
 import { useRevisionConflict } from '@/composables/useRevisionConflict'
 import {
@@ -80,6 +82,9 @@ const systems = ref<BusinessSystemItem[]>([])
 const modules = ref<BusinessModuleItem[]>([])
 const canReadSystems = computed(() => can(['sys.system.view', 'sys.system.manage']))
 const canEdit = computed(() => can('rd.feedback.edit'))
+const collaboration = ref<FeedbackCollaboration | null>(null)
+const delegatedAcceptance = computed(() => !!collaboration.value?.recipients.length && !collaboration.value.recipients.some(p => p.id === auth.user?.id))
+const canAccept = computed(() => canEdit.value && !!collaboration.value && collaboration.value.revision === item.value?.revision && (!delegatedAcceptance.value || auth.user?.can_view_api_docs === true))
 const canAttach = computed(() => can('rd.feedback.create'))
 const canLinkExisting = computed(() => canLinkExistingRequirementFor(can))
 // Convert is available only while the feedback has no primary requirement yet.
@@ -100,7 +105,7 @@ async function showConflict(error: unknown, revision: number, onReload?: (latest
 }
 
 const statusActions = computed<StatusAction[]>(() =>
-  item.value ? availableStatusActions(item.value.status, canEdit.value) : [],
+  item.value ? availableStatusActions(item.value.status, canEdit.value).filter(a => a.target !== 'ACCEPTED' || canAccept.value) : [],
 )
 
 // --- convert to requirement dialog ---
@@ -186,18 +191,26 @@ const statusDialog = ref(false)
 const statusSubmitting = ref(false)
 const currentAction = ref<StatusAction | null>(null)
 const statusForm = reactive({ reason: '', duplicate_of_id: null as number | null })
+const statusError = ref('')
+const statusReasonRequired = computed(() => !!currentAction.value && (currentAction.value.needsReason || (currentAction.value.target === 'ACCEPTED' && delegatedAcceptance.value)))
+const statusReasonLabel = computed(() => currentAction.value?.target === 'ACCEPTED' && delegatedAcceptance.value ? '代受理原因（必填）' : '原因')
 
 function openStatusDialog(action: StatusAction): void {
   currentAction.value = action
   statusForm.reason = ''
+  statusError.value = ''
   statusForm.duplicate_of_id = null
   statusDialog.value = true
 }
 
 async function submitStatus(): Promise<void> {
-  if (!item.value || !currentAction.value) return
+  if (!item.value || !currentAction.value || statusSubmitting.value || !canEdit.value) return
   const action = currentAction.value
-  if (action.needsReason && !statusForm.reason.trim()) {
+  if (action.target === 'ACCEPTED' && !canAccept.value) {
+    statusError.value = '接收人信息尚未加载或你不是本反馈的接收人，请联系指定接收人受理。'
+    return
+  }
+  if (statusReasonRequired.value && !statusForm.reason.trim()) {
     ElMessage.warning('请填写原因')
     return
   }
@@ -205,7 +218,7 @@ async function submitStatus(): Promise<void> {
     ElMessage.warning('请填写重复目标反馈 ID')
     return
   }
-  statusSubmitting.value = true
+  statusSubmitting.value = true; statusError.value = ''
   try {
     if (action.needsDuplicate && statusForm.duplicate_of_id && can('rd.feedback.view')) await getFeedback(statusForm.duplicate_of_id)
     await changeFeedbackStatus(item.value.id, {
@@ -220,6 +233,7 @@ async function submitStatus(): Promise<void> {
     await load()
   } catch (error) {
     await showConflict(error, item.value.revision, () => { statusDialog.value = false })
+    statusError.value = actionErrorMessage(error)
   } finally {
     statusSubmitting.value = false
   }
@@ -379,7 +393,8 @@ onMounted(async () => {
         </el-button>
         </template>
       </PageHeader>
-      <CollaborationPeople v-if="can('rd.feedback.view')" kind="feedback" :id="item.id" :revision="item.revision" :editable="canEdit" @updated="load" />
+      <p v-if="item.status === 'NEW' && canEdit && collaboration && !canAccept" role="status">请联系指定接收人受理此反馈；如需调整接收人，可在“接收与处理”中设置。</p>
+      <CollaborationPeople v-if="can('rd.feedback.view')" kind="feedback" :id="item.id" :revision="item.revision" :editable="canEdit" @loaded="collaboration = $event" @updated="load" />
 
       <div class="detail-grid">
       <SectionCard title="反馈详情" description="问题内容与复现信息" class="detail-main">
@@ -471,12 +486,13 @@ onMounted(async () => {
         <el-form-item v-if="currentAction?.needsDuplicate" label="重复目标反馈 ID" required>
           <ScopedObjectSelector v-model="statusForm.duplicate_of_id" kind="feedback" :allowed="can('rd.feedback.view')" :active="statusDialog" :disabled="statusSubmitting" :exclude-id="feedbackId" />
         </el-form-item>
-        <el-form-item v-if="currentAction?.needsReason" label="原因" required>
+        <el-form-item v-if="statusReasonRequired" :label="statusReasonLabel" required>
           <el-input v-model="statusForm.reason" type="textarea" :rows="3" />
         </el-form-item>
-        <p v-if="currentAction && !currentAction.needsReason && !currentAction.needsDuplicate">
+        <p v-if="currentAction && !statusReasonRequired && !currentAction.needsDuplicate">
           确认将反馈状态改为「{{ feedbackStatusLabel[currentAction.target] }}」？
         </p>
+        <p v-if="statusError" role="alert">{{ statusError }}</p>
       </el-form>
       <template #footer>
         <el-button @click="statusDialog = false">取消</el-button>

@@ -4,6 +4,7 @@ import { actWorkflow, getWorkflow, getParticipants, type Workflow, type Workflow
 import { useAuthStore } from '@/stores/auth'
 import { availableRequirementStatusActions, requirementStatusLabel, type ReqStatusAction } from '@/constants/requirement'
 import { formatLocalDateTime } from '@/utils/dates'
+import { actionErrorMessage } from '@/utils/actionError'
 import type { Requirement } from '@/types/domain'
 import RequirementPeopleDialog from './RequirementPeopleDialog.vue'
 import SectionCard from './ui/SectionCard.vue'
@@ -21,6 +22,7 @@ const failed = ref(false)
 const busy = ref(false)
 const reason = ref('')
 const reasonError = ref(false)
+const submitError = ref('')
 const pending = ref<WorkflowAction['action'] | null>(null)
 const steps = ['DRAFT', 'CONFIRMED', 'DEVELOPING', 'TESTING', 'DONE', 'ONLINE']
 const roles = ['CONFIRM', 'DEVELOP', 'DEVELOP', 'ACCEPT', '', '']
@@ -31,7 +33,7 @@ watch([() => props.item.id, identity], () => { expanded.value = false; peopleEdi
 let sequence = 0
 async function load() {
   const request = ++sequence
-  flow.value = null; people.value = []; failed.value = false; pending.value = null
+  flow.value = null; people.value = []; failed.value = false; pending.value = null; submitError.value = ''
   if (!auth.hasPermission('rd.requirement.view')) return
   try {
     const [workflow, participants] = await Promise.all([getWorkflow(props.item.id), getParticipants(props.item.id)])
@@ -78,13 +80,40 @@ const summaryDetail = computed(() => {
     ? `暂停前：${requirementStatusLabel[flow.value.paused_from]} · ${detail}`
     : detail
 })
+const statusRole = (target: string) => target === 'DEVELOPING' ? (props.item.status === 'TESTING' ? 'ACCEPT' : 'DEVELOP') : target === 'TESTING' ? 'DEVELOP' : target === 'DONE' ? 'ACCEPT' : null
 const actions = computed(() => availableRequirementStatusActions(props.item.status, canAct.value).filter(a => {
   if (a.target === 'CONFIRMED' && props.item.status === 'DRAFT') return false
   if (a.target === 'DEVELOPING') return canRole(props.item.status === 'TESTING' ? 'ACCEPT' : 'DEVELOP')
   if (a.target === 'TESTING') return canRole('DEVELOP')
   if (a.target === 'DONE') return canRole('ACCEPT')
   return true
+}).map(action => {
+  const role = statusRole(action.target)
+  return role && !isRole(role)
+    ? { ...action, needsReason: true, reasonLabel: '代操作原因（必填）' }
+    : action
 }))
+const roleLabels: Record<string, string> = { CONFIRM: '需求确认人', DEVELOP: '开发人员', ACCEPT: '验收人员', DESIGN: '设计人员' }
+const missingRoles = computed(() => {
+  if (!flow.value || !canAct.value) return []
+  const required: string[] = []
+  if (flow.value.needs_confirmation) required.push('CONFIRM')
+  if (['CONFIRMED', 'DEVELOPING', 'DONE', 'PAUSED'].includes(props.item.status)) required.push('DEVELOP')
+  if (['DEVELOPING', 'TESTING'].includes(props.item.status)) required.push('ACCEPT')
+  if (['CONFIRMED', 'DEVELOPING'].includes(props.item.status) && ['PENDING', 'IN_PROGRESS'].includes(flow.value.design_status)) required.push('DESIGN')
+  return required.filter(role => !hasRole(role))
+})
+function assignRole(role: string) {
+  if (canEditPeople.value) peopleEditor.value = { title: `设置${roleLabels[role]}`, roles: [role as Participant['role']] }
+}
+function statusBlocked(action: ReqStatusAction) {
+  if (!flow.value) return true
+  if (['DEVELOPING', 'TESTING', 'DONE'].includes(action.target) && flow.value.needs_confirmation) return true
+  return action.target === 'TESTING' && (!hasRole('ACCEPT') || !['NOT_REQUIRED', 'DONE'].includes(flow.value.design_status))
+}
+function beginStatus(action: ReqStatusAction) {
+  if (canAct.value && !statusBlocked(action)) emit('status', action)
+}
 const designActions = computed<WorkflowAction['action'][]>(() => {
   if (!flow.value || !canAct.value || !canRole('DESIGN') || !['CONFIRMED', 'DEVELOPING'].includes(props.item.status)) return []
   return ({ NOT_REQUIRED: ['DESIGN_PENDING'], PENDING: ['DESIGN_START', 'DESIGN_CANCEL'], IN_PROGRESS: ['DESIGN_DONE', 'DESIGN_CANCEL'], DONE: ['DESIGN_PENDING', 'DESIGN_CANCEL'] } as Record<string, WorkflowAction['action'][]>)[flow.value.design_status] || []
@@ -92,7 +121,7 @@ const designActions = computed<WorkflowAction['action'][]>(() => {
 function begin(action: WorkflowAction['action']) {
   if (!canAct.value || !canRole(actionRole(action))) return
   workflowDialogClosed.value = false
-  pending.value = action; reason.value = ''; reasonError.value = false
+  pending.value = action; reason.value = ''; reasonError.value = false; submitError.value = ''
 }
 async function submit() {
   if (!flow.value || !pending.value || busy.value || !canAct.value || !canRole(actionRole(pending.value))) return
@@ -102,7 +131,7 @@ async function submit() {
   const actor = identity.value
   const shouldAssign = pending.value === 'CONFIRM' && props.item.status === 'DRAFT' && canEditPeople.value
   const revision = flow.value.revision
-  busy.value = true
+  busy.value = true; submitError.value = ''
   try {
     await actWorkflow(id, { action: pending.value, revision, reason: reason.value.trim() || null })
     if (id !== props.item.id || actor !== identity.value) return
@@ -110,7 +139,7 @@ async function submit() {
     if (shouldAssign && canEditPeople.value) assignAfterConfirm.value = revision
     emit('updated')
   }
-  catch { /* Keep the form; never silently replay a conflicting write. */ }
+  catch (error) { if (id === props.item.id && actor === identity.value) submitError.value = actionErrorMessage(error) }
   finally { busy.value = false }
 }
 function recordLabel(action: string) { return actionLabels[action] || requirementStatusLabel[action.replace('STATUS_', '')] || action }
@@ -154,9 +183,14 @@ function recordLabel(action: string) { return actionLabels[action] || requiremen
         </li>
       </ol>
       <div v-if="canAct" class="progress-actions">
+        <div v-for="role in missingRoles" :key="role" class="progress-blocker" role="status">
+          <span>尚未设置有效的{{ roleLabels[role] }}；{{ canEditPeople ? '请先设置后再执行对应流程操作。' : '请联系有人员编辑权限的成员完成设置。' }}</span>
+          <el-button v-if="canEditPeople" link type="primary" @click="assignRole(role)">设置{{ roleLabels[role] }}</el-button>
+        </div>
+        <p v-if="item.status === 'DEVELOPING' && !['NOT_REQUIRED', 'DONE'].includes(flow.design_status)" class="progress-blocker" role="status">设计尚未完成，暂不能提交验收。请由设计人员完成设计，或填写原因取消设计要求。</p>
         <el-button v-if="item.status === 'DRAFT' && canRole('CONFIRM')" @click="begin('REQUEST_CHANGES')">要求补充说明</el-button>
         <el-button v-if="flow.needs_confirmation && canRole('CONFIRM')" type="primary" @click="begin('CONFIRM')">确认当前内容</el-button>
-        <el-button v-for="action in actions" :key="action.target" @click="emit('status', action)">{{ action.label }}</el-button>
+        <el-button v-for="action in actions" :key="action.target" :disabled="statusBlocked(action)" @click="beginStatus(action)">{{ action.label }}</el-button>
         <el-button v-for="action in designActions" :key="action" @click="begin(action)">{{ actionLabels[action] }}</el-button>
       </div>
       <details class="progress-history"><summary>查看流转与确认记录（最近 {{ flow.records.length }} 条）</summary>
@@ -169,12 +203,13 @@ function recordLabel(action: string) { return actionLabels[action] || requiremen
     </div>
     <RequirementPeopleDialog v-if="peopleEditor && canEditPeople" :id="item.id" :roles="peopleEditor.roles" :title="peopleEditor.title" @close="peopleEditor = null" @updated="emit('updated')" />
     <el-dialog :model-value="pending !== null" :title="pending ? actionLabels[pending] : ''" width="min(520px, calc(100vw - 24px))" append-to-body @close="pending = null" @closed="workflowDialogClosed = true">
-      <el-form label-position="top" @submit.prevent="submit"><el-form-item :label="reasonLabel" :required="reasonRequired" :error="reasonError ? '请填写说明后再提交' : undefined"><el-input v-model="reason" type="textarea" maxlength="500" @input="reasonError = false" /></el-form-item><el-button type="primary" native-type="submit" :loading="busy">确认操作</el-button></el-form>
+      <el-form label-position="top" @submit.prevent="submit"><el-form-item :label="reasonLabel" :required="reasonRequired" :error="reasonError ? '请填写说明后再提交' : undefined"><el-input v-model="reason" type="textarea" maxlength="500" @input="reasonError = false" /></el-form-item><p v-if="submitError" role="alert">{{ submitError }}</p><el-button type="primary" native-type="submit" :loading="busy">确认操作</el-button></el-form>
     </el-dialog>
   </SectionCard>
 </template>
 <style scoped>
 .requirement-progress { margin-bottom: var(--if-space-4); }
+.progress-blocker { flex-basis: 100%; margin: 0; color: var(--el-color-warning-dark-2); font-size: 13px; line-height: 1.7; }
 .step-people-button { margin-top: 8px; max-width: 100%; min-height: 32px; padding-inline: 8px; white-space: nowrap; }
 .progress-toggle { width: 100%; min-height: 56px; display: flex; align-items: center; gap: 12px; padding: 12px var(--if-space-5); border: 0; border-radius: var(--if-radius); background: transparent; color: var(--if-text-primary); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
 .progress-toggle:hover { background: var(--if-bg-muted); }

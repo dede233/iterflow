@@ -7,7 +7,7 @@ import { formatLocalDateTime } from '@/utils/dates'
 import PeopleSelector from './PeopleSelector.vue'
 import SectionCard from './ui/SectionCard.vue'
 const props = defineProps<{ kind: 'feedback' | 'requirement'; id: number; revision: number; editable: boolean }>()
-const emit = defineEmits<{ updated: [] }>()
+const emit = defineEmits<{ updated: []; loaded: [data: FeedbackCollaboration | null] }>()
 const auth = useAuthStore()
 const feedback = ref<FeedbackCollaboration | null>(null)
 const selected = ref<Person[]>([])
@@ -25,6 +25,7 @@ let sequence = 0
 const identity = computed(() => `${auth.user?.id}:${auth.accessToken}:${auth.permissionCodes.join(',')}`)
 async function load() {
   const request = ++sequence
+  emit('loaded', null)
   loaded.value = false; failed.value = false; editing.value = false; feedback.value = null
   selected.value = []; recipients.value = []; roles.value = { CONFIRM: [], DESIGN: [], DEVELOP: [], ACCEPT: [] }
   if (!auth.hasPermission(`rd.${props.kind}.view`)) return
@@ -33,6 +34,7 @@ async function load() {
       const data = await getFeedbackCollaboration(props.id)
       if (request !== sequence) return
       feedback.value = data; revision.value = data.revision; selected.value = data.recipients
+      emit('loaded', data)
       recipients.value = data.recipients.map(p => p.id); handler.value = data.handler_id; reason.value = ''
     } else {
       const data = await getParticipants(props.id)

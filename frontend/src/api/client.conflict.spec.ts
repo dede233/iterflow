@@ -6,7 +6,7 @@ vi.mock('element-plus', () => ({ ElMessage: messages }))
 
 axios.defaults.adapter = async (config: InternalAxiosRequestConfig) => {
   const code = Number(config.params?.code ?? 40910)
-  const response = { status: 409, statusText: 'Conflict', data: { code, message: '业务条件不满足' }, headers: {}, config }
+  const response = { status: Number(config.params?.status ?? 409), statusText: 'Conflict', data: { code, message: '业务条件不满足' }, headers: {}, config }
   return Promise.reject({ isAxiosError: true, config, response })
 }
 
@@ -14,10 +14,18 @@ const { api } = await import('./client')
 
 beforeEach(() => {
   messages.warning.mockClear()
+  messages.error.mockClear()
   localStorage.clear()
 })
 
 describe('409 interceptor separates revision and business conflicts', () => {
+  it('keeps generic forbidden feedback unless a form explicitly handles the reason', async () => {
+    await expect(api.get('/probe', { params: { status: 403 } })).rejects.toMatchObject({ response: { status: 403 } })
+    expect(messages.error).toHaveBeenCalledExactlyOnceWith('你没有权限执行该操作')
+    messages.error.mockClear()
+    await expect(api.get('/probe', { params: { status: 403 }, skipForbiddenAlert: true })).rejects.toMatchObject({ response: { data: { message: '业务条件不满足' } } })
+    expect(messages.error).not.toHaveBeenCalled()
+  })
   it('uses revision wording only for 40910', async () => {
     await expect(api.get('/probe', { params: { code: 40910 } })).rejects.toMatchObject({ response: { status: 409 } })
     expect(messages.warning).toHaveBeenCalledExactlyOnceWith('服务器版本已变化，请查看冲突详情')

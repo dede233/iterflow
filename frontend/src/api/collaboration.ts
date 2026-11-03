@@ -15,4 +15,4 @@ export const setParticipants = (id: number, revision: number, participants: Part
 export type Workflow = components['schemas']['WorkflowOut']
 export type WorkflowAction = components['schemas']['WorkflowAction']
 export const getWorkflow = (id: number) => api.get<Workflow>(`/requirements/${id}/workflow`).then(r => r.data)
-export const actWorkflow = (id: number, payload: WorkflowAction) => api.post<Workflow>(`/requirements/${id}/workflow`, payload).then(r => r.data)
+export const actWorkflow = (id: number, payload: WorkflowAction) => api.post<Workflow>(`/requirements/${id}/workflow`, payload, { skipForbiddenAlert: true }).then(r => r.data)

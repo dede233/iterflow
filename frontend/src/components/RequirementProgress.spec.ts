@@ -164,3 +164,52 @@ it.each(['conflict', 'no-edit', 'switch', 'reconfirm'])('does not automatically 
   expect(wrapper.findComponent({ name: 'RequirementPeopleDialog' }).exists()).toBe(false)
   wrapper.unmount()
 })
+
+it.each(['missing-acceptor', 'unfinished-design', 'unconfirmed-content'])('blocks submission before opening a status form: %s', async mode => {
+  mocks.workflow.mockResolvedValue({ revision: 8, needs_confirmation: mode === 'unconfirmed-content', design_status: mode === 'unfinished-design' ? 'IN_PROGRESS' : 'NOT_REQUIRED', records: [] })
+  mocks.participants.mockResolvedValue({ participants: [
+    { user_id: 2, role: 'DEVELOP', active: true },
+    ...(mode === 'missing-acceptor' ? [] : [{ user_id: 3, role: 'ACCEPT', active: true }]),
+  ] })
+  const wrapper = panel()
+  await wrapper.setProps({ item: { id: 1, revision: 8, status: 'DEVELOPING' } as any }); await flushPromises()
+  await wrapper.find('.progress-toggle').trigger('click')
+  const button = wrapper.findAll('button').find(b => b.text() === '提交验收')!
+  expect(button.attributes('disabled')).toBeDefined()
+  await button.trigger('click')
+  expect(wrapper.emitted('status')).toBeUndefined()
+  expect(mocks.act).not.toHaveBeenCalled()
+  wrapper.unmount()
+})
+
+it('opens a focused personnel editor with a clear missing-role hint', async () => {
+  useAuthStore().user!.permission_codes.push('rd.requirement.edit')
+  mocks.workflow.mockResolvedValue({ revision: 8, needs_confirmation: false, design_status: 'NOT_REQUIRED', records: [] })
+  mocks.participants.mockResolvedValue({ participants: [] })
+  const wrapper = panel()
+  await wrapper.setProps({ item: { id: 1, revision: 8, status: 'CONFIRMED' } as any }); await flushPromises()
+  await wrapper.find('.progress-toggle').trigger('click')
+  expect(wrapper.text()).toContain('尚未设置有效的开发人员')
+  await wrapper.findAll('button').find(b => b.text() === '设置开发人员')!.trigger('click')
+  expect(wrapper.findComponent({ name: 'RequirementPeopleDialog' }).props('roles')).toEqual(['DEVELOP'])
+  expect(wrapper.emitted('status')).toBeUndefined()
+  wrapper.unmount()
+})
+
+it.each([
+  ['CONFIRMED', '开始开发', 'DEVELOP'], ['DEVELOPING', '提交验收', 'DEVELOP'],
+  ['TESTING', '验收通过', 'ACCEPT'], ['TESTING', '退回开发', 'ACCEPT'],
+  ['DONE', '重新开发', 'DEVELOP'], ['PAUSED', '恢复开发', 'DEVELOP'],
+])('marks delegated %s / %s as requiring an explicit reason', async (status, label, role) => {
+  useAuthStore().user!.can_view_api_docs = true
+  mocks.workflow.mockResolvedValue({ revision: 8, needs_confirmation: false, design_status: 'NOT_REQUIRED', records: [] })
+  mocks.participants.mockResolvedValue({ participants: [
+    { user_id: 3, role, active: true }, { user_id: 4, role: 'ACCEPT', active: true },
+  ] })
+  const wrapper = panel()
+  await wrapper.setProps({ item: { id: 1, revision: 8, status } as any }); await flushPromises()
+  await wrapper.find('.progress-toggle').trigger('click')
+  await wrapper.findAll('button').find(b => b.text() === label)!.trigger('click')
+  expect(wrapper.emitted('status')?.[0]?.[0]).toMatchObject({ needsReason: true, reasonLabel: '代操作原因（必填）' })
+  wrapper.unmount()
+})

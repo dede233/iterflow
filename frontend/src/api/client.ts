@@ -16,6 +16,8 @@ declare module 'axios' {
     skipConflictAlert?: boolean
     // Caller handles 40910 with a dedicated dialog; business conflicts still alert.
     skipRevisionConflictAlert?: boolean
+    // The workflow form renders the specific refusal without a generic 403 toast.
+    skipForbiddenAlert?: boolean
   }
 }
 
@@ -92,7 +94,7 @@ api.interceptors.response.use(
       } else {
         ElMessage.warning(error.response.data?.message ?? '当前操作存在业务冲突')
       }
-    } else if (error.response?.status === 403) {
+    } else if (error.response?.status === 403 && !originalRequest?.skipForbiddenAlert) {
       ElMessage.error('你没有权限执行该操作')
     }
     return Promise.reject(error)

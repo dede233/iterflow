@@ -31,5 +31,5 @@ export const changeRequirementStatus = (
   reason?: string | null,
 ) =>
   api
-    .patch<Requirement>(`/requirements/${id}/status`, { status, revision, reason: reason ?? null }, { skipRevisionConflictAlert: true })
+    .patch<Requirement>(`/requirements/${id}/status`, { status, revision, reason: reason ?? null }, { skipRevisionConflictAlert: true, skipForbiddenAlert: true })
     .then((r) => r.data)

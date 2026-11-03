@@ -2795,6 +2795,46 @@ paths:
       security:
       - bearerAuth: []
       description: 仅记录当前账号已知晓；跨设备生效，不修改邮箱、验证状态或邮件偏好。
+  /me/email-unbind:
+    post:
+      tags:
+      - mail
+      summary: 取消绑定当前账号的通知邮箱
+      operationId: unbind_email
+      description: 原子清空当前邮箱、验证状态及未完成验证码；保留邮件偏好、站内通知和账号知晓记录。旧 revision 返回 409，最新 revision 重复解绑不重复写入或审计。未开始投递的旧邮件会跳过，已经发送的邮件不撤回。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailUnbindRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MailPreferencesOut'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 业务状态或 revision 冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - bearerAuth: []
   /me/email-verification:
     post:
       tags:
@@ -5705,6 +5745,17 @@ components:
           default: true
       type: object
       title: LogoutResponse
+    EmailUnbindRequest:
+      additionalProperties: false
+      properties:
+        revision:
+          type: integer
+          minimum: 1
+          title: 修订号
+      type: object
+      required:
+      - revision
+      title: EmailUnbindRequest
     MailNoticeAcknowledge:
       properties:
         revision:

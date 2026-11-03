@@ -831,6 +831,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/email-unbind": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 取消绑定当前账号的通知邮箱
+         * @description 原子清空当前邮箱、验证状态及未完成验证码；保留邮件偏好、站内通知和账号知晓记录。旧 revision 返回 409，最新 revision 重复解绑不重复写入或审计。未开始投递的旧邮件会跳过，已经发送的邮件不撤回。
+         */
+        post: operations["unbind_email"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/me/email-verification": {
         parameters: {
             query?: never;
@@ -2105,6 +2125,11 @@ export interface components {
              * @default true
              */
             ok: boolean;
+        };
+        /** EmailUnbindRequest */
+        EmailUnbindRequest: {
+            /** 修订号 */
+            revision: number;
         };
         /** MailNoticeAcknowledge */
         MailNoticeAcknowledge: {
@@ -5862,6 +5887,57 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["MailNoticeAcknowledge"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MailPreferencesOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或 revision 冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unbind_email: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmailUnbindRequest"];
             };
         };
         responses: {

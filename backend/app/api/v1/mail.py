@@ -10,6 +10,7 @@ from app.repositories.user_repository import UserRepository
 from app.schemas.mail import (
     DeliveryOut,
     DeliveryRetry,
+    EmailUnbindRequest,
     EmailVerificationConfirm,
     EmailVerificationRequest,
     MailNoticeAcknowledge,
@@ -45,6 +46,20 @@ def acknowledge_mail_notice(
     user: User = Depends(current_user),
 ):
     return MailPreferencesService(db).acknowledge_notice(user, payload.revision)
+
+
+@router.post(
+    "/me/email-unbind",
+    response_model=MailPreferencesOut,
+    responses=api_error_responses(409),
+    summary="取消绑定当前账号的通知邮箱",
+)
+def unbind_email(
+    payload: EmailUnbindRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(current_user),
+):
+    return MailPreferencesService(db).unbind(user, payload.revision)
 
 
 @router.post("/me/email-verification", response_model=MailPreferencesOut)

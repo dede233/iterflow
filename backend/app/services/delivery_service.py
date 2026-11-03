@@ -253,7 +253,12 @@ class DeliveryService:
         assert row is not None
         self.db.expire_all()
         event = self.db.get(CollaborationEvent, row.event_id)
-        user = self.db.get(User, row.user_id)
+        user = self.db.get(
+            User,
+            row.user_id,
+            with_for_update=row.channel == "EMAIL",
+            populate_existing=True,
+        )
         if not event or not user or not self.authorized(event, user):
             row.status = "SKIPPED"
             row.last_error = "ACCESS_REVOKED"
@@ -288,7 +293,9 @@ class DeliveryService:
             self.db.commit()
             return True
         settings = get_settings()
-        pref = self.db.get(MailPreference, user.id)
+        # Match email changes/unbinding's user -> preference lock order. Keep the
+        # account locked until SMTP finishes so a completed unbind cannot be raced.
+        pref = self.db.get(MailPreference, user.id, with_for_update=True, populate_existing=True)
         email = user.email
         eligible = bool(
             pref

@@ -35,7 +35,10 @@ class MailPreferencesService:
     def lock(self, user: User, revision: int | None = None) -> MailPreference:
         self.db.refresh(user, with_for_update=True)
         item = self.db.scalar(
-            select(MailPreference).where(MailPreference.user_id == user.id).with_for_update()
+            select(MailPreference)
+            .where(MailPreference.user_id == user.id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
         )
         if item is None:
             item = MailPreference(user_id=user.id)
@@ -75,6 +78,38 @@ class MailPreferencesService:
             item.notice_acknowledged_at = datetime.now(UTC)
             item.revision += 1
             AuditService(self.db).log("USER", user.id, "MAIL_NOTICE_ACKNOWLEDGED")
+        self.db.commit()
+        return self.view(user, item)
+
+    def unbind(self, user: User, revision: int):
+        item = self.lock(user, revision)
+        cleared_fields = (
+            "verified_email",
+            "verified_at",
+            "pending_email",
+            "challenge_id",
+            "challenge_expires_at",
+            "challenge_user_revision",
+        )
+        if (
+            not user.email
+            and not item.challenge_attempts
+            and not any(getattr(item, key) is not None for key in cleared_fields)
+        ):
+            self.db.commit()
+            return self.view(user, item)
+        # The same account lock is held by an EMAIL sender through its SMTP attempt.
+        # Once this transaction completes, no sender can use the previous binding.
+        if not UserRepository(self.db).update_with_revision(
+            user.id, user.revision, {"email": None, "updated_by": user.id}
+        ):
+            raise ConflictError("账号已修改, 请刷新后重试")
+        self.db.refresh(user)
+        for key in cleared_fields:
+            setattr(item, key, None)
+        item.challenge_attempts = 0
+        item.revision += 1
+        AuditService(self.db).log("USER", user.id, "EMAIL_UNBOUND")
         self.db.commit()
         return self.view(user, item)
 

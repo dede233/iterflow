@@ -1300,6 +1300,14 @@
         }
       }
     },
+    "EmailUnbindRequest": {
+      "title": "EmailUnbindRequest",
+      "properties": {
+        "revision": {
+          "title": "修订号"
+        }
+      }
+    },
     "MailNoticeAcknowledge": {
       "title": "MailNoticeAcknowledge",
       "properties": {
@@ -3059,6 +3067,15 @@
         ],
         "summary": "知晓邮件通知引导",
         "description": "仅记录当前账号已知晓；跨设备生效，不修改邮箱、验证状态或邮件偏好。"
+      }
+    },
+    "/me/email-unbind": {
+      "post": {
+        "tags": [
+          "mail"
+        ],
+        "summary": "取消绑定当前账号的通知邮箱",
+        "description": "原子清空当前邮箱、验证状态及未完成验证码；保留邮件偏好、站内通知和账号知晓记录。旧 revision 返回 409，最新 revision 重复解绑不重复写入或审计。未开始投递的旧邮件会跳过，已经发送的邮件不撤回。"
       }
     },
     "/me/email-verification": {

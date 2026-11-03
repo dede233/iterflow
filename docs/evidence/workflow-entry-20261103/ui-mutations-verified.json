@@ -1,0 +1,14 @@
+{
+  "status": "PASS",
+  "requirement_id": 21,
+  "requirement_revision": 3,
+  "actual_actor": 7,
+  "single_development_transition": true,
+  "feedback_id": 21,
+  "feedback_revision": 2,
+  "accepted_by": 7,
+  "handler_id": 7,
+  "recipient_ids": [
+    4
+  ]
+}

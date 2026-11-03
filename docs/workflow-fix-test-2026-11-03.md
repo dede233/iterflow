@@ -1,6 +1,6 @@
 # 流程入口修复与 TEST 验证
 
-2026-11-03 后续事故核对：用户已恢复宝塔并提供复盘；本会话首条 Base64 传输命令为 60,192 字节，与面板阻塞 write 长度完全一致，高度支持此次粘贴触发面板缺陷。此前“连接超时”仅是现象，不是充分归因。已禁止继续使用网页终端传文件或长脚本，改用独立连接与文件上传；先核查残留任务再继续。见 [事故核对与后续执行方式](bt-terminal-incident-2026-11-03.md)。公开核验两环境仍为原 Web 产物，TEST 尚未切换；这不替代服务器和数据完整性验收。
+2026-11-03 后续事故核对：用户已恢复宝塔并提供复盘；本会话首条 Base64 传输命令为 60,192 字节，与面板阻塞 write 长度完全一致，高度支持此次粘贴触发面板缺陷。此前“连接超时”仅是现象，不是充分归因。已禁止继续使用网页终端传文件或长脚本，改用独立连接与文件上传；先核查残留任务再继续。见 [事故核对与后续执行方式](bt-terminal-incident-2026-11-03.md)。事故恢复初期公开核验两环境仍为原 Web 产物，当时 TEST 尚未切换；后续服务器核查、TEST 部署及验收已完成，实际结果见下文。
 
 用户授权修复检查报告中的四类问题并部署到保留测试环境。仅调整前端入口与表单，不更改 API、后端状态机、数据库或角色权限；不部署正式环境，不合并或发布。
 
@@ -29,4 +29,57 @@
 
 部署连接记录：Safari 页面切换曾被中断，用户手动切到宝塔终端后成功读取 TEST 与正式运行基线。分块上传期间终端停止回显命令结果，未取得部署包校验或镜像构建成功回执；停止切换，刷新终端重连。宝塔管理端 `39.96.68.171:13308` 连续两次独立连接检查超时；`https://sx-kc.xyz:8444` 仍返回 200。另一次现有 SSH 连接检查因没有已知服务器主机密钥而停止，未接受未知密钥。已请求用户通过原安全入口恢复可执行命令的终端。不把工具完成粘贴视为服务器已成功收到文件或执行构建。
 
-当前状态：本地实现、回归及部署包已完成；尚未发送切换命令，TEST 切换与在线验收等待管理连接恢复。日志与浏览器截图位于 `/Users/xiaweiyi/Developer/deliverables/iterflow/2026-11-03/workflow-audit/`；部署包、清单和保护脚本位于同日 `workflow-fix-test/` 目录。后续须先核对服务器分块、准备回执与运行基线，再继续切换，不能盲目重跑或提前记为通过。
+以上为事故期间的停止点；恢复后的实际执行结果如下。本地回归日志位于 `/Users/xiaweiyi/Developer/deliverables/iterflow/2026-11-03/workflow-audit/`，部署包、清单、脚本和在线证据位于同日 `workflow-fix-test/` 目录。
+
+## 恢复后 TEST 部署结果：PASS
+
+2026-11-03 用户打开恢复后的宝塔面板。先只读检查：目标证据目录不存在，未发现 `deploy-web.py` 或 `docker build` 残留进程；TEST 与正式 API/Web/worker 仍为 `mail-notice-96ba96e`，Web/API、数据库与 Redis 健康。没有删除事故证据或执行面板重启、升级、补丁。
+
+通过宝塔文件管理的文件选择器正常上传 448,602 字节归档，服务器 SHA-256 与冻结包完全一致。终端仅执行短控制命令；脚本以文件运行，构建、备份和切换输出重定向到保护日志。`prepare` 返回 `WEB_PREPARED_PASS`，离线构建没有拉取新基础镜像。
+
+TEST 数据库和附件备份：`/opt/iterflow/backups/mail-notice-test-workflow-entry-pre-20261103T035750Z`，SQL 与附件包校验值保存在该目录的 `manifest.json`。执行前后用只读快照比较全部既有表字段和附件哈希，结果一致，schema 仍为 `mysql57_0011`。
+
+仅更新 TEST `WEB_IMAGE` 并重建 Web，重载独立 `iterflow-test-nginx`。2026-11-03 **11:57:34（北京时间）**取得部署 PASS 回执：
+
+| 核验项 | 结果 |
+| --- | --- |
+| TEST Web | `iterflow-web:workflow-entry-ba5d46e`，源码 `ba5d46ec1ecc825a6967470a7bb9fb5da4ad6607` |
+| Web 容器 | 健康、重启计数 0，卷及重启策略保持原配置 |
+| 公开 TEST 首页 | HTTP 200，index SHA-256 `d0c5700762fd1419352e2e5b9c5d0e6a815701738143e4187acd702251d580dd` |
+| TEST API/worker/DB/Redis | 容器 ID、启动时间、镜像、挂载和重启策略未变 |
+| 正式环境及其他站点配置 | 原容器记录和配置哈希未变；8443 首页 HTTP 200，原 index SHA-256 保持 `69c02cd420cef46f7d11141992b1fc2161ad1d88be04d245c37b46e2f25a3e9a` |
+| 迁移／数据库恢复 | 未执行 |
+
+在线 API 验收后再次比对正式容器与配置、TEST 后端容器，返回 `PRODUCTION_AND_TEST_BACKEND_PRESERVED_PASS`。后续验收数据通过正常 TEST API 新增，因此“全部表哈希一致”特指 Web 切换前后、开始新增验收记录之前，不代表验收后测试库没有新增数据。
+
+服务器完整证据：`/opt/iterflow/upgrade-evidence/workflow-entry-ba5d46e/` 中的 `prepared.json`、`deployed.json`、`preserved.json`、`data-before.json`、`prepare.log`、`deploy.log`、`commands.log`、`post-acceptance-preserved.log`。原 Web 镜像和 `images.env.before` 保留作为前端回退依据；本次未触发回退，不恢复数据库。
+
+## 在线 HTTPS 与页面验收：PASS
+
+使用既有 TEST 账号，通过 `https://sx-kc.xyz:8444/api/v1` 创建 **Requirement 18–21、Feedback 20–21** 六条本轮合成记录。没有修改旧测试业务记录、账号角色、密码、邮箱设置或正式数据。没有创建或发布版本。
+
+九组 HTTPS 检查全部通过：
+
+1. 缺少需求确认人时拒绝确认，revision 与流程记录不变。
+2. 管理员代确认必须有原因；填写后成功进入待开发。
+3. 缺少开发人员拦截；有人员后仍须填写管理员代操作原因。
+4. 缺少验收人、设计未完成均拦截提交验收，失败不写流程记录。
+5. 设置两名验收人后，其中一人即可进入待发布，记录其实际账号；不要求逐人确认。
+6. 旧 revision 返回 409；重新开发、暂停和恢复的原因规则保留。
+7. 内容修改后要求重新确认；重新确认后可提交验收，验收人可填写原因退回开发。
+8. 为界面验收单独准备缺人、提交阻塞和管理员代操作需求。
+9. 普通非接收人不能受理；管理员缺少代受理原因也不能受理；指定接收人可正常受理，记录本人。
+
+首次在线脚本在第六组把 DONE 重新开发未填原因预期写为 403，实际为既有状态服务先返回 422；与当前实现一致。保留 `acceptance-http-first.log/json`，仅修正脚本预期，从已核实仍为 DONE 的 Requirement 18 继续后续检查，没有重新创建或重放已成功的业务步骤。最终 `acceptance-http.json` 为 PASS。
+
+Chrome 实际页面验证：
+
+- Requirement 20 同时展示缺验收人员和设计未完成说明，“提交验收”禁用；点击“设置验收人员”直达仅验收环节的多选窗口。
+- Requirement 21 管理员“开始开发”弹窗明确显示“代操作原因（必填）”；空原因保持弹窗，填写后成功。API 复核仅产生一次开发流转，实际操作人为管理员账号 7，需求 revision 为 3。
+- Feedback 21 显示“代受理原因（必填）”；空原因保持原表单，填写后成功受理，revision 为 2，`accepted_by` 为管理员 7，原接收人仍为账号 4。
+- 375px 页面无横向溢出（document scrollWidth = viewport = 375），人员／设计说明和禁用动作正常；收起后阶段列表不可见。已恢复浏览器原尺寸。
+- 页面捕获的 error 日志为 0。反馈空原因提示的首次文字定位未命中短暂 toast，随后通过弹窗保留、成功提交和最终仅递增一次的 revision 核实行为；未把定位超时作为产品失败。
+
+摘要证据位于 [在线 API 结果](evidence/workflow-entry-20261103/acceptance-http.json)、[实际页面操作复核](evidence/workflow-entry-20261103/ui-mutations-verified.json)、[页面验收](evidence/workflow-entry-20261103/ui-acceptance.json) 和 [公开入口校验](evidence/workflow-entry-20261103/public-after.json)。截图及首轮日志保留在上述本地交付目录。
+
+本次无剩余已知修复阻塞、无规格冲突；仅在本地提交实现和结果文档，没有推送、合并、tag、Release 或新的远端 CI。正式仍为 `96ba96e` / `mysql57_0011`。宝塔永久缺陷没有在本次修复，操作约束继续生效。

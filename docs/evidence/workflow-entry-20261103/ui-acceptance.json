@@ -1,0 +1,14 @@
+{
+  "status": "PASS",
+  "checks": [
+    "desktop_missing_acceptor_and_design_hints",
+    "blocked_submit_disabled",
+    "focused_acceptor_dialog",
+    "delegation_reason_required_and_success",
+    "feedback_delegation_reason_required_and_success",
+    "mobile_375_no_horizontal_overflow",
+    "progress_collapse_hides_steps"
+  ],
+  "console_errors": 0,
+  "viewport_restored": true
+}

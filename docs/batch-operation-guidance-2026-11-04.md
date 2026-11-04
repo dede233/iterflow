@@ -1,6 +1,6 @@
 # 批量操作指引优化（2026-11-04）
 
-用户反馈现有批量操作不清晰、指引不足。本次在现有分支上统一调整反馈列表、需求列表和版本需求清单共用的批量组件；基线 `c1e78f4`。仅本地前端实现和合成 API 验证，不部署、推送、合并或访问真实数据库。当前 TEST 仍为 `c0f68e1` / `mysql57_0012`，正式仍为 `96ba96e` / `mysql57_0011`。
+用户反馈现有批量操作不清晰、指引不足。本次在现有分支上统一调整反馈列表、需求列表和版本需求清单共用的批量组件；基线 `c1e78f4`。本地阶段完成前端实现及合成 API 验证后，用户进一步授权部署 TEST。当前 TEST Web 已更新为 `8d12acf`，API/worker保持 `c0f68e1`、数据库保持 `mysql57_0012`；正式仍为 `96ba96e` / `mysql57_0011`。待用户验收，未推送、合并或发布；实际部署见 [TEST部署记录](batch-guidance-test-deployment-2026-11-04.md)。
 
 ## 交互与边界
 
@@ -19,7 +19,7 @@
 
 主要修改为 `frontend/src/components/BatchActionsDialog.vue` 与版本详情的范围参数；组件单测和 `frontend/e2e/issue4-actions.spec.ts` 覆盖交互路径。使用 ui-ux-pro-max 的进度、字段说明、错误恢复和无障碍反馈指导，保留现有 Element Plus、Vue 及主题变量。协作 Agent 做只读代码复查，不称外部独立终审。
 
-证据目录：`/Users/xiaweiyi/Developer/deliverables/iterflow/2026-11-04/batch-guidance/`。浏览器仅访问本轮临时 `127.0.0.1:5191`，全部业务 API 使用测试夹具，不连接 TEST/正式或其他数据库。
+本地阶段证据目录：`/Users/xiaweiyi/Developer/deliverables/iterflow/2026-11-04/batch-guidance/`。该阶段浏览器仅访问临时 `127.0.0.1:5191`，全部业务 API 使用测试夹具，不连接 TEST/正式或其他数据库。后续在线验证单独记录于 [TEST部署记录](batch-guidance-test-deployment-2026-11-04.md)。
 
 | 验证 | 实际结果 | 证据文件 |
 | --- | --- | --- |
@@ -33,7 +33,11 @@
 | Bundle 门禁 | PASS，最大chunk 387.9 KiB | `bundle-final.log` |
 | OpenAPI 生成类型一致性 | PASS | `api-types-final.log` |
 
-已覆盖操作未选择、50条上限、范围文案、返回重检与最新revision、全部阻塞、关闭/代操作原因、混合结果、网络结果未知、提交中父列表刷新和最新标题。截图检查覆盖桌面及手机选择、核对与结果页，布局断言确认步骤、滚动区域、底部按钮可用。前端单测保留既有jsdom AggregateError输出，测试结果均通过；未把日志写成零错误。无后端或契约修改，本轮不重复数据库测试，也未执行远端CI。代码及文档复查完成，无未解决阻断或规格冲突；当前交付为本地修改，尚未部署。
+已覆盖操作未选择、50条上限、范围文案、返回重检与最新revision、全部阻塞、关闭/代操作原因、混合结果、网络结果未知、提交中父列表刷新和最新标题。截图检查覆盖桌面及手机选择、核对与结果页，布局断言确认步骤、滚动区域、底部按钮可用。前端单测保留既有jsdom AggregateError输出，测试结果均通过；未把日志写成零错误。无后端或契约修改，本地阶段不重复数据库测试，也未执行远端CI。代码及文档复查完成，无未解决阻断或规格冲突；后续已部署 TEST，尚未部署正式环境。
+
+## 后续 TEST 部署与在线验证
+
+用户授权后，仅更新 TEST Web；preflight、prepare、deploy、verify全部PASS，无回退。API/worker、数据库及正式容器和配置保持原基线。桌面及375px页面完成批量选择、核对和结果验证；需求25确认后revision由2增至3，需求26因缺人跳过且revision保持1，反馈22受理、反馈23关闭后revision均由1增至2。仅通过正常TEST API处理本轮合成记录，无数据库迁移或恢复。详细过程、证据及回退说明见 [TEST部署记录](batch-guidance-test-deployment-2026-11-04.md)，当前待用户验收。
 
 ## 已发现问题与处理
 

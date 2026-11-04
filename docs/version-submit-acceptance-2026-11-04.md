@@ -67,3 +67,7 @@
 - 最终截图为`docker-chain-submitted-1440.png`、`docker-chain-ready-final-1440.png`及`docker-chain-ready-final-375.png`；截图修正记录与原始文件保留。
 - 已停止本次Vite进程，按任务清单定点删除Docker验收API/Web/网络/uploads/独立数据库，以及原新建PG、Redis、MySQL双配置容器及对应4卷；临时数据库凭据删除。清理见`docker-cleanup.json`、`local-cleanup.json`。未使用全局prune，未操作既有Preview或线上资源。
 - 所有计划验证与复查完成，无未解决阻塞或规格冲突。此次仅本地实现与提交；不推送、合并、部署或修改真实数据库。TEST仍为Web`8d12acf`、API/worker`c0f68e1`/`mysql57_0012`，正式仍为`96ba96e`/`mysql57_0011`（沿用此前已核实基线，本轮不访问线上）。
+
+## 后续TEST部署
+
+用户随后授权该冻结增量部署TEST，2026-11-04已完成配套升级和在线验收，正式不变；执行事实见[TEST部署记录](version-submit-test-deployment-2026-11-04.md)。上文本地阶段限制与基线为该阶段历史。

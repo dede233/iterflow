@@ -4,6 +4,66 @@
  */
 
 export interface paths {
+    "/requirements/filter-options/participants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 需求参与人筛选选项
+         * @description 需要 rd.requirement.view。仅返回当前 Requirement DataScope 内未删除需求的有效参与人，保留已停用账号并标注；不要求用户管理或需求编辑权限，不返回用户名、邮箱或角色。 keyword trim 后按可见标签做大小写不敏感的字面部分匹配；分页稳定且 total 去重。selected_id 与搜索及权限范围使用 AND 组合，不存在或不可见时返回空列表。
+         */
+        get: operations["requirements_filter_options_participants_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/requirements/filter-options/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 需求版本筛选选项
+         * @description 需要 rd.requirement.view。仅返回当前 Requirement DataScope 内未删除需求的 current_version_id 关联选项。只有同时具备 rd.version.view 且通过 Version DataScope 时返回版本号和名称，否则仅返回需求已公开的版本 ID 占位标签；搜索不匹配不可见的版本号或名称。 keyword trim 后按可见标签做大小写不敏感的字面部分匹配；分页稳定且 total 去重。selected_id 与搜索及权限范围使用 AND 组合，不存在或不可见时返回空列表。
+         */
+        get: operations["requirements_filter_options_versions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/versions/filter-options/owners": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 版本负责人筛选选项
+         * @description 需要 rd.version.view。仅返回当前 Version DataScope 内版本实际引用的负责人，保留已停用账号并标注；不要求用户管理或版本编辑权限，不返回用户名、邮箱或角色。 keyword trim 后按可见标签做大小写不敏感的字面部分匹配；分页稳定且 total 去重。selected_id 与搜索及权限范围使用 AND 组合，不存在或不可见时返回空列表。
+         */
+        get: operations["versions_filter_options_owners_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/requirements/{requirement_id}/workflow": {
         parameters: {
             query?: never;
@@ -2212,6 +2272,24 @@ export interface components {
             /** 创建人 ID */
             created_by: number | null;
         };
+        /** 筛选选项 */
+        FilterOption: {
+            /** 选项 ID */
+            id: number;
+            /** 显示名称 */
+            label: string;
+        };
+        /** 筛选选项分页 */
+        FilterOptionPage: {
+            /** 数据列表 */
+            items: components["schemas"]["FilterOption"][];
+            /** 页码 */
+            page: number;
+            /** 每页条数 */
+            page_size: number;
+            /** 总数 */
+            total: number;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** 校验错误详情 */
@@ -3160,6 +3238,162 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    requirements_filter_options_participants_get: {
+        parameters: {
+            query?: {
+                keyword?: string;
+                page?: number;
+                page_size?: number;
+                selected_id?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FilterOptionPage"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    requirements_filter_options_versions_get: {
+        parameters: {
+            query?: {
+                keyword?: string;
+                page?: number;
+                page_size?: number;
+                selected_id?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FilterOptionPage"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    versions_filter_options_owners_get: {
+        parameters: {
+            query?: {
+                keyword?: string;
+                page?: number;
+                page_size?: number;
+                selected_id?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FilterOptionPage"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     workflow_api_v1_requirements__requirement_id__workflow_get: {
         parameters: {
             query?: never;

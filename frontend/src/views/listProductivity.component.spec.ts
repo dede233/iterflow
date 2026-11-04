@@ -16,10 +16,11 @@ import RequirementListView from './requirement/RequirementListView.vue'
 import VersionListView from './version/VersionListView.vue'
 import ReleaseListView from './release/ReleaseListView.vue'
 import ListFilterPanel from '@/components/ui/ListFilterPanel.vue'
+import ListEntityFilterSelect from '@/components/ListEntityFilterSelect.vue'
 
 const configs = [
-  { name: 'Requirement', component: RequirementListView, api: mocks.requirements, keyword: '编号 / 标题', labels: ['关键词', '状态', '优先级', '来源', '版本 ID', '参与人 ID', '环节角色'], row: { id: 1, title: 'latest result', requirement_no: 'REQ-1', status: 'DRAFT', priority: 'P1', source: 'DIRECT' }, params: { keyword: 'Search', status: 'CONFIRMED', priority: 'P1', source: 'FEEDBACK', current_version_id: 42, participant_id: 8, participant_role: undefined } },
-  { name: 'Version', component: VersionListView, api: mocks.versions, keyword: '版本号 / 名称', labels: ['关键词', '状态', '计划上线日期', '负责人 ID'], row: { id: 1, name: 'latest result', version_no: 'V1', status: 'RELEASED' }, params: { keyword: 'Search', status: 'RELEASED', planned_release_from: '2026-10-01', planned_release_to: '2026-10-03', owner_id: 8 } },
+  { name: 'Requirement', component: RequirementListView, api: mocks.requirements, keyword: '编号 / 标题', labels: ['关键词', '状态', '优先级', '来源', '版本', '参与人', '环节角色'], row: { id: 1, title: 'latest result', requirement_no: 'REQ-1', status: 'DRAFT', priority: 'P1', source: 'DIRECT' }, params: { keyword: 'Search', status: 'CONFIRMED', priority: 'P1', source: 'FEEDBACK', current_version_id: 42, participant_id: 8, participant_role: undefined } },
+  { name: 'Version', component: VersionListView, api: mocks.versions, keyword: '版本号 / 名称', labels: ['关键词', '状态', '计划上线日期', '负责人'], row: { id: 1, name: 'latest result', version_no: 'V1', status: 'RELEASED' }, params: { keyword: 'Search', status: 'RELEASED', planned_release_from: '2026-10-01', planned_release_to: '2026-10-03', owner_id: 8 } },
   { name: 'Release', component: ReleaseListView, api: mocks.releases, keyword: null, labels: ['版本 ID', '发布日期'], row: { id: 1, version_id: 42, result: 'SUCCESS', release_notes: 'latest result' }, params: { version_id: 42, released_from: new Date(2026, 9, 1).toISOString(), released_before: new Date(2026, 9, 4).toISOString() } },
 ] as const
 
@@ -39,6 +40,7 @@ async function view(config: typeof configs[number], mobile = false) {
     plugins: [ElementPlus],
     directives: { loading: { mounted: renderLoading, updated: renderLoading } },
     stubs: {
+      ListEntityFilterSelect: true,
       BatchActionsDialog: true,
       RequirementCreateView: { name: 'RequirementCreateView', template: '<button @click="$emit(\'created\', 7)">完成创建</button>', emits: ['created'] },
       VersionCreateView: { name: 'VersionCreateView', template: '<button @click="$emit(\'created\', 7)">完成创建</button>', emits: ['created'] },
@@ -60,12 +62,12 @@ async function fill(wrapper: VueWrapper, config: typeof configs[number]) {
     selects[0]!.vm.$emit('update:modelValue', 'CONFIRMED')
     selects[1]!.vm.$emit('update:modelValue', 'P1')
     selects[2]!.vm.$emit('update:modelValue', 'FEEDBACK')
-    wrapper.findAllComponents(ElInputNumber)[0]!.vm.$emit('update:modelValue', 42)
-    wrapper.findAllComponents(ElInputNumber)[1]!.vm.$emit('update:modelValue', 8)
+    wrapper.findAllComponents(ListEntityFilterSelect)[0]!.vm.$emit('update:modelValue', 42)
+    wrapper.findAllComponents(ListEntityFilterSelect)[1]!.vm.$emit('update:modelValue', 8)
   } else if (config.name === 'Version') {
     selects[0]!.vm.$emit('update:modelValue', 'RELEASED')
     wrapper.findComponent(ElDatePicker).vm.$emit('update:modelValue', ['2026-10-01', '2026-10-03'])
-    wrapper.findComponent(ElInputNumber).vm.$emit('update:modelValue', 8)
+    wrapper.findComponent(ListEntityFilterSelect).vm.$emit('update:modelValue', 8)
   } else {
     wrapper.findComponent(ElInputNumber).vm.$emit('update:modelValue', 42)
     wrapper.findComponent(ElDatePicker).vm.$emit('update:modelValue', ['2026-10-01', '2026-10-03'])
@@ -155,10 +157,11 @@ for (const config of configs) {
     it('does not send invalid numeric IDs or call other list APIs', async () => {
       const wrapper = await view(config)
       for (const field of wrapper.findAllComponents(ElInputNumber)) field.vm.$emit('update:modelValue', 0)
+      for (const field of wrapper.findAllComponents(ListEntityFilterSelect)) field.vm.$emit('update:modelValue', 0)
       search(wrapper)
       await flushPromises()
       const params = config.api.mock.calls.at(-1)![0]
-      for (const key of ['owner_id', 'current_version_id', 'version_id']) expect(params[key]).toBeUndefined()
+      for (const key of ['owner_id', 'participant_id', 'current_version_id', 'version_id']) expect(params[key]).toBeUndefined()
       for (const other of configs) if (other !== config) expect(other.api).not.toHaveBeenCalled()
       wrapper.unmount()
     })

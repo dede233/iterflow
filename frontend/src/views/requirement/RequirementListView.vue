@@ -16,6 +16,7 @@ import ListCard from '@/components/ui/ListCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
 import ListFilterPanel from '@/components/ui/ListFilterPanel.vue'
+import ListEntityFilterSelect from '@/components/ListEntityFilterSelect.vue'
 import { REQUIREMENT_PRIORITIES, REQUIREMENT_STATUSES, requirementStatusLabel, requirementStatusTagType } from '@/constants/requirement'
 import type { Requirement, RequirementListParams } from '@/types/domain'
 
@@ -126,8 +127,8 @@ const queryState = useListQuery({
       <el-form-item label="状态"><el-select v-model="filters.status" clearable placeholder="全部"><el-option v-for="s in REQUIREMENT_STATUSES" :key="s.value" :label="s.label" :value="s.value" /></el-select></el-form-item>
       <el-form-item label="优先级"><el-select v-model="filters.priority" clearable placeholder="全部"><el-option v-for="p in REQUIREMENT_PRIORITIES" :key="p.value" :label="p.label" :value="p.value" /></el-select></el-form-item>
       <el-form-item label="来源"><el-select v-model="filters.source" clearable placeholder="全部"><el-option label="直接创建" value="DIRECT" /><el-option label="反馈转化" value="FEEDBACK" /></el-select></el-form-item>
-      <el-form-item label="版本 ID"><el-input-number v-model="filters.current_version_id" :min="1" :precision="0" step-strictly controls-position="right" /></el-form-item>
-      <el-form-item label="参与人 ID"><el-input-number v-model="filters.participant_id" :min="1" :precision="0" step-strictly controls-position="right" /></el-form-item>
+      <el-form-item label="版本"><ListEntityFilterSelect v-model="filters.current_version_id" kind="requirement-version" label="版本" /></el-form-item>
+      <el-form-item label="参与人"><ListEntityFilterSelect v-model="filters.participant_id" kind="participant" label="参与人" /></el-form-item>
       <el-form-item label="环节角色"><el-select v-model="filters.participant_role" clearable><el-option label="确认人" value="CONFIRM" /><el-option label="设计人员" value="DESIGN" /><el-option label="开发人员" value="DEVELOP" /><el-option label="验收人" value="ACCEPT" /></el-select></el-form-item>
     </ListFilterPanel>
 

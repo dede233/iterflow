@@ -57,6 +57,7 @@ declare module 'vue' {
     ErrorState: typeof import('./src/components/ui/ErrorState.vue')['default']
     InfoGrid: typeof import('./src/components/ui/InfoGrid.vue')['default']
     ListCard: typeof import('./src/components/ui/ListCard.vue')['default']
+    ListEntityFilterSelect: typeof import('./src/components/ListEntityFilterSelect.vue')['default']
     ListFilterPanel: typeof import('./src/components/ui/ListFilterPanel.vue')['default']
     MailPreferences: typeof import('./src/components/MailPreferences.vue')['default']
     MailSetupNotice: typeof import('./src/components/MailSetupNotice.vue')['default']

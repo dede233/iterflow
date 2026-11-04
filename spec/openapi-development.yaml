@@ -18,6 +18,217 @@ tags:
 - name: System
 - name: File
 paths:
+  /requirements/filter-options/participants:
+    get:
+      tags:
+      - Requirement
+      summary: 需求参与人筛选选项
+      operationId: requirements_filter_options_participants_get
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: keyword
+        in: query
+        required: false
+        schema:
+          type: string
+          maxLength: 100
+          default: ''
+          title: Keyword
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 20
+          title: Page Size
+      - name: selected_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+            minimum: 1
+          - type: 'null'
+          title: Selected Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FilterOptionPage'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: 需要 rd.requirement.view。仅返回当前 Requirement DataScope 内未删除需求的有效参与人，保留已停用账号并标注；不要求用户管理或需求编辑权限，不返回用户名、邮箱或角色。
+        keyword trim 后按可见标签做大小写不敏感的字面部分匹配；分页稳定且 total 去重。selected_id 与搜索及权限范围使用 AND 组合，不存在或不可见时返回空列表。
+  /requirements/filter-options/versions:
+    get:
+      tags:
+      - Requirement
+      summary: 需求版本筛选选项
+      operationId: requirements_filter_options_versions_get
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: keyword
+        in: query
+        required: false
+        schema:
+          type: string
+          maxLength: 100
+          default: ''
+          title: Keyword
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 20
+          title: Page Size
+      - name: selected_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+            minimum: 1
+          - type: 'null'
+          title: Selected Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FilterOptionPage'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: 需要 rd.requirement.view。仅返回当前 Requirement DataScope 内未删除需求的 current_version_id 关联选项。只有同时具备
+        rd.version.view 且通过 Version DataScope 时返回版本号和名称，否则仅返回需求已公开的版本 ID 占位标签；搜索不匹配不可见的版本号或名称。 keyword
+        trim 后按可见标签做大小写不敏感的字面部分匹配；分页稳定且 total 去重。selected_id 与搜索及权限范围使用 AND 组合，不存在或不可见时返回空列表。
+  /versions/filter-options/owners:
+    get:
+      tags:
+      - Version
+      summary: 版本负责人筛选选项
+      operationId: versions_filter_options_owners_get
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: keyword
+        in: query
+        required: false
+        schema:
+          type: string
+          maxLength: 100
+          default: ''
+          title: Keyword
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 20
+          title: Page Size
+      - name: selected_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+            minimum: 1
+          - type: 'null'
+          title: Selected Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FilterOptionPage'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: 需要 rd.version.view。仅返回当前 Version DataScope 内版本实际引用的负责人，保留已停用账号并标注；不要求用户管理或版本编辑权限，不返回用户名、邮箱或角色。
+        keyword trim 后按可见标签做大小写不敏感的字面部分匹配；分页稳定且 total 去重。selected_id 与搜索及权限范围使用 AND 组合，不存在或不可见时返回空列表。
   /requirements/{requirement_id}/workflow:
     get:
       tags:
@@ -6042,6 +6253,42 @@ components:
       - created_at
       - created_by
       title: FileOut
+    FilterOption:
+      properties:
+        id:
+          type: integer
+          title: 选项 ID
+        label:
+          type: string
+          title: 显示名称
+      type: object
+      required:
+      - id
+      - label
+      title: 筛选选项
+    FilterOptionPage:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/FilterOption'
+          type: array
+          title: 数据列表
+        page:
+          type: integer
+          title: 页码
+        page_size:
+          type: integer
+          title: 每页条数
+        total:
+          type: integer
+          title: 总数
+      type: object
+      required:
+      - items
+      - page
+      - page_size
+      - total
+      title: 筛选选项分页
     HTTPValidationError:
       properties:
         detail:

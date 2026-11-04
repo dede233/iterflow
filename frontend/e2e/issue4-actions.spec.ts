@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 
-async function setup(page: Page, options: { feedback?: boolean; detail?: boolean; readonly?: boolean; online?: boolean; delegated?: boolean; conflict?: boolean } = {}) {
+async function setup(page: Page, options: { feedback?: boolean; detail?: boolean; readonly?: boolean; online?: boolean; delegated?: boolean; conflict?: boolean; unknownBatch?: boolean } = {}) {
   const kind = options.feedback ? 'feedbacks' : 'requirements'
   const writes: any[] = [], unexpected: string[] = [], errors: string[] = []
   let conflict = !!options.conflict
@@ -19,8 +19,9 @@ async function setup(page: Page, options: { feedback?: boolean; detail?: boolean
     }
     if (method === 'POST' && path === `/api/v1/${kind}/batch-actions`) {
       const body = route.request().postDataJSON(); writes.push(body)
+      if (options.unknownBatch) return route.abort('failed')
       const results = body.items.map((item: { id: number; revision: number }) => item.id === 2 ? { id: 2, success: false, status_code: 409, code: 40910, message: '记录已被其他用户修改', revision: null } : { id: item.id, success: true, status_code: 200, code: 0, message: '操作成功', revision: item.revision + 1 })
-      for (const result of results) if (result.success) { rows[result.id - 1]!.revision++; rows[result.id - 1]!.status = options.feedback ? 'ACCEPTED' : 'CONFIRMED' }
+      for (const result of results) if (result.success) { rows[result.id - 1]!.revision++; rows[result.id - 1]!.status = options.feedback ? body.action : 'CONFIRMED' }
       return route.fulfill({ json: { results } })
     }
     const responses: Record<string, unknown> = {
@@ -54,20 +55,63 @@ for (const width of [375, 1440]) {
     test(`batch ${feedback ? 'feedback' : 'requirement'} mixed records and no replay ${width}px`, async ({ page }, info) => {
       await page.setViewportSize({ width, height: 900 })
       const audit = await setup(page, { feedback })
-      await page.getByRole('button', { name: '批量操作', exact: true }).click()
-      const dialog = page.getByRole('dialog', { name: '批量操作', exact: true })
-      for (const id of [1, 2, 3, 4]) await dialog.getByText(`#${id} 待处理记录${id}`, { exact: true }).click()
-      await dialog.getByRole('button', { name: '检查所选记录', exact: true }).click()
-      await expect(dialog.getByRole('button', { name: '执行可操作的 2 项', exact: true })).toBeEnabled()
-      await expect(dialog.getByRole('list', { name: '操作前检查' })).toContainText(feedback ? '当前状态不支持此操作' : '当前阶段不支持此操作')
-      await expect(dialog.getByRole('list', { name: '操作前检查' })).toContainText(feedback ? '请由指定接收人受理' : '仅对应环节人员可操作')
+      const title = feedback ? '批量处理反馈' : '批量处理需求'
+      const action = feedback ? '受理反馈' : '确认需求'
+      await page.getByRole('button', { name: title, exact: true }).click()
+      const dialog = page.getByRole('dialog', { name: title, exact: true })
+      await expect(dialog.getByRole('button', { name: /下一步：检查/ })).toBeDisabled()
+      await expect(dialog).toContainText('当前页')
+      const uncheckedFill = await dialog.locator('.el-checkbox__inner').first().evaluate(element => getComputedStyle(element).backgroundColor)
+      await dialog.getByRole('radio', { name: new RegExp(`^${action}`) }).check()
+      for (const id of [1, 2, 3, 4]) {
+        await dialog.getByText(`${feedback ? 'FB' : 'REQ'}-${id}`, { exact: true }).click()
+        await expect(dialog.getByRole('checkbox', { name: new RegExp(`${feedback ? 'FB' : 'REQ'}-${id}\\b`) })).toBeChecked()
+      }
+      // Semantic checked state updates before Element Plus finishes painting the checkmark.
+      await dialog.evaluate(async root => {
+        await Promise.all(root.getAnimations({ subtree: true }).map(animation => animation.finished.catch(() => undefined)))
+      })
+      const selectedPaint = await dialog.locator('.el-checkbox__inner').evaluateAll(elements => elements.map(element => {
+        const box = getComputedStyle(element), mark = getComputedStyle(element, '::after')
+        const transform = new DOMMatrix(mark.transform)
+        return { fill: box.backgroundColor, visibleCheckmark: mark.visibility === 'visible' && mark.opacity === '1'
+          && parseFloat(mark.borderBottomWidth) > 0 && parseFloat(mark.borderRightWidth) > 0
+          && transform.a * transform.d - transform.b * transform.c > 0.9 }
+      }))
+      expect(selectedPaint).toHaveLength(4)
+      for (const painted of selectedPaint) {
+        expect(painted.fill).not.toBe(uncheckedFill)
+        expect(painted.visibleCheckmark).toBe(true)
+      }
+      await page.screenshot({ path: info.outputPath('batch-selection.png'), fullPage: true, animations: 'disabled' })
+      await dialog.getByRole('button', { name: /下一步：检查 4 条/ }).click()
+      const submit = dialog.getByRole('button', { name: `${feedback ? '确认受理反馈' : '确认需求'}（2 条）`, exact: true })
+      await expect(submit).toBeEnabled()
+      const preview = dialog.getByRole('list', { name: '操作前检查' })
+      await expect(preview).toContainText('已上线')
+      await expect(preview).toContainText(feedback ? '接收人' : '确认人')
+      await expect(preview).toContainText('跳过')
+      await expect(preview.getByRole('link').first()).toHaveAttribute('href', new RegExp(`/#?/?${feedback ? 'feedbacks' : 'requirements'}/`))
       expect(audit.writes).toHaveLength(0)
-      await dialog.getByRole('button', { name: '执行可操作的 2 项', exact: true }).click()
-      await expect(dialog.getByRole('list', { name: '批量操作结果' })).toContainText('#1 成功')
-      await expect(dialog.getByRole('list', { name: '批量操作结果' })).toContainText('#2 未完成')
-      await expect(dialog.getByRole('list', { name: '批量操作结果' })).toContainText('记录已被其他用户修改')
-      await expect(dialog.getByRole('button', { name: /执行可操作|检查所选/ })).toHaveCount(0)
-      await expect(dialog.getByRole('checkbox').first()).toBeDisabled()
+      await expect(dialog.getByRole('list', { name: '批量处理步骤' })).toBeInViewport({ ratio: 1 })
+      for (const name of ['取消', '返回调整']) {
+        const lineCount = await dialog.getByRole('button', { name, exact: true }).locator('span').evaluate(element => {
+          const range = document.createRange(); range.selectNodeContents(element)
+          return new Set([...range.getClientRects()].map(rect => Math.round(rect.top))).size
+        })
+        expect(lineCount, `${name} should remain on one line`).toBe(1)
+      }
+      await page.screenshot({ path: info.outputPath('batch-review.png'), fullPage: true })
+      await submit.click()
+      const results = dialog.getByRole('list', { name: '批量操作结果' })
+      await expect(results).toContainText(`${feedback ? 'FB' : 'REQ'}-1`)
+      await expect(results).toContainText('待处理记录1')
+      await expect(results).toContainText('成功')
+      await expect(results).toContainText('失败')
+      await expect(results).toContainText('跳过')
+      await expect(results).toContainText('记录已被其他用户修改')
+      await expect(dialog.getByRole('button', { name: /确认.*（|下一步：检查|返回调整/ })).toHaveCount(0)
+      await expect(dialog.getByRole('checkbox')).toHaveCount(0)
       expect(audit.writes).toHaveLength(1)
       expect(audit.writes[0].items).toEqual([{ id: 1, revision: 1 }, { id: 2, revision: 1 }])
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
@@ -107,26 +151,87 @@ for (const width of [375, 1440]) {
   test(`delegated batch requires reason before sending ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     const audit = await setup(page, { feedback: true, delegated: true })
-    await page.getByRole('button', { name: '批量操作', exact: true }).click()
-    const dialog = page.getByRole('dialog', { name: '批量操作', exact: true })
-    await dialog.getByText('#1 待处理记录1', { exact: true }).click()
-    await dialog.getByRole('button', { name: '检查所选记录', exact: true }).click()
-    await dialog.getByRole('button', { name: '执行可操作的 1 项', exact: true }).click()
-    await expect(dialog.getByRole('alert')).toContainText('请填写关闭或代操作原因')
+    await page.getByRole('button', { name: '批量处理反馈', exact: true }).click()
+    const dialog = page.getByRole('dialog', { name: '批量处理反馈', exact: true })
+    await dialog.getByRole('radio', { name: /^受理反馈/ }).check()
+    await dialog.getByText('FB-1', { exact: true }).click()
+    await dialog.getByRole('button', { name: /下一步：检查 1 条反馈/ }).click()
+    await dialog.getByRole('button', { name: '确认受理反馈（1 条）', exact: true }).click()
+    await expect(dialog.getByRole('alert')).toContainText('代操作原因')
     expect(audit.writes).toHaveLength(0)
     await dialog.getByRole('textbox').fill('接收人已授权代操作')
-    await dialog.getByRole('button', { name: '执行可操作的 1 项', exact: true }).click()
+    await dialog.getByRole('button', { name: '确认受理反馈（1 条）', exact: true }).click()
     await expect(dialog.getByRole('list', { name: '批量操作结果' })).toBeVisible()
     expect(audit.writes).toHaveLength(1)
     expect(audit.writes[0].reason).toBe('接收人已授权代操作')
     clean(audit)
   })
+  test(`batch adjustment requires a fresh review and all-blocked records show guidance ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    const audit = await setup(page)
+    await page.getByRole('button', { name: '批量处理需求', exact: true }).click()
+    const dialog = page.getByRole('dialog', { name: '批量处理需求', exact: true })
+    await dialog.getByText('REQ-1', { exact: true }).click()
+    await expect(dialog.getByRole('button', { name: /下一步：检查/ })).toBeDisabled()
+    await dialog.getByRole('radio', { name: /^确认需求/ }).check()
+    await dialog.getByRole('button', { name: /下一步：检查 1 条需求/ }).click()
+    await expect(dialog.getByRole('button', { name: '确认需求（1 条）', exact: true })).toBeEnabled()
+    await dialog.getByRole('button', { name: '返回调整', exact: true }).click()
+    await expect(dialog.getByRole('list', { name: '操作前检查' })).toHaveCount(0)
+    await expect(dialog.getByRole('button', { name: '确认需求（1 条）', exact: true })).toHaveCount(0)
+    await dialog.getByRole('button', { name: '清空选择', exact: true }).click()
+    await dialog.getByText('REQ-3', { exact: true }).click()
+    await dialog.getByRole('button', { name: /下一步：检查 1 条需求/ }).click()
+    await expect(dialog.getByRole('button', { name: /确认需求/ })).toHaveCount(0)
+    await expect(dialog).toContainText('没有可执行')
+    await expect(dialog.getByRole('list', { name: '操作前检查' })).toContainText('已上线')
+    await expect(dialog.getByRole('list', { name: '操作前检查' }).getByRole('link')).toBeVisible()
+    expect(audit.writes).toHaveLength(0)
+    clean(audit)
+  })
+
+  test(`batch close feedback explains its reason and payload ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    const audit = await setup(page, { feedback: true })
+    await page.getByRole('button', { name: '批量处理反馈', exact: true }).click()
+    const dialog = page.getByRole('dialog', { name: '批量处理反馈', exact: true })
+    await dialog.getByRole('radio', { name: /^关闭反馈/ }).check()
+    await dialog.getByText('FB-1', { exact: true }).click()
+    await dialog.getByRole('button', { name: /下一步：检查 1 条反馈/ }).click()
+    await dialog.getByRole('button', { name: '确认关闭反馈（1 条）', exact: true }).click()
+    await expect(dialog.getByRole('alert')).toContainText('关闭原因')
+    expect(audit.writes).toHaveLength(0)
+    await dialog.getByRole('textbox').fill('重复反馈，已记录处理结论')
+    await dialog.getByRole('button', { name: '确认关闭反馈（1 条）', exact: true }).click()
+    await expect(dialog.getByRole('list', { name: '批量操作结果' })).toBeVisible()
+    expect(audit.writes).toEqual([{ action: 'CLOSED', items: [{ id: 1, revision: 1 }], reason: '重复反馈，已记录处理结论' }])
+    clean(audit)
+  })
+
+  test(`unknown batch outcome cannot be replayed from the result screen ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    const audit = await setup(page, { unknownBatch: true })
+    await page.getByRole('button', { name: '批量处理需求', exact: true }).click()
+    const dialog = page.getByRole('dialog', { name: '批量处理需求', exact: true })
+    await dialog.getByRole('radio', { name: /^确认需求/ }).check()
+    await dialog.getByText('REQ-1', { exact: true }).click()
+    await dialog.getByRole('button', { name: /下一步：检查 1 条需求/ }).click()
+    await dialog.getByRole('button', { name: '确认需求（1 条）', exact: true }).click()
+    await expect(dialog.getByRole('alert')).toContainText('核对')
+    await expect(dialog.getByRole('button', { name: /确认.*（|下一步：检查|返回调整|重试/ })).toHaveCount(0)
+    expect(audit.writes).toHaveLength(1)
+    await dialog.getByRole('button', { name: '完成并关闭', exact: true }).click()
+    await expect(dialog).toBeHidden()
+    expect(audit.writes).toHaveLength(1)
+    clean(audit)
+  })
+
   for (const feedback of [false, true]) {
     test(`read-only and online ${feedback ? 'feedback' : 'requirement'} hide mutations ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 })
       const audit = await setup(page, { feedback, readonly: true })
       await expect(page.getByRole('heading', { name: feedback ? '反馈中心' : '需求管理', exact: true })).toBeVisible()
-      await expect(page.getByRole('button', { name: '批量操作', exact: true })).toHaveCount(0)
+      await expect(page.getByRole('button', { name: feedback ? '批量处理反馈' : '批量处理需求', exact: true })).toHaveCount(0)
       await page.goto(`/#/${feedback ? 'feedbacks' : 'requirements'}/1`)
       await expect(page.getByRole('button', { name: '删除', exact: true })).toHaveCount(0)
       clean(audit)
@@ -139,4 +244,37 @@ for (const width of [375, 1440]) {
       clean(audit)
     })
   }
+}
+
+
+for (const viewport of [{ width: 375, height: 812 }, { width: 812, height: 375 }, { width: 768, height: 400 }]) {
+  test(`batch guidance remains visible through scrolling ${viewport.width}x${viewport.height}`, async ({ page }, info) => {
+    await page.setViewportSize(viewport)
+    const audit = await setup(page)
+    await page.getByRole('button', { name: '批量处理需求', exact: true }).click()
+    const dialog = page.getByRole('dialog', { name: '批量处理需求', exact: true })
+    const steps = dialog.getByRole('list', { name: '批量处理步骤' })
+    await expect(steps).toBeInViewport({ ratio: 1 })
+    await dialog.getByRole('radio', { name: /^确认需求/ }).check()
+    await dialog.getByText('REQ-1', { exact: true }).click()
+    await expect(dialog.getByRole('checkbox', { name: /REQ-1\b/ })).toBeChecked()
+    await expect(steps).toBeInViewport({ ratio: 1 })
+    await expect(dialog.getByRole('button', { name: /下一步：检查 1 条需求/ })).toBeInViewport({ ratio: 1 })
+    await page.screenshot({ path: info.outputPath('batch-selection.png'), fullPage: true })
+    await dialog.getByRole('button', { name: /下一步：检查 1 条需求/ }).click()
+    await expect(dialog.getByRole('list', { name: '操作前检查' })).toContainText('REQ-1')
+    await expect(steps).toBeInViewport({ ratio: 1 })
+    for (const name of ['取消', '返回调整', '确认需求（1 条）']) {
+      await expect(dialog.getByRole('button', { name, exact: true })).toBeInViewport({ ratio: 1 })
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await page.screenshot({ path: info.outputPath('batch-review.png'), fullPage: true })
+    await dialog.getByRole('button', { name: '确认需求（1 条）', exact: true }).click()
+    await expect(dialog.getByRole('list', { name: '批量操作结果' })).toContainText('成功')
+    await expect(steps).toBeInViewport({ ratio: 1 })
+    await expect(dialog.getByRole('button', { name: '完成并关闭', exact: true })).toBeInViewport({ ratio: 1 })
+    await page.screenshot({ path: info.outputPath('batch-results.png'), fullPage: true })
+    expect(audit.writes).toHaveLength(1)
+    clean(audit)
+  })
 }

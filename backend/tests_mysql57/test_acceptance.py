@@ -258,6 +258,15 @@ def test_mysql_full_lifecycle(mysql_api):
         )
         assert response.status_code == 200, response.text
         current_requirement = response.json()
+        expected_progress = {
+            "CONFIRMED": "PLANNING",
+            "DEVELOPING": "DEVELOPING",
+            "TESTING": "TESTING",
+            "DONE": "READY",
+        }[status]
+        progress = client.get(f"/api/v1/versions/{version['id']}", headers=headers).json()
+        assert progress["status"] == expected_progress
+        assert progress["revision"] == version["revision"]
 
     response = client.patch(
         f"/api/v1/requirements/{requirement['id']}/status",
@@ -267,14 +276,18 @@ def test_mysql_full_lifecycle(mysql_api):
     assert response.status_code == 200, response.text
     current_requirement = response.json()
 
+    relation_revision = version["revision"]
+    version = client.get(f"/api/v1/versions/{version['id']}", headers=headers).json()
+    assert version["status"] == "READY"
+    assert version["revision"] == relation_revision
     for status in ("DEVELOPING", "TESTING", "READY"):
         response = client.patch(
             f"/api/v1/versions/{version['id']}/status",
             headers=headers,
             json={"status": status, "revision": version["revision"]},
         )
-        assert response.status_code == 200, response.text
-        version = response.json()
+        assert response.status_code == 409 and response.json()["code"] == 40921
+    assert client.get(f"/api/v1/versions/{version['id']}", headers=headers).json() == version
 
     publish_check = client.post(f"/api/v1/versions/{version['id']}/publish/check", headers=headers)
     assert publish_check.status_code == 200, publish_check.text
@@ -868,11 +881,13 @@ def test_mysql_concurrent_feedback_conversion(mysql_api):
 
 
 def test_mysql_concurrent_migration_preserves_history(mysql_api):
-    _client, engine, _user_id, headers = mysql_api
+    client, engine, _user_id, headers = mysql_api
     ids = ready(mysql_api)
+    assert (
+        client.get(f"/api/v1/versions/{ids['version']}", headers=headers).json()["status"]
+        == "READY"
+    )
     with Session(engine) as session:
-        version = session.get(Version, ids["version"])
-        version.status = "PLANNING"
         session.add_all(
             [Version(version_no="T1", name="target 1"), Version(version_no="T2", name="target 2")]
         )
@@ -1461,13 +1476,23 @@ def test_mysql_upgrade_legacy_0001_preserves_full_keys(monkeypatch):
 
     url = make_url(os.environ["DATABASE_URL"])
     assert url.host == "127.0.0.1" and url.port == TEST_PORT
-    admin = create_engine(url.set(port=57357, database="iterflow_mysql57_proof"))
+    standard_url = make_url(
+        os.environ.get(
+            "ITERFLOW_TEST_MYSQL_STANDARD_URL",
+            url.set(port=57357, database="iterflow_mysql57_proof").render_as_string(
+                hide_password=False
+            ),
+        )
+    )
+    assert standard_url.drivername == "mysql+pymysql"
+    assert standard_url.host == "127.0.0.1" and standard_url.port == 57357
+    admin = create_engine(standard_url)
     name = "iterflow_mysql57_legacy_" + uuid4().hex
     with admin.connect() as c:
         assert c.scalar(text("SELECT VERSION()")) == "5.7.44"
         assert c.scalar(text("SELECT @@GLOBAL.innodb_large_prefix")) == 1
         c.execute(text(f"CREATE DATABASE `{name}` CHARACTER SET utf8mb4 COLLATE utf8mb4_bin"))
-    engine = create_engine(url.set(port=57357, database=name))
+    engine = create_engine(standard_url.set(database=name))
     event.listen(engine, "connect", database.configure_mysql)
     monkeypatch.setenv("DATABASE_URL", engine.url.render_as_string(hide_password=False))
     get_settings.cache_clear()

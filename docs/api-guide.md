@@ -1,5 +1,7 @@
 # IterFlow 当前接口集成指南
 
+2026-11-04 后续本地增量：`POST /versions`可成对提供`requirement_id`和`requirement_revision`，原子创建并关联现有需求，失败整体回滚。重复版本号返回40934及`data.field=version_no`、`reason=duplicate`，不返回已有版本详情。版本`status`、列表筛选和统计改为关联需求派生进度；旧手动推进/退回版本阶段返回40921，仅取消版本仍由状态接口执行。发布仍通过专用接口重新检查全部需求、内容确认、权限和revision。READY允许经原双revision清单接口调整，仅RELEASED/CANCELED冻结。详见 [版本流程精简](version-workflow-simplification-2026-11-04.md)，尚未部署。
+
 2026-11-04：Issue #4 开发接口说明见文末，尚未部署。当前正式冻结源码为 `96ba96e`，下列2026-10月上线描述保留为历史；实际部署以执行记录为准。
 
 更新日期：2026-10-12。对应开发契约 `spec/openapi-development.yaml`，线上 sx-kc.xyz:8443 已部署产品源 commit `3fe3a42`，含协作人员、按阶段分配、本人开发确认以及完成和发布门禁，并修复反馈提交人、系统和模块名称展示。历史发布契约保持不变；本次为用户授权的分支快照部署，未创建新的正式 tag/Release。部署证据见 [正式更新记录](feedback-reference-production-upgrade-2026-10-12.md)，先前协作功能升级见 [历史记录](collaboration-online-upgrade-2026-10-11.md)。用户操作见 [操作手册](user-manual.md)。

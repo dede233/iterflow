@@ -1,5 +1,5 @@
-// Version vocabulary + human-driven state machine (frontend mirror of the
-// backend VERSION_TRANSITIONS). Backend stays the source of truth.
+// Progress is derived from requirements; cancellation remains a version action.
+// Backend stays the source of truth for progress and publish readiness.
 
 import type { components } from '@/types/openapi.generated'
 
@@ -17,7 +17,7 @@ export const versionStatusLabel = Object.fromEntries(
 ) as Record<string, string>
 
 // Version states in which the requirement set is frozen.
-export const FROZEN_VERSION_STATES = new Set(['READY', 'RELEASED', 'CANCELED'])
+export const FROZEN_VERSION_STATES = new Set(['RELEASED', 'CANCELED'])
 
 export function versionRequirementSetFrozen(status: string): boolean {
   return FROZEN_VERSION_STATES.has(status)
@@ -29,29 +29,12 @@ export interface VersionStatusAction {
   needsReason: boolean
 }
 
-const TRANSITIONS: Record<string, VersionStatusAction[]> = {
-  PLANNING: [
-    { target: 'DEVELOPING', label: '开始开发', needsReason: false },
-    { target: 'CANCELED', label: '取消', needsReason: false },
-  ],
-  DEVELOPING: [
-    { target: 'TESTING', label: '提测', needsReason: false },
-    { target: 'CANCELED', label: '取消', needsReason: false },
-  ],
-  TESTING: [
-    { target: 'DEVELOPING', label: '退回开发', needsReason: false },
-    { target: 'READY', label: '待发布', needsReason: false },
-    { target: 'CANCELED', label: '取消', needsReason: false },
-  ],
-  READY: [{ target: 'TESTING', label: '退回测试', needsReason: true }],
-}
-
 export function availableVersionStatusActions(
   status: string,
   canChange: boolean,
 ): VersionStatusAction[] {
-  if (!canChange) return []
-  return TRANSITIONS[status] ?? []
+  if (!canChange || !['PLANNING', 'DEVELOPING', 'TESTING', 'READY'].includes(status)) return []
+  return [{ target: 'CANCELED', label: '取消版本', needsReason: false }]
 }
 
 export function versionStatusTagType(status: string): string {

@@ -185,14 +185,15 @@ def exercise_version_role(fixture, role_code, monkeypatch):
         )
     )
     second = ok(client.get(path, headers=actor))
+    assert second["status"] == "PLANNING"
     for status in ("DEVELOPING", "TESTING", "READY"):
-        second = ok(
-            client.patch(
-                path + "/status",
-                headers=actor,
-                json={"status": status, "revision": second["revision"]},
-            )
+        denied = client.patch(
+            path + "/status",
+            headers=actor,
+            json={"status": status, "revision": second["revision"]},
         )
+        assert denied.status_code == 409 and denied.json()["code"] == 40921
+    assert ok(client.get(path, headers=actor)) == second
     body["revision"] = second["revision"]
     assert client.post(path + "/publish/check", headers=actor).status_code == 409
     assert client.post(path + "/publish", headers=actor, json=body).status_code == 409
@@ -205,6 +206,14 @@ def exercise_version_role(fixture, role_code, monkeypatch):
                 json={"status": status, "revision": req["revision"]},
             )
         )
+        expected_progress = {
+            "CONFIRMED": "PLANNING",
+            "DEVELOPING": "DEVELOPING",
+            "TESTING": "TESTING",
+        }[status]
+        progress = ok(client.get(path, headers=actor))
+        assert progress["status"] == expected_progress
+        assert progress["revision"] == second["revision"]
     assert (
         client.patch(
             req_path + "/status", headers=dev1, json={"status": "DONE", "revision": req["revision"]}
@@ -219,6 +228,8 @@ def exercise_version_role(fixture, role_code, monkeypatch):
             json={"status": "DONE", "revision": req["revision"]},
         )
     )
+    assert ok(client.get(path, headers=actor))["status"] == "READY"
+    assert ok(client.get(path, headers=actor))["revision"] == second["revision"]
     assert client.post(path + "/publish/check", headers=actor).status_code == 200
     assert (
         client.post(path + "/publish", headers=actor, json={**body, "revision": 1}).status_code
@@ -227,6 +238,7 @@ def exercise_version_role(fixture, role_code, monkeypatch):
 
     with Session(engine) as db:
         before_notifications = db.scalar(select(func.count(Notification.id)))
+        before_stored_status = db.get(Version, second["id"]).status
     original = AuditService.log
 
     def fail_publish_audit(self, entity_type, entity_id, action, **kwargs):
@@ -239,7 +251,7 @@ def exercise_version_role(fixture, role_code, monkeypatch):
         response = client.post(path + "/publish", headers=actor, json=body)
         assert response.status_code == 500, response.text
     with Session(engine) as db:
-        assert db.get(Version, second["id"]).status == "READY"
+        assert db.get(Version, second["id"]).status == before_stored_status
         assert db.get(Requirement, req["id"]).status == "DONE"
         assert (
             db.scalar(select(func.count(Release.id)).where(Release.version_id == second["id"])) == 0

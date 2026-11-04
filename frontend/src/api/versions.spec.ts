@@ -39,17 +39,8 @@ beforeEach(() => {
 })
 
 describe('version state machine + freeze', () => {
-  it('offers PLANNING transitions', () => {
-    expect(availableVersionStatusActions('PLANNING', true).map((a) => a.target)).toEqual([
-      'DEVELOPING',
-      'CANCELED',
-    ])
-  })
-
-  it('marks READY -> TESTING as needing a reason', () => {
-    expect(availableVersionStatusActions('READY', true)).toEqual([
-      { target: 'TESTING', label: '退回测试', needsReason: true },
-    ])
+  it.each(['PLANNING', 'DEVELOPING', 'TESTING', 'READY'] as const)('only offers cancellation for automatically derived %s progress', status => {
+    expect(availableVersionStatusActions(status, true)).toEqual([{ target: 'CANCELED', label: '取消版本', needsReason: false }])
   })
 
   it('offers nothing for RELEASED/CANCELED or without permission', () => {
@@ -58,8 +49,8 @@ describe('version state machine + freeze', () => {
     expect(availableVersionStatusActions('PLANNING', false)).toEqual([])
   })
 
-  it('treats READY/RELEASED/CANCELED as frozen', () => {
-    expect(versionRequirementSetFrozen('READY')).toBe(true)
+  it('only treats RELEASED/CANCELED as frozen', () => {
+    expect(versionRequirementSetFrozen('READY')).toBe(false)
     expect(versionRequirementSetFrozen('RELEASED')).toBe(true)
     expect(versionRequirementSetFrozen('CANCELED')).toBe(true)
     expect(versionRequirementSetFrozen('DEVELOPING')).toBe(false)
@@ -72,6 +63,13 @@ describe('version API DTO mapping', () => {
     await createVersion({ version_no: 'V1.0.0', name: '首个版本' })
     expect(lastRequest?.method).toBe('post')
     expect(lastRequest?.url).toBe('/versions')
+    expect(lastRequest?.skipConflictAlert).toBe(true)
+  })
+
+  it('creates and associates a requirement in one request with its observed revision', async () => {
+    await createVersion({ version_no: 'V2', name: '需求版本', requirement_id: 7, requirement_revision: 4 })
+    expect(lastRequest?.url).toBe('/versions')
+    expect(JSON.parse(String(lastRequest?.data))).toEqual({ version_no: 'V2', name: '需求版本', requirement_id: 7, requirement_revision: 4 })
   })
 
   it('changeVersionStatus PATCHes with status/revision/reason', async () => {

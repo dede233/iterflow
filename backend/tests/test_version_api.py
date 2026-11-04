@@ -15,9 +15,11 @@ from app.core.security import create_access_token
 from app.main import app
 from app.models.entities import (
     CollaborationEvent,
+    Feedback,
     OperationLog,
     Permission,
     Requirement,
+    RequirementFeedback,
     RequirementParticipant,
     RequirementStep,
     Role,
@@ -39,6 +41,8 @@ PERMS = {
     "rd.version.status",
     "rd.requirement.view",
     "rd.requirement.create",
+    "rd.requirement.edit",
+    "rd.requirement.status",
 }
 
 Fixture = tuple[TestClient, Session, dict[str, dict[str, str]], dict[str, int]]
@@ -57,6 +61,8 @@ def ver_api(tmp_path: Path) -> Iterator[Fixture]:
         RolePermission.__table__,
         OperationLog.__table__,
         Requirement.__table__,
+        Feedback.__table__,
+        RequirementFeedback.__table__,
         CollaborationEvent.__table__,
         RequirementStep.__table__,
         RequirementParticipant.__table__,
@@ -128,7 +134,18 @@ def ver_api(tmp_path: Path) -> Iterator[Fixture]:
             name: {"Authorization": f"Bearer {create_access_token(uid)}"}
             for name, uid in ids.items()
         }
-        app.dependency_overrides[get_db] = lambda: session
+
+        def test_db():
+            try:
+                yield session
+            except Exception:
+                # Production closes the request Session on every response,
+                # rolling back failed writes. Keep that boundary while this
+                # fixture shares a Session with its assertions.
+                session.rollback()
+                raise
+
+        app.dependency_overrides[get_db] = test_db
         with TestClient(app) as client:
             yield client, session, headers, ids
         app.dependency_overrides.clear()
@@ -201,16 +218,40 @@ def _relation_write_snapshot(session: Session, version_id: int) -> tuple[int, in
 
 
 def _to_ready(client, headers, version: dict) -> dict:
-    rev = version["revision"]
-    for target in ("DEVELOPING", "TESTING", "READY"):
-        r = client.patch(
-            f"/api/v1/versions/{version['id']}/status",
+    path = f"/api/v1/versions/{version['id']}"
+    actor_id = client.get("/api/v1/auth/me", headers=headers).json()["id"]
+    requirements = client.get(path + "/requirements", headers=headers).json()["items"]
+    if not requirements:
+        requirements = [
+            _requirement(
+                client, headers, version_id=version["id"], version_revision=version["revision"]
+            )
+        ]
+    before = client.get(path, headers=headers).json()
+    for requirement in requirements:
+        req_path = f"/api/v1/requirements/{requirement['id']}"
+        assigned = client.put(
+            req_path + "/participants",
             headers=headers,
-            json={"status": target, "revision": rev},
+            json={
+                "revision": requirement["revision"],
+                "participants": [
+                    {"user_id": actor_id, "role": role} for role in ("CONFIRM", "DEVELOP", "ACCEPT")
+                ],
+            },
         )
-        assert r.status_code == 200, r.text
-        rev = r.json()["revision"]
-    return client.get(f"/api/v1/versions/{version['id']}", headers=headers).json()
+        assert assigned.status_code == 200, assigned.text
+        revision = assigned.json()["revision"]
+        for target in ("CONFIRMED", "DEVELOPING", "TESTING", "DONE"):
+            response = client.patch(
+                req_path + "/status", headers=headers, json={"status": target, "revision": revision}
+            )
+            assert response.status_code == 200, response.text
+            revision = response.json()["revision"]
+    result = client.get(path, headers=headers).json()
+    assert result["status"] == "READY"
+    assert result["revision"] == before["revision"]
+    return result
 
 
 # --------------------------------------------------------------------------- #
@@ -275,7 +316,7 @@ def test_two_users_version_update_and_status_revision_contract(ver_api):
 
 
 def test_version_status_machine(ver_api):
-    client, _session, headers, _ids = ver_api
+    client, session, headers, _ids = ver_api
     v = _version(client, headers["alice"])
     vid = v["id"]
 
@@ -286,18 +327,25 @@ def test_version_status_machine(ver_api):
             json={"status": target, "revision": revision, **extra},
         )
 
-    assert status("READY", 1).status_code == 409  # illegal jump
     assert status("RELEASED", 1).status_code == 422  # not a ManualVersionStatus
-
-    r = status("DEVELOPING", 1)
-    assert r.status_code == 200
-    r = status("TESTING", r.json()["revision"])
-    r = status("READY", r.json()["revision"])
-    assert r.status_code == 200 and r.json()["status"] == "READY"
-    # READY -> TESTING requires a reason.
-    assert status("TESTING", r.json()["revision"]).status_code == 422
-    back = status("TESTING", r.json()["revision"], reason="需要回归")
-    assert back.status_code == 200 and back.json()["status"] == "TESTING"
+    for target in ("PLANNING", "DEVELOPING", "TESTING", "READY"):
+        denied = status(target, 1, reason="不能手动覆盖需求汇总进度")
+        assert denied.status_code == 409 and denied.json()["code"] == 40921
+        assert session.get(Version, vid).revision == 1
+    assert (
+        session.scalar(
+            select(func.count(OperationLog.id)).where(
+                OperationLog.entity_type == "VERSION", OperationLog.action == "STATUS_CHANGE"
+            )
+        )
+        == 0
+    )
+    canceled = status("CANCELED", 1, reason="取消版本")
+    assert canceled.status_code == 200 and canceled.json()["status"] == "CANCELED"
+    assert canceled.json()["revision"] == 2
+    assert status("CANCELED", 1).json()["code"] == 40910
+    assert status("CANCELED", 2).status_code == 409
+    assert status("PLANNING", 2).status_code == 409
 
 
 # --------------------------------------------------------------------------- #
@@ -508,70 +556,64 @@ def test_move_stale_revision_rolls_back(ver_api):
 
 
 # --------------------------------------------------------------------------- #
-# freeze (READY / RELEASED / CANCELED)                                        #
+# READY remains editable; RELEASED / CANCELED freeze the roster.                 #
 # --------------------------------------------------------------------------- #
-def test_ready_version_is_frozen_for_add_remove_and_move(ver_api):
+def test_ready_version_allows_add_remove_and_move_with_revision_guards(ver_api):
     client, _session, headers, _ids = ver_api
-    v = _version(client, headers["alice"])
-    in_ready = _requirement(client, headers["alice"], title="冻结版本内的需求")
+    version = _version(client, headers["alice"])
+    ready = _to_ready(client, headers["alice"], version)
+    path = f"/api/v1/versions/{version['id']}"
+    req = _requirement(client, headers["alice"], title="候选需求")
     added = client.post(
-        f"/api/v1/versions/{v['id']}/requirements",
+        path + "/requirements",
         headers=headers["alice"],
         json={
-            "requirement_id": in_ready["id"],
-            "revision": in_ready["revision"],
-            "version_revision": v["revision"],
+            "requirement_id": req["id"],
+            "revision": req["revision"],
+            "version_revision": ready["revision"],
         },
     )
     assert added.status_code == 200, added.text
-    ready = _to_ready(client, headers["alice"], added.json())
-    assert ready["status"] == "READY"
-
-    req = _requirement(client, headers["alice"], title="候选需求")
-    # add -> 409
-    assert (
-        client.post(
-            f"/api/v1/versions/{v['id']}/requirements",
-            headers=headers["alice"],
-            json={
-                "requirement_id": req["id"],
-                "revision": req["revision"],
-                "version_revision": ready["revision"],
-            },
-        ).status_code
-        == 409
+    assert added.json()["status"] == "DEVELOPING"
+    assert added.json()["revision"] == ready["revision"] + 1
+    latest = client.get(f"/api/v1/requirements/{req['id']}", headers=headers["alice"]).json()
+    stale_remove = client.request(
+        "DELETE",
+        path + f"/requirements/{req['id']}",
+        headers=headers["alice"],
+        json={
+            "revision": latest["revision"],
+            "version_revision": ready["revision"],
+            "reason": "并发保护",
+        },
     )
-    # remove -> 409
-    in_ready_latest = client.get(
-        f"/api/v1/requirements/{in_ready['id']}", headers=headers["alice"]
-    ).json()
-    assert (
-        client.request(
-            "DELETE",
-            f"/api/v1/versions/{v['id']}/requirements/{in_ready['id']}",
-            headers=headers["alice"],
-            json={
-                "revision": in_ready_latest["revision"],
-                "version_revision": ready["revision"],
-                "reason": "冻结测试",
-            },
-        ).status_code
-        == 409
+    assert stale_remove.status_code == 409 and stale_remove.json()["code"] == 40910
+    removed = client.request(
+        "DELETE",
+        path + f"/requirements/{req['id']}",
+        headers=headers["alice"],
+        json={
+            "revision": latest["revision"],
+            "version_revision": added.json()["revision"],
+            "reason": "调整候选需求",
+        },
     )
-    # move into a READY version -> 409
-    assert (
-        client.post(
-            f"/api/v1/versions/{v['id']}/requirements/move",
-            headers=headers["alice"],
-            json={
-                "requirement_id": req["id"],
-                "revision": req["revision"],
-                "version_revision": ready["revision"],
-                "reason": "冻结测试",
-            },
-        ).status_code
-        == 409
+    assert removed.status_code == 200, removed.text
+    assert removed.json()["status"] == "READY"
+    latest = client.get(f"/api/v1/requirements/{req['id']}", headers=headers["alice"]).json()
+    moved = client.post(
+        path + "/requirements/move",
+        headers=headers["alice"],
+        json={
+            "requirement_id": req["id"],
+            "revision": latest["revision"],
+            "version_revision": removed.json()["revision"],
+            "reason": "加入新需求后重新汇总",
+        },
     )
+    assert moved.status_code == 200, moved.text
+    assert moved.json()["status"] == "DEVELOPING"
+    assert moved.json()["revision"] == removed.json()["revision"] + 1
 
 
 def test_released_version_is_frozen_for_relationship_changes(ver_api):
@@ -747,18 +789,36 @@ def test_create_requirement_with_version_uses_version_service_rules(ver_api):
         headers["alice"],
         _version(client, headers["alice"], version_no="V1.0.1"),
     )
+    ready_candidate = _requirement(
+        client,
+        headers["alice"],
+        title="待发布版本仍可新增需求",
+        version_id=ready_version["id"],
+        version_revision=ready_version["revision"],
+    )
+    assert ready_candidate["current_version_id"] == ready_version["id"]
+    updated = client.get(f"/api/v1/versions/{ready_version['id']}", headers=headers["alice"]).json()
+    assert updated["status"] == "DEVELOPING"
+    canceled = client.patch(
+        f"/api/v1/versions/{ready_version['id']}/status",
+        headers=headers["alice"],
+        json={"status": "CANCELED", "revision": updated["revision"]},
+    )
+    assert canceled.status_code == 200, canceled.text
+    before = _relation_write_snapshot(session, ready_version["id"])
     rejected = client.post(
         "/api/v1/requirements",
         headers=headers["alice"],
         json={
-            "title": "冻结版本不能直接关联",
+            "title": "取消版本不能直接关联",
             "requirement_type": "FEATURE",
             "description": "描述内容",
             "version_id": ready_version["id"],
-            "version_revision": ready_version["revision"],
+            "version_revision": canceled.json()["revision"],
         },
     )
     assert rejected.status_code == 409
+    assert _relation_write_snapshot(session, ready_version["id"]) == before
 
 
 def test_requirement_creator_without_version_permissions_can_create_independent_requirement(
@@ -1142,7 +1202,7 @@ def test_audit_actions(ver_api):
         headers=headers["alice"],
         json={"status": "DEVELOPING", "revision": updated.json()["revision"]},
     )
-    assert developing.status_code == 200
+    assert developing.status_code == 409
     req = _requirement(client, headers["alice"])
     added = client.post(
         f"/api/v1/versions/{v1['id']}/requirements",
@@ -1150,7 +1210,7 @@ def test_audit_actions(ver_api):
         json={
             "requirement_id": req["id"],
             "revision": req["revision"],
-            "version_revision": developing.json()["revision"],
+            "version_revision": updated.json()["revision"],
         },
     )
     assert added.status_code == 200
@@ -1178,6 +1238,13 @@ def test_audit_actions(ver_api):
         },
     )
     assert removed.status_code == 200
+    latest_version = client.get(f"/api/v1/versions/{v1['id']}", headers=headers["alice"]).json()
+    canceled = client.patch(
+        f"/api/v1/versions/{v1['id']}/status",
+        headers=headers["alice"],
+        json={"status": "CANCELED", "revision": latest_version["revision"], "reason": "取消空版本"},
+    )
+    assert canceled.status_code == 200, canceled.text
 
     actions = set(
         session.scalars(

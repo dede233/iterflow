@@ -60,21 +60,24 @@ def test_requirement_in_released_version_cannot_return_to_developing():
     service.repo.update_with_revision.assert_not_called()
 
 
-def test_ready_version_requires_reason_to_return_to_testing():
+@pytest.mark.parametrize("reason", [None, "需要回归"])
+def test_ready_version_rejects_manual_testing_even_with_reason(reason):
     service = VersionService(MagicMock(spec=Session))
     service.repo = MagicMock()
-    service.repo.get.return_value = Version(
-        id=1,
-        status=VersionStatus.READY,
-        revision=1,
+    service._lock_version = MagicMock(
+        return_value=Version(
+            id=1,
+            status=VersionStatus.READY,
+            revision=1,
+        )
     )
 
     with pytest.raises(AppError) as exc_info:
         service.change_status(
             1,
-            VersionStatusChange(status="TESTING", revision=1),
+            VersionStatusChange(status="TESTING", revision=1, reason=reason),
             operator_id=9,
         )
 
-    assert exc_info.value.status_code == 422
+    assert exc_info.value.status_code == 409
     service.repo.update_with_revision.assert_not_called()

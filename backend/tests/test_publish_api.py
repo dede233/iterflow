@@ -374,7 +374,12 @@ def test_publish_check_passes_when_ready_and_all_done(pub_api):
 
 def test_publish_check_fails_when_not_ready(pub_api):
     client, session, headers, ids = pub_api
-    seeded = _seed_ready_version(session, ids["boss"], version_status=VersionStatus.PLANNING)
+    seeded = _seed_ready_version(
+        session,
+        ids["boss"],
+        version_status=VersionStatus.PLANNING,
+        requirement_status=RequirementStatus.DRAFT,
+    )
     resp = client.post(
         f"/api/v1/versions/{seeded['version']}/publish/check", headers=headers["boss"]
     )

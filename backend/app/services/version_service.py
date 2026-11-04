@@ -1,11 +1,14 @@
+import re
 from datetime import UTC, date, datetime
 from typing import Any, cast
 
 from sqlalchemy import select, update
 from sqlalchemy.engine import CursorResult
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import AppError, ConflictError, NotFoundError
+from app.core.exceptions import AppError, ConflictError, NotFoundError, PermissionDenied
+from app.domain.version_progress import TERMINAL_VERSION_STATES, effective_version_status
 from app.models.entities import (
     Feedback,
     Notification,
@@ -25,6 +28,7 @@ from app.models.enums import (
     VersionStatus,
 )
 from app.repositories.requirement_repository import RequirementRepository
+from app.repositories.user_repository import UserRepository
 from app.repositories.version_repository import VersionRepository
 from app.schemas.version import (
     AddRequirementRequest,
@@ -41,8 +45,8 @@ from app.services.collaboration_service import CollaborationService
 from app.services.publish_check_service import PublishCheckService
 from app.services.revision_conflict import revision_conflict_data
 
-# Version states in which the requirement set is frozen (V1.5 §freeze).
-FROZEN_VERSION_STATES = {VersionStatus.READY, VersionStatus.RELEASED, VersionStatus.CANCELED}
+# Derived READY is a publishability hint, not a persisted roster lock.
+FROZEN_VERSION_STATES = TERMINAL_VERSION_STATES
 # Requirement statuses counted as "completed" for progress stats.
 COMPLETED_REQUIREMENT_STATES = {RequirementStatus.DONE, RequirementStatus.ONLINE}
 
@@ -55,22 +59,8 @@ def _jsonable(value: Any) -> Any:
 
 
 VERSION_TRANSITIONS: dict[VersionStatus, set[ManualVersionStatus]] = {
-    VersionStatus.PLANNING: {
-        ManualVersionStatus.DEVELOPING,
-        ManualVersionStatus.CANCELED,
-    },
-    VersionStatus.DEVELOPING: {
-        ManualVersionStatus.TESTING,
-        ManualVersionStatus.CANCELED,
-    },
-    VersionStatus.TESTING: {
-        ManualVersionStatus.DEVELOPING,
-        ManualVersionStatus.READY,
-        ManualVersionStatus.CANCELED,
-    },
-    VersionStatus.READY: {ManualVersionStatus.TESTING},
-    VersionStatus.RELEASED: set(),
-    VersionStatus.CANCELED: set(),
+    status: set() if status in TERMINAL_VERSION_STATES else {ManualVersionStatus.CANCELED}
+    for status in VersionStatus
 }
 
 
@@ -81,13 +71,126 @@ class VersionService:
         self.audit = AuditService(db)
 
     def create(self, payload: VersionCreate, operator_id: int) -> Version:
-        item = Version(created_by=operator_id, updated_by=operator_id, **payload.model_dump())
-        self.db.add(item)
+        try:
+            if payload.requirement_id is not None:
+                permissions = UserRepository(self.db).permission_codes(operator_id)
+                if "*" not in permissions and not {
+                    "rd.version.edit",
+                    "rd.requirement.view",
+                }.issubset(permissions):
+                    raise PermissionDenied()
+            if self._version_no_exists(payload.version_no):
+                raise self._duplicate_version_no(payload.version_no)
+            item = Version(
+                created_by=operator_id,
+                updated_by=operator_id,
+                **payload.model_dump(exclude={"requirement_id", "requirement_revision"}),
+            )
+            self.db.add(item)
+            try:
+                self.db.flush()
+            except IntegrityError as exc:
+                if self._is_version_no_unique_conflict(exc):
+                    raise self._duplicate_version_no(payload.version_no) from None
+                raise
+            self.audit.log("VERSION", item.id, "CREATE", after={"version_no": item.version_no})
+            if payload.requirement_id is not None:
+                self._attach_existing_to_created_version(item, payload, operator_id)
+            self.db.commit()
+            self.db.refresh(item)
+            return item
+        except Exception:
+            self.db.rollback()
+            raise
+
+    def _version_no_exists(self, version_no: str) -> bool:
+        return (
+            self.db.scalar(select(Version.id).where(Version.version_no == version_no)) is not None
+        )
+
+    @staticmethod
+    def _duplicate_version_no(version_no: str) -> AppError:
+        return AppError(
+            40934,
+            f"版本号「{version_no}」已存在，请更换版本号；如需添加需求，请使用已有版本。",  # noqa: RUF001
+            409,
+            {"field": "version_no", "reason": "duplicate"},
+        )
+
+    @staticmethod
+    def _is_version_no_unique_conflict(error: IntegrityError) -> bool:
+        """Classify only the version-number key, never unrelated FK/unique failures."""
+        original = error.orig
+        if getattr(original, "sqlstate", None) == "23505":
+            return (
+                getattr(getattr(original, "diag", None), "constraint_name", None)
+                == "ix_rd_version_version_no"
+            )
+        args = getattr(original, "args", ())
+        if args and args[0] == 1062 and len(args) > 1:
+            match = re.search(r"for key ['`]([^'`]+)['`]", str(args[1]))
+            return match is not None and match.group(1).split(".")[-1] == "ix_rd_version_version_no"
+        return (
+            getattr(original, "sqlite_errorcode", None) == 2067
+            and str(original) == "UNIQUE constraint failed: rd_version.version_no"
+        )
+
+    def _attach_existing_to_created_version(
+        self, version: Version, payload: VersionCreate, operator_id: int
+    ) -> None:
+        """Join the new version and existing requirement inside create's transaction."""
+        assert payload.requirement_id is not None and payload.requirement_revision is not None
+        scope = UserRepository(self.db).data_scope(operator_id)
+        query = select(Requirement).where(
+            Requirement.id == payload.requirement_id, Requirement.deleted_at.is_(None)
+        )
+        if scope is not DataScope.ALL:
+            query = query.where(RequirementRepository.self_criterion(operator_id))
+        requirement = self.db.scalar(
+            query.with_for_update().execution_options(populate_existing=True)
+        )
+        if requirement is None:
+            raise NotFoundError("需求不存在")
+        req_repo = RequirementRepository(self.db)
+        if requirement.revision != payload.requirement_revision:
+            raise self._requirement_conflict(req_repo, requirement.id)
+        active_relation = self.db.scalar(
+            select(VersionRequirement)
+            .where(
+                VersionRequirement.requirement_id == requirement.id,
+                VersionRequirement.active.is_(True),
+            )
+            .with_for_update()
+        )
+        if requirement.current_version_id is not None or active_relation is not None:
+            raise AppError(40932, "需求已关联版本，请使用已有版本或明确迁移需求", 409)  # noqa: RUF001
+        if requirement.status in {RequirementStatus.ONLINE, RequirementStatus.CANCELED}:
+            raise AppError(40933, "终态需求不能加入版本", 409)
+        if not req_repo.update_with_revision(
+            requirement.id,
+            payload.requirement_revision,
+            {"current_version_id": version.id, "updated_by": operator_id},
+        ):
+            raise self._requirement_conflict(req_repo, requirement.id)
+        self.db.add(
+            VersionRequirement(
+                version_id=version.id, requirement_id=requirement.id, added_by=operator_id
+            )
+        )
+        # MySQL derives current_version_id from the relation; refresh before
+        # collecting recipients so the new version owner is included there too.
         self.db.flush()
-        self.audit.log("VERSION", item.id, "CREATE", after={"version_no": item.version_no})
-        self.db.commit()
-        self.db.refresh(item)
-        return item
+        self.db.refresh(requirement)
+        self._audit_requirement_relation(
+            "VERSION_REQUIREMENT_ADD",
+            operator_id=operator_id,
+            version_id=version.id,
+            requirement_id=requirement.id,
+            before_version_id=None,
+            before_current_version_id=None,
+            after_version_id=version.id,
+        )
+        self._bump_version_revision(version, version.revision, operator_id)
 
     def update(self, version_id: int, payload: VersionUpdate, operator_id: int) -> Version:
         current = self.repo.get(version_id)
@@ -119,21 +222,17 @@ class VersionService:
     def change_status(
         self, version_id: int, payload: VersionStatusChange, operator_id: int
     ) -> Version:
-        current = self.repo.get(version_id)
-        if not current:
-            raise NotFoundError("版本不存在")
+        current = self._lock_version(version_id)
         if current.revision != payload.revision:
             raise self._version_conflict(version_id)
         current_status = VersionStatus(current.status)
-        previous_status = current.status  # capture before the atomic UPDATE mutates it
+        if payload.status != ManualVersionStatus.CANCELED:
+            raise AppError(40921, "版本进度由关联需求自动汇总, 请在需求中推进开发与验收", 409)
+        previous_status = effective_version_status(
+            current.status, self.repo.active_requirements(version_id)
+        )
         if payload.status not in VERSION_TRANSITIONS[current_status]:
             raise AppError(40921, f"不允许从 {current.status} 变更为 {payload.status}", 409)
-        if (
-            current.status == VersionStatus.READY
-            and payload.status == ManualVersionStatus.TESTING
-            and (not payload.reason or not payload.reason.strip())
-        ):
-            raise AppError(42222, "READY 退回 TESTING 必须填写原因", 422)
         if not self.repo.update_with_revision(
             version_id,
             payload.revision,
@@ -609,8 +708,8 @@ class VersionService:
     ) -> dict[str, Any]:
         """The single, atomic version-publish transaction (V1.5).
 
-        READY version + all active requirements DONE -> create a SUCCESS Release
-        record, flip Version READY->RELEASED, DONE requirements->ONLINE and their
+        Derived READY + all active requirements DONE -> create a SUCCESS Release
+        record, flip Version to RELEASED, DONE requirements->ONLINE and their
         REQUIREMENT_LINKED feedbacks->ONLINE, notify submitters, audit. Any
         failure rolls the whole thing back; a version can never end up RELEASED
         without its Release row.
@@ -637,7 +736,7 @@ class VersionService:
             .execution_options(populate_existing=True)
         ).scalars().all()
         # Centralized pre-publish checks (same checks as POST /publish/check).
-        check = PublishCheckService(self.db).evaluate(version, lock=True)
+        check = PublishCheckService(self.db).evaluate(version, lock=True, viewer_id=operator_id)
         if not check["passed"]:
             raise AppError(
                 40923,
@@ -651,7 +750,8 @@ class VersionService:
 
         active_requirements = self.repo.active_requirements(version_id)
 
-        # Atomic READY -> RELEASED (only one publish can win this).
+        # The locked projection established READY; legacy stored nonterminal
+        # status is not authoritative. CAS + terminal guard allow one publish.
         result = cast(
             CursorResult[Any],
             self.db.execute(
@@ -659,7 +759,7 @@ class VersionService:
                 .where(
                     Version.id == version_id,
                     Version.revision == payload.revision,
-                    Version.status == VersionStatus.READY,
+                    Version.status.not_in(TERMINAL_VERSION_STATES),
                 )
                 .values(
                     status=VersionStatus.RELEASED,

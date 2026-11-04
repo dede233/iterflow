@@ -18,7 +18,7 @@ export const getVersion = (id: number) =>
   api.get<VersionItem>(`/versions/${id}`).then((r) => r.data)
 
 export const createVersion = (payload: VersionCreatePayload) =>
-  api.post<VersionItem>('/versions', payload).then((r) => r.data)
+  api.post<VersionItem>('/versions', payload, { skipConflictAlert: true }).then((r) => r.data)
 
 export const updateVersion = (id: number, payload: VersionUpdatePayload) =>
   api.patch<VersionItem>(`/versions/${id}`, payload, { skipRevisionConflictAlert: true }).then((r) => r.data)

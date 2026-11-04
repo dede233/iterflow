@@ -45,10 +45,14 @@ DRAFT（待确认） -> CONFIRMED（待开发） -> DEVELOPING（开发中） ->
 2026-10-31 用户明确选择新方案：取消逐人开发完成确认。任一有权限的开发参与人可提交验收，指定验收人确认 DONE；原开发确认接口下线，原确认时间保留历史表与迁移步骤快照，不再参与 DONE/发布门禁。主状态 PLANNED/DESIGNING 都映射到 CONFIRMED，原 DESIGNING 保留为 IN_PROGRESS 设计子进度；不伪造确认/验收人员。
 
 ## Version
-PLANNING -> DEVELOPING -> TESTING -> READY -> RELEASED
+2026-11-04 用户批准：版本进度由有效关联需求自动汇总，人工仅取消或正式发布；不再手动推进开发/测试/READY或退回版本阶段。API有效状态仍使用原枚举，历史非终态存储保持读取兼容但不是当前进度来源。
+
+- 空清单为PLANNING；全部DONE且内容确认有效为READY；全TESTING/DONE但未就绪为TESTING；已开始工作但混有其他未完成项为DEVELOPING；其余为PLANNING。PAUSED/CANCELED需求不被静默忽略，异常ONLINE需求不取得发布资格。
+- 全局进度、列表筛选及统计采用同一只读派生规则，不触发数据库写入。原RELEASED/CANCELED终态保持。
+- READY为可发布提示，允许通过原权限、双revision和审计的清单接口继续调整；仅RELEASED/CANCELED冻结。调整后重新汇总。
 
 - `RELEASED` 只能通过 `POST /versions/{id}/publish` 进入，普通状态接口禁止设置。
-- `READY -> TESTING` 允许退回，但必须填写原因并写审计日志。
+- 旧手动版本阶段接口仅接受取消未发布版本；推进或退回阶段返回409并引导操作需求。
 - V1.5 MVP 仅支持成功发布；发布固定生成 `Release.result = SUCCESS`。
 - `RELEASED` 为终态。发布必须通过独立事务执行 Release + Version + Requirement + Feedback + Notification 同步。
 - 终态限制状态与有效需求清单；当前版本基础信息编辑仍允许修改名称、负责人、计划日期、描述，须权限、范围、revision CAS 与审计。已有 Release 记录不被此编辑改写。用户操作见 `docs/user-manual.md`。

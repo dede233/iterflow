@@ -22,7 +22,7 @@ const feedback = (id: number) => ({
 })
 
 const cases = [
-  { path: '/versions', label: '版本', item: version, titleField: 'name', editField: '版本名称', action: '开始开发', nextStatus: 'DEVELOPING' },
+  { path: '/versions', label: '版本', item: version, titleField: 'name', editField: '版本名称', action: '取消版本', nextStatus: 'CANCELED' },
   { path: '/requirements', label: '需求', item: requirement, titleField: 'title', editField: '标题', action: '开始开发', nextStatus: 'DEVELOPING' },
   { path: '/feedbacks', label: '反馈', item: feedback, titleField: 'title', editField: '标题', action: '受理', nextStatus: 'ACCEPTED' },
 ] as const

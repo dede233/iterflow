@@ -5,6 +5,7 @@ import RichTextContent from '@/components/RichTextContent.vue'
 import DeleteEntityButton from '@/components/DeleteEntityButton.vue'
 import { plainTextToHtml, richTextPlainText } from '@/utils/richText'
 const RichTextEditor = defineAsyncComponent(() => import('@/components/RichTextEditor.vue'))
+const VersionCreateView = defineAsyncComponent(() => import('@/views/version/VersionCreateView.vue'))
 import { ElMessage } from 'element-plus'
 import { actionErrorMessage } from '@/utils/actionError'
 import { useRoute, useRouter } from 'vue-router'
@@ -69,6 +70,31 @@ const loading = ref(false)
 const failed = ref(false)
 const canEdit = computed(() => can('rd.requirement.edit') && item.value?.status !== 'ONLINE')
 const canViewFeedbacks = computed(() => can('rd.feedback.view'))
+const canCreateVersion = computed(() => !!item.value && !item.value.current_version_id && !['ONLINE', 'CANCELED'].includes(item.value.status) && ['rd.version.create', 'rd.version.edit', 'rd.version.view', 'rd.requirement.view'].every(permission => can(permission)))
+const createVersionDialog = ref(false)
+const creatingVersion = ref(false)
+const refreshingVersionRequirement = ref(false)
+
+async function refreshVersionRequirement(): Promise<void> {
+  if (refreshingVersionRequirement.value) return
+  refreshingVersionRequirement.value = true
+  try {
+    item.value = await getRequirement(id)
+    emit('updated')
+    if (!canCreateVersion.value) {
+      createVersionDialog.value = false
+      ElMessage.info('需求信息已刷新，请查看当前版本或需求状态。')
+    }
+  } catch (error) {
+    ElMessage.error(actionErrorMessage(error))
+  } finally { refreshingVersionRequirement.value = false }
+}
+
+async function onVersionCreated(): Promise<void> {
+  createVersionDialog.value = false
+  emit('updated')
+  await load()
+}
 
 // --- status dialog ---
 const statusDialog = ref(false)
@@ -211,6 +237,7 @@ onMounted(load)
         <template #actions>
         <RouterLink class="back-link" :to="backTo" @click="props.embedded && emit('close')">返回列表</RouterLink>
         <el-button v-if="canEdit" @click="openEdit">编辑</el-button>
+        <el-button v-if="canCreateVersion" @click="createVersionDialog = true">创建版本</el-button>
         <DeleteEntityButton v-if="canEdit && item.status === 'DRAFT' && !item.current_version_id && item.source === 'DIRECT'" kind="requirements" :id="item.id" :revision="item.revision" :title="item.title" @refresh="load" @deleted="onDeleted" />
 
         </template>
@@ -254,6 +281,10 @@ onMounted(load)
         <EmptyState v-else description="暂无可见来源反馈" compact />
       </SectionCard>
     </template>
+
+    <el-dialog v-model="createVersionDialog" title="创建版本并关联需求" width="min(720px, calc(100vw - 24px))" append-to-body destroy-on-close :close-on-click-modal="false" :show-close="!creatingVersion" :close-on-press-escape="!creatingVersion">
+      <VersionCreateView v-if="createVersionDialog && item" embedded :requirement="{ id: item.id, revision: item.revision, title: item.title }" :requirement-refreshing="refreshingVersionRequirement" @cancel="createVersionDialog = false" @created="onVersionCreated" @refresh-requirement="refreshVersionRequirement" @saving="creatingVersion = $event" />
+    </el-dialog>
 
     <!-- status dialog -->
     <el-dialog

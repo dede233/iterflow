@@ -8,6 +8,7 @@ from app.api.deps import require_all_permissions, require_permission
 from app.api.openapi import api_error_responses, api_revision_conflict_responses
 from app.core.database import get_db
 from app.core.exceptions import AppError, NotFoundError
+from app.domain.version_progress import loaded_version_status
 from app.models.entities import User, Version
 from app.models.enums import VersionStatus
 from app.repositories.user_repository import UserRepository
@@ -30,6 +31,20 @@ from app.services.publish_check_service import PublishCheckService
 from app.services.version_service import VersionService
 
 router = APIRouter(prefix="/versions", tags=["versions"])
+
+
+def _version_output(item: Version) -> VersionOut:
+    # The projection is separate from the mapped status; reads never dirty ORM state.
+    return VersionOut.model_validate(item).model_copy(
+        update={"status": loaded_version_status(item)}
+    )
+
+
+def _changed_version_output(db: Session, item: Version) -> VersionOut:
+    current = VersionRepository(db).get(item.id)
+    if current is None:
+        raise NotFoundError("版本不存在")
+    return _version_output(current)
 
 
 def _scoped_version_or_404(db: Session, user: User, version_id: int) -> Version:
@@ -84,16 +99,21 @@ def list_versions(
         planned_release_to=planned_release_to,
         owner_id=owner_id,
     )
-    return {"items": items, "page": page, "page_size": page_size, "total": total}
+    return {
+        "items": [_version_output(item) for item in items],
+        "page": page,
+        "page_size": page_size,
+        "total": total,
+    }
 
 
-@router.post("", response_model=VersionOut)
+@router.post("", response_model=VersionOut, responses=api_revision_conflict_responses(404, 409))
 def create_version(
     payload: VersionCreate,
     db: Session = Depends(get_db),
     user: User = Depends(require_permission("rd.version.create")),
 ):
-    return VersionService(db).create(payload, user.id)
+    return _changed_version_output(db, VersionService(db).create(payload, user.id))
 
 
 @router.get("/{version_id}", response_model=VersionOut)
@@ -102,7 +122,7 @@ def get_version(
     db: Session = Depends(get_db),
     user: User = Depends(require_permission("rd.version.view")),
 ):
-    return _scoped_version_or_404(db, user, version_id)
+    return _version_output(_scoped_version_or_404(db, user, version_id))
 
 
 @router.patch(
@@ -115,7 +135,7 @@ def update_version(
     user: User = Depends(require_permission("rd.version.edit")),
 ):
     _scoped_version_or_404(db, user, version_id)
-    return VersionService(db).update(version_id, payload, user.id)
+    return _changed_version_output(db, VersionService(db).update(version_id, payload, user.id))
 
 
 @router.patch(
@@ -130,7 +150,9 @@ def change_version_status(
     user: User = Depends(require_permission("rd.version.status")),
 ):
     _scoped_version_or_404(db, user, version_id)
-    return VersionService(db).change_status(version_id, payload, user.id)
+    return _changed_version_output(
+        db, VersionService(db).change_status(version_id, payload, user.id)
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -161,8 +183,11 @@ def add_version_requirement(
 ):
     _scoped_version_or_404(db, user, version_id)
     scope = UserRepository(db).data_scope(user.id)
-    return VersionService(db).add_requirement(
-        version_id, payload, user.id, viewer_scope=scope, viewer_id=user.id
+    return _changed_version_output(
+        db,
+        VersionService(db).add_requirement(
+            version_id, payload, user.id, viewer_scope=scope, viewer_id=user.id
+        ),
     )
 
 
@@ -179,7 +204,9 @@ def bulk_add_version_requirements(
 ):
     _scoped_version_or_404(db, user, version_id)
     scope = UserRepository(db).data_scope(user.id)
-    return VersionService(db).bulk_add_requirements(version_id, payload, user.id, scope, user.id)
+    return _changed_version_output(
+        db, VersionService(db).bulk_add_requirements(version_id, payload, user.id, scope, user.id)
+    )
 
 
 @router.post(
@@ -195,8 +222,11 @@ def move_version_requirement(
 ):
     _scoped_version_or_404(db, user, version_id)
     scope = UserRepository(db).data_scope(user.id)
-    return VersionService(db).move_requirement(
-        version_id, payload, user.id, viewer_scope=scope, viewer_id=user.id
+    return _changed_version_output(
+        db,
+        VersionService(db).move_requirement(
+            version_id, payload, user.id, viewer_scope=scope, viewer_id=user.id
+        ),
     )
 
 
@@ -214,13 +244,16 @@ def remove_version_requirement(
 ):
     _scoped_version_or_404(db, user, version_id)
     scope = UserRepository(db).data_scope(user.id)
-    return VersionService(db).remove_requirement(
-        version_id,
-        requirement_id,
-        payload,
-        user.id,
-        viewer_scope=scope,
-        viewer_id=user.id,
+    return _changed_version_output(
+        db,
+        VersionService(db).remove_requirement(
+            version_id,
+            requirement_id,
+            payload,
+            user.id,
+            viewer_scope=scope,
+            viewer_id=user.id,
+        ),
     )
 
 
@@ -235,7 +268,7 @@ def check_version_publish(
     user: User = Depends(require_permission("rd.version.publish")),
 ):
     version = _scoped_version_or_404(db, user, version_id)
-    result = PublishCheckService(db).evaluate(version)
+    result = PublishCheckService(db).evaluate(version, viewer_id=user.id)
     if not result["passed"]:
         raise AppError(
             40923,

@@ -557,7 +557,10 @@ export interface paths {
          */
         get: operations["list_versions_api_v1_versions_get"];
         put?: never;
-        /** 创建版本 */
+        /**
+         * 创建版本
+         * @description 需要 rd.version.create。可成对提供 requirement_id 和 requirement_revision，在同一事务中创建版本并关联一个当前可见、未关联版本且非 ONLINE/CANCELED 的需求；此时还需 rd.version.edit 和 rd.requirement.view。关联保持需求状态，需求 revision 加一，并推进版本内容 revision；任何权限、范围、状态、revision 或审计失败均整体回滚，不留下空版本。不会自动迁移已有版本归属或执行发布。版本号重复（含并发唯一冲突）返回 40934，data 为 {field: version_no, reason: duplicate}，仅回显用户提交的版本号，不返回已有版本详情。
+         */
         post: operations["create_version_api_v1_versions_post"];
         delete?: never;
         options?: never;
@@ -600,8 +603,8 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * 变更版本状态（禁止进入 RELEASED）
-         * @description READY 可退回 TESTING，但必须填写 reason。RELEASED 只能通过发布接口进入。
+         * 取消版本（开发和验收进度自动汇总）
+         * @description 需要 rd.version.status、数据范围和最新revision。仅接受取消未发布版本；旧客户端手动推进开发、测试或READY及退回操作返回40921，提示在需求中推进。状态枚举保留历史输入解析兼容，RELEASED只能通过发布事务产生。
          */
         patch: operations["change_version_status_api_v1_versions__version_id__status_patch"];
         trace?: never;
@@ -621,7 +624,7 @@ export interface paths {
         put?: never;
         /**
          * 向版本添加需求
-         * @description 需要 rd.version.edit 与 rd.requirement.view；目标 Version 与 Requirement 均须在各自 DataScope 内。通过 VersionService；READY/RELEASED/CANCELED 冻结返回 409。
+         * @description 需要 rd.version.edit 与 rd.requirement.view；目标 Version 与 Requirement 均须在各自 DataScope 内。通过 VersionService；仅RELEASED/CANCELED冻结返回409。自动READY仍可调整清单，操作后重新汇总进度。
          */
         post: operations["add_version_requirement_api_v1_versions__version_id__requirements_post"];
         delete?: never;
@@ -641,7 +644,7 @@ export interface paths {
         put?: never;
         /**
          * 批量关联需求
-         * @description 需要 rd.version.edit 与 rd.requirement.view；目标 Version 与 Requirement 均须在各自 DataScope 内。通过 VersionService；READY/RELEASED/CANCELED 冻结返回 409。
+         * @description 需要 rd.version.edit 与 rd.requirement.view；目标 Version 与 Requirement 均须在各自 DataScope 内。通过 VersionService；仅RELEASED/CANCELED冻结返回409。自动READY仍可调整清单，操作后重新汇总进度。
          */
         post: operations["bulk_add_version_requirements"];
         delete?: never;
@@ -701,7 +704,7 @@ export interface paths {
         put?: never;
         /**
          * 发布前检查
-         * @description 需要 rd.version.publish 及 Version 数据范围。基础开发人员、产品负责人和研发负责人保留完整版本权限；SELF 仍限本人创建或负责的版本。检查 READY、全部有效需求 DONE 与当前内容确认资格；通过 200，否则 409。逐人开发完成确认已取消。
+         * @description 需要 rd.version.publish 及 Version 数据范围。基础开发人员、产品负责人和研发负责人保留完整版本权限；SELF 仍限本人创建或负责的版本。检查 自动汇总READY、至少一条有效需求且全部DONE与当前内容确认资格；通过200，否则409。无关联、暂停、取消及需重新确认的需求均阻止发布。全量需求参与检查，但仅返回调用人有权查看的阻塞详情，不泄露不可见需求数量。逐人开发完成确认已取消。
          */
         post: operations["check_version_publish_api_v1_versions__version_id__publish_check_post"];
         delete?: never;
@@ -721,7 +724,7 @@ export interface paths {
         put?: never;
         /**
          * 发布版本
-         * @description 需要 rd.version.publish 及数据范围。重新锁定校验 READY、全部有效需求 DONE 和内容确认资格。Release(SUCCESS)、Version、Requirement/Feedback ONLINE、通知事件和审计原子提交；异常回滚，重复发布 409。
+         * @description 需要 rd.version.publish 及数据范围。在版本到需求的既有锁序内重新计算有效READY，校验至少一条有效需求且全部DONE和内容确认资格，并保留revision及非终态CAS。无需先手动推进版本阶段。Release(SUCCESS)、Version、Requirement/Feedback ONLINE、通知事件和审计原子提交；异常回滚，重复发布 409。
          */
         post: operations["publish_version_api_v1_versions__version_id__publish_post"];
         delete?: never;
@@ -2974,8 +2977,21 @@ export interface components {
             planned_release_date?: string | null;
             /** 描述 */
             description?: string | null;
+            /**
+             * 关联需求 ID
+             * @description 创建时关联的现有需求，必须与 requirement_revision 成对提供；不关联时同时为空或省略。
+             */
+            requirement_id?: number | null;
+            /**
+             * 关联需求版本号
+             * @description 关联需求的当前 revision，必须与 requirement_id 成对提供。
+             */
+            requirement_revision?: number | null;
         };
-        /** VersionOut */
+        /**
+         * VersionOut
+         * @description status为关联需求自动汇总的只读有效进度，详情、列表筛选、统计和所有写响应保持一致。真实RELEASED/CANCELED终态保留，历史非终态存储不覆盖派生结果；读取不写库。无需求为PLANNING；全DONE且确认有效为READY；全TESTING/DONE未就绪为TESTING；已开始工作但混合其他阶段为DEVELOPING，其余PLANNING。暂停和取消需求仍参与清单并阻止发布。
+         */
         VersionOut: {
             /** 版本 ID */
             id: number;
@@ -5281,6 +5297,24 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description revision CAS 冲突 (40910) 或该操作的业务冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Validation Error */

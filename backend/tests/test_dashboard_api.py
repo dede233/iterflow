@@ -27,6 +27,7 @@ from app.models.entities import (
     User,
     UserRole,
     Version,
+    VersionRequirement,
 )
 from app.models.enums import (
     DataScope,
@@ -60,6 +61,7 @@ def dashboard_api(tmp_path: Path) -> Iterator[DashboardFixture]:
         RequirementStep.__table__,
         RequirementParticipant.__table__,
         Version.__table__,
+        VersionRequirement.__table__,
         Release.__table__,
         OperationLog.__table__,
     ):

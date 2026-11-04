@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.models.enums import ManualVersionStatus, VersionStatus
 from app.schemas.common import PageResult
+from app.schemas.entity_actions import BatchActionItem
 from app.schemas.requirement import RequirementOut
 
 
@@ -137,4 +138,20 @@ class BulkAddRequirements(BaseModel):
     def unique_requirements(self) -> Self:
         if len({i.requirement_id for i in self.items}) != len(self.items):
             raise ValueError("不能重复选择需求")
+        return self
+
+
+class VersionRequirementSubmitAcceptance(BaseModel):
+    version_revision: int = Field(ge=1)
+    items: list[BatchActionItem] = Field(min_length=1, max_length=50)
+    reason: str | None = Field(default=None, min_length=2, max_length=500)
+
+    @model_validator(mode="after")
+    def validate_selection_and_reason(self) -> Self:
+        if len({item.id for item in self.items}) != len(self.items):
+            raise ValueError("不能重复选择需求")
+        if self.reason is not None:
+            self.reason = self.reason.strip()
+            if len(self.reason) < 2:
+                raise ValueError("请填写原因(至少 2 个字符)")
         return self

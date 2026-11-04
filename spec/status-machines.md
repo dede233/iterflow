@@ -73,3 +73,11 @@ DRAFT（待确认） -> CONFIRMED（待开发） -> DEVELOPING（开发中） ->
 - 需求描述明确 PLAIN/HTML 格式；旧数据默认 PLAIN，HTML 经白名单清洗。修改内容格式也使当前确认失效。标题、描述不能保存为空白或仅不可见内容，创建、编辑和反馈转需求均校验。
 - 软删除仅允许 NEW 反馈、DRAFT 需求，且没有需求/反馈/版本/重复记录关联或历史引用；原因必填，现有编辑权限和 DataScope、revision、审计继续生效。删除保留实体行与历史，普通读取、统计和新关联排除，不增加实体状态枚举。
 - 批量需求动作支持确认、CONFIRMED→DEVELOPING、DEVELOPING→TESTING、TESTING→DONE；反馈支持NEW→ACCEPTED及NEW/ACCEPTED→CLOSED。逐项执行原门禁与事务，返回成功或失败明细，最多50条，不批量发布或自动重试。
+
+## 2026-11-04 版本集中提交验收
+
+- 用户明确选择省去逐步点击，已确认需求可直接提交验收，仍须验收人实际确认。版本页面可集中选择当前有效关联的需求，使用专用 `POST /versions/{id}/requirements/submit-acceptance`。
+- 仅此入口允许 `CONFIRMED → TESTING`，要求填写至少2字符的原因；`DEVELOPING → TESTING`继续正常提验。普通状态接口及原批量接口的相邻阶段限制不变。
+- 每项须有有效开发和验收人员、当前内容确认有效、设计已完成或明确无需设计，由有权限的开发人员操作；既有管理员代操作仍须原因。人员分配不等于内容确认、设计完成或验收通过。
+- 逐项锁版本后锁需求，校验双方DataScope、版本及需求revision、未发布/取消和当前有效关联；一项失败不写该项状态/步骤/审计/通知，已成功项保留。版本进度仍自动汇总。
+- 快捷提验仅记录真实的CONFIRMED到TESTING、操作者、原因和shortcut标记，不补造DEVELOPING事件或他人确认。提交后仍由有效验收人执行TESTING→DONE，实际发布仍走Publish事务。

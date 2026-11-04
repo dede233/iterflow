@@ -132,6 +132,40 @@ class WorkflowService:
             ],
         )
 
+    def submit_acceptance_locked(
+        self, item: Requirement, revision: int, actor_id: int, reason: str | None
+    ) -> int:
+        """Submit from a version transaction that already holds version/requirement locks."""
+        if item.revision != revision:
+            raise ConflictError("需求已修改, 请刷新后重试", revision_conflict_data(item))
+        if item.status not in {"CONFIRMED", "DEVELOPING"}:
+            raise AppError(40971, "仅待开发或开发中的需求可提交验收", 409)
+        shortcut = item.status == "CONFIRMED"
+        if shortcut and (not reason or len(reason.strip()) < 2):
+            raise AppError(42261, "待开发直接提交验收须填写原因(至少 2 个字符)", 422)
+        self.validate_transition(item, "TESTING", actor_id, reason)
+        previous_status = item.status
+        self.collaboration.bump(item, revision, actor_id, {"status": "TESTING"})
+        detail = {
+            "from": previous_status,
+            "to": "TESTING",
+            "reason": reason,
+            "version_id": item.current_version_id,
+            "source": "VERSION_SUBMIT_ACCEPTANCE",
+            "shortcut": shortcut,
+        }
+        self.record(item, "STATUS_TESTING", actor_id, detail)
+        from app.services.audit_service import AuditService
+
+        AuditService(self.db).log(
+            "REQUIREMENT",
+            item.id,
+            "STATUS_CHANGE",
+            before={"status": previous_status},
+            after={"status": "TESTING", **detail},
+        )
+        return item.revision
+
     def act(self, item: Requirement, payload: WorkflowAction, actor_id: int):
         self.lock(item)
         if getattr(item, "deleted_at", None) is not None:

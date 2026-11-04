@@ -409,7 +409,7 @@ onMounted(load)
       <!-- progress + requirements -->
       <SectionCard v-if="canViewRequirements" title="需求清单" :description="`可见需求 ${stats?.total ?? 0} 项`" class="section">
         <template #actions>
-          <BatchActionsDialog v-if="item.status !== 'RELEASED'" kind="requirements" scope="version-list" :rows="filteredRequirements" @updated="load" />
+          <BatchActionsDialog v-if="!frozen" kind="requirements" scope="version-list" :version-id="item.id" :version-revision="item.revision" :rows="filteredRequirements" @updated="load" />
           <el-button v-if="canManageReqs" size="small" type="primary" @click="addDialog = true">
             添加需求
           </el-button>

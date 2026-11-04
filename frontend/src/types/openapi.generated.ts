@@ -713,6 +713,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/versions/{version_id}/requirements/submit-acceptance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 从版本集中提交需求验收
+         * @description 需要 rd.version.view、rd.requirement.view、rd.requirement.status；不新增版本推进权限。 每项独立事务，按版本后需求的顺序加锁，并重新校验账号、权限、双方DataScope、version_revision、需求revision及当前有效关联。 仅未发布且未取消版本中的CONFIRMED或DEVELOPING需求可提交到TESTING。 必须存在有效开发和验收人员，由开发人员本人操作；既有管理员代操作须填写原因。 当前内容须已确认，设计须DONE或NOT_REQUIRED。CONFIRMED直接提验须填写trim后至少2字符的原因； 仅记录实际CONFIRMED到TESTING及shortcut标记，不伪造开始开发或验收事件。DEVELOPING按正常提验校验。 版本revision不因需求阶段变化增加，版本进度自动汇总；每项失败无状态、步骤、审计或通知写入。 旧revision、归属变化或门禁失败在该项结果中返回409/403/404/422，不自动重试，不自动验收或发布。
+         */
+        post: operations["submit_version_requirements_acceptance"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/versions/{version_id}/requirements/move": {
         parameters: {
             query?: never;
@@ -2643,6 +2663,21 @@ export interface components {
              */
             version_revision: number;
             /** 操作原因 */
+            reason?: string | null;
+        };
+        /** VersionRequirementSubmitAcceptance */
+        VersionRequirementSubmitAcceptance: {
+            /** 版本修订号 */
+            version_revision: number;
+            /**
+             * 需求清单
+             * @description 需求ID不可重复；每项携带检查时的需求revision。
+             */
+            items: components["schemas"]["BatchActionItem"][];
+            /**
+             * 提交说明
+             * @description 提供时trim后至少2字符；待开发直接提验或管理员代操作必填。
+             */
             reason?: string | null;
         };
         /** RequirementBatchAction */
@@ -5931,6 +5966,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_version_requirements_acceptance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                version_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VersionRequirementSubmitAcceptance"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchActionResponse"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Validation Error */

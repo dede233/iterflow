@@ -13,6 +13,7 @@ from app.models.entities import User, Version
 from app.models.enums import VersionStatus
 from app.repositories.user_repository import UserRepository
 from app.repositories.version_repository import VersionRepository
+from app.schemas.entity_actions import BatchActionResponse
 from app.schemas.release import PublishCheckResult, PublishResult
 from app.schemas.version import (
     AddRequirementRequest,
@@ -24,10 +25,12 @@ from app.schemas.version import (
     VersionOut,
     VersionPage,
     VersionRequirementsOut,
+    VersionRequirementSubmitAcceptance,
     VersionStatusChange,
     VersionUpdate,
 )
 from app.services.publish_check_service import PublishCheckService
+from app.services.version_requirement_workflow_service import VersionRequirementWorkflowService
 from app.services.version_service import VersionService
 
 router = APIRouter(prefix="/versions", tags=["versions"])
@@ -207,6 +210,23 @@ def bulk_add_version_requirements(
     return _changed_version_output(
         db, VersionService(db).bulk_add_requirements(version_id, payload, user.id, scope, user.id)
     )
+
+
+@router.post(
+    "/{version_id}/requirements/submit-acceptance",
+    response_model=BatchActionResponse,
+    responses=api_error_responses(404),
+)
+def submit_version_requirements_acceptance(
+    version_id: int,
+    payload: VersionRequirementSubmitAcceptance,
+    db: Session = Depends(get_db),
+    user: User = Depends(
+        require_all_permissions("rd.version.view", "rd.requirement.view", "rd.requirement.status")
+    ),
+):
+    _scoped_version_or_404(db, user, version_id)
+    return VersionRequirementWorkflowService(db).submit_acceptance(version_id, payload, user.id)
 
 
 @router.post(

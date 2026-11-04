@@ -56,13 +56,15 @@ class DashboardRepository:
 
     @staticmethod
     def _feedback_scope(user_id: int, data_scope: DataScope) -> list[ColumnElement[bool]]:
-        return [] if data_scope is DataScope.ALL else [Feedback.submitter_id == user_id]
+        return [Feedback.deleted_at.is_(None)] + (
+            [] if data_scope is DataScope.ALL else [Feedback.submitter_id == user_id]
+        )
 
     @staticmethod
     def _requirement_scope(user_id: int, data_scope: DataScope) -> list[ColumnElement[bool]]:
         if data_scope is DataScope.ALL:
-            return []
-        return [RequirementRepository.self_criterion(user_id)]
+            return [Requirement.deleted_at.is_(None)]
+        return [Requirement.deleted_at.is_(None), RequirementRepository.self_criterion(user_id)]
 
     @staticmethod
     def _version_scope(user_id: int, data_scope: DataScope) -> list[ColumnElement[bool]]:

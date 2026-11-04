@@ -13,6 +13,12 @@ from app.models.enums import FeedbackStatus, FeedbackType, FeedbackUrgency
 from app.repositories.feedback_repository import FeedbackRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.comment import CommentCreate, CommentOut
+from app.schemas.entity_actions import (
+    BatchActionResponse,
+    EntityDelete,
+    EntityDeleted,
+    FeedbackBatchAction,
+)
 from app.schemas.feedback import (
     FeedbackConvertRequest,
     FeedbackCreate,
@@ -24,6 +30,7 @@ from app.schemas.feedback import (
 from app.schemas.file import AttachmentOut
 from app.schemas.requirement import RequirementOut
 from app.services.comment_service import CommentService
+from app.services.entity_actions_service import EntityActionsService
 from app.services.feedback_service import FeedbackService
 from app.services.file_service import MAX_UPLOAD_SIZE, FileService, validate_upload
 
@@ -98,6 +105,29 @@ def create_feedback(
 ):
     service = FeedbackService(db)
     return service.to_output(service.create(payload, user.id))
+
+
+@router.post("/batch-actions", response_model=BatchActionResponse)
+def batch_feedback_actions(
+    payload: FeedbackBatchAction,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("rd.feedback.edit")),
+):
+    return EntityActionsService(db).batch("feedback", payload, user.id)
+
+
+@router.delete(
+    "/{feedback_id}",
+    response_model=EntityDeleted,
+    responses=api_error_responses(404, 409),
+)
+def delete_feedback(
+    feedback_id: int,
+    payload: EntityDelete,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("rd.feedback.edit")),
+):
+    return EntityActionsService(db).delete("feedback", feedback_id, payload, user.id)
 
 
 @router.get("/{feedback_id}", response_model=FeedbackOut)

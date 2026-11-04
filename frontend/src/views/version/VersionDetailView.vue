@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import BatchActionsDialog from '@/components/BatchActionsDialog.vue'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
@@ -408,6 +409,7 @@ onMounted(load)
       <!-- progress + requirements -->
       <SectionCard v-if="canViewRequirements" title="需求清单" :description="`可见需求 ${stats?.total ?? 0} 项`" class="section">
         <template #actions>
+          <BatchActionsDialog v-if="item.status !== 'RELEASED'" kind="requirements" :rows="filteredRequirements" @updated="load" />
           <el-button v-if="canManageReqs" size="small" type="primary" @click="addDialog = true">
             添加需求
           </el-button>

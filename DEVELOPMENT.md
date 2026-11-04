@@ -1,5 +1,7 @@
 # DEVELOPMENT.md
 
+当前本地开发增量为 2026-11-04 Issue #4 七项需求及空需求防护，规则、双数据库迁移与实际验证见 `docs/issue-4-improvements.md`。本轮未推送、合并或部署；下文更早阶段保留为历史记录。
+
 当前开发工作为 2026-10-31 授权的协作流程优化，范围及默认规则见
 `docs/collaboration-workflow-improvement-plan.md`，阶段结果见
 `docs/collaboration-workflow-execution-log.md`。下文 v1.8.1 发布目标为历史记录；

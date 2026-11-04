@@ -395,7 +395,11 @@ class VersionService:
         self._ensure_version_revision(version, payload.version_revision)
         self._ensure_mutable(version)
         expected = {entry.requirement_id: entry.revision for entry in payload.items}
-        query = select(Requirement).where(Requirement.id.in_(expected)).order_by(Requirement.id)
+        query = (
+            select(Requirement)
+            .where(Requirement.id.in_(expected), Requirement.deleted_at.is_(None))
+            .order_by(Requirement.id)
+        )
         if viewer_scope is not DataScope.ALL:
             query = query.where(RequirementRepository.self_criterion(viewer_id))
         requirements = list(

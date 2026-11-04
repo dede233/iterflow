@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import BatchActionsDialog from '@/components/BatchActionsDialog.vue'
 import { onBeforeUnmount, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { listRequirements } from '@/api/requirements'
@@ -108,6 +109,7 @@ const queryState = useListQuery({
   <section class="page">
     <PageHeader title="需求管理" description="从确认、开发到交付，清晰跟进每项研发需求。" eyebrow="研发协作">
       <template #actions>
+      <BatchActionsDialog kind="requirements" :rows="rows" @updated="load" />
       <el-button v-if="isMobile" @click="filterDrawer = true"><AppIcon name="filter" :size="16" />筛选</el-button>
       <el-button
         v-if="can('rd.requirement.create')"

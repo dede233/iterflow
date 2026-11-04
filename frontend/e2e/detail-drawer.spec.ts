@@ -10,7 +10,7 @@ const version = (id: number) => ({
 const requirement = (id: number) => ({
   id, requirement_no: `REQ-${id}`, title: `需求详情 ${id}`, requirement_type: 'FEATURE',
   source: 'DIRECT', priority: 'P2', status: 'CONFIRMED', system_id: null, module_id: null,
-  owner_id: 1, current_version_id: null, description: `需求描述 ${id}`, acceptance_criteria: null,
+  owner_id: 1, current_version_id: null, description: `需求描述 ${id}`, description_format: 'PLAIN', acceptance_criteria: null,
   created_at: timestamp, updated_at: timestamp, updated_by: 1, revision: 4,
 })
 const feedback = (id: number) => ({
@@ -108,11 +108,15 @@ for (const width of [1280, 390]) {
         localStorage.setItem('iterflow.refresh_token', 'drawer-edit-refresh')
       })
       await page.route('**/api/v1/**', async (route) => {
-    if (await mockCollaboration(route)) return
         const request = route.request()
         const url = new URL(request.url())
         const path = url.pathname.slice('/api/v1'.length)
         const json = (body: unknown) => route.fulfill({ status: 200, json: body })
+        // Mutation fixtures must expose the same revision across detail and collaboration reads.
+        if (request.method() === 'GET' && path === '/feedbacks/7/collaboration') return json({ revision: item.revision, recipients: [{ id: 1, display_name: '接收人' }], handler_id: null, accepted_by: null, accepted_at: null })
+        if (request.method() === 'GET' && path === '/requirements/7/workflow') return json({ revision: item.revision, content_revision: 1, confirmed_revision: 1, needs_confirmation: false, legacy_completed: false, design_status: 'NOT_REQUIRED', paused_from: null, records: [] })
+        if (request.method() === 'GET' && path === '/requirements/7/participants') return json({ revision: item.revision, participants: ['CONFIRM', 'DEVELOP', 'ACCEPT'].map(role => ({ user_id: 1, role, display_name: '环节人员', active: true })) })
+        if (await mockCollaboration(route)) return
         if (path === '/auth/me') return json({ id: 1, username: 'admin', display_name: '管理员', status: 'ACTIVE', revision: 1, must_change_password: false, data_scope: 'ALL', role_ids: [1], permission_codes: ['*'] })
         if (path === '/notifications/unread-count') return json({ unread_count: 0 })
         if (path === '/requirements/7/collaborators') return json({ revision: Number(item.revision), owner: null, developers: [], designers: [], development_completions: [] })
@@ -147,6 +151,10 @@ for (const width of [1280, 390]) {
       const editor = page.getByRole('dialog', { name: `编辑${entry.label}`, exact: true })
       const newTitle = `${entry.label}更新后的标题`
       await editor.locator('.el-form-item').filter({ hasText: entry.editField }).locator('input').fill(newTitle)
+      if (entry.path === '/requirements') {
+        // Editing a title must preserve the confirmed legacy PLAIN description and format.
+        await expect(editor.getByRole('textbox', { name: '需求描述', exact: true })).toHaveText('需求描述 7')
+      }
       await editor.getByRole('button', { name: '保存', exact: true }).click()
       await expect(drawer.getByRole('heading', { name: newTitle, exact: true })).toBeVisible()
       await expect.poll(() => listQueries.length).toBe(2)
@@ -169,6 +177,10 @@ for (const width of [1280, 390]) {
       expect(listQueries).toEqual(Array.from({ length: 3 }, () => ({ page: '2', page_size: '20', status: initialStatus })))
       expect(writes).toHaveLength(2)
       expect(writes[0]?.body[entry.titleField]).toBe(newTitle)
+      if (entry.path === '/requirements') {
+        expect(writes[0]?.body.description).toBe('需求描述 7')
+        expect(writes[0]?.body.description_format).toBe('PLAIN')
+      }
       expect(writes[1]?.body.status).toBe(entry.nextStatus)
       expect(unexpected).toEqual([])
       expect(errors).toEqual([])

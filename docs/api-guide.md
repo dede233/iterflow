@@ -1,5 +1,7 @@
 # IterFlow 当前接口集成指南
 
+2026-11-04：Issue #4 开发接口说明见文末，尚未部署。当前正式冻结源码为 `96ba96e`，下列2026-10月上线描述保留为历史；实际部署以执行记录为准。
+
 更新日期：2026-10-12。对应开发契约 `spec/openapi-development.yaml`，线上 sx-kc.xyz:8443 已部署产品源 commit `3fe3a42`，含协作人员、按阶段分配、本人开发确认以及完成和发布门禁，并修复反馈提交人、系统和模块名称展示。历史发布契约保持不变；本次为用户授权的分支快照部署，未创建新的正式 tag/Release。部署证据见 [正式更新记录](feedback-reference-production-upgrade-2026-10-12.md)，先前协作功能升级见 [历史记录](collaboration-online-upgrade-2026-10-11.md)。用户操作见 [操作手册](user-manual.md)。
 
 2026-10-23 已部署版本角色权限扩展（8444 测试验收通过后更新 8443 正式环境）：DEVELOPER、PRODUCT_MANAGER、DEVELOPMENT_LEAD 默认具备 rd.version.view/create/edit/status/publish 与已有 rd.requirement.view、rd.release.view。增量迁移保留原 DataScope；开发/研发 SELF 仅限本人创建或负责的版本，产品 ALL 不变。添加、迁移、移出需求仍需 rd.version.edit 与 rd.requirement.view，且两个对象均通过范围检查。需求状态和协作人员分配权限不随版本权限一并扩展。API shape 不变，历史快照保留。升级后的使用方式见操作手册。
@@ -99,3 +101,14 @@ npm run check:bundle
 Word 手册由 `tools/build-user-manual.py` 从 `docs/user-manual.md` 生成，再通过 DOCX 渲染工具检查每页并导出 PDF。修改手册正文时应重新生成两种交付文件。
 
 当前协作迁移为 PostgreSQL `0007_development_completion` / MySQL `mysql57_0005`。既有库用相应 Alembic upgrade head 升级，不重复 seed；MySQL 正式迁移后执行 mysql_preflight。本次已完成新 CI、实际部署包验收、受保护的升级前后备份和授权部署；具体环境与验收边界见线上升级记录。后续新增功能须重新执行对应门禁。
+# 2026-11-04 开发接口增量（尚未部署）
+
+当前开发契约增加需求 `description_format=PLAIN|HTML`（默认PLAIN），HTML由服务端清洗；旧客户端省略格式时保留既有纯文本含义，更新不提供格式则保留原格式。创建、更新、转需求均拒绝空标题/空描述；描述格式变化也会使当前确认失效。
+
+`POST /requirements/{id}/workflow` 新增 `REOPEN`，仅取消需求可填原因重开；`participants` 的 CONFIRM 支持多人、任一有效且有权限的人员确认即可。旧revision冲突与实际操作者快照保留。
+
+`DELETE /requirements/{id}`、`DELETE /feedbacks/{id}` 请求 `{revision, reason}`，执行受状态、关联、权限和范围约束的软删除。成功返回 `{id, revision, deleted:true}`，再次普通访问返回404。
+
+`POST /requirements/batch-actions` / `/feedbacks/batch-actions` 接受 `{action, items:[{id,revision}], reason}`，最多50条且ID不可重复。需求动作 CONFIRM/DEVELOPING/TESTING/DONE；反馈动作 ACCEPTED/CLOSED。每项独立事务，HTTP200结果中逐项携带 `success/status_code/code/message/revision`，必须逐项检查，不可将HTTP200视为全部成功。请求格式或整体身份权限失败仍返回422/401/403；不自动重试成功项。
+
+以上尚未上线，详细边界见 [实施记录](issue-4-improvements.md)。

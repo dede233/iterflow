@@ -39,6 +39,7 @@ async function view(config: typeof configs[number], mobile = false) {
     plugins: [ElementPlus],
     directives: { loading: { mounted: renderLoading, updated: renderLoading } },
     stubs: {
+      BatchActionsDialog: true,
       RequirementCreateView: { name: 'RequirementCreateView', template: '<button @click="$emit(\'created\', 7)">完成创建</button>', emits: ['created'] },
       VersionCreateView: { name: 'VersionCreateView', template: '<button @click="$emit(\'created\', 7)">完成创建</button>', emits: ['created'] },
     },

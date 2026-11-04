@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.api.deps import ensure_all_permissions, require_all_permissions, require_permission
-from app.api.openapi import api_revision_conflict_responses
+from app.api.openapi import api_error_responses, api_revision_conflict_responses
 from app.core.database import get_db
 from app.core.exceptions import NotFoundError
 from app.models.entities import Requirement, User
@@ -12,6 +12,12 @@ from app.models.enums import Priority, RequirementSource, RequirementStatus
 from app.repositories.requirement_repository import RequirementRepository
 from app.repositories.user_repository import UserRepository
 from app.repositories.version_repository import VersionRepository
+from app.schemas.entity_actions import (
+    BatchActionResponse,
+    EntityDelete,
+    EntityDeleted,
+    RequirementBatchAction,
+)
 from app.schemas.requirement import (
     LinkedFeedbackOut,
     RequirementCreate,
@@ -20,6 +26,7 @@ from app.schemas.requirement import (
     RequirementStatusChange,
     RequirementUpdate,
 )
+from app.services.entity_actions_service import EntityActionsService
 from app.services.feedback_service import FeedbackService
 from app.services.requirement_service import RequirementService
 
@@ -102,6 +109,29 @@ def create_requirement(
     scope = UserRepository(db).data_scope(user.id)
     _ensure_scoped_version(db, user, payload.version_id)
     return RequirementService(db).create(payload, user.id, viewer_scope=scope)
+
+
+@router.post("/batch-actions", response_model=BatchActionResponse)
+def batch_requirement_actions(
+    payload: RequirementBatchAction,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("rd.requirement.status")),
+):
+    return EntityActionsService(db).batch("requirement", payload, user.id)
+
+
+@router.delete(
+    "/{requirement_id}",
+    response_model=EntityDeleted,
+    responses=api_error_responses(404, 409),
+)
+def delete_requirement(
+    requirement_id: int,
+    payload: EntityDelete,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("rd.requirement.edit")),
+):
+    return EntityActionsService(db).delete("requirement", requirement_id, payload, user.id)
 
 
 @router.get("/{requirement_id}", response_model=RequirementOut)

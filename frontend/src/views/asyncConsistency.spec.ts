@@ -25,6 +25,7 @@ function view(component: typeof FeedbackList | typeof AuditCenter) {
   return mount(component, { global: {
     plugins: [ElementPlus], directives: { loading: { mounted: loading, updated: loading } },
     stubs: {
+      BatchActionsDialog: true,
       FeedbackCreateView: true,
       ElDrawer: { name: 'ElDrawer', props: ['modelValue', 'title'], emits: ['update:modelValue'], template: '<div v-if="modelValue" class="test-drawer"><button @click="$emit(\'update:modelValue\', false)">关闭</button><slot /><slot name="footer" /></div>' },
     },

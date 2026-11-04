@@ -81,6 +81,7 @@ class VersionRepository(BaseRepository[Version]):
                 .where(
                     VersionRequirement.version_id == version_id,
                     VersionRequirement.active.is_(True),
+                    Requirement.deleted_at.is_(None),
                 )
                 .order_by(Requirement.id.asc())
             ).all()
@@ -95,6 +96,7 @@ class VersionRepository(BaseRepository[Version]):
             .where(
                 VersionRequirement.version_id == version_id,
                 VersionRequirement.active.is_(True),
+                Requirement.deleted_at.is_(None),
             )
         )
         if data_scope is not DataScope.ALL:

@@ -39,8 +39,6 @@ class ParticipantsChange(BaseModel):
         pairs = [(p.user_id, p.role) for p in self.participants]
         if len(set(pairs)) != len(pairs):
             raise ValueError("人员与环节不能重复")
-        if sum(p.role == "CONFIRM" for p in self.participants) > 1:
-            raise ValueError("需求确认人最多一位")
         return self
 
 

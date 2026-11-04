@@ -73,3 +73,15 @@ it('ignores a late personnel response after losing permission', async () => {
   expect(mocks.save).not.toHaveBeenCalled()
   wrapper.unmount()
 })
+
+it('supports multiple confirmers while preserving later-stage people', async () => {
+  const wrapper = panel(); await wrapper.setProps({ roles: ['CONFIRM'] }); await flushPromises()
+  expect(wrapper.findComponent(PeopleSelector).props('multiple')).toBe(true)
+  wrapper.findComponent(PeopleSelector).vm.$emit('update:modelValue', [1, 4])
+  await wrapper.find('form').trigger('submit'); await flushPromises()
+  expect(mocks.save).toHaveBeenCalledExactlyOnceWith(1, 12, [
+    { role: 'DEVELOP', user_id: 2 }, { role: 'ACCEPT', user_id: 3 },
+    { role: 'CONFIRM', user_id: 1 }, { role: 'CONFIRM', user_id: 4 },
+  ])
+  wrapper.unmount()
+})

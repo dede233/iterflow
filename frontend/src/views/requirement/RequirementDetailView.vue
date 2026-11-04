@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import RequirementProgress from '@/components/RequirementProgress.vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, onMounted, reactive, ref, watch } from 'vue'
+import RichTextContent from '@/components/RichTextContent.vue'
+import DeleteEntityButton from '@/components/DeleteEntityButton.vue'
+import { plainTextToHtml, richTextPlainText } from '@/utils/richText'
+const RichTextEditor = defineAsyncComponent(() => import('@/components/RichTextEditor.vue'))
 import { ElMessage } from 'element-plus'
 import { actionErrorMessage } from '@/utils/actionError'
 import { useRoute, useRouter } from 'vue-router'
@@ -63,7 +67,7 @@ const item = ref<Requirement | null>(null)
 const feedbacks = ref<LinkedFeedback[]>([])
 const loading = ref(false)
 const failed = ref(false)
-const canEdit = computed(() => can('rd.requirement.edit'))
+const canEdit = computed(() => can('rd.requirement.edit') && item.value?.status !== 'ONLINE')
 const canViewFeedbacks = computed(() => can('rd.feedback.view'))
 
 // --- status dialog ---
@@ -117,6 +121,7 @@ const editForm = reactive({
   description: '',
   acceptance_criteria: '',
 })
+let originalDescription = { text: '', format: 'PLAIN' as 'PLAIN' | 'HTML', editorHtml: '' }
 
 function openEdit(): void {
   if (!item.value || !canEdit.value) return
@@ -126,11 +131,14 @@ function openEdit(): void {
 }
 
 function fillEditForm(latest: Requirement): void {
+  const format = latest.description_format ?? 'PLAIN'
+  const editorHtml = format === 'HTML' ? latest.description : plainTextToHtml(latest.description)
+  originalDescription = { text: latest.description, format, editorHtml }
   Object.assign(editForm, {
     title: latest.title,
     requirement_type: latest.requirement_type,
     priority: latest.priority,
-    description: latest.description,
+    description: editorHtml,
     acceptance_criteria: latest.acceptance_criteria ?? '',
   })
 }
@@ -140,14 +148,20 @@ watch(editDialog, (open) => {
 })
 
 async function submitEdit(): Promise<void> {
-  if (!item.value) return
+  if (!item.value || !canEdit.value || editSubmitting.value) return
+  if (editForm.title.trim().length < 2 || richTextPlainText(editForm.description).length < 2) {
+    ElMessage.warning('请填写需求标题与描述（至少 2 个字符）')
+    return
+  }
   editSubmitting.value = true
   try {
+    const descriptionUnchanged = editForm.description === originalDescription.editorHtml
     await updateRequirement(item.value.id, {
       title: editForm.title.trim(),
       requirement_type: editForm.requirement_type,
       priority: editForm.priority,
-      description: editForm.description.trim(),
+      description: descriptionUnchanged ? originalDescription.text : editForm.description.trim(),
+      description_format: descriptionUnchanged ? originalDescription.format : 'HTML',
       acceptance_criteria: editForm.acceptance_criteria.trim() || null,
       revision: item.value.revision,
     })
@@ -176,6 +190,12 @@ async function load(): Promise<void> {
   }
 }
 
+function onDeleted() {
+  emit('updated')
+  if (props.embedded) emit('close')
+  else void router.replace(backTo.value)
+}
+
 onMounted(load)
 </script>
 
@@ -184,13 +204,14 @@ onMounted(load)
     <ErrorState v-if="failed" title="需求加载失败" description="请检查网络或确认需求是否仍可访问。" retry-label="重新加载" @retry="load" />
     <template v-if="item">
 
-      <PageHeader :title="item.title" :eyebrow="item.requirement_no">
+      <PageHeader :title="item.title.trim() || '未填写需求标题'" :eyebrow="item.requirement_no">
         <template #status>
           <StatusTag :status="item.status" :label="requirementStatusLabel[item.status]" :type="requirementStatusTagType(item.status)" />
         </template>
         <template #actions>
         <RouterLink class="back-link" :to="backTo" @click="props.embedded && emit('close')">返回列表</RouterLink>
         <el-button v-if="canEdit" @click="openEdit">编辑</el-button>
+        <DeleteEntityButton v-if="canEdit && item.status === 'DRAFT' && !item.current_version_id && item.source === 'DIRECT'" kind="requirements" :id="item.id" :revision="item.revision" :title="item.title" @refresh="load" @deleted="onDeleted" />
 
         </template>
       </PageHeader>
@@ -204,7 +225,7 @@ onMounted(load)
           </el-descriptions-item>
           <el-descriptions-item label="优先级">{{ item.priority }}</el-descriptions-item>
           <el-descriptions-item label="需求描述" :span="isMobile ? 1 : 2">
-            <div class="multiline">{{ item.description }}</div>
+            <RichTextContent :content="item.description" :format="item.description_format" />
           </el-descriptions-item>
           <el-descriptions-item label="验收标准" :span="isMobile ? 1 : 2">
             <div class="multiline">{{ item.acceptance_criteria || '-' }}</div>
@@ -286,7 +307,7 @@ onMounted(load)
           </el-select>
         </el-form-item>
         <el-form-item label="需求描述">
-          <el-input v-model="editForm.description" type="textarea" :rows="5" />
+          <RichTextEditor v-model="editForm.description" :disabled="editSubmitting" label="需求描述" />
         </el-form-item>
         <el-form-item label="验收标准">
           <el-input v-model="editForm.acceptance_criteria" type="textarea" :rows="3" />

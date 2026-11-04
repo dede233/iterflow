@@ -10,6 +10,11 @@ class FeedbackRepository(BaseRepository[Feedback]):
     def __init__(self, db: Session):
         super().__init__(db, Feedback)
 
+    def get(self, entity_id: int) -> Feedback | None:
+        return self.db.scalar(
+            select(Feedback).where(Feedback.id == entity_id, Feedback.deleted_at.is_(None))
+        )
+
     def display_names(
         self, feedback_ids: list[int]
     ) -> dict[int, tuple[str | None, str | None, str | None]]:
@@ -22,12 +27,12 @@ class FeedbackRepository(BaseRepository[Feedback]):
             .outerjoin(User, User.id == Feedback.submitter_id)
             .outerjoin(BusinessSystem, BusinessSystem.id == Feedback.system_id)
             .outerjoin(BusinessModule, BusinessModule.id == Feedback.module_id)
-            .where(Feedback.id.in_(feedback_ids))
+            .where(Feedback.id.in_(feedback_ids), Feedback.deleted_at.is_(None))
         ).all()
         return {row[0]: (row[1], row[2], row[3]) for row in rows}
 
     def get_scoped(self, entity_id: int, user_id: int, data_scope: DataScope) -> Feedback | None:
-        stmt = select(Feedback).where(Feedback.id == entity_id)
+        stmt = select(Feedback).where(Feedback.id == entity_id, Feedback.deleted_at.is_(None))
         if data_scope is not DataScope.ALL:
             stmt = stmt.where(Feedback.submitter_id == user_id)
         return self.db.scalar(stmt)
@@ -46,7 +51,7 @@ class FeedbackRepository(BaseRepository[Feedback]):
     ) -> list[ColumnElement[bool]]:
         # The data-scope predicate is always combined (AND) with the caller's
         # filters so a filter can never widen access beyond the caller's scope.
-        criteria: list[ColumnElement[bool]] = []
+        criteria: list[ColumnElement[bool]] = [Feedback.deleted_at.is_(None)]
         if data_scope is not DataScope.ALL:
             criteria.append(Feedback.submitter_id == user_id)
         if status is not None:

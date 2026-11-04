@@ -294,6 +294,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/feedbacks/batch-actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 批量流程操作
+         * @description 每次最多50条且ID不可重复；逐项沿用单条操作权限、DataScope、阶段人员、内容确认、原因和revision门禁。每项独立事务，返回逐项结果；已成功项不自动重放。不支持批量发布、删除或跨阶段跳转。
+         */
+        post: operations["batch_feedback_actions_api_v1_feedbacks_batch_actions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/feedbacks/{feedback_id}": {
         parameters: {
             query?: never;
@@ -305,7 +325,11 @@ export interface paths {
         get: operations["get_feedback_api_v1_feedbacks__feedback_id__get"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * 软删除
+         * @description 需现有编辑权限及数据范围；仅待受理反馈/待确认需求，且无需求、反馈、版本或重复反馈引用。保留行、附件、评论、审计及通知历史，普通读取和新关联不可再访问。revision CAS，删除原因必填。
+         */
+        delete: operations["delete_feedback_api_v1_feedbacks__feedback_id__delete"];
         options?: never;
         head?: never;
         /**
@@ -438,6 +462,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/requirements/batch-actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 批量流程操作
+         * @description 每次最多50条且ID不可重复；逐项沿用单条操作权限、DataScope、阶段人员、内容确认、原因和revision门禁。每项独立事务，返回逐项结果；已成功项不自动重放。不支持批量发布、删除或跨阶段跳转。
+         */
+        post: operations["batch_requirement_actions_api_v1_requirements_batch_actions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/requirements/{requirement_id}": {
         parameters: {
             query?: never;
@@ -449,7 +493,11 @@ export interface paths {
         get: operations["get_requirement_api_v1_requirements__requirement_id__get"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * 软删除
+         * @description 需现有编辑权限及数据范围；仅待受理反馈/待确认需求，且无需求、反馈、版本或重复反馈引用。保留行、附件、评论、审计及通知历史，普通读取和新关联不可再访问。revision CAS，删除原因必填。
+         */
+        delete: operations["delete_requirement_api_v1_requirements__requirement_id__delete"];
         options?: never;
         head?: never;
         /** 编辑需求 */
@@ -1449,6 +1497,33 @@ export interface components {
              */
             can_view_api_docs: boolean;
         };
+        /** BatchActionItem */
+        BatchActionItem: {
+            /** 记录编号 */
+            id: number;
+            /** 修订号 */
+            revision: number;
+        };
+        /** BatchActionResponse */
+        BatchActionResponse: {
+            /** 逐项结果 */
+            results: components["schemas"]["BatchActionResult"][];
+        };
+        /** BatchActionResult */
+        BatchActionResult: {
+            /** 记录编号 */
+            id: number;
+            /** 是否成功 */
+            success: boolean;
+            /** 响应状态码 */
+            status_code: number;
+            /** 业务代码 */
+            code: number;
+            /** 结果说明 */
+            message: string;
+            /** 修订号 */
+            revision: number | null;
+        };
         /** BlockingRequirement */
         BlockingRequirement: {
             /** 唯一标识 ID */
@@ -1817,6 +1892,11 @@ export interface components {
          * @enum {string}
          */
         EditingEntityType: "FEEDBACK" | "REQUIREMENT" | "VERSION";
+        /** EmailUnbindRequest */
+        EmailUnbindRequest: {
+            /** 修订号 */
+            revision: number;
+        };
         /** EmailVerificationConfirm */
         EmailVerificationConfirm: {
             /** 修订号 */
@@ -1831,6 +1911,26 @@ export interface components {
             /** 邮箱 */
             email: string;
         };
+        /** EntityDelete */
+        EntityDelete: {
+            /** 修订号 */
+            revision: number;
+            /** 操作原因 */
+            reason: string;
+        };
+        /** EntityDeleted */
+        EntityDeleted: {
+            /** 记录编号 */
+            id: number;
+            /** 修订号 */
+            revision: number;
+            /**
+             * 已删除
+             * @default true
+             * @constant
+             */
+            deleted: true;
+        };
         /** ErrorResponse */
         ErrorResponse: {
             /** 错误码 */
@@ -1841,6 +1941,18 @@ export interface components {
             data: unknown | null;
             /** 请求追踪 ID */
             request_id: string | null;
+        };
+        /** FeedbackBatchAction */
+        FeedbackBatchAction: {
+            /** 待操作记录 */
+            items: components["schemas"]["BatchActionItem"][];
+            /** 操作原因 */
+            reason?: string | null;
+            /**
+             * 流程操作
+             * @enum {string}
+             */
+            action: "ACCEPTED" | "CLOSED";
         };
         /** FeedbackCollaborationOut */
         FeedbackCollaborationOut: {
@@ -1884,6 +1996,13 @@ export interface components {
             description?: string | null;
             /** 验收标准 */
             acceptance_criteria?: string | null;
+            /**
+             * 需求描述格式
+             * @description 旧数据默认 PLAIN；HTML 使用服务端白名单清洗，详情和历史快照按格式安全显示。更新未提供时保留原格式。
+             * @default PLAIN
+             * @enum {string}
+             */
+            description_format: "PLAIN" | "HTML";
             /** 环节人员 */
             participants?: components["schemas"]["ParticipantInput"][];
             /** 需求 ID */
@@ -2126,11 +2245,6 @@ export interface components {
              */
             ok: boolean;
         };
-        /** EmailUnbindRequest */
-        EmailUnbindRequest: {
-            /** 修订号 */
-            revision: number;
-        };
         /** MailNoticeAcknowledge */
         MailNoticeAcknowledge: {
             /** 修订号 */
@@ -2242,7 +2356,7 @@ export interface components {
         };
         /**
          * ParticipantInput
-         * @description 环节人员。CONFIRM 最多一人；DESIGN、DEVELOP、ACCEPT 可多人。同一人员与环节组合不能重复。ACCEPT 任意一名有效人员验收通过即可完成需求。
+         * @description 环节人员均可多选。同一人员与环节组合不能重复；CONFIRM 和 ACCEPT 均由任意一名有效且有权限的人员操作即可推进，保留实际操作人及人员快照。
          */
         ParticipantInput: {
             /** 人员编号 */
@@ -2450,9 +2564,24 @@ export interface components {
             /** 操作原因 */
             reason?: string | null;
         };
+        /** RequirementBatchAction */
+        RequirementBatchAction: {
+            /** 待操作记录 */
+            items: components["schemas"]["BatchActionItem"][];
+            /** 操作原因 */
+            reason?: string | null;
+            /**
+             * 流程操作
+             * @enum {string}
+             */
+            action: "CONFIRM" | "DEVELOPING" | "TESTING" | "DONE";
+        };
         /** RequirementCreate */
         RequirementCreate: {
-            /** 需求标题 */
+            /**
+             * 需求标题
+             * @description 去除首尾空白后至少两个可见字符；空字符串、纯空白或仅不可见字符返回422。
+             */
             title: string;
             /** 需求类型 */
             requirement_type: string;
@@ -2474,6 +2603,13 @@ export interface components {
             participants?: components["schemas"]["ParticipantInput"][];
             /** 描述 */
             description: string;
+            /**
+             * 需求描述格式
+             * @description 旧数据默认 PLAIN；HTML 使用服务端白名单清洗，详情和历史快照按格式安全显示。更新未提供时保留原格式。
+             * @default PLAIN
+             * @enum {string}
+             */
+            description_format: "PLAIN" | "HTML";
             /** 验收标准 */
             acceptance_criteria?: string | null;
             /** 版本 ID */
@@ -2512,6 +2648,13 @@ export interface components {
             current_version_id: number | null;
             /** 描述 */
             description: string;
+            /**
+             * 需求描述格式
+             * @description 旧数据默认 PLAIN；HTML 使用服务端白名单清洗，详情和历史快照按格式安全显示。更新未提供时保留原格式。
+             * @default PLAIN
+             * @enum {string}
+             */
+            description_format: "PLAIN" | "HTML";
             /** 验收标准 */
             acceptance_criteria: string | null;
             /**
@@ -2567,7 +2710,10 @@ export interface components {
         };
         /** RequirementUpdate */
         RequirementUpdate: {
-            /** 需求标题 */
+            /**
+             * 需求标题
+             * @description 去除首尾空白后至少两个可见字符；空字符串、纯空白或仅不可见字符返回422。
+             */
             title?: string | null;
             /** 需求类型 */
             requirement_type?: string | null;
@@ -2584,6 +2730,13 @@ export interface components {
             owner_id?: null;
             /** 描述 */
             description?: string | null;
+            /**
+             * 需求描述格式
+             * @description 旧数据默认 PLAIN；HTML 使用服务端白名单清洗，详情和历史快照按格式安全显示。更新未提供时保留原格式。
+             * @default PLAIN
+             * @enum {string}
+             */
+            description_format: "PLAIN" | "HTML";
             /** 验收标准 */
             acceptance_criteria?: string | null;
             /**
@@ -2927,7 +3080,10 @@ export interface components {
              */
             revision: number;
         };
-        /** WorkflowAction */
+        /**
+         * WorkflowAction
+         * @description REOPEN 仅允许已取消且不属于已发布版本的需求，原因必填；回到 DRAFT 并清除当前确认资格，保留历史、人员及关联。
+         */
         WorkflowAction: {
             /** 修订号 */
             revision: number;
@@ -2935,7 +3091,7 @@ export interface components {
              * 动作
              * @enum {string}
              */
-            action: "CONFIRM" | "REQUEST_CHANGES" | "DESIGN_PENDING" | "DESIGN_START" | "DESIGN_DONE" | "DESIGN_CANCEL";
+            action: "CONFIRM" | "REOPEN" | "REQUEST_CHANGES" | "DESIGN_PENDING" | "DESIGN_START" | "DESIGN_DONE" | "DESIGN_CANCEL";
             /** 原因 */
             reason?: string | null;
         };
@@ -3905,6 +4061,57 @@ export interface operations {
             };
         };
     };
+    batch_feedback_actions_api_v1_feedbacks_batch_actions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FeedbackBatchAction"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchActionResponse"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_feedback_api_v1_feedbacks__feedback_id__get: {
         parameters: {
             query?: never;
@@ -3936,6 +4143,77 @@ export interface operations {
             };
             /** @description 无权执行该操作 */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_feedback_api_v1_feedbacks__feedback_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                feedback_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EntityDelete"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntityDeleted"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或 revision 冲突 */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4548,6 +4826,57 @@ export interface operations {
             };
         };
     };
+    batch_requirement_actions_api_v1_requirements_batch_actions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequirementBatchAction"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchActionResponse"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_requirement_api_v1_requirements__requirement_id__get: {
         parameters: {
             query?: never;
@@ -4579,6 +4908,77 @@ export interface operations {
             };
             /** @description 无权执行该操作 */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_requirement_api_v1_requirements__requirement_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requirement_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EntityDelete"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntityDeleted"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或 revision 冲突 */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

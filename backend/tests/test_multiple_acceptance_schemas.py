@@ -36,6 +36,12 @@ def test_multiple_acceptance_preserves_other_assignment_constraints(model, base)
     assert len(result.participants) == 3
     with pytest.raises(ValidationError, match="人员与环节不能重复"):
         model.model_validate({**base, "participants": [*people, people[-1]]})
-    with pytest.raises(ValidationError, match="需求确认人最多一位"):
-        model.model_validate({**base, "participants": [*people, {"user_id": 4, "role": "CONFIRM"}]})
+    assert (
+        len(
+            model.model_validate(
+                {**base, "participants": [*people, {"user_id": 4, "role": "CONFIRM"}]}
+            ).participants
+        )
+        == 4
+    )
     assert len(model.model_validate({**base, "participants": people[:2]}).participants) == 2

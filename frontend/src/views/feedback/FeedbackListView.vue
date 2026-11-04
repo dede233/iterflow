@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import BatchActionsDialog from '@/components/BatchActionsDialog.vue'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { listFeedbacks } from '@/api/feedbacks'
@@ -163,6 +164,7 @@ const queryState = useListQuery({
   <section class="page">
     <PageHeader title="反馈中心" description="收集、受理并追踪每一条反馈。" eyebrow="研发协作">
       <template #actions>
+      <BatchActionsDialog kind="feedbacks" :rows="rows" @updated="load" />
         <el-button v-if="isMobile" @click="filterDrawer = true"><AppIcon name="filter" :size="16" />筛选</el-button>
         <el-button
           v-if="can('rd.feedback.create')"

@@ -10,6 +10,11 @@ class RequirementRepository(BaseRepository[Requirement]):
     def __init__(self, db: Session):
         super().__init__(db, Requirement)
 
+    def get(self, entity_id: int) -> Requirement | None:
+        return self.db.scalar(
+            select(Requirement).where(Requirement.id == entity_id, Requirement.deleted_at.is_(None))
+        )
+
     @staticmethod
     def self_criterion(user_id: int):
         participant = select(RequirementParticipant.requirement_id).where(
@@ -23,7 +28,9 @@ class RequirementRepository(BaseRepository[Requirement]):
         )
 
     def get_scoped(self, entity_id: int, user_id: int, data_scope: DataScope) -> Requirement | None:
-        stmt = select(Requirement).where(Requirement.id == entity_id)
+        stmt = select(Requirement).where(
+            Requirement.id == entity_id, Requirement.deleted_at.is_(None)
+        )
         if data_scope is not DataScope.ALL:
             stmt = stmt.where(self.self_criterion(user_id))
         item = self.db.scalar(stmt)
@@ -47,7 +54,7 @@ class RequirementRepository(BaseRepository[Requirement]):
         participant_id: int | None = None,
         participant_role: str | None = None,
     ) -> tuple[list[Requirement], int]:
-        criteria: list[ColumnElement[bool]] = []
+        criteria: list[ColumnElement[bool]] = [Requirement.deleted_at.is_(None)]
         if data_scope is not DataScope.ALL:
             criteria.append(self.self_criterion(user_id))
         if keyword and keyword.strip():

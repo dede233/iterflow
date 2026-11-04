@@ -22,6 +22,7 @@ from app.schemas.requirement import (
 from app.services.audit_service import AuditService
 from app.services.collaboration_service import CollaborationService
 from app.services.revision_conflict import revision_conflict_data
+from app.services.rich_text import sanitize_requirement_description
 from app.services.workflow_service import WorkflowService
 
 ALLOWED_TRANSITIONS: dict[RequirementStatus, set[ManualRequirementStatus]] = {
@@ -124,9 +125,17 @@ class RequirementService:
         values = payload.model_dump(exclude_unset=True, exclude={"revision", "owner_id"}) | {
             "updated_by": operator_id
         }
+        if "description" in values or "description_format" in values:
+            try:
+                values["description"] = sanitize_requirement_description(
+                    values.get("description", current.description),
+                    values.get("description_format", current.description_format),
+                )
+            except ValueError as exc:
+                raise AppError(42265, str(exc), 422) from exc
         content_changed = any(
             key in values and values[key] != getattr(current, key)
-            for key in ("description", "acceptance_criteria")
+            for key in ("description", "description_format", "acceptance_criteria")
         )
         if content_changed:
             if current.status == RequirementStatus.ONLINE:

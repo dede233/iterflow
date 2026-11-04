@@ -209,6 +209,55 @@
         }
       }
     },
+    "BatchActionItem": {
+      "title": "BatchActionItem",
+      "properties": {
+        "id": {
+          "title": "记录编号"
+        },
+        "revision": {
+          "title": "修订号"
+        }
+      }
+    },
+    "BatchActionResponse": {
+      "title": "BatchActionResponse",
+      "properties": {
+        "results": {
+          "title": "逐项结果",
+          "items": {}
+        }
+      }
+    },
+    "BatchActionResult": {
+      "title": "BatchActionResult",
+      "properties": {
+        "id": {
+          "title": "记录编号"
+        },
+        "success": {
+          "title": "是否成功"
+        },
+        "status_code": {
+          "title": "响应状态码"
+        },
+        "code": {
+          "title": "业务代码"
+        },
+        "message": {
+          "title": "结果说明"
+        },
+        "revision": {
+          "title": "修订号",
+          "anyOf": [
+            {
+              "title": "修订号"
+            },
+            {}
+          ]
+        }
+      }
+    },
     "BlockingRequirement": {
       "title": "BlockingRequirement",
       "properties": {
@@ -754,6 +803,14 @@
     "EditingEntityType": {
       "title": "EditingEntityType"
     },
+    "EmailUnbindRequest": {
+      "title": "EmailUnbindRequest",
+      "properties": {
+        "revision": {
+          "title": "修订号"
+        }
+      }
+    },
     "EmailVerificationConfirm": {
       "title": "EmailVerificationConfirm",
       "properties": {
@@ -773,6 +830,31 @@
         },
         "email": {
           "title": "邮箱"
+        }
+      }
+    },
+    "EntityDelete": {
+      "title": "EntityDelete",
+      "properties": {
+        "revision": {
+          "title": "修订号"
+        },
+        "reason": {
+          "title": "操作原因"
+        }
+      }
+    },
+    "EntityDeleted": {
+      "title": "EntityDeleted",
+      "properties": {
+        "id": {
+          "title": "记录编号"
+        },
+        "revision": {
+          "title": "修订号"
+        },
+        "deleted": {
+          "title": "已删除"
         }
       }
     },
@@ -798,6 +880,27 @@
             {},
             {}
           ]
+        }
+      }
+    },
+    "FeedbackBatchAction": {
+      "title": "FeedbackBatchAction",
+      "properties": {
+        "items": {
+          "title": "待操作记录",
+          "items": {}
+        },
+        "reason": {
+          "title": "操作原因",
+          "anyOf": [
+            {
+              "title": "原因"
+            },
+            {}
+          ]
+        },
+        "action": {
+          "title": "流程操作"
         }
       }
     },
@@ -875,6 +978,10 @@
             {},
             {}
           ]
+        },
+        "description_format": {
+          "title": "需求描述格式",
+          "description": "旧数据默认 PLAIN；HTML 使用服务端白名单清洗，详情和历史快照按格式安全显示。更新未提供时保留原格式。"
         },
         "participants": {
           "title": "环节人员",
@@ -1300,14 +1407,6 @@
         }
       }
     },
-    "EmailUnbindRequest": {
-      "title": "EmailUnbindRequest",
-      "properties": {
-        "revision": {
-          "title": "修订号"
-        }
-      }
-    },
     "MailNoticeAcknowledge": {
       "title": "MailNoticeAcknowledge",
       "properties": {
@@ -1452,7 +1551,7 @@
     },
     "ParticipantInput": {
       "title": "ParticipantInput",
-      "description": "环节人员。CONFIRM 最多一人；DESIGN、DEVELOP、ACCEPT 可多人。同一人员与环节组合不能重复。ACCEPT 任意一名有效人员验收通过即可完成需求。",
+      "description": "环节人员均可多选。同一人员与环节组合不能重复；CONFIRM 和 ACCEPT 均由任意一名有效且有权限的人员操作即可推进，保留实际操作人及人员快照。",
       "properties": {
         "user_id": {
           "title": "人员编号"
@@ -1736,11 +1835,33 @@
         }
       }
     },
+    "RequirementBatchAction": {
+      "title": "RequirementBatchAction",
+      "properties": {
+        "items": {
+          "title": "待操作记录",
+          "items": {}
+        },
+        "reason": {
+          "title": "操作原因",
+          "anyOf": [
+            {
+              "title": "原因"
+            },
+            {}
+          ]
+        },
+        "action": {
+          "title": "流程操作"
+        }
+      }
+    },
     "RequirementCreate": {
       "title": "RequirementCreate",
       "properties": {
         "title": {
-          "title": "需求标题"
+          "title": "需求标题",
+          "description": "去除首尾空白后至少两个可见字符；空字符串、纯空白或仅不可见字符返回422。"
         },
         "requirement_type": {
           "title": "需求类型"
@@ -1772,6 +1893,10 @@
         },
         "description": {
           "title": "描述"
+        },
+        "description_format": {
+          "title": "需求描述格式",
+          "description": "旧数据默认 PLAIN；HTML 使用服务端白名单清洗，详情和历史快照按格式安全显示。更新未提供时保留原格式。"
         },
         "acceptance_criteria": {
           "title": "验收标准",
@@ -1856,6 +1981,10 @@
         "description": {
           "title": "描述"
         },
+        "description_format": {
+          "title": "需求描述格式",
+          "description": "旧数据默认 PLAIN；HTML 使用服务端白名单清洗，详情和历史快照按格式安全显示。更新未提供时保留原格式。"
+        },
         "acceptance_criteria": {
           "title": "验收标准",
           "anyOf": [
@@ -1930,6 +2059,7 @@
       "properties": {
         "title": {
           "title": "需求标题",
+          "description": "去除首尾空白后至少两个可见字符；空字符串、纯空白或仅不可见字符返回422。",
           "anyOf": [
             {},
             {}
@@ -1973,6 +2103,10 @@
             {},
             {}
           ]
+        },
+        "description_format": {
+          "title": "需求描述格式",
+          "description": "旧数据默认 PLAIN；HTML 使用服务端白名单清洗，详情和历史快照按格式安全显示。更新未提供时保留原格式。"
         },
         "acceptance_criteria": {
           "title": "验收标准",
@@ -2545,6 +2679,7 @@
     },
     "WorkflowAction": {
       "title": "WorkflowAction",
+      "description": "REOPEN 仅允许已取消且不属于已发布版本的需求，原因必填；回到 DRAFT 并清除当前确认资格，保留历史、人员及关联。",
       "properties": {
         "revision": {
           "title": "修订号"
@@ -2776,7 +2911,23 @@
         "summary": "提交反馈"
       }
     },
+    "/feedbacks/batch-actions": {
+      "post": {
+        "tags": [
+          "Feedback"
+        ],
+        "summary": "批量流程操作",
+        "description": "每次最多50条且ID不可重复；逐项沿用单条操作权限、DataScope、阶段人员、内容确认、原因和revision门禁。每项独立事务，返回逐项结果；已成功项不自动重放。不支持批量发布、删除或跨阶段跳转。"
+      }
+    },
     "/feedbacks/{feedback_id}": {
+      "delete": {
+        "tags": [
+          "Feedback"
+        ],
+        "summary": "软删除",
+        "description": "需现有编辑权限及数据范围；仅待受理反馈/待确认需求，且无需求、反馈、版本或重复反馈引用。保留行、附件、评论、审计及通知历史，普通读取和新关联不可再访问。revision CAS，删除原因必填。"
+      },
       "get": {
         "tags": [
           "Feedback"
@@ -2863,7 +3014,23 @@
         "description": "普通创建需要 rd.requirement.create。指定 version_id 与 version_revision 时还需要 rd.version.edit 和 rd.requirement.view。目标版本同时受 Version DataScope 限制。"
       }
     },
+    "/requirements/batch-actions": {
+      "post": {
+        "tags": [
+          "Requirement"
+        ],
+        "summary": "批量流程操作",
+        "description": "每次最多50条且ID不可重复；逐项沿用单条操作权限、DataScope、阶段人员、内容确认、原因和revision门禁。每项独立事务，返回逐项结果；已成功项不自动重放。不支持批量发布、删除或跨阶段跳转。"
+      }
+    },
     "/requirements/{requirement_id}": {
+      "delete": {
+        "tags": [
+          "Requirement"
+        ],
+        "summary": "软删除",
+        "description": "需现有编辑权限及数据范围；仅待受理反馈/待确认需求，且无需求、反馈、版本或重复反馈引用。保留行、附件、评论、审计及通知历史，普通读取和新关联不可再访问。revision CAS，删除原因必填。"
+      },
       "get": {
         "tags": [
           "Requirement"

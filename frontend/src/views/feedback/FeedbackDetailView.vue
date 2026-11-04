@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import { defineAsyncComponent } from 'vue'
+import DeleteEntityButton from '@/components/DeleteEntityButton.vue'
+import { plainTextToHtml, richTextPlainText } from '@/utils/richText'
+const RichTextEditor = defineAsyncComponent(() => import('@/components/RichTextEditor.vue'))
 import PeopleSelector from '@/components/PeopleSelector.vue'
 import type { Participant } from '@/api/collaboration'
 import CollaborationPeople from '@/components/CollaborationPeople.vue'
@@ -81,15 +85,15 @@ const comments = ref<CommentItem[]>([])
 const systems = ref<BusinessSystemItem[]>([])
 const modules = ref<BusinessModuleItem[]>([])
 const canReadSystems = computed(() => can(['sys.system.view', 'sys.system.manage']))
-const canEdit = computed(() => can('rd.feedback.edit'))
+const canEdit = computed(() => can('rd.feedback.edit') && item.value?.status !== 'ONLINE')
 const collaboration = ref<FeedbackCollaboration | null>(null)
 const delegatedAcceptance = computed(() => !!collaboration.value?.recipients.length && !collaboration.value.recipients.some(p => p.id === auth.user?.id))
 const canAccept = computed(() => canEdit.value && !!collaboration.value && collaboration.value.revision === item.value?.revision && (!delegatedAcceptance.value || auth.user?.can_view_api_docs === true))
-const canAttach = computed(() => can('rd.feedback.create'))
+const canAttach = computed(() => can('rd.feedback.create') && item.value?.status !== 'ONLINE')
 const canLinkExisting = computed(() => canLinkExistingRequirementFor(can))
 // Convert is available only while the feedback has no primary requirement yet.
 const canConvert = computed(
-  () => can('rd.feedback.convert') && !!item.value && item.value.main_requirement_id == null,
+  () => can('rd.feedback.convert') && !!item.value && item.value.status !== 'ONLINE' && item.value.main_requirement_id == null,
 )
 
 async function showConflict(error: unknown, revision: number, onReload?: (latest: Feedback) => void): Promise<void> {
@@ -134,7 +138,7 @@ function openConvert(): void {
     requirement_title: item.value.title,
     requirement_type: 'FEATURE',
     priority: 'P2',
-    description: item.value.description,
+    description: plainTextToHtml(item.value.description),
     acceptance_criteria: '',
     requirement_id: null,
   })
@@ -142,13 +146,13 @@ function openConvert(): void {
 }
 
 async function submitConvert(): Promise<void> {
-  if (!item.value) return
+  if (!item.value || convertSubmitting.value || !canConvert.value) return
   if (convertForm.type === 'LINK_EXISTING' && !canLinkExisting.value) {
     convertForm.type = 'CREATE_NEW'
     return
   }
   if (convertForm.type === 'CREATE_NEW') {
-    if (convertForm.requirement_title.trim().length < 2 || convertForm.description.trim().length < 2) {
+    if (convertForm.requirement_title.trim().length < 2 || richTextPlainText(convertForm.description).trim().length < 2) {
       ElMessage.warning('请填写需求标题与描述（至少 2 个字符）')
       return
     }
@@ -167,6 +171,7 @@ async function submitConvert(): Promise<void> {
       requirement_type: convertForm.requirement_type,
       priority: convertForm.priority,
       description: convertForm.description.trim() || undefined,
+      description_format: 'HTML',
       acceptance_criteria: convertForm.acceptance_criteria.trim() || null,
       requirement_id: convertForm.type === 'LINK_EXISTING' ? convertForm.requirement_id : null,
     })
@@ -355,6 +360,12 @@ async function load(): Promise<void> {
   }
 }
 
+function onDeleted() {
+  emit('updated')
+  if (props.embedded) emit('close')
+  else void router.replace(backTo.value)
+}
+
 onMounted(async () => {
   if (canReadSystems.value) {
     try {
@@ -381,6 +392,7 @@ onMounted(async () => {
         <template #actions>
         <RouterLink class="back-link" :to="backTo" @click="props.embedded && emit('close')">返回列表</RouterLink>
         <el-button v-if="canEdit" @click="openEdit">编辑</el-button>
+        <DeleteEntityButton v-if="canEdit && item.status === 'NEW' && !item.main_requirement_id" kind="feedbacks" :id="item.id" :revision="item.revision" :title="item.title" @refresh="load" @deleted="onDeleted" />
         <el-button v-if="canConvert" type="primary" @click="openConvert">转需求</el-button>
         <el-button
           v-for="action in statusActions"
@@ -461,7 +473,7 @@ onMounted(async () => {
           </li>
         </ul>
         <EmptyState v-else description="暂无评论" compact />
-        <div class="comment-form">
+        <div v-if="item.status !== 'ONLINE'" class="comment-form">
           <el-input v-model="commentText" type="textarea" :rows="2" placeholder="写下评论…" />
           <el-button
             type="primary"
@@ -589,12 +601,12 @@ onMounted(async () => {
             </el-select>
           </el-form-item>
           <el-form-item label="需求描述" required>
-            <el-input v-model="convertForm.description" type="textarea" :rows="5" />
+            <RichTextEditor v-model="convertForm.description" :disabled="convertSubmitting" label="需求描述" />
           </el-form-item>
           <el-form-item label="验收标准">
             <el-input v-model="convertForm.acceptance_criteria" type="textarea" :rows="3" />
           </el-form-item>
-          <el-form-item v-for="(label, role) in roleLabels" :key="role" :label="label"><PeopleSelector v-model="convertRoles[role]" kind="requirement" :selected="role === 'CONFIRM' ? defaultConfirmPeople : []" :multiple="role !== 'CONFIRM'" /></el-form-item>
+          <el-form-item v-for="(label, role) in roleLabels" :key="role" :label="label"><PeopleSelector v-model="convertRoles[role]" kind="requirement" :selected="role === 'CONFIRM' ? defaultConfirmPeople : []" multiple /></el-form-item>
         </template>
         <el-form-item v-else label="目标需求" required>
           <ScopedObjectSelector v-model="convertForm.requirement_id" kind="requirement" :allowed="canLinkExisting" :active="convertDialog && convertForm.type === 'LINK_EXISTING'" :disabled="convertSubmitting" />

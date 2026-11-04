@@ -902,7 +902,106 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /feedbacks/batch-actions:
+    post:
+      tags:
+      - Feedback
+      summary: 批量流程操作
+      operationId: batch_feedback_actions_api_v1_feedbacks_batch_actions_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeedbackBatchAction'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchActionResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearerAuth: []
+      description: 每次最多50条且ID不可重复；逐项沿用单条操作权限、DataScope、阶段人员、内容确认、原因和revision门禁。每项独立事务，返回逐项结果；已成功项不自动重放。不支持批量发布、删除或跨阶段跳转。
   /feedbacks/{feedback_id}:
+    delete:
+      tags:
+      - Feedback
+      summary: 软删除
+      operationId: delete_feedback_api_v1_feedbacks__feedback_id__delete
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: feedback_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Feedback Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EntityDelete'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntityDeleted'
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 业务状态或 revision 冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: 需现有编辑权限及数据范围；仅待受理反馈/待确认需求，且无需求、反馈、版本或重复反馈引用。保留行、附件、评论、审计及通知历史，普通读取和新关联不可再访问。revision
+        CAS，删除原因必填。
     get:
       tags:
       - Feedback
@@ -1534,7 +1633,106 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /requirements/batch-actions:
+    post:
+      tags:
+      - Requirement
+      summary: 批量流程操作
+      operationId: batch_requirement_actions_api_v1_requirements_batch_actions_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequirementBatchAction'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchActionResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearerAuth: []
+      description: 每次最多50条且ID不可重复；逐项沿用单条操作权限、DataScope、阶段人员、内容确认、原因和revision门禁。每项独立事务，返回逐项结果；已成功项不自动重放。不支持批量发布、删除或跨阶段跳转。
   /requirements/{requirement_id}:
+    delete:
+      tags:
+      - Requirement
+      summary: 软删除
+      operationId: delete_requirement_api_v1_requirements__requirement_id__delete
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: requirement_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Requirement Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EntityDelete'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntityDeleted'
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 业务状态或 revision 冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: 需现有编辑权限及数据范围；仅待受理反馈/待确认需求，且无需求、反馈、版本或重复反馈引用。保留行、附件、评论、审计及通知历史，普通读取和新关联不可再访问。revision
+        CAS，删除原因必填。
     get:
       tags:
       - Requirement
@@ -1741,8 +1939,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-      description: 六阶段流转：开发参与人提交验收，可指定多名验收人，其中任意一名有效验收人确认即可进入 DONE，其他验收人无需重复确认；不再要求每名开发人员单独确认。记录实际操作人，并通过 revision CAS 防止重复流转。人员资格、内容确认、原因、审计及事务回滚统一校验。ONLINE
-        仅由成功发布产生。
+      description: 六阶段流转：开发参与人提交验收，可指定多名验收人，其中任意一名有效验收人确认即可进入 DONE，其他验收人无需重复确认；不再要求每名开发人员单独确认。记录实际操作人，并通过
+        revision CAS 防止重复流转。人员资格、内容确认、原因、审计及事务回滚统一校验。ONLINE 仅由成功发布产生。
   /versions:
     get:
       tags:
@@ -2801,13 +2999,12 @@ paths:
       - mail
       summary: 取消绑定当前账号的通知邮箱
       operationId: unbind_email
-      description: 原子清空当前邮箱、验证状态及未完成验证码；保留邮件偏好、站内通知和账号知晓记录。旧 revision 返回 409，最新 revision 重复解绑不重复写入或审计。未开始投递的旧邮件会跳过，已经发送的邮件不撤回。
       requestBody:
-        required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/EmailUnbindRequest'
+        required: true
       responses:
         '200':
           description: Successful Response
@@ -2815,12 +3012,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MailPreferencesOut'
-        '401':
-          description: 未登录或登录凭证不可用
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
         '409':
           description: 业务状态或 revision 冲突
           content:
@@ -2833,8 +3024,15 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
       security:
       - bearerAuth: []
+      description: 原子清空当前邮箱、验证状态及未完成验证码；保留邮件偏好、站内通知和账号知晓记录。旧 revision 返回 409，最新 revision 重复解绑不重复写入或审计。未开始投递的旧邮件会跳过，已经发送的邮件不撤回。
   /me/email-verification:
     post:
       tags:
@@ -4443,6 +4641,64 @@ components:
       - permission_codes
       title: AuthMe
       description: The safe account shape returned only for the authenticated user.
+    BatchActionItem:
+      properties:
+        id:
+          type: integer
+          minimum: 1.0
+          title: 记录编号
+        revision:
+          type: integer
+          minimum: 1.0
+          title: 修订号
+      type: object
+      required:
+      - id
+      - revision
+      title: BatchActionItem
+    BatchActionResponse:
+      properties:
+        results:
+          items:
+            $ref: '#/components/schemas/BatchActionResult'
+          type: array
+          title: 逐项结果
+      type: object
+      required:
+      - results
+      title: BatchActionResponse
+    BatchActionResult:
+      properties:
+        id:
+          type: integer
+          title: 记录编号
+        success:
+          type: boolean
+          title: 是否成功
+        status_code:
+          type: integer
+          title: 响应状态码
+        code:
+          type: integer
+          title: 业务代码
+        message:
+          type: string
+          title: 结果说明
+        revision:
+          anyOf:
+          - type: integer
+            title: 修订号
+          - type: 'null'
+          title: 修订号
+      type: object
+      required:
+      - id
+      - success
+      - status_code
+      - code
+      - message
+      - revision
+      title: BatchActionResult
     BlockingRequirement:
       properties:
         id:
@@ -5139,6 +5395,17 @@ components:
       - REQUIREMENT
       - VERSION
       title: EditingEntityType
+    EmailUnbindRequest:
+      properties:
+        revision:
+          type: integer
+          minimum: 1.0
+          title: 修订号
+      additionalProperties: false
+      type: object
+      required:
+      - revision
+      title: EmailUnbindRequest
     EmailVerificationConfirm:
       properties:
         revision:
@@ -5170,6 +5437,41 @@ components:
       - revision
       - email
       title: EmailVerificationRequest
+    EntityDelete:
+      properties:
+        revision:
+          type: integer
+          minimum: 1.0
+          title: 修订号
+        reason:
+          type: string
+          maxLength: 500
+          minLength: 2
+          title: 操作原因
+      type: object
+      required:
+      - revision
+      - reason
+      title: EntityDelete
+    EntityDeleted:
+      properties:
+        id:
+          type: integer
+          title: 记录编号
+        revision:
+          type: integer
+          minimum: 1.0
+          title: 修订号
+        deleted:
+          type: boolean
+          const: true
+          title: 已删除
+          default: true
+      type: object
+      required:
+      - id
+      - revision
+      title: EntityDeleted
     ErrorResponse:
       properties:
         code:
@@ -5195,6 +5497,34 @@ components:
       - request_id
       title: ErrorResponse
       type: object
+    FeedbackBatchAction:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/BatchActionItem'
+          type: array
+          maxItems: 50
+          minItems: 1
+          title: 待操作记录
+        reason:
+          anyOf:
+          - type: string
+            maxLength: 500
+            minLength: 2
+            title: 原因
+          - type: 'null'
+          title: 操作原因
+        action:
+          type: string
+          enum:
+          - ACCEPTED
+          - CLOSED
+          title: 流程操作
+      type: object
+      required:
+      - items
+      - action
+      title: FeedbackBatchAction
     FeedbackCollaborationOut:
       properties:
         revision:
@@ -5269,6 +5599,14 @@ components:
           - type: string
           - type: 'null'
           title: 验收标准
+        description_format:
+          type: string
+          enum:
+          - PLAIN
+          - HTML
+          title: 需求描述格式
+          default: PLAIN
+          description: 旧数据默认 PLAIN；HTML 使用服务端白名单清洗，详情和历史快照按格式安全显示。更新未提供时保留原格式。
         participants:
           items:
             $ref: '#/components/schemas/ParticipantInput'
@@ -5745,17 +6083,6 @@ components:
           default: true
       type: object
       title: LogoutResponse
-    EmailUnbindRequest:
-      additionalProperties: false
-      properties:
-        revision:
-          type: integer
-          minimum: 1
-          title: 修订号
-      type: object
-      required:
-      - revision
-      title: EmailUnbindRequest
     MailNoticeAcknowledge:
       properties:
         revision:
@@ -5964,7 +6291,6 @@ components:
       - unread_count
       title: NotificationUnreadCount
     ParticipantInput:
-      description: 环节人员。CONFIRM 最多一人；DESIGN、DEVELOP、ACCEPT 可多人。同一人员与环节组合不能重复。ACCEPT 任意一名有效人员验收通过即可完成需求。
       properties:
         user_id:
           type: integer
@@ -5984,6 +6310,7 @@ components:
       - user_id
       - role
       title: ParticipantInput
+      description: 环节人员均可多选。同一人员与环节组合不能重复；CONFIRM 和 ACCEPT 均由任意一名有效且有权限的人员操作即可推进，保留实际操作人及人员快照。
     ParticipantOut:
       properties:
         user_id:
@@ -6345,6 +6672,36 @@ components:
       - revision
       - version_revision
       title: RemoveRequirementRequest
+    RequirementBatchAction:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/BatchActionItem'
+          type: array
+          maxItems: 50
+          minItems: 1
+          title: 待操作记录
+        reason:
+          anyOf:
+          - type: string
+            maxLength: 500
+            minLength: 2
+            title: 原因
+          - type: 'null'
+          title: 操作原因
+        action:
+          type: string
+          enum:
+          - CONFIRM
+          - DEVELOPING
+          - TESTING
+          - DONE
+          title: 流程操作
+      type: object
+      required:
+      - items
+      - action
+      title: RequirementBatchAction
     RequirementCreate:
       properties:
         title:
@@ -6352,6 +6709,7 @@ components:
           maxLength: 200
           minLength: 2
           title: 需求标题
+          description: 去除首尾空白后至少两个可见字符；空字符串、纯空白或仅不可见字符返回422。
         requirement_type:
           type: string
           maxLength: 32
@@ -6385,6 +6743,14 @@ components:
         description:
           type: string
           title: 描述
+        description_format:
+          type: string
+          enum:
+          - PLAIN
+          - HTML
+          title: 需求描述格式
+          default: PLAIN
+          description: 旧数据默认 PLAIN；HTML 使用服务端白名单清洗，详情和历史快照按格式安全显示。更新未提供时保留原格式。
         acceptance_criteria:
           anyOf:
           - type: string
@@ -6459,6 +6825,14 @@ components:
         description:
           type: string
           title: 描述
+        description_format:
+          type: string
+          enum:
+          - PLAIN
+          - HTML
+          title: 需求描述格式
+          default: PLAIN
+          description: 旧数据默认 PLAIN；HTML 使用服务端白名单清洗，详情和历史快照按格式安全显示。更新未提供时保留原格式。
         acceptance_criteria:
           anyOf:
           - type: string
@@ -6572,8 +6946,10 @@ components:
           anyOf:
           - type: string
             maxLength: 200
+            minLength: 2
           - type: 'null'
           title: 需求标题
+          description: 去除首尾空白后至少两个可见字符；空字符串、纯空白或仅不可见字符返回422。
         requirement_type:
           anyOf:
           - type: string
@@ -6606,6 +6982,14 @@ components:
           - type: string
           - type: 'null'
           title: 描述
+        description_format:
+          type: string
+          enum:
+          - PLAIN
+          - HTML
+          title: 需求描述格式
+          default: PLAIN
+          description: 旧数据默认 PLAIN；HTML 使用服务端白名单清洗，详情和历史快照按格式安全显示。更新未提供时保留原格式。
         acceptance_criteria:
           anyOf:
           - type: string
@@ -7267,6 +7651,7 @@ components:
           type: string
           enum:
           - CONFIRM
+          - REOPEN
           - REQUEST_CHANGES
           - DESIGN_PENDING
           - DESIGN_START
@@ -7285,6 +7670,7 @@ components:
       - revision
       - action
       title: WorkflowAction
+      description: REOPEN 仅允许已取消且不属于已发布版本的需求，原因必填；回到 DRAFT 并清除当前确认资格，保留历史、人员及关联。
     WorkflowOut:
       properties:
         revision:

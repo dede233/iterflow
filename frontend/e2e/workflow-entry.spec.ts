@@ -18,7 +18,8 @@ async function setup(page: Page, options: any = {}) {
     }
     if (method === 'POST' && path === '/api/v1/requirements/1/workflow') {
       expect(body.revision).toBe(item.revision); writes.push(body)
-      if (body.action === 'CONFIRM') confirmed = true
+      if (body.action === 'CONFIRM') { confirmed = true; if (item.status === 'DRAFT') item.status = 'CONFIRMED' }
+      else if (body.action === 'REOPEN') { expect(body.reason?.trim().length).toBeGreaterThan(0); item.status = 'DRAFT'; confirmed = false }
       else if (body.action === 'DESIGN_DONE') designStatus = 'DONE'
       else throw new Error(`Unexpected workflow ${body.action}`)
       item.revision++
@@ -47,7 +48,7 @@ async function setup(page: Page, options: any = {}) {
     return route.fulfill({ json: responses[path] })
   })
   await page.goto(feedback ? '/#/feedbacks/1' : '/#/requirements/1')
-  if (!feedback) await page.getByRole('button', { name: '展开需求进度', exact: true }).click()
+  if (!feedback && options.expanded !== false) await page.getByRole('button', { name: '展开需求进度', exact: true }).click()
   return { writes, unexpected, errors }
 }
 function clean(audit: Awaited<ReturnType<typeof setup>>) { expect(audit.unexpected).toEqual([]); expect(audit.errors).toEqual([]) }
@@ -153,5 +154,49 @@ for (const width of [375, 1440]) {
     await expect(dialog.getByRole('textbox')).toHaveValue('已取得指定人员授权')
     await expect(page.getByText('你没有权限执行该操作', { exact: true })).toHaveCount(0)
     expect(audit.writes).toHaveLength(1); clean(audit)
+  })
+}
+
+for (const width of [375, 768, 1440]) {
+  test(`collapsed actions and cancellation reopening at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    const audit = await setup(page, { status: 'CANCELED', expanded: false })
+    await expect(page.getByRole('list', { name: '需求阶段' })).toHaveCount(0)
+    await page.getByRole('button', { name: '重新打开需求', exact: true }).click()
+    const dialog = page.getByRole('dialog', { name: '重新打开需求', exact: true })
+    await dialog.getByRole('button', { name: '确认操作', exact: true }).click()
+    expect(audit.writes).toHaveLength(0)
+    await dialog.getByRole('textbox').fill('重新评估后继续推进')
+    await dialog.getByRole('button', { name: '确认操作', exact: true }).click()
+    await expect(dialog).toBeHidden()
+    await expect(page.getByRole('button', { name: '确认当前内容', exact: true })).toBeVisible()
+    expect(audit.writes[0].action).toBe('REOPEN')
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    clean(audit)
+  })
+  test(`multiple confirmers and online read-only progress at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    const audit = await setup(page, { status: 'DRAFT', confirmed: false })
+    await page.getByRole('button', { name: '调整确认人', exact: true }).click()
+    const people = page.getByRole('dialog', { name: '选择需求确认人', exact: true })
+    await people.locator('.el-select__wrapper').click()
+    const listId = await people.getByRole('combobox').getAttribute('aria-controls')
+    await page.locator(`[id="${listId}"]`).getByRole('option', { name: '验收小李', exact: true }).click()
+    await people.getByRole('combobox').press('Escape')
+    await people.getByRole('button', { name: '保存人员', exact: true }).click()
+    await expect(people).toBeHidden()
+    expect(audit.writes[0].participants.filter((person: any) => person.role === 'CONFIRM')).toEqual([
+      { role: 'CONFIRM', user_id: 1 }, { role: 'CONFIRM', user_id: 2 },
+    ])
+    await page.getByRole('button', { name: '收起需求进度', exact: true }).click()
+    await expect(page.getByRole('button', { name: '确认当前内容', exact: true })).toBeVisible()
+    clean(audit)
+    await page.goto('about:blank')
+    await page.unroute('**/api/v1/**')
+    const onlineAudit = await setup(page, { status: 'ONLINE' })
+    await expect(page.locator('.progress-actions')).toHaveCount(0)
+    await expect(page.locator('.step-people-button')).toHaveCount(0)
+    await expect(page.getByRole('button', { name: '编辑', exact: true })).toHaveCount(0)
+    clean(onlineAudit)
   })
 }

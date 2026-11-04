@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Self
+from typing import Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -13,6 +13,8 @@ from app.models.enums import (
 )
 from app.schemas.collaboration import ParticipantInput, ParticipantsChange
 from app.schemas.common import PageResult
+from app.schemas.content_validation import requirement_title
+from app.services.rich_text import sanitize_requirement_description
 
 
 class FeedbackCreate(BaseModel):
@@ -105,6 +107,7 @@ class FeedbackConvertRequest(BaseModel):
     priority: Priority = Priority.P2
     description: str | None = Field(default=None, min_length=2)
     acceptance_criteria: str | None = None
+    description_format: Literal["PLAIN", "HTML"] = "PLAIN"
     participants: list[ParticipantInput] = Field(default_factory=list, max_length=100)
     # LINK_EXISTING field
     requirement_id: int | None = None
@@ -122,6 +125,12 @@ class FeedbackConvertRequest(BaseModel):
             ]
             if missing:
                 raise ValueError(f"CREATE_NEW 需要字段: {', '.join(missing)}")
+            assert self.description is not None
+            assert self.requirement_title is not None
+            self.requirement_title = requirement_title(self.requirement_title)
+            self.description = sanitize_requirement_description(
+                self.description, self.description_format
+            )
         else:  # LINK_EXISTING
             if self.requirement_id is None:
                 raise ValueError("LINK_EXISTING 需要 requirement_id")

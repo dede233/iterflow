@@ -56,6 +56,8 @@ TEST_PORT = 57358 if PORTABLE else 57357
 TEST_CONTAINER = "iterflow-mysql57-portable-db" if PORTABLE else "iterflow-mysql57-proof-db"
 TEST_CONTAINER = os.environ.get("ITERFLOW_TEST_MYSQL_CONTAINER", TEST_CONTAINER)
 TEST_PROJECT = "iterflow-mysql57-portable" if PORTABLE else "iterflow-mysql57-proof"
+TEST_PROJECT = os.environ.get("ITERFLOW_TEST_MYSQL_PROJECT", TEST_PROJECT)
+TEST_IMAGE = os.environ.get("ITERFLOW_TEST_MYSQL_IMAGE", "mysql:5.7.44")
 TEST_VERSION = "5.7.44-log" if PORTABLE else "5.7.44"
 
 
@@ -1002,7 +1004,7 @@ def test_mysql_restart_and_isolated_backup_restore(mysql_api, monkeypatch, tmp_p
     )
     container = TEST_CONTAINER
     inspect_info = json.loads(subprocess.check_output(["docker", "inspect", container]))[0]
-    assert inspect_info["Config"]["Image"] == "mysql:5.7.44"
+    assert inspect_info["Config"]["Image"] == TEST_IMAGE
     assert inspect_info["Config"]["Labels"]["com.docker.compose.project"] == TEST_PROJECT
     dump = subprocess.check_output(
         [

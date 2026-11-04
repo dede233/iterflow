@@ -154,6 +154,15 @@ class FeedbackService:
         )
 
     def attach_file(self, feedback_id: int, file_id: int, operator_id: int) -> None:
+        if (
+            self.db.scalar(
+                select(Feedback.id)
+                .where(Feedback.id == feedback_id, Feedback.deleted_at.is_(None))
+                .with_for_update()
+            )
+            is None
+        ):
+            raise NotFoundError("反馈不存在")
         existing = self.db.scalar(
             select(AttachmentRelation.id).where(
                 AttachmentRelation.entity_type == "FEEDBACK",
@@ -264,6 +273,9 @@ class FeedbackService:
                     422,
                     {"duplicate_of_id": payload.duplicate_of_id},
                 )
+            self.db.refresh(target_feedback, with_for_update=True)
+            if target_feedback.deleted_at is not None:
+                raise NotFoundError("目标反馈不存在")
             new_duplicate_of_id = payload.duplicate_of_id
         elif target is ManualFeedbackStatus.NEW:
             # Reopen always clears the duplicate link.
@@ -331,15 +343,12 @@ class FeedbackService:
         requirement link + the feedback status flip + the relation row + audit
         all commit together, or nothing does. No version association here.
         """
-        if self.db.get_bind().dialect.name == "mysql":
-            feedback = self.db.scalar(
-                select(Feedback)
-                .where(Feedback.id == feedback_id)
-                .with_for_update()
-                .execution_options(populate_existing=True)
-            )
-        else:
-            feedback = self.repo.get(feedback_id)
+        feedback = self.db.scalar(
+            select(Feedback)
+            .where(Feedback.id == feedback_id, Feedback.deleted_at.is_(None))
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
         if not feedback:
             raise NotFoundError("反馈不存在")
         if feedback.revision != payload.revision:
@@ -364,6 +373,7 @@ class FeedbackService:
                 system_id=feedback.system_id,
                 module_id=feedback.module_id,
                 description=payload.description,
+                description_format=payload.description_format,
                 acceptance_criteria=payload.acceptance_criteria,
                 created_by=operator_id,
                 updated_by=operator_id,
@@ -384,6 +394,9 @@ class FeedbackService:
                 requirement_id, viewer_id, viewer_scope
             )
             if linked is None:
+                raise NotFoundError("目标需求不存在")
+            self.db.refresh(linked, with_for_update=True)
+            if linked.deleted_at is not None:
                 raise NotFoundError("目标需求不存在")
             target = linked
 
@@ -445,7 +458,10 @@ class FeedbackService:
         statement = (
             select(Feedback, RequirementFeedback.is_primary)
             .join(RequirementFeedback, RequirementFeedback.feedback_id == Feedback.id)
-            .where(RequirementFeedback.requirement_id == requirement_id)
+            .where(
+                RequirementFeedback.requirement_id == requirement_id,
+                Feedback.deleted_at.is_(None),
+            )
         )
         if viewer_scope is not DataScope.ALL:
             statement = statement.where(Feedback.submitter_id == viewer_id)

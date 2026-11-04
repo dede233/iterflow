@@ -3,12 +3,13 @@ from typing import Any, cast
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import AppError, ConflictError, PermissionDenied
+from app.core.exceptions import AppError, ConflictError, NotFoundError, PermissionDenied
 from app.models.entities import Requirement, RequirementParticipant, RequirementStep, User, Version
 from app.models.enums import UserStatus
 from app.repositories.user_repository import UserRepository
 from app.schemas.workflow import DesignStatus, WorkflowAction, WorkflowOut, WorkflowRecord
 from app.services.collaboration_service import CollaborationService
+from app.services.revision_conflict import revision_conflict_data
 
 
 class WorkflowService:
@@ -65,6 +66,7 @@ class WorkflowService:
                     "content_revision": item.content_revision,
                     "actor_name": actor.display_name if actor else None,
                     "description": item.description,
+                    "description_format": getattr(item, "description_format", "PLAIN"),
                     "acceptance_criteria": item.acceptance_criteria,
                     "participants": [
                         p.model_dump()
@@ -132,10 +134,29 @@ class WorkflowService:
 
     def act(self, item: Requirement, payload: WorkflowAction, actor_id: int):
         self.lock(item)
-        if item.status in {"ONLINE", "CANCELED"}:
+        if getattr(item, "deleted_at", None) is not None:
+            raise NotFoundError("需求不存在")
+        if item.revision != payload.revision:
+            raise ConflictError("需求已修改, 请刷新后重试", revision_conflict_data(item))
+        if item.status == "ONLINE" or (item.status == "CANCELED" and payload.action != "REOPEN"):
             raise AppError(40961, "终态需求不能修改流程", 409)
         values: dict[str, Any] = {}
-        if payload.action == "REQUEST_CHANGES":
+        if payload.action == "REOPEN":
+            if item.status != "CANCELED":
+                raise AppError(40961, "仅已取消需求可以重新打开", 409)
+            if not payload.reason or not payload.reason.strip():
+                raise AppError(42261, "重新打开需求必须填写原因", 422)
+            version = (
+                self.db.get(Version, item.current_version_id, populate_existing=True)
+                if item.current_version_id
+                else None
+            )
+            if version and version.status == "RELEASED":
+                raise AppError(40961, "已发布版本中的需求不能重新打开", 409)
+            values.update(
+                status="DRAFT", confirmed_revision=None, legacy_completed=False, paused_from=None
+            )
+        elif payload.action == "REQUEST_CHANGES":
             if item.status != "DRAFT" or not payload.reason or not payload.reason.strip():
                 raise AppError(40961, "仅待确认阶段可要求补充, 请填写意见", 409)
             self.actor(item, "CONFIRM", actor_id, payload.reason)

@@ -92,15 +92,27 @@ def validate_mysql(
             and allow_legacy
         )
         if not (
-            head == "mysql57_0011"
+            head == "mysql57_0012"
             or legacy
-            or (allow_legacy and head in {"mysql57_0009", "mysql57_0010"})
+            or (allow_legacy and head in {"mysql57_0009", "mysql57_0010", "mysql57_0011"})
         ):
             raise RuntimeError("MySQL Alembic head is missing or unsupported")
-        if head == "mysql57_0011" and "notice_acknowledged_at" not in {
+        if head in {"mysql57_0011", "mysql57_0012"} and "notice_acknowledged_at" not in {
             c["name"] for c in inspect(connection).get_columns("sys_mail_preference")
         }:
             raise RuntimeError("Mail notice acknowledgement column is missing")
+        if head == "mysql57_0012":
+            for table in ("rd_requirement", "rd_feedback"):
+                columns = {c["name"] for c in inspect(connection).get_columns(table)}
+                required = {"deleted_at", "deleted_by"}
+                if table == "rd_requirement":
+                    required.add("description_format")
+                if not required <= columns:
+                    raise RuntimeError("Issue 4 compatibility columns are missing")
+            if "single_actor_role" in {
+                c["name"] for c in inspect(connection).get_columns("rd_requirement_actor")
+            }:
+                raise RuntimeError("Multiple confirmer migration is incomplete")
         portable = "iterflow_file_key_node" in tables
         business_tables = set(Base.metadata.tables)
         if legacy:
@@ -146,6 +158,7 @@ def validate_mysql(
                 "mysql57_0009",
                 "mysql57_0010",
                 "mysql57_0011",
+                "mysql57_0012",
             }:
                 expected |= {
                     "completion_rd_requirement_participant_" + event

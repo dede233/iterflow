@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import RichTextContent from './RichTextContent.vue'
 import { computed, onScopeDispose, ref, watch } from 'vue'
 import { getRequirement, listRequirementFeedbacks } from '@/api/requirements'
 import { useAuthStore } from '@/stores/auth'
@@ -69,7 +70,7 @@ onScopeDispose(() => { sequence++ })
         <el-descriptions-item label="来源">{{ item.source === 'FEEDBACK' ? '反馈转化' : '直接创建' }}</el-descriptions-item>
       </el-descriptions>
       <h3>需求描述</h3>
-      <p class="summary-content">{{ item.description || '暂无描述' }}</p>
+      <RichTextContent :content="item.description" :format="item.description_format" />
       <h3>验收标准</h3>
       <p class="summary-content">{{ item.acceptance_criteria || '尚未填写' }}</p>
       <template v-if="auth.hasPermission('rd.feedback.view')">

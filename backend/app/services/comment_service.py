@@ -1,7 +1,8 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.entities import Comment
+from app.core.exceptions import NotFoundError
+from app.models.entities import Comment, Feedback, Requirement
 from app.services.audit_service import AuditService
 
 
@@ -28,6 +29,21 @@ class CommentService:
     def create_for_entity(
         self, entity_type: str, entity_id: int, content: str, operator_id: int
     ) -> Comment:
+        model = (
+            Feedback
+            if entity_type == "FEEDBACK"
+            else (Requirement if entity_type == "REQUIREMENT" else None)
+        )
+        if (
+            model is not None
+            and self.db.scalar(
+                select(model.id)
+                .where(model.id == entity_id, model.deleted_at.is_(None))
+                .with_for_update()
+            )
+            is None
+        ):
+            raise NotFoundError()
         comment = Comment(
             entity_type=entity_type,
             entity_id=entity_id,

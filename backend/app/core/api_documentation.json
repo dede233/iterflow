@@ -965,6 +965,11 @@
         "priority": {
           "title": "优先级"
         },
+        "description_images": {
+          "title": "正文新图片",
+          "description": "正文临时图片编号对应的 PNG、JPEG 或 WebP 数据。仅随保存提交，单张最多 4 MiB，总计 8 MiB。",
+          "additionalProperties": {}
+        },
         "description": {
           "title": "描述",
           "anyOf": [
@@ -1941,6 +1946,11 @@
           "title": "环节人员",
           "items": {}
         },
+        "description_images": {
+          "title": "正文新图片",
+          "description": "正文临时图片编号对应的 PNG、JPEG 或 WebP 数据。仅随保存提交，单张最多 4 MiB，总计 8 MiB。",
+          "additionalProperties": {}
+        },
         "description": {
           "title": "描述"
         },
@@ -2146,6 +2156,11 @@
         "owner_id": {
           "title": "历史总负责人编号",
           "description": "历史总负责人只读；新写入不再接受 owner_id。"
+        },
+        "description_images": {
+          "title": "正文新图片",
+          "description": "正文临时图片编号对应的 PNG、JPEG 或 WebP 数据。仅随保存提交，单张最多 4 MiB，总计 8 MiB。",
+          "additionalProperties": {}
         },
         "description": {
           "title": "描述",
@@ -3136,6 +3151,15 @@
           "Requirement"
         ],
         "summary": "编辑需求"
+      }
+    },
+    "/requirements/{requirement_id}/images/{file_id}": {
+      "get": {
+        "tags": [
+          "Requirement"
+        ],
+        "summary": "查看需求正文图片",
+        "description": "按需求查看权限和数据范围读取已绑定的正文图片，包括确认历史引用。"
       }
     },
     "/requirements/{requirement_id}/feedbacks": {

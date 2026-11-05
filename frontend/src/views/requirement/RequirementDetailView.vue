@@ -252,7 +252,7 @@ onMounted(load)
           </el-descriptions-item>
           <el-descriptions-item label="优先级">{{ item.priority }}</el-descriptions-item>
           <el-descriptions-item label="需求描述" :span="isMobile ? 1 : 2">
-            <RichTextContent :content="item.description" :format="item.description_format" />
+            <RichTextContent :requirement-id="item.id" :content="item.description" :format="item.description_format" />
           </el-descriptions-item>
           <el-descriptions-item label="验收标准" :span="isMobile ? 1 : 2">
             <div class="multiline">{{ item.acceptance_criteria || '-' }}</div>
@@ -338,7 +338,7 @@ onMounted(load)
           </el-select>
         </el-form-item>
         <el-form-item label="需求描述">
-          <RichTextEditor v-model="editForm.description" :disabled="editSubmitting" label="需求描述" />
+          <RichTextEditor :requirement-id="item?.id" v-model="editForm.description" :disabled="editSubmitting" label="需求描述" />
         </el-form-item>
         <el-form-item label="验收标准">
           <el-input v-model="editForm.acceptance_criteria" type="textarea" :rows="3" />

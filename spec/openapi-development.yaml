@@ -2043,6 +2043,59 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /requirements/{requirement_id}/images/{file_id}:
+    get:
+      tags:
+      - Requirement
+      summary: 查看需求正文图片
+      operationId: get_description_image_api_v1_requirements__requirement_id__images__file_id__get
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: requirement_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Requirement Id
+      - name: file_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: File Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            image/png: {}
+            image/jpeg: {}
+            image/webp: {}
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: 按需求查看权限和数据范围读取已绑定的正文图片，包括确认历史引用。
   /requirements/{requirement_id}/feedbacks:
     get:
       tags:
@@ -5879,6 +5932,13 @@ components:
           $ref: '#/components/schemas/Priority'
           default: P2
           title: 优先级
+        description_images:
+          additionalProperties:
+            type: string
+          type: object
+          maxProperties: 12
+          title: 正文新图片
+          description: 正文临时图片编号对应的 PNG、JPEG 或 WebP 数据。仅随保存提交，单张最多 4 MiB，总计 8 MiB。
         description:
           anyOf:
           - type: string
@@ -7094,6 +7154,13 @@ components:
           type: array
           maxItems: 100
           title: 环节人员
+        description_images:
+          additionalProperties:
+            type: string
+          type: object
+          maxProperties: 12
+          title: 正文新图片
+          description: 正文临时图片编号对应的 PNG、JPEG 或 WebP 数据。仅随保存提交，单张最多 4 MiB，总计 8 MiB。
         description:
           type: string
           title: 描述
@@ -7331,6 +7398,13 @@ components:
           type: 'null'
           title: 历史总负责人编号
           description: 历史总负责人只读；新写入不再接受 owner_id。
+        description_images:
+          additionalProperties:
+            type: string
+          type: object
+          maxProperties: 12
+          title: 正文新图片
+          description: 正文临时图片编号对应的 PNG、JPEG 或 WebP 数据。仅随保存提交，单张最多 4 MiB，总计 8 MiB。
         description:
           anyOf:
           - type: string

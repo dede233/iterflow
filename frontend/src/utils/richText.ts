@@ -1,7 +1,7 @@
 import DOMPurify from 'dompurify'
 
 export type DescriptionFormat = 'PLAIN' | 'HTML'
-const tags = ['p', 'br', 'h2', 'h3', 'strong', 'b', 'em', 'i', 's', 'ul', 'ol', 'li', 'blockquote', 'pre', 'code', 'a']
+const tags = ['p', 'br', 'h2', 'h3', 'strong', 'b', 'em', 'i', 's', 'ul', 'ol', 'li', 'blockquote', 'pre', 'code', 'a', 'img']
 
 export function safeRichTextLink(value: string): boolean {
   if (!/^(https?:\/\/|mailto:)/i.test(value) || /[\u0000-\u0020\u007f]/.test(value)) return false
@@ -15,11 +15,14 @@ export function safeRichTextLink(value: string): boolean {
 export function sanitizeRichText(value: string): string {
   const fragment = DOMPurify.sanitize(value, {
     ALLOWED_TAGS: tags,
-    ALLOWED_ATTR: ['href', 'title', 'start'],
+    ALLOWED_ATTR: ['href', 'title', 'start', 'data-file-id'],
     ALLOW_DATA_ATTR: false,
     ALLOW_ARIA_ATTR: false,
     RETURN_DOM_FRAGMENT: true,
   })
+  for (const img of fragment.querySelectorAll('img')) {
+    if (!/^(?:[1-9][0-9]{0,17}|local-[a-f0-9-]{36})$/.test(img.getAttribute('data-file-id') || '')) img.remove()
+  }
   for (const link of fragment.querySelectorAll('a')) {
     if (!safeRichTextLink(link.getAttribute('href') || '')) link.removeAttribute('href')
     else {

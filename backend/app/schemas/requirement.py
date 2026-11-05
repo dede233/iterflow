@@ -25,6 +25,7 @@ class RequirementCreate(BaseModel):
     module_id: int | None = None
     owner_id: None = None
     participants: list[ParticipantInput] = Field(default_factory=list, max_length=100)
+    description_images: dict[str, str] = Field(default_factory=dict, max_length=12, repr=False)
     description: str
     description_format: Literal["PLAIN", "HTML"] = "PLAIN"
     acceptance_criteria: str | None = None
@@ -53,6 +54,7 @@ class RequirementUpdate(BaseModel):
     system_id: int | None = None
     module_id: int | None = None
     owner_id: None = None
+    description_images: dict[str, str] = Field(default_factory=dict, max_length=12, repr=False)
     description: str | None = None
     description_format: Literal["PLAIN", "HTML"] = "PLAIN"
     acceptance_criteria: str | None = None

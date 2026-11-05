@@ -564,6 +564,26 @@ export interface paths {
         patch: operations["update_requirement_api_v1_requirements__requirement_id__patch"];
         trace?: never;
     };
+    "/requirements/{requirement_id}/images/{file_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查看需求正文图片
+         * @description 按需求查看权限和数据范围读取已绑定的正文图片，包括确认历史引用。
+         */
+        get: operations["get_description_image_api_v1_requirements__requirement_id__images__file_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/requirements/{requirement_id}/feedbacks": {
         parameters: {
             query?: never;
@@ -2075,6 +2095,13 @@ export interface components {
              * @default P2
              */
             priority: components["schemas"]["Priority"];
+            /**
+             * 正文新图片
+             * @description 正文临时图片编号对应的 PNG、JPEG 或 WebP 数据。仅随保存提交，单张最多 4 MiB，总计 8 MiB。
+             */
+            description_images?: {
+                [key: string]: string;
+            };
             /** 描述 */
             description?: string | null;
             /** 验收标准 */
@@ -2717,6 +2744,13 @@ export interface components {
             owner_id?: null;
             /** 环节人员 */
             participants?: components["schemas"]["ParticipantInput"][];
+            /**
+             * 正文新图片
+             * @description 正文临时图片编号对应的 PNG、JPEG 或 WebP 数据。仅随保存提交，单张最多 4 MiB，总计 8 MiB。
+             */
+            description_images?: {
+                [key: string]: string;
+            };
             /** 描述 */
             description: string;
             /**
@@ -2844,6 +2878,13 @@ export interface components {
              * @description 历史总负责人只读；新写入不再接受 owner_id。
              */
             owner_id?: null;
+            /**
+             * 正文新图片
+             * @description 正文临时图片编号对应的 PNG、JPEG 或 WebP 数据。仅随保存提交，单张最多 4 MiB，总计 8 MiB。
+             */
+            description_images?: {
+                [key: string]: string;
+            };
             /** 描述 */
             description?: string | null;
             /**
@@ -5340,6 +5381,67 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_description_image_api_v1_requirements__requirement_id__images__file_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requirement_id: number;
+                file_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": unknown;
+                    "image/jpeg": unknown;
+                    "image/webp": unknown;
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Validation Error */

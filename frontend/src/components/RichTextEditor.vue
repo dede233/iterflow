@@ -1,20 +1,66 @@
 <script setup lang="ts">
-import { ref, useId, watch } from 'vue'
-import { EditorContent, useEditor } from '@tiptap/vue-3'
+import { onBeforeUnmount, provide, ref, useId, watch } from 'vue'
+import { EditorContent, Node, VueNodeViewRenderer, useEditor } from '@tiptap/vue-3'
+import EditorImageNode from './EditorImageNode.vue'
+import { rememberImage, forgetImage, pendingImage } from '@/utils/requirementImages'
 import StarterKit from '@tiptap/starter-kit'
 import { richTextPlainText, safeRichTextLink, sanitizeRichText } from '@/utils/richText'
 
-const props = withDefaults(defineProps<{ modelValue: string; disabled?: boolean; label?: string }>(), { disabled: false, label: '需求描述' })
+const props = withDefaults(defineProps<{ modelValue: string; requirementId?: number; disabled?: boolean; label?: string }>(), { disabled: false, label: '需求描述' })
 const emit = defineEmits<{ 'update:modelValue': [value: string]; blur: [] }>()
 const linkOpen = ref(false)
 const linkUrl = ref('')
 const linkError = ref('')
 const linkId = useId()
 let linkSelection = { from: 1, to: 1 }
+const picker = ref<HTMLInputElement>()
+const imageError = ref('')
+const owned = new Set<string>()
+provide('editorRequirementId', () => props.requirementId)
+onBeforeUnmount(() => owned.forEach(forgetImage))
+const picture = Node.create({
+  name: 'requirementImage', group: 'block', atom: true,
+  addAttributes: () => ({ fileId: { default: null, parseHTML: el => el.getAttribute('data-file-id'), renderHTML: attrs => ({ 'data-file-id': attrs.fileId }) } }),
+  parseHTML: () => [{ tag: 'img[data-file-id]' }],
+  renderHTML: ({ HTMLAttributes }) => ['img', HTMLAttributes],
+  addNodeView: () => VueNodeViewRenderer(EditorImageNode),
+})
+function insertImages(files: File[]) {
+  const instance = editor.value
+  if (!instance || props.disabled) return
+  imageError.value = ''
+  if (files.some(f => !['image/png', 'image/jpeg', 'image/webp'].includes(f.type) || f.size > 4 * 1024 * 1024)) {
+    imageError.value = '请选择 4 MiB 以内的 PNG、JPEG 或 WebP 图片'
+    return
+  }
+  let count = 0, bytes = files.reduce((n, f) => n + f.size, 0)
+  instance.state.doc.descendants(node => {
+    if (node.type.name === 'requirementImage') { count++; bytes += pendingImage(node.attrs.fileId)?.size || 0 }
+  })
+  if (count + files.length > 12 || bytes > 8 * 1024 * 1024) {
+    imageError.value = '每条需求最多 12 张图片，本次新增图片合计限 8 MiB'
+    return
+  }
+  const nodes = files.map(file => {
+    const fileId = rememberImage(file)
+    owned.add(fileId)
+    return { type: 'requirementImage', attrs: { fileId } }
+  })
+  const selection = instance.state.selection
+  const chain = instance.chain().focus()
+  if (selection.$from.nodeAfter?.type.name === 'requirementImage' && !selection.empty)
+    chain.insertContentAt(selection.to, nodes).run()
+  else chain.insertContent(nodes).run()
+}
+function choosePictures(event: Event) {
+  const input = event.target as HTMLInputElement
+  if (input.files?.length) insertImages(Array.from(input.files))
+  input.value = ''
+}
 const editor = useEditor({
   content: sanitizeRichText(props.modelValue),
   editable: !props.disabled,
-  extensions: [StarterKit.configure({
+  extensions: [picture, StarterKit.configure({
     heading: { levels: [2, 3] },
     horizontalRule: false,
     underline: false,
@@ -22,6 +68,13 @@ const editor = useEditor({
   })],
   editorProps: {
     attributes: { role: 'textbox', 'aria-label': props.label, 'aria-multiline': 'true' },
+    handleDOMEvents: { paste(_view, event) {
+      const files = Array.from(event.clipboardData?.files || [])
+      if (!files.length) return false
+      event.preventDefault()
+      insertImages(files)
+      return true
+    } },
     transformPastedHTML: sanitizeRichText,
   },
   onUpdate: ({ editor: current }) => {
@@ -87,6 +140,8 @@ function removeLink() {
       <button type="button" aria-label="斜体" :disabled="disabled" :aria-pressed="editor?.isActive('italic') || false" @mousedown.prevent @click="command('italic')"><em>斜体</em></button>
       <button type="button" :disabled="disabled" :aria-pressed="editor?.isActive('bulletList') || false" @mousedown.prevent @click="command('bulletList')">无序列表</button>
       <button type="button" :disabled="disabled" :aria-pressed="editor?.isActive('orderedList') || false" @mousedown.prevent @click="command('orderedList')">有序列表</button>
+      <button type="button" :disabled="disabled" @mousedown.prevent @click="picker?.click()">插入图片</button>
+      <input ref="picker" type="file" hidden multiple accept="image/png,image/jpeg,image/webp" @change="choosePictures">
       <button type="button" :disabled="disabled" :aria-expanded="linkOpen" @mousedown.prevent @click="openLink">链接</button>
       <button type="button" :disabled="disabled || !editor?.can().undo()" @mousedown.prevent @click="command('undo')">撤销</button>
       <button type="button" :disabled="disabled || !editor?.can().redo()" @mousedown.prevent @click="command('redo')">重做</button>
@@ -99,8 +154,9 @@ function removeLink() {
       <button type="button" @click="linkOpen = false">取消</button>
       <p v-if="linkError" role="alert">{{ linkError }}</p>
     </div>
+    <p v-if="imageError" role="alert">{{ imageError }}</p>
     <EditorContent :editor="editor" />
-    <p class="editor-hint">支持标题、列表、加粗和链接<span v-if="richTextPlainText(modelValue).length > 20000"> · 内容较长，建议精简后保存</span></p>
+    <p class="editor-hint">支持标题、列表、加粗和链接，可直接粘贴截图<span v-if="richTextPlainText(modelValue).length > 20000"> · 内容较长，建议精简后保存</span></p>
   </div>
 </template>
 <style scoped>

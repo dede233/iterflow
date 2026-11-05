@@ -1,11 +1,22 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { h, type VNodeChild } from 'vue'
 import { sanitizeRichText, type DescriptionFormat } from '@/utils/richText'
-const props = withDefaults(defineProps<{ content?: string | null; format?: DescriptionFormat }>(), { content: '', format: 'PLAIN' })
-const html = computed(() => props.format === 'HTML' ? sanitizeRichText(props.content || '') : '')
+import RequirementImage from './RequirementImage.vue'
+const props = withDefaults(defineProps<{ requirementId?: number; content?: string | null; format?: DescriptionFormat }>(), { content: '', format: 'PLAIN' })
+function renderNode(node: ChildNode): VNodeChild {
+  if (!(node instanceof HTMLElement)) return node.textContent || ''
+  if (node.tagName === 'IMG') return h(RequirementImage, { fileId: node.getAttribute('data-file-id')!, requirementId: props.requirementId })
+  return h(node.tagName.toLowerCase(), Object.fromEntries(Array.from(node.attributes, a => [a.name, a.value])),
+    Array.from(node.childNodes, renderNode))
+}
+function HtmlContent() {
+  const fragment = document.createElement('template')
+  fragment.innerHTML = sanitizeRichText(props.content || '')
+  return h('div', { class: 'rich-text-content' }, Array.from(fragment.content.childNodes, renderNode))
+}
 </script>
 <template>
-  <div v-if="format === 'HTML'" class="rich-text-content" v-html="html" />
+  <HtmlContent v-if="format === 'HTML'" />
   <div v-else class="rich-text-content plain">{{ content || '—' }}</div>
 </template>
 <style scoped>

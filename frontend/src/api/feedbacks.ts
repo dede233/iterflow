@@ -1,3 +1,4 @@
+import { withDescriptionImages } from '@/utils/requirementImages'
 import { api } from './client'
 import type {
   AttachmentItem,
@@ -27,8 +28,8 @@ export const updateFeedback = (id: number, payload: FeedbackUpdatePayload) =>
 export const changeFeedbackStatus = (id: number, payload: FeedbackStatusChangePayload) =>
   api.patch<Feedback>(`/feedbacks/${id}/status`, payload, { skipRevisionConflictAlert: true, skipForbiddenAlert: true }).then((r) => r.data)
 
-export const convertFeedback = (id: number, payload: ConvertFeedbackPayload) =>
-  api.post<Requirement>(`/feedbacks/${id}/convert`, payload, { skipRevisionConflictAlert: true }).then((r) => r.data)
+export const convertFeedback = async (id: number, payload: ConvertFeedbackPayload) =>
+  api.post<Requirement>(`/feedbacks/${id}/convert`, await withDescriptionImages(payload), { skipRevisionConflictAlert: true }).then((r) => r.data)
 
 // --- attachments (business relation stores file_id only) ---
 export const listFeedbackAttachments = (id: number) =>

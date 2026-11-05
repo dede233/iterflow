@@ -105,6 +105,7 @@ class FeedbackConvertRequest(BaseModel):
         default=None, min_length=1, max_length=32, pattern=r"^[A-Z][A-Z0-9_]*$"
     )
     priority: Priority = Priority.P2
+    description_images: dict[str, str] = Field(default_factory=dict, max_length=12, repr=False)
     description: str | None = Field(default=None, min_length=2)
     acceptance_criteria: str | None = None
     description_format: Literal["PLAIN", "HTML"] = "PLAIN"
@@ -115,6 +116,8 @@ class FeedbackConvertRequest(BaseModel):
     @model_validator(mode="after")
     def check_mode_fields(self) -> Self:
         ParticipantsChange(revision=1, participants=self.participants)
+        if self.type is FeedbackConvertType.LINK_EXISTING and self.description_images:
+            raise ValueError("关联已有需求不能添加正文图片")
         if self.type is FeedbackConvertType.LINK_EXISTING and self.participants:
             raise ValueError("关联已有需求不能覆盖环节人员")
         if self.type is FeedbackConvertType.CREATE_NEW:

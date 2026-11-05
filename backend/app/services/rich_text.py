@@ -1,5 +1,6 @@
 """Requirement content normalization. Plain legacy text is never interpreted as HTML."""
 
+import re
 import unicodedata
 from html.parser import HTMLParser
 
@@ -9,6 +10,7 @@ MAX_DESCRIPTION_LENGTH = 100_000
 # Both supported databases currently store descriptions in a TEXT column.
 MAX_DESCRIPTION_BYTES = 60_000
 TAGS = {
+    "img",
     "p",
     "br",
     "h2",
@@ -26,10 +28,11 @@ TAGS = {
     "code",
     "a",
 }
+IMAGE_REFERENCE = re.compile(r'<img data-file-id="([1-9][0-9]{0,17}|local-[a-f0-9-]{36})">')
 CLEANER = nh3.Cleaner(
     tags=TAGS,
     clean_content_tags={"script", "style", "iframe", "object", "template", "svg", "math"},
-    attributes={"a": {"href", "title"}, "ol": {"start"}},
+    attributes={"img": {"data-file-id"}, "a": {"href", "title"}, "ol": {"start"}},
     url_schemes={"http", "https", "mailto"},
     url_relative="deny",
     link_rel="noopener noreferrer nofollow",
@@ -55,6 +58,10 @@ def sanitize_requirement_description(value: str, format: str) -> str:
         raise ValueError("需求描述不能超过 100000 个字符")
     result = value if format == "PLAIN" else CLEANER.clean(value)
     if format == "HTML":
+        # Keep only our source-less file references. Never accept remote URLs or inline data.
+        result = re.sub(
+            r"<img[^>]*>", lambda m: m[0] if IMAGE_REFERENCE.fullmatch(m[0]) else "", result
+        )
         extractor = _TextExtractor()
         extractor.feed(result)
         visible = "".join(extractor.parts)

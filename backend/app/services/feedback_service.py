@@ -32,6 +32,7 @@ from app.schemas.feedback import (
 )
 from app.services.audit_service import AuditService
 from app.services.collaboration_service import CollaborationService
+from app.services.requirement_images import bind_images
 from app.services.revision_conflict import revision_conflict_data
 
 # Frozen Feedback state machine (V1.5). Keys are the current status; values are
@@ -380,6 +381,14 @@ class FeedbackService:
             )
             self.db.add(target)
             self.db.flush()
+            target.description = bind_images(
+                self.db,
+                target.id,
+                operator_id,
+                target.description,
+                target.description_format,
+                payload.description_images,
+            )
             CollaborationService(self.db).validate_people(
                 sorted({p.user_id for p in payload.participants}), "requirement", operator_id
             )

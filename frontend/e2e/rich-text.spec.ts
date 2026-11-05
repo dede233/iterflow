@@ -207,3 +207,43 @@ for (const width of [375, 1440]) {
     clean(audit)
   })
 }
+
+const pixel = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jZQAAAABJRU5ErkJggg=='
+for (const width of [375, 1440]) {
+  test(`inserts a file and pastes a screenshot, then opens the stored image at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    const audit = await setup(page)
+    await page.route('**/api/v1/requirements/1/images/*', route => route.fulfill({ contentType: 'image/png', body: Buffer.from(pixel, 'base64') }))
+    await page.goto('/#/requirements/1')
+    await page.getByRole('button', { name: '编辑', exact: true }).click()
+    const dialog = page.getByRole('dialog', { name: '编辑需求', exact: true })
+    const editor = dialog.getByRole('textbox', { name: '需求描述', exact: true })
+    await editor.fill('截图说明')
+    const chooser = page.waitForEvent('filechooser')
+    await dialog.getByRole('button', { name: '插入图片' }).click()
+    await (await chooser).setFiles({ name: 'local.png', mimeType: 'image/png', buffer: Buffer.from(pixel, 'base64') })
+    await expect(editor.getByRole('button', { name: '查看大图' })).toHaveCount(1)
+    await editor.evaluate((node, b64) => {
+      const clipboardData = new DataTransfer()
+      clipboardData.items.add(new File([Uint8Array.from(atob(b64), c => c.charCodeAt(0))], 'screenshot.png', {type: 'image/png'}))
+      node.dispatchEvent(new ClipboardEvent('paste', { clipboardData, bubbles: true, cancelable: true }))
+    }, pixel)
+    await expect(editor.getByRole('button', { name: '查看大图' })).toHaveCount(2)
+    await dialog.getByRole('button', { name: '保存', exact: true }).click()
+    await expect.poll(() => audit.writes.length).toBe(1)
+    const body = audit.writes[0].body
+    const keys = Object.keys(body.description_images)
+    expect(keys).toHaveLength(2)
+    for (const key of keys) expect(body.description).toContain(`data-file-id="${key}"`)
+    audit.requirement.description = keys.reduce((s, k, i) => s.replace(k, String(30 + i)), body.description)
+    await page.reload()
+    await page.getByRole('button', { name: '查看大图' }).first().click()
+    const viewer = page.getByRole('dialog', { name: '需求图片大图' })
+    await expect(viewer).toBeVisible()
+    expect(await viewer.locator('img').evaluate(el => el.naturalWidth)).toBe(1)
+    await page.keyboard.press('Escape')
+    await expect(viewer).toBeHidden()
+    await noOverflow(page, width)
+    clean(audit)
+  })
+}

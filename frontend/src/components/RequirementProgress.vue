@@ -212,7 +212,7 @@ function recordLabel(action: string) { return actionLabels[action] || requiremen
       </ol>
       <details class="progress-history"><summary>查看流转与确认记录（最近 {{ flow.records.length }} 条）</summary>
         <p v-if="!flow.records.length">尚无确认或流转记录。</p>
-        <article v-for="record in flow.records" :key="record.id"><strong>{{ recordLabel(record.action) }}</strong> · {{ record.actor_id ? `${record.detail.actor_name || '实际操作人'} #${record.actor_id}` : '历史迁移' }} · {{ formatLocalDateTime(record.created_at) }}<p v-if="record.detail.reason">{{ record.detail.reason }}</p><details v-if="record.detail.description"><summary>当时确认的内容</summary><RichTextContent :content="typeof record.detail.description === 'string' ? record.detail.description : ''" :format="record.detail.description_format === 'HTML' ? 'HTML' : 'PLAIN'" /><p class="multiline">{{ record.detail.acceptance_criteria }}</p></details></article>
+        <article v-for="record in flow.records" :key="record.id"><strong>{{ recordLabel(record.action) }}</strong> · {{ record.actor_id ? `${record.detail.actor_name || '实际操作人'} #${record.actor_id}` : '历史迁移' }} · {{ formatLocalDateTime(record.created_at) }}<p v-if="record.detail.reason">{{ record.detail.reason }}</p><details v-if="record.detail.description"><summary>当时确认的内容</summary><RichTextContent :requirement-id="item.id" :content="typeof record.detail.description === 'string' ? record.detail.description : ''" :format="record.detail.description_format === 'HTML' ? 'HTML' : 'PLAIN'" /><p class="multiline">{{ record.detail.acceptance_criteria }}</p></details></article>
       </details>
     </template>
     <p v-else>正在加载进度…</p>

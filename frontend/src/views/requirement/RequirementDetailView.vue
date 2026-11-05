@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import RequirementProgress from '@/components/RequirementProgress.vue'
 import { computed, defineAsyncComponent, onMounted, reactive, ref, watch } from 'vue'
+import RequirementNumber from '@/components/RequirementNumber.vue'
 import RichTextContent from '@/components/RichTextContent.vue'
 import DeleteEntityButton from '@/components/DeleteEntityButton.vue'
 import { plainTextToHtml, richTextPlainText } from '@/utils/richText'
@@ -230,7 +231,8 @@ onMounted(load)
     <ErrorState v-if="failed" title="需求加载失败" description="请检查网络或确认需求是否仍可访问。" retry-label="重新加载" @retry="load" />
     <template v-if="item">
 
-      <PageHeader :title="item.title.trim() || '未填写需求标题'" :eyebrow="item.requirement_no">
+      <PageHeader :title="item.title.trim() || '未填写需求标题'">
+        <template #eyebrow><RequirementNumber :number="item.requirement_no" /></template>
         <template #status>
           <StatusTag :status="item.status" :label="requirementStatusLabel[item.status]" :type="requirementStatusTagType(item.status)" />
         </template>

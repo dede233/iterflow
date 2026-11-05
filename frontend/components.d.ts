@@ -68,6 +68,7 @@ declare module 'vue' {
     PermissionAssignmentDrawer: typeof import('./src/components/PermissionAssignmentDrawer.vue')['default']
     ReleaseVersionDrawer: typeof import('./src/components/ReleaseVersionDrawer.vue')['default']
     RequirementImage: typeof import('./src/components/RequirementImage.vue')['default']
+    RequirementNumber: typeof import('./src/components/RequirementNumber.vue')['default']
     RequirementPeopleDialog: typeof import('./src/components/RequirementPeopleDialog.vue')['default']
     RequirementProgress: typeof import('./src/components/RequirementProgress.vue')['default']
     RequirementSummaryDialog: typeof import('./src/components/RequirementSummaryDialog.vue')['default']

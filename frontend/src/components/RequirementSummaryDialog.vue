@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import RequirementNumber from '@/components/RequirementNumber.vue'
 import RichTextContent from './RichTextContent.vue'
 import { computed, onScopeDispose, ref, watch } from 'vue'
 import { getRequirement, listRequirementFeedbacks } from '@/api/requirements'
@@ -61,7 +62,7 @@ onScopeDispose(() => { sequence++ })
       <el-button @click="retry++">重新加载</el-button>
     </div>
     <article v-else-if="item" class="requirement-summary">
-      <p class="summary-number">{{ item.requirement_no }}</p>
+      <RequirementNumber :number="item.requirement_no" />
       <h2>{{ item.title }}</h2>
       <el-descriptions :column="isMobile ? 1 : 2">
         <el-descriptions-item label="状态">{{ requirementStatusLabel[item.status] }}</el-descriptions-item>
@@ -93,7 +94,6 @@ onScopeDispose(() => { sequence++ })
 
 <style scoped>
 .requirement-summary { overflow-wrap: anywhere; }
-.summary-number { color: var(--if-text-3); }
 h2 { font-size: 20px; margin: 8px 0 20px; }
 h3 { font-size: 14px; margin: 20px 0 8px; }
 .summary-content { white-space: pre-wrap; line-height: 1.7; }

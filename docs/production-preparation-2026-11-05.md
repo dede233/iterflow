@@ -33,6 +33,8 @@ TEST 最近部署 API/worker 为 `ab8bd07`，Web 为 `ed797d6`，数据库 `mysq
 
 候选冻结 SHA、实际 run URL、八项结果、首次失败及最终双远端 master 读取结果归档到本轮本地交付目录 `/Users/xiaweiyi/Developer/deliverables/iterflow/2026-11-05/production-preparation/`。该文档定义检查要求，不提前宣告 CI 完成；最终结论以该目录实际生成的 `readiness-result.json` 和结果报告为准。无需为写入本身的 SHA 而循环生成文档提交。
 
+本轮 Fresh Self-Review 发现 `tools/smoke-mysql-package.py` 仍按旧规则手动推进版本状态，未随版本自动进度更新。修正为在需求确认/开发/提验/验收各阶段读取并断言派生进度，断言版本 revision 不被读取改变；旧手动推进须返回 40921 且进度/revision 保持，实际 publish 前 Release 为 0。保留既有实际发布、权限、CAS、通知、附件、三次重启和隔离备份恢复验收，不降低门禁。初始运行 [41963914224](https://github.com/dede233/iterflow/actions/runs/41963914224) 继续保留，修正后以新提交的完整八项结果判定；本复查不称独立终审。
+
 ## 后续正式升级操作清单（本轮不执行）
 
 1. 再核对候选 SHA/八项 CI、master 与两环境实际 SHA/schema、主机身份及残留任务。合并与部署分别依当次授权处理；若 master 有未知漂移，先停止合并路径并审查差异。

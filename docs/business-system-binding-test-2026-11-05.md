@@ -26,6 +26,27 @@ PostgreSQL 0015_system_binding / MySQL mysql57_0013 仅追加可空版本 system
 
 ## TEST 升级和回退边界
 
-当前尚未部署。目标仅 https://sx-kc.xyz:8444，数据库 iterflow_acceptance 0012→0013。正常宝塔文件上传归档，网页终端仅短控制命令。先检查来源、残留任务、正式保护和空间；备份 TEST 数据/附件/配置，隔离恢复和迁移验证后再切换。原列全表（含会话/审计）、91 触发器、函数、附件、SMTP/JWT配置均须保留。
+已于 2026-11-05 14:26:13（北京时间）完成部署。目标仅 https://sx-kc.xyz:8444，数据库 iterflow_acceptance 0012→0013。正常宝塔文件上传归档，网页终端仅短控制命令。先检查来源、残留任务、正式保护和空间；备份 TEST 数据/附件/配置，隔离恢复和迁移验证后再切换。原列全表（含会话/审计）、91 个触发器、函数、附件、SMTP/JWT 配置保留检查通过。
 
 DDL 前失败仅在旧数据结构一致时恢复原 TEST 应用；DDL 开始后不自动降级、恢复数据库或盲目重跑迁移，保持停写并前向修复。正式环境不连接数据库、不停止或重启。在线测试使用合成账号通过正常 API，不改用户邮箱，不实际发布。
+
+## 实际部署结果与在线验收
+
+- TEST API/worker/Web 冻结源码 `676e9dd6b389d59c23a067e6f3223ab6b5d41934`；数据库 `mysql57_0013`。预检、备份、隔离恢复迁移、切换和验收后独立 verify 全 PASS。
+- 主包 SHA256 `9cdf65653bf2eae67ce437cc281337891e7718fd87e1da5ccc8db92d049e4086`（117299200 字节），正常文件上传；控制器修正包仅修正预检基线核对，未改变冻结应用。
+- 29 张表原列完整数据、会话、审计和附件切换保留。隔离演练禁用 SMTP；TEST API/worker 各自邮件配置指纹保持原值。没有恢复/降级真实数据库或自动回填历史系统。
+- 正式容器/配置/公开入口指纹仍为原 `5401215`，未连接正式数据库；最终独立 verify 再次确认正式保护 PASS。
+- 服务器证据：`/opt/iterflow/upgrade-evidence/system-binding-test-20261105/` 下 `preflight.json`、`backup.json`、`rehearsal.json`、`deployed.json`、`data-preserved-before-worker.json`、`verified.json`。备份位于 `/opt/iterflow/backups/system-binding-test-{pre,post-migration}-*`，具体目录以备份回执为准。
+- 本地部署截图 `server-deployment-receipt.png`、`server-final-verify.png`；页面证据 `test-ui-desktop.png`、`test-ui-mobile.png`、`test-ui-legacy.png`，均在上述交付目录中。
+
+在线以未绑定邮箱的既有合成账号 `ceshi002` 通过正常 HTTPS API 完成 6 组检查：精简系统选项、创建版本并原子关联、空系统需求显式补齐、按系统筛选、确认/集中提验/验收通过、发布检查系统项通过但其他未完成需求仍阻止发布。未实际发布、未改账号权限或邮箱。
+
+在线限制：TEST 只有 1 个启用系统。初次检查在任何业务写入前停止并保留 `online-options-stop.json`；现有合成账号没有新增系统权限，未扩大权限或修改历史系统。跨系统关联/编辑拒绝和另一系统筛选在线未跑，已在隔离 PostgreSQL/MySQL 及本地 8 组 API 验收通过。在线结果 `online-acceptance.json` 明确记录此范围。
+
+保留供用户验收：版本 [TEST-BIND-1105-063453](https://sx-kc.xyz:8444/#/versions/27)，需求 [REQ-20261105-0002](https://sx-kc.xyz:8444/#/requirements/33)（待发布）、[REQ-20261105-0003](https://sx-kc.xyz:8444/#/requirements/34)（待确认，已显式补齐系统）。桌面版本归属/同系统候选、旧版本未指定提示与全部候选禁选、375px 需求详情通过。旧数据保持原样，模块管理入口隐藏。
+
+本任务本地测试资源已按名称/标签核对后清理，未清理既有 Preview 或保留 TEST。服务器本轮演练容器已停止，备份/证据保留。无推送、合并、tag/Release 或正式环境升级。等待用户 TEST 验收。
+
+## 后续回退操作约束
+
+当前已完成 DDL 且新增合成绑定数据，不可直接执行 Alembic downgrade 或恢复升级前数据库。优先前向修复；如必须恢复，应另行确认停写窗口、保存升级后增量并审核恢复方案。旧应用不执行新增系统门禁，因此不能把单纯换回旧镜像当作等价安全回退。原镜像、配置、升级前后备份与演练证据均保留，具体失败阶段由控制器记录，不自动破坏新数据。

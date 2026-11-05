@@ -165,7 +165,7 @@ test('Phase 7 real restricted users: presence, conflict, publish, notification a
     const editB = pageB.getByRole('dialog', { name: '编辑需求' })
     await expect(editB.getByText('P7 A 正在编辑此需求')).toBeVisible()
     await expect(editB.getByRole('button', { name: '保存' })).toBeEnabled()
-    const titleInput = (page: Page) => page.getByRole('dialog', { name: '编辑需求' }).locator('.el-form-item').filter({ hasText: '标题' }).locator('input')
+    const titleInput = (page: Page) => page.getByRole('dialog', { name: '编辑需求' }).getByRole('textbox', { name: '标题', exact: true })
     await titleInput(pageA).fill(`${title} saved A`)
     await titleInput(pageB).fill(`${title} local B`)
     const saveA = pageA.waitForResponse(r => r.url().endsWith(`/requirements/${requirement.id}`) && r.request().method() === 'PATCH')

@@ -212,6 +212,10 @@ const pixel = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AA
 for (const width of [375, 1440]) {
   test(`inserts a file and pastes a screenshot, then opens the stored image at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
+    // Exercise the same UUID fallback required by HTTP intranet origins in CI.
+    if (width === 375) await page.addInitScript(() => {
+      Object.defineProperty(crypto, 'randomUUID', { configurable: true, value: undefined })
+    })
     const audit = await setup(page)
     await page.route('**/api/v1/requirements/1/images/*', route => route.fulfill({ contentType: 'image/png', body: Buffer.from(pixel, 'base64') }))
     await page.goto('/#/requirements/1')

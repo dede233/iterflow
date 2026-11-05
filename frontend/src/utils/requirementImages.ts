@@ -1,7 +1,9 @@
+import { createRequestId } from './requestId'
+
 // New pictures stay in the editor until the requirement write succeeds.
 const pending = new Map<string, File>()
 export function rememberImage(file: File) {
-  const key = 'local-' + crypto.randomUUID()
+  const key = 'local-' + createRequestId()
   pending.set(key, file)
   return key
 }

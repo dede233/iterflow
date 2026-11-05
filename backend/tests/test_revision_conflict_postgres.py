@@ -21,6 +21,7 @@ from app.models.entities import (
     RequirementStep,
     User,
     Version,
+    VersionRequirement,
 )
 from app.models.enums import FeedbackType, RequirementSource, UserStatus
 from app.schemas.feedback import FeedbackUpdate
@@ -37,6 +38,7 @@ POSTGRES_TABLES = [
     BusinessModule.__table__,
     OperationLog.__table__,
     Version.__table__,
+    VersionRequirement.__table__,
     Requirement.__table__,
     RequirementStep.__table__,
     RequirementParticipant.__table__,

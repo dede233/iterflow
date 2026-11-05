@@ -2,6 +2,7 @@ from typing import cast
 
 from sqlalchemy.orm import Session
 
+from app.domain.version_progress import loaded_version_status
 from app.models.enums import DataScope, FeedbackStatus, RequirementStatus, VersionStatus
 from app.repositories.audit_repository import AuditRepository
 from app.repositories.dashboard_repository import DashboardRepository
@@ -84,7 +85,7 @@ class DashboardService:
                         id=version.id,
                         version_no=version.version_no,
                         name=version.name,
-                        status=cast(DashboardActiveVersionStatus, version.status),
+                        status=cast(DashboardActiveVersionStatus, loaded_version_status(version)),
                         planned_release_date=version.planned_release_date,
                         updated_at=version.updated_at,
                     )

@@ -11,6 +11,7 @@ class WorkflowAction(BaseModel):
     revision: int = Field(ge=1)
     action: Literal[
         "CONFIRM",
+        "REOPEN",
         "REQUEST_CHANGES",
         "DESIGN_PENDING",
         "DESIGN_START",

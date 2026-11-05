@@ -13,11 +13,13 @@ from app.core.database import get_db
 from app.core.security import create_access_token
 from app.main import app
 from app.models.entities import (
+    AttachmentRelation,
     BusinessModule,
     BusinessSystem,
     CollaborationEvent,
     Feedback,
     FeedbackRecipient,
+    FileObject,
     OperationLog,
     Permission,
     Requirement,
@@ -67,11 +69,23 @@ def req_api(tmp_path: Path) -> Iterator[Fixture]:
         RequirementStep.__table__,
         RequirementParticipant.__table__,
         RequirementFeedback.__table__,
+        FileObject.__table__,
+        AttachmentRelation.__table__,
     ):
         table.create(engine)
 
     listeners = []
-    for model in (User, Role, Permission, OperationLog, Feedback, Requirement, RequirementFeedback):
+    for model in (
+        User,
+        Role,
+        Permission,
+        OperationLog,
+        Feedback,
+        Requirement,
+        RequirementFeedback,
+        FileObject,
+        AttachmentRelation,
+    ):
         counter = iter(range(1, 100000))
 
         def assign_id(_mapper, _connection, target, *, _counter=counter):
@@ -606,3 +620,85 @@ def test_openapi_declares_requirement_and_convert_contract(spec_name):
     assert set(convert_type["enum"]) == {"CREATE_NEW", "LINK_EXISTING"}
     assert "requirement_id" in convert
     assert "requirement_title" in convert
+
+
+def test_description_image_access_and_history(req_api):
+    client, _session, headers, _ids = req_api
+    key = "local-787dbe55-0a0e-45a6-943a-9598ce8e6fda"
+    data = {
+        "description": f'<p>截图说明</p><img data-file-id="{key}">',
+        "description_format": "HTML",
+        "description_images": {key: "data:image/png;base64,iVBORw0KGgo="},
+    }
+    created = _create_req(client, headers["alice"], **data)
+    assert created["description"] == '<p>截图说明</p><img data-file-id="1">'
+    path = f"/api/v1/requirements/{created['id']}"
+    image = path + "/images/1"
+    assert client.get(image, headers=headers["alice"]).content == bytes.fromhex("89504e470d0a1a0a")
+    assert client.get(image, headers=headers["boss"]).status_code == 200
+    assert client.get(image, headers=headers["bob"]).status_code == 404
+    assert client.get(image).status_code == 401
+    other = _create_req(client, headers["alice"])
+    assert (
+        client.get(
+            f"/api/v1/requirements/{other['id']}/images/1", headers=headers["alice"]
+        ).status_code
+        == 404
+    )
+    assert (
+        client.patch(
+            f"/api/v1/requirements/{other['id']}",
+            headers=headers["alice"],
+            json={
+                "revision": 1,
+                "description_format": "HTML",
+                "description": created["description"],
+            },
+        ).status_code
+        == 422
+    )
+    assert (
+        client.patch(
+            path, headers=headers["alice"], json={"revision": 1, "description": "新说明"}
+        ).status_code
+        == 200
+    )
+    # Confirmed snapshots may still contain the old file reference.
+    assert client.get(image, headers=headers["alice"]).status_code == 200
+
+
+def test_convert_and_edit_description_images(req_api):
+    client, _session, headers, _ids = req_api
+    key = "local-12345678-1234-1234-1234-123456789abc"
+    data = {
+        "description": f'<p>反馈截图</p><img data-file-id="{key}">',
+        "description_format": "HTML",
+        "description_images": {key: "data:image/png;base64,iVBORw0KGgo="},
+    }
+    fb = _create_feedback(client, headers["alice"])
+    response = client.post(
+        f"/api/v1/feedbacks/{fb['id']}/convert",
+        headers=headers["alice"],
+        json={
+            **data,
+            "type": "CREATE_NEW",
+            "revision": fb["revision"],
+            "requirement_title": "图文需求",
+            "requirement_type": "FEATURE",
+        },
+    )
+    assert response.status_code == 200, response.text
+    req = response.json()
+    path = f"/api/v1/requirements/{req['id']}"
+    response = client.patch(
+        path,
+        headers=headers["alice"],
+        json={
+            **data,
+            "description": req["description"] + data["description"],
+            "revision": req["revision"],
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["description"].endswith('<img data-file-id="2">')
+    assert client.get(path + "/images/2", headers=headers["alice"]).status_code == 200

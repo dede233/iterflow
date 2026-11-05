@@ -1,0 +1,41 @@
+{
+  "status": "PASS",
+  "checks": [
+    "missing_confirmation_person_rejected_without_revision_or_history_change",
+    "delegated_confirmation_requires_reason",
+    "development_assignment_and_delegation_rules_preserved",
+    "missing_acceptor_and_unfinished_design_rejected_without_writes",
+    "one_of_multiple_acceptors_completes_with_actual_actor",
+    "reopen_resume_and_stale_revision_rules_preserved",
+    "changed_content_requires_reconfirmation_and_acceptor_can_return",
+    "dedicated_ui_records_prepared",
+    "feedback_receiver_and_delegated_reason_rules_preserved"
+  ],
+  "objects": {
+    "主流程": {
+      "id": 18,
+      "requirement_no": "REQ-20261103-0001"
+    },
+    "缺人提示": {
+      "id": 19,
+      "requirement_no": "REQ-20261103-0002"
+    },
+    "提交验收阻塞": {
+      "id": 20,
+      "requirement_no": "REQ-20261103-0003"
+    },
+    "管理员代操作": {
+      "id": 21,
+      "requirement_no": "REQ-20261103-0004"
+    },
+    "反馈受理": {
+      "id": 20,
+      "feedback_no": "FB-20261103-0001"
+    },
+    "反馈代受理界面": {
+      "id": 21,
+      "feedback_no": "FB-20261103-0002"
+    }
+  },
+  "completed_local": "2026-11-03T12:02:34+0800"
+}

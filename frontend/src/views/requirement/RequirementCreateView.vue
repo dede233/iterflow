@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import PeopleSelector from '@/components/PeopleSelector.vue'
 import type { Participant } from '@/api/collaboration'
-import { reactive, ref } from 'vue'
+import { defineAsyncComponent, reactive, ref } from 'vue'
+import { richTextPlainText } from '@/utils/richText'
+const RichTextEditor = defineAsyncComponent(() => import('@/components/RichTextEditor.vue'))
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 import { createRequirement } from '@/api/requirements'
@@ -30,11 +32,12 @@ function cancel(): void {
 }
 
 async function submit(): Promise<void> {
+  if (saving.value) return
   if (form.title.trim().length < 2) {
     ElMessage.warning('标题至少需要 2 个字符')
     return
   }
-  if (form.description.trim().length < 2) {
+  if (richTextPlainText(form.description).trim().length < 2) {
     ElMessage.warning('需求描述至少需要 2 个字符')
     return
   }
@@ -46,6 +49,7 @@ async function submit(): Promise<void> {
       requirement_type: form.requirement_type,
       priority: form.priority,
       description: form.description.trim(),
+      description_format: 'HTML',
       acceptance_criteria: form.acceptance_criteria.trim() || null,
     })
     ElMessage.success('需求已创建')
@@ -77,12 +81,12 @@ async function submit(): Promise<void> {
           <el-input v-model="form.title" maxlength="200" show-word-limit />
         </el-form-item>
         <el-form-item label="需求描述" required class="span-2">
-          <el-input v-model="form.description" type="textarea" :rows="6" />
+          <RichTextEditor v-model="form.description" :disabled="saving" label="需求描述" />
         </el-form-item>
         <el-form-item label="验收标准" class="span-2">
           <el-input v-model="form.acceptance_criteria" type="textarea" :rows="3" />
         </el-form-item>
-        <el-form-item v-for="(label, role) in roleLabels" :key="role" :label="label"><PeopleSelector v-model="roles[role]" kind="requirement" :multiple="role !== 'CONFIRM'" /></el-form-item>
+        <el-form-item v-for="(label, role) in roleLabels" :key="role" :label="label"><PeopleSelector v-model="roles[role]" kind="requirement" multiple /></el-form-item>
         </div>
         <div class="editor-actions">
           <el-button @click="cancel">取消</el-button>

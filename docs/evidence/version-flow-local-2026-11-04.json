@@ -1,0 +1,42 @@
+{
+  "date": "2026-11-04",
+  "base": "4912afb",
+  "branch": "codex/issue4-workflow-enhancements",
+  "scope": "Local only: create version with atomic requirement association, precise duplicate number errors, derived version progress",
+  "deployment": false,
+  "push": false,
+  "real_database_access": false,
+  "new_migration_relative_to_base": false,
+  "checks": {
+    "frontend_unit": 453,
+    "mock_browser": 303,
+    "final_create_browser": 12,
+    "contract_and_documentation": 20,
+    "postgres": {
+      "passed": 593,
+      "skipped": 1,
+      "skip_reason": "S3 endpoint not configured; storage unchanged",
+      "additional_main_chain": 5
+    },
+    "mysql_standard": {
+      "passed": 102,
+      "first_run_passed": 100,
+      "fixed_infrastructure_rechecks_passed": 2
+    },
+    "mysql_portable": {
+      "passed": 102,
+      "first_run_passed": 100,
+      "fixed_infrastructure_rechecks_passed": 2
+    },
+    "final_docker_browser": 2,
+    "ruff_files": 202,
+    "mypy_files": 114
+  },
+  "images": {
+    "api": "sha256:91d0492510629801b312274b04fdf901634979bef97e4dd5f5ff6360382c9626",
+    "web": "sha256:244626876f6b903845b4b174ea2f1d24dfade376f50d74d5e0c566538aea90d9"
+  },
+  "cleanup": "Task database/application containers, volumes, networks, test databases and Vite removed or confirmed stopped. Final images and evidence retained. Existing resources unchanged.",
+  "evidence_directory": "/Users/xiaweiyi/Developer/deliverables/iterflow/2026-11-04/version-flow",
+  "failure_history": "docs/version-workflow-simplification-2026-11-04.md"
+}

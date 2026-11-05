@@ -1,0 +1,42 @@
+{
+  "date": "2026-11-04",
+  "branch": "codex/issue4-workflow-enhancements",
+  "base": "fef9187d4080f7722bc671d4d5f521e34726cdd4",
+  "scope": "Local isolated test instances only; no push, merge, remote CI, deployment or real database access",
+  "frontend_unit": 443,
+  "mock_browser": 275,
+  "contract_documentation_and_content": 79,
+  "postgres_full": {
+    "passed": 485,
+    "s3_skipped": 1,
+    "separate_isolated_s3_passed": 1
+  },
+  "mysql57_portable": 91,
+  "mysql57_standard": 91,
+  "final_docker_real_browser": 2,
+  "final_docker_nul_rejection": 6,
+  "static_checks": [
+    "Ruff192",
+    "mypy112",
+    "TypeScript",
+    "OpenAPI generated type parity",
+    "Vite build",
+    "bundle size"
+  ],
+  "migrations": {
+    "postgres": "0014_issue4",
+    "mysql57": "mysql57_0012"
+  },
+  "final_images": {
+    "api": "sha256:19a607c54bfb26564ac360b242354af593a2de494b780ce943cb38e67b64f6bf",
+    "web": "sha256:0aa788a1223addfabfef2a300eae318a61b22291b6c3d233e9a941cc81c40c69"
+  },
+  "production_report": {
+    "requirement_no": "REQ-20261103-0002",
+    "reproduced": "Production source 96ba96e accepts empty title and description in RequirementUpdate",
+    "actual_audit_checked": false,
+    "real_record_modified": false
+  },
+  "failure_history": "docs/issue-4-improvements.md",
+  "raw_evidence_directory": "/Users/xiaweiyi/Developer/deliverables/iterflow/2026-11-04/issue4"
+}

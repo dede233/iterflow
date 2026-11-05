@@ -37,8 +37,8 @@ def test_released_cannot_be_requested_through_manual_version_status_schema():
         VersionStatusChange(status="RELEASED", revision=1)
 
 
-def test_ready_can_return_to_testing():
-    assert ManualVersionStatus.TESTING in VERSION_TRANSITIONS[VersionStatus.READY]
+def test_ready_progress_cannot_be_manually_rewound():
+    assert VERSION_TRANSITIONS[VersionStatus.READY] == {ManualVersionStatus.CANCELED}
 
 
 def test_feedback_is_not_a_requirement_or_version_lifecycle_mirror():

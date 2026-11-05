@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import { defineAsyncComponent } from 'vue'
+import DeleteEntityButton from '@/components/DeleteEntityButton.vue'
+import { plainTextToHtml, richTextPlainText } from '@/utils/richText'
+const RichTextEditor = defineAsyncComponent(() => import('@/components/RichTextEditor.vue'))
 import PeopleSelector from '@/components/PeopleSelector.vue'
 import type { Participant } from '@/api/collaboration'
 import CollaborationPeople from '@/components/CollaborationPeople.vue'
@@ -23,6 +27,8 @@ import ScopedRelationLink from '@/components/ScopedRelationLink.vue'
 import { useDetailNavigation } from '@/composables/useDetailNavigation'
 import { usePermission } from '@/composables/usePermission'
 import { useAuthStore } from '@/stores/auth'
+import type { FeedbackCollaboration } from '@/api/collaboration'
+import { actionErrorMessage } from '@/utils/actionError'
 import { useEditingPresence } from '@/composables/useEditingPresence'
 import { useRevisionConflict } from '@/composables/useRevisionConflict'
 import {
@@ -79,12 +85,15 @@ const comments = ref<CommentItem[]>([])
 const systems = ref<BusinessSystemItem[]>([])
 const modules = ref<BusinessModuleItem[]>([])
 const canReadSystems = computed(() => can(['sys.system.view', 'sys.system.manage']))
-const canEdit = computed(() => can('rd.feedback.edit'))
-const canAttach = computed(() => can('rd.feedback.create'))
+const canEdit = computed(() => can('rd.feedback.edit') && item.value?.status !== 'ONLINE')
+const collaboration = ref<FeedbackCollaboration | null>(null)
+const delegatedAcceptance = computed(() => !!collaboration.value?.recipients.length && !collaboration.value.recipients.some(p => p.id === auth.user?.id))
+const canAccept = computed(() => canEdit.value && !!collaboration.value && collaboration.value.revision === item.value?.revision && (!delegatedAcceptance.value || auth.user?.can_view_api_docs === true))
+const canAttach = computed(() => can('rd.feedback.create') && item.value?.status !== 'ONLINE')
 const canLinkExisting = computed(() => canLinkExistingRequirementFor(can))
 // Convert is available only while the feedback has no primary requirement yet.
 const canConvert = computed(
-  () => can('rd.feedback.convert') && !!item.value && item.value.main_requirement_id == null,
+  () => can('rd.feedback.convert') && !!item.value && item.value.status !== 'ONLINE' && item.value.main_requirement_id == null,
 )
 
 async function showConflict(error: unknown, revision: number, onReload?: (latest: Feedback) => void): Promise<void> {
@@ -100,7 +109,7 @@ async function showConflict(error: unknown, revision: number, onReload?: (latest
 }
 
 const statusActions = computed<StatusAction[]>(() =>
-  item.value ? availableStatusActions(item.value.status, canEdit.value) : [],
+  item.value ? availableStatusActions(item.value.status, canEdit.value).filter(a => a.target !== 'ACCEPTED' || canAccept.value) : [],
 )
 
 // --- convert to requirement dialog ---
@@ -129,7 +138,7 @@ function openConvert(): void {
     requirement_title: item.value.title,
     requirement_type: 'FEATURE',
     priority: 'P2',
-    description: item.value.description,
+    description: plainTextToHtml(item.value.description),
     acceptance_criteria: '',
     requirement_id: null,
   })
@@ -137,13 +146,13 @@ function openConvert(): void {
 }
 
 async function submitConvert(): Promise<void> {
-  if (!item.value) return
+  if (!item.value || convertSubmitting.value || !canConvert.value) return
   if (convertForm.type === 'LINK_EXISTING' && !canLinkExisting.value) {
     convertForm.type = 'CREATE_NEW'
     return
   }
   if (convertForm.type === 'CREATE_NEW') {
-    if (convertForm.requirement_title.trim().length < 2 || convertForm.description.trim().length < 2) {
+    if (convertForm.requirement_title.trim().length < 2 || richTextPlainText(convertForm.description).trim().length < 2) {
       ElMessage.warning('请填写需求标题与描述（至少 2 个字符）')
       return
     }
@@ -162,6 +171,7 @@ async function submitConvert(): Promise<void> {
       requirement_type: convertForm.requirement_type,
       priority: convertForm.priority,
       description: convertForm.description.trim() || undefined,
+      description_format: 'HTML',
       acceptance_criteria: convertForm.acceptance_criteria.trim() || null,
       requirement_id: convertForm.type === 'LINK_EXISTING' ? convertForm.requirement_id : null,
     })
@@ -186,18 +196,26 @@ const statusDialog = ref(false)
 const statusSubmitting = ref(false)
 const currentAction = ref<StatusAction | null>(null)
 const statusForm = reactive({ reason: '', duplicate_of_id: null as number | null })
+const statusError = ref('')
+const statusReasonRequired = computed(() => !!currentAction.value && (currentAction.value.needsReason || (currentAction.value.target === 'ACCEPTED' && delegatedAcceptance.value)))
+const statusReasonLabel = computed(() => currentAction.value?.target === 'ACCEPTED' && delegatedAcceptance.value ? '代受理原因（必填）' : '原因')
 
 function openStatusDialog(action: StatusAction): void {
   currentAction.value = action
   statusForm.reason = ''
+  statusError.value = ''
   statusForm.duplicate_of_id = null
   statusDialog.value = true
 }
 
 async function submitStatus(): Promise<void> {
-  if (!item.value || !currentAction.value) return
+  if (!item.value || !currentAction.value || statusSubmitting.value || !canEdit.value) return
   const action = currentAction.value
-  if (action.needsReason && !statusForm.reason.trim()) {
+  if (action.target === 'ACCEPTED' && !canAccept.value) {
+    statusError.value = '接收人信息尚未加载或你不是本反馈的接收人，请联系指定接收人受理。'
+    return
+  }
+  if (statusReasonRequired.value && !statusForm.reason.trim()) {
     ElMessage.warning('请填写原因')
     return
   }
@@ -205,7 +223,7 @@ async function submitStatus(): Promise<void> {
     ElMessage.warning('请填写重复目标反馈 ID')
     return
   }
-  statusSubmitting.value = true
+  statusSubmitting.value = true; statusError.value = ''
   try {
     if (action.needsDuplicate && statusForm.duplicate_of_id && can('rd.feedback.view')) await getFeedback(statusForm.duplicate_of_id)
     await changeFeedbackStatus(item.value.id, {
@@ -220,6 +238,7 @@ async function submitStatus(): Promise<void> {
     await load()
   } catch (error) {
     await showConflict(error, item.value.revision, () => { statusDialog.value = false })
+    statusError.value = actionErrorMessage(error)
   } finally {
     statusSubmitting.value = false
   }
@@ -341,6 +360,12 @@ async function load(): Promise<void> {
   }
 }
 
+function onDeleted() {
+  emit('updated')
+  if (props.embedded) emit('close')
+  else void router.replace(backTo.value)
+}
+
 onMounted(async () => {
   if (canReadSystems.value) {
     try {
@@ -367,6 +392,7 @@ onMounted(async () => {
         <template #actions>
         <RouterLink class="back-link" :to="backTo" @click="props.embedded && emit('close')">返回列表</RouterLink>
         <el-button v-if="canEdit" @click="openEdit">编辑</el-button>
+        <DeleteEntityButton v-if="canEdit && item.status === 'NEW' && !item.main_requirement_id" kind="feedbacks" :id="item.id" :revision="item.revision" :title="item.title" @refresh="load" @deleted="onDeleted" />
         <el-button v-if="canConvert" type="primary" @click="openConvert">转需求</el-button>
         <el-button
           v-for="action in statusActions"
@@ -379,7 +405,8 @@ onMounted(async () => {
         </el-button>
         </template>
       </PageHeader>
-      <CollaborationPeople v-if="can('rd.feedback.view')" kind="feedback" :id="item.id" :revision="item.revision" :editable="canEdit" @updated="load" />
+      <p v-if="item.status === 'NEW' && canEdit && collaboration && !canAccept" role="status">请联系指定接收人受理此反馈；如需调整接收人，可在“接收与处理”中设置。</p>
+      <CollaborationPeople v-if="can('rd.feedback.view')" kind="feedback" :id="item.id" :revision="item.revision" :editable="canEdit" @loaded="collaboration = $event" @updated="load" />
 
       <div class="detail-grid">
       <SectionCard title="反馈详情" description="问题内容与复现信息" class="detail-main">
@@ -446,7 +473,7 @@ onMounted(async () => {
           </li>
         </ul>
         <EmptyState v-else description="暂无评论" compact />
-        <div class="comment-form">
+        <div v-if="item.status !== 'ONLINE'" class="comment-form">
           <el-input v-model="commentText" type="textarea" :rows="2" placeholder="写下评论…" />
           <el-button
             type="primary"
@@ -471,12 +498,13 @@ onMounted(async () => {
         <el-form-item v-if="currentAction?.needsDuplicate" label="重复目标反馈 ID" required>
           <ScopedObjectSelector v-model="statusForm.duplicate_of_id" kind="feedback" :allowed="can('rd.feedback.view')" :active="statusDialog" :disabled="statusSubmitting" :exclude-id="feedbackId" />
         </el-form-item>
-        <el-form-item v-if="currentAction?.needsReason" label="原因" required>
+        <el-form-item v-if="statusReasonRequired" :label="statusReasonLabel" required>
           <el-input v-model="statusForm.reason" type="textarea" :rows="3" />
         </el-form-item>
-        <p v-if="currentAction && !currentAction.needsReason && !currentAction.needsDuplicate">
+        <p v-if="currentAction && !statusReasonRequired && !currentAction.needsDuplicate">
           确认将反馈状态改为「{{ feedbackStatusLabel[currentAction.target] }}」？
         </p>
+        <p v-if="statusError" role="alert">{{ statusError }}</p>
       </el-form>
       <template #footer>
         <el-button @click="statusDialog = false">取消</el-button>
@@ -573,12 +601,12 @@ onMounted(async () => {
             </el-select>
           </el-form-item>
           <el-form-item label="需求描述" required>
-            <el-input v-model="convertForm.description" type="textarea" :rows="5" />
+            <RichTextEditor v-model="convertForm.description" :disabled="convertSubmitting" label="需求描述" />
           </el-form-item>
           <el-form-item label="验收标准">
             <el-input v-model="convertForm.acceptance_criteria" type="textarea" :rows="3" />
           </el-form-item>
-          <el-form-item v-for="(label, role) in roleLabels" :key="role" :label="label"><PeopleSelector v-model="convertRoles[role]" kind="requirement" :selected="role === 'CONFIRM' ? defaultConfirmPeople : []" :multiple="role !== 'CONFIRM'" /></el-form-item>
+          <el-form-item v-for="(label, role) in roleLabels" :key="role" :label="label"><PeopleSelector v-model="convertRoles[role]" kind="requirement" :selected="role === 'CONFIRM' ? defaultConfirmPeople : []" multiple /></el-form-item>
         </template>
         <el-form-item v-else label="目标需求" required>
           <ScopedObjectSelector v-model="convertForm.requirement_id" kind="requirement" :allowed="canLinkExisting" :active="convertDialog && convertForm.type === 'LINK_EXISTING'" :disabled="convertSubmitting" />

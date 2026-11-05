@@ -65,6 +65,8 @@ for (const width of [375, 1440]) {
     await peopleDialog.locator('.el-select__wrapper').click()
     const listId = await peopleDialog.getByRole('combobox', { name: '需求确认人', exact: true }).getAttribute('aria-controls')
     await page.locator(`[id="${listId}"]`).getByRole('option', { name: '测试确认人', exact: true }).click()
+    await peopleDialog.getByRole('combobox', { name: '需求确认人', exact: true }).press('Escape')
+    await expect(page.locator(`[id="${listId}"]`)).toBeHidden()
     await peopleDialog.getByRole('button', { name: '保存人员', exact: true }).click()
     await expect(peopleDialog).toBeHidden()
     await expect(page.getByRole('list', { name: '需求阶段' }).locator('li').nth(0)).toContainText('当前阶段')

@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import Self
+from typing import Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.models.enums import (
     ManualRequirementStatus,
@@ -11,9 +11,13 @@ from app.models.enums import (
 )
 from app.schemas.collaboration import ParticipantInput, ParticipantsChange, PersonOption
 from app.schemas.common import PageResult
+from app.schemas.content_validation import requirement_title
+from app.services.rich_text import sanitize_requirement_description
 
 
 class RequirementCreate(BaseModel):
+    _title = field_validator("title")(requirement_title)
+
     title: str = Field(min_length=2, max_length=200)
     requirement_type: str = Field(min_length=1, max_length=32, pattern=r"^[A-Z][A-Z0-9_]*$")
     priority: Priority = Priority.P2
@@ -21,7 +25,9 @@ class RequirementCreate(BaseModel):
     module_id: int | None = None
     owner_id: None = None
     participants: list[ParticipantInput] = Field(default_factory=list, max_length=100)
+    description_images: dict[str, str] = Field(default_factory=dict, max_length=12, repr=False)
     description: str
+    description_format: Literal["PLAIN", "HTML"] = "PLAIN"
     acceptance_criteria: str | None = None
     version_id: int | None = None
     version_revision: int | None = Field(default=None, ge=1)
@@ -29,6 +35,9 @@ class RequirementCreate(BaseModel):
     @model_validator(mode="after")
     def require_version_revision_for_version_relation(self) -> Self:
         ParticipantsChange(revision=1, participants=self.participants)
+        self.description = sanitize_requirement_description(
+            self.description, self.description_format
+        )
         if self.version_id is None and self.version_revision is not None:
             raise ValueError("version_revision requires version_id")
         if self.version_id is not None and self.version_revision is None:
@@ -37,7 +46,7 @@ class RequirementCreate(BaseModel):
 
 
 class RequirementUpdate(BaseModel):
-    title: str | None = Field(default=None, max_length=200)
+    title: str | None = Field(default=None, min_length=2, max_length=200)
     requirement_type: str | None = Field(
         default=None, min_length=1, max_length=32, pattern=r"^[A-Z][A-Z0-9_]*$"
     )
@@ -45,7 +54,9 @@ class RequirementUpdate(BaseModel):
     system_id: int | None = None
     module_id: int | None = None
     owner_id: None = None
+    description_images: dict[str, str] = Field(default_factory=dict, max_length=12, repr=False)
     description: str | None = None
+    description_format: Literal["PLAIN", "HTML"] = "PLAIN"
     acceptance_criteria: str | None = None
     revision: int = Field(ge=1)
 
@@ -54,6 +65,8 @@ class RequirementUpdate(BaseModel):
         for field_name in ("title", "requirement_type", "priority", "description"):
             if field_name in self.model_fields_set and getattr(self, field_name) is None:
                 raise ValueError(f"{field_name} cannot be null")
+        if self.title is not None:
+            self.title = requirement_title(self.title)
         return self
 
 
@@ -83,6 +96,7 @@ class RequirementOut(BaseModel):
     owner_id: int | None
     current_version_id: int | None
     description: str
+    description_format: Literal["PLAIN", "HTML"] = "PLAIN"
     acceptance_criteria: str | None
     created_at: datetime
     updated_at: datetime

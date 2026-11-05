@@ -17,6 +17,7 @@ import ListCard from '@/components/ui/ListCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
 import ListFilterPanel from '@/components/ui/ListFilterPanel.vue'
+import ListEntityFilterSelect from '@/components/ListEntityFilterSelect.vue'
 import { VERSION_STATUSES, versionStatusLabel, versionStatusTagType } from '@/constants/version'
 import type { VersionItem, VersionListParams } from '@/types/domain'
 
@@ -124,7 +125,7 @@ const queryState = useListQuery({
       <el-form-item label="关键词"><el-input v-model="filters.keyword" placeholder="版本号 / 名称" :maxlength="200" clearable @keyup.enter="applyFilters" /></el-form-item>
       <el-form-item label="状态"><el-select v-model="filters.status" clearable placeholder="全部"><el-option v-for="s in VERSION_STATUSES" :key="s.value" :label="s.label" :value="s.value" /></el-select></el-form-item>
       <el-form-item label="计划上线日期"><el-date-picker v-model="dateRange" type="daterange" value-format="YYYY-MM-DD" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" popper-class="version-filter-date-popper" /></el-form-item>
-      <el-form-item label="负责人 ID"><el-input-number v-model="filters.owner_id" :min="1" :precision="0" step-strictly controls-position="right" /></el-form-item>
+      <el-form-item label="负责人"><ListEntityFilterSelect v-model="filters.owner_id" kind="owner" label="负责人" /></el-form-item>
     </ListFilterPanel>
 
     <ErrorState v-if="failed" title="版本加载失败" description="请检查网络后重试。" retry-label="重新加载" @retry="load" />

@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.models.enums import ManualVersionStatus, VersionStatus
 from app.schemas.common import PageResult
+from app.schemas.entity_actions import BatchActionItem
 from app.schemas.requirement import RequirementOut
 
 
@@ -15,6 +16,27 @@ class VersionCreate(BaseModel):
     owner_id: int | None = None
     planned_release_date: date | None = None
     description: str | None = None
+    requirement_id: int | None = Field(
+        default=None,
+        ge=1,
+        title="关联需求 ID",
+        description=(
+            "创建时关联的现有需求，必须与 requirement_revision 成对提供；"  # noqa: RUF001
+            "不关联时同时为空或省略。"
+        ),
+    )
+    requirement_revision: int | None = Field(
+        default=None,
+        ge=1,
+        title="关联需求版本号",
+        description="关联需求的当前 revision，必须与 requirement_id 成对提供。",  # noqa: RUF001
+    )
+
+    @model_validator(mode="after")
+    def require_paired_requirement_fields(self) -> Self:
+        if (self.requirement_id is None) != (self.requirement_revision is None):
+            raise ValueError("requirement_id 与 requirement_revision 必须成对提供")
+        return self
 
 
 class VersionUpdate(BaseModel):
@@ -116,4 +138,20 @@ class BulkAddRequirements(BaseModel):
     def unique_requirements(self) -> Self:
         if len({i.requirement_id for i in self.items}) != len(self.items):
             raise ValueError("不能重复选择需求")
+        return self
+
+
+class VersionRequirementSubmitAcceptance(BaseModel):
+    version_revision: int = Field(ge=1)
+    items: list[BatchActionItem] = Field(min_length=1, max_length=50)
+    reason: str | None = Field(default=None, min_length=2, max_length=500)
+
+    @model_validator(mode="after")
+    def validate_selection_and_reason(self) -> Self:
+        if len({item.id for item in self.items}) != len(self.items):
+            raise ValueError("不能重复选择需求")
+        if self.reason is not None:
+            self.reason = self.reason.strip()
+            if len(self.reason) < 2:
+                raise ValueError("请填写原因(至少 2 个字符)")
         return self

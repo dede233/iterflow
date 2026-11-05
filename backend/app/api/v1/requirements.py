@@ -1,10 +1,11 @@
 from typing import Literal
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import ensure_all_permissions, require_all_permissions, require_permission
-from app.api.openapi import api_revision_conflict_responses
+from app.api.openapi import api_error_responses, api_revision_conflict_responses
 from app.core.database import get_db
 from app.core.exceptions import NotFoundError
 from app.models.entities import Requirement, User
@@ -12,6 +13,12 @@ from app.models.enums import Priority, RequirementSource, RequirementStatus
 from app.repositories.requirement_repository import RequirementRepository
 from app.repositories.user_repository import UserRepository
 from app.repositories.version_repository import VersionRepository
+from app.schemas.entity_actions import (
+    BatchActionResponse,
+    EntityDelete,
+    EntityDeleted,
+    RequirementBatchAction,
+)
 from app.schemas.requirement import (
     LinkedFeedbackOut,
     RequirementCreate,
@@ -20,7 +27,10 @@ from app.schemas.requirement import (
     RequirementStatusChange,
     RequirementUpdate,
 )
+from app.services.entity_actions_service import EntityActionsService
 from app.services.feedback_service import FeedbackService
+from app.services.file_service import FileService
+from app.services.requirement_images import IMAGE_ENTITY
 from app.services.requirement_service import RequirementService
 
 router = APIRouter(prefix="/requirements", tags=["requirements"])
@@ -104,6 +114,29 @@ def create_requirement(
     return RequirementService(db).create(payload, user.id, viewer_scope=scope)
 
 
+@router.post("/batch-actions", response_model=BatchActionResponse)
+def batch_requirement_actions(
+    payload: RequirementBatchAction,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("rd.requirement.status")),
+):
+    return EntityActionsService(db).batch("requirement", payload, user.id)
+
+
+@router.delete(
+    "/{requirement_id}",
+    response_model=EntityDeleted,
+    responses=api_error_responses(404, 409),
+)
+def delete_requirement(
+    requirement_id: int,
+    payload: EntityDelete,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("rd.requirement.edit")),
+):
+    return EntityActionsService(db).delete("requirement", requirement_id, payload, user.id)
+
+
 @router.get("/{requirement_id}", response_model=RequirementOut)
 def get_requirement(
     requirement_id: int,
@@ -111,6 +144,34 @@ def get_requirement(
     user: User = Depends(require_permission("rd.requirement.view")),
 ):
     return _scoped_requirement_or_404(db, user, requirement_id)
+
+
+@router.get(
+    "/{requirement_id}/images/{file_id}",
+    response_class=StreamingResponse,
+    responses={
+        200: {"content": {media: {} for media in ("image/png", "image/jpeg", "image/webp")}},
+        **api_error_responses(404),
+    },
+)
+def get_description_image(
+    requirement_id: int,
+    file_id: int,
+    background: BackgroundTasks,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("rd.requirement.view")),
+):
+    _scoped_requirement_or_404(db, user, requirement_id)
+    item, stream = FileService(db).open_authorized_attachment(
+        file_id, entity_type=IMAGE_ENTITY, entity_id=requirement_id
+    )
+    background.add_task(stream.close)
+    return StreamingResponse(
+        stream,
+        media_type=item.mime_type,
+        background=background,
+        headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"},
+    )
 
 
 @router.get("/{requirement_id}/feedbacks", response_model=list[LinkedFeedbackOut])

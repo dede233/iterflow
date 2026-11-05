@@ -252,6 +252,13 @@ class Requirement(Base, AuditMixin):
             index=True,
         )
     description: Mapped[str] = mapped_column(Text)
+    description_format: Mapped[str] = mapped_column(
+        String(8), default="PLAIN", server_default="PLAIN", nullable=False
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(timestamp_type(), nullable=True)
+    deleted_by: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("sys_user.id", name="fk_requirement_deleted_by"), nullable=True
+    )
     acceptance_criteria: Mapped[str | None] = mapped_column(Text)
     content_revision: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
     confirmed_revision: Mapped[int | None] = mapped_column(Integer)
@@ -345,6 +352,10 @@ class Feedback(Base, AuditMixin):
     handler_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("sys_user.id"))
     accepted_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("sys_user.id"))
     accepted_at: Mapped[datetime | None] = mapped_column(timestamp_type())
+    deleted_at: Mapped[datetime | None] = mapped_column(timestamp_type(), nullable=True)
+    deleted_by: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("sys_user.id", name="fk_feedback_deleted_by"), nullable=True
+    )
 
 
 class FeedbackRecipient(Base):
@@ -364,20 +375,6 @@ class RequirementParticipant(Base):
     user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("sys_user.id"), primary_key=True)
     role: Mapped[str] = mapped_column(String(16), primary_key=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-
-    if MYSQL:
-        single_actor_role: Mapped[str | None] = mapped_column(
-            String(16),
-            Computed(
-                "CASE WHEN active = 1 AND role = 'CONFIRM' THEN role ELSE NULL END",
-                persisted=True,
-            ),
-        )
-        __table_args__ = (
-            UniqueConstraint(
-                "requirement_id", "single_actor_role", name="uq_requirement_single_actor_role"
-            ),
-        )
 
 
 class CollaborationEvent(Base):
@@ -624,16 +621,6 @@ class NotificationDelivery(Base):
         UniqueConstraint("event_id", "user_id", "channel", name="uq_delivery_event_user_channel"),
     )
 
-
-if not MYSQL:
-    Index(
-        "uq_requirement_single_actor_role",
-        RequirementParticipant.requirement_id,
-        RequirementParticipant.role,
-        unique=True,
-        postgresql_where=text("active AND role = 'CONFIRM'"),
-        sqlite_where=text("active AND role = 'CONFIRM'"),
-    )
 
 if MYSQL:
     Requirement.current_version_id = column_property(

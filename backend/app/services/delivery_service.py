@@ -41,6 +41,7 @@ ACTION_LABELS = {
     "REQUEST_CHANGES": "需求需要补充说明",
     "RECONFIRM": "需求内容变更, 待重新确认",
     "CONFIRM": "需求内容已确认",
+    "REOPEN": "需求已重新打开, 待确认",
     "STATUS_CONFIRMED": "需求已确认, 等待开发",
     "STATUS_DEVELOPING": "需求进入开发",
     "STATUS_TESTING": "需求已提交验收",
@@ -150,6 +151,7 @@ class DeliveryService:
         required_role = {
             "CREATED": "CONFIRM",
             "RECONFIRM": "CONFIRM",
+            "REOPEN": "CONFIRM",
             "CONFIRM": "DEVELOP",
             "STATUS_CONFIRMED": "DEVELOP",
             "STATUS_TESTING": "ACCEPT",
@@ -253,7 +255,12 @@ class DeliveryService:
         assert row is not None
         self.db.expire_all()
         event = self.db.get(CollaborationEvent, row.event_id)
-        user = self.db.get(User, row.user_id)
+        user = self.db.get(
+            User,
+            row.user_id,
+            with_for_update=row.channel == "EMAIL",
+            populate_existing=True,
+        )
         if not event or not user or not self.authorized(event, user):
             row.status = "SKIPPED"
             row.last_error = "ACCESS_REVOKED"
@@ -288,7 +295,9 @@ class DeliveryService:
             self.db.commit()
             return True
         settings = get_settings()
-        pref = self.db.get(MailPreference, user.id)
+        # Match email changes/unbinding's user -> preference lock order. Keep the
+        # account locked until SMTP finishes so a completed unbind cannot be raced.
+        pref = self.db.get(MailPreference, user.id, with_for_update=True, populate_existing=True)
         email = user.email
         eligible = bool(
             pref

@@ -227,15 +227,28 @@ def test_full_v1_business_lifecycle_over_http_and_postgresql(
         )
         assert response.status_code == 200, response.text
         current_requirement = response.json()
+        expected_progress = {
+            "CONFIRMED": "PLANNING",
+            "DEVELOPING": "DEVELOPING",
+            "TESTING": "TESTING",
+            "DONE": "READY",
+        }[status]
+        progress = client.get(f"/api/v1/versions/{version['id']}", headers=headers).json()
+        assert progress["status"] == expected_progress
+        assert progress["revision"] == version["revision"]
 
+    relation_revision = version["revision"]
+    version = client.get(f"/api/v1/versions/{version['id']}", headers=headers).json()
+    assert version["status"] == "READY"
+    assert version["revision"] == relation_revision
     for status in ("DEVELOPING", "TESTING", "READY"):
         response = client.patch(
             f"/api/v1/versions/{version['id']}/status",
             headers=headers,
             json={"status": status, "revision": version["revision"]},
         )
-        assert response.status_code == 200, response.text
-        version = response.json()
+        assert response.status_code == 409 and response.json()["code"] == 40921
+    assert client.get(f"/api/v1/versions/{version['id']}", headers=headers).json() == version
 
     publish_check = client.post(f"/api/v1/versions/{version['id']}/publish/check", headers=headers)
     assert publish_check.status_code == 200, publish_check.text

@@ -1,5 +1,6 @@
 import type { Feedback, Requirement, VersionItem } from '@/types/domain'
 import type { ConflictSummaryRow } from '@/types/revisionConflict'
+import { richTextPlainText } from './richText'
 import { feedbackStatusLabel, feedbackTypeLabel, feedbackUrgencyLabel } from '@/constants/feedback'
 import { requirementStatusLabel, requirementTypeLabel } from '@/constants/requirement'
 import { versionStatusLabel } from '@/constants/version'
@@ -20,7 +21,7 @@ export function requirementConflictSummary(item: Requirement): ConflictSummaryRo
     { label: '需求类型', value: requirementTypeLabel[item.requirement_type] ?? item.requirement_type },
     { label: '优先级', value: item.priority },
     { label: '状态', value: requirementStatusLabel[item.status] ?? item.status },
-    { label: '需求描述', value: item.description },
+    { label: '需求描述', value: item.description_format === 'HTML' ? richTextPlainText(item.description) : item.description },
     { label: '验收标准', value: item.acceptance_criteria ?? '-' },
   ]
 }

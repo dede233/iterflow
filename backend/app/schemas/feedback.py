@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Self
+from typing import Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -13,6 +13,8 @@ from app.models.enums import (
 )
 from app.schemas.collaboration import ParticipantInput, ParticipantsChange
 from app.schemas.common import PageResult
+from app.schemas.content_validation import requirement_title
+from app.services.rich_text import sanitize_requirement_description
 
 
 class FeedbackCreate(BaseModel):
@@ -103,8 +105,10 @@ class FeedbackConvertRequest(BaseModel):
         default=None, min_length=1, max_length=32, pattern=r"^[A-Z][A-Z0-9_]*$"
     )
     priority: Priority = Priority.P2
+    description_images: dict[str, str] = Field(default_factory=dict, max_length=12, repr=False)
     description: str | None = Field(default=None, min_length=2)
     acceptance_criteria: str | None = None
+    description_format: Literal["PLAIN", "HTML"] = "PLAIN"
     participants: list[ParticipantInput] = Field(default_factory=list, max_length=100)
     # LINK_EXISTING field
     requirement_id: int | None = None
@@ -112,6 +116,8 @@ class FeedbackConvertRequest(BaseModel):
     @model_validator(mode="after")
     def check_mode_fields(self) -> Self:
         ParticipantsChange(revision=1, participants=self.participants)
+        if self.type is FeedbackConvertType.LINK_EXISTING and self.description_images:
+            raise ValueError("关联已有需求不能添加正文图片")
         if self.type is FeedbackConvertType.LINK_EXISTING and self.participants:
             raise ValueError("关联已有需求不能覆盖环节人员")
         if self.type is FeedbackConvertType.CREATE_NEW:
@@ -122,6 +128,12 @@ class FeedbackConvertRequest(BaseModel):
             ]
             if missing:
                 raise ValueError(f"CREATE_NEW 需要字段: {', '.join(missing)}")
+            assert self.description is not None
+            assert self.requirement_title is not None
+            self.requirement_title = requirement_title(self.requirement_title)
+            self.description = sanitize_requirement_description(
+                self.description, self.description_format
+            )
         else:  # LINK_EXISTING
             if self.requirement_id is None:
                 raise ValueError("LINK_EXISTING 需要 requirement_id")

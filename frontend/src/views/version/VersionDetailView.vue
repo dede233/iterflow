@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import BatchActionsDialog from '@/components/BatchActionsDialog.vue'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
@@ -129,9 +130,9 @@ const canEdit = computed(() => can('rd.version.edit'))
 const canChangeStatus = computed(() => can('rd.version.status'))
 const canViewRequirements = computed(() => can('rd.requirement.view'))
 const canViewReleases = computed(() => can('rd.release.view'))
-// Publish entry: only for a READY version and only with the publish permission.
+// Every active version can explain its blockers; only passing checks enable publishing.
 const canPublish = computed(
-  () => can('rd.version.publish') && !!item.value && item.value.status === 'READY',
+  () => can('rd.version.publish') && !!item.value && !['RELEASED', 'CANCELED'].includes(item.value.status),
 )
 const frozen = computed(() => (item.value ? versionRequirementSetFrozen(item.value.status) : true))
 const canManageReqs = computed(() => canEdit.value && canViewRequirements.value && !frozen.value)
@@ -155,7 +156,7 @@ function openStatusDialog(action: VersionStatusAction): void {
 }
 
 async function submitStatus(): Promise<void> {
-  if (!item.value || !currentAction.value) return
+  if (!item.value || !currentAction.value || statusSubmitting.value) return
   const action = currentAction.value
   if (action.needsReason && statusReason.value.trim().length < 2) {
     ElMessage.warning('请填写原因（至少 2 个字符）')
@@ -187,7 +188,7 @@ onBeforeUnmount(() => { checkSequence++; conflict.close() })
 watch(publishDialog, open => { if (!open) { checkSequence++; checks.value = []; checkLoading.value = false; checkCandidatePassed.value = false } }, { flush: 'sync' })
 
 async function openPublish(): Promise<void> {
-  if (!item.value) return
+  if (!item.value || !canPublish.value || checkLoading.value || publishSubmitting.value) return
   releaseNotes.value = ''
   checks.value = []
   checkCandidatePassed.value = false
@@ -212,7 +213,7 @@ async function openPublish(): Promise<void> {
 }
 
 async function submitPublish(): Promise<void> {
-  if (!item.value) return
+  if (!item.value || !canPublish.value || publishSubmitting.value || checkLoading.value || !checkCandidatePassed.value) return
   if (!releaseNotes.value.trim()) {
     ElMessage.warning('请填写发布说明')
     return
@@ -382,11 +383,11 @@ onMounted(load)
         <el-button v-if="embedded" link @click="emit('close')">关闭详情</el-button>
         <RouterLink v-else class="back-link" :to="backTo">返回列表</RouterLink>
         <el-button v-if="canEdit" @click="openEdit">编辑</el-button>
-        <el-button v-if="canPublish" type="primary" @click="openPublish">发布</el-button>
+        <el-button v-if="canPublish" type="primary" @click="openPublish">{{ item.status === 'READY' ? '发布' : '发布检查' }}</el-button>
         <el-button
           v-for="action in statusActions"
           :key="action.target"
-          type="primary"
+          type="default"
           plain
           @click="openStatusDialog(action)"
         >
@@ -395,7 +396,7 @@ onMounted(load)
         </template>
       </PageHeader>
 
-      <SectionCard title="版本概况" description="时间安排与版本说明">
+      <SectionCard title="版本概况" description="进度由关联需求自动汇总；开发和验收在需求中完成。">
         <el-descriptions :column="isMobile ? 1 : 2">
           <el-descriptions-item label="计划上线">{{ item.planned_release_date || '-' }}</el-descriptions-item>
           <el-descriptions-item label="实际上线">{{ formatLocalDateTime(item.released_at) }}</el-descriptions-item>
@@ -408,6 +409,7 @@ onMounted(load)
       <!-- progress + requirements -->
       <SectionCard v-if="canViewRequirements" title="需求清单" :description="`可见需求 ${stats?.total ?? 0} 项`" class="section">
         <template #actions>
+          <BatchActionsDialog v-if="!frozen" kind="requirements" scope="version-list" :version-id="item.id" :version-revision="item.revision" :rows="filteredRequirements" @updated="load" />
           <el-button v-if="canManageReqs" size="small" type="primary" @click="addDialog = true">
             添加需求
           </el-button>

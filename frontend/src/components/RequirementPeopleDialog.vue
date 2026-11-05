@@ -55,9 +55,10 @@ async function save() {
     <p v-else-if="failed">人员加载失败 <el-button link @click="load">重试</el-button></p>
     <el-form v-else-if="data && canEdit" label-position="top" @submit.prevent="save">
       <p class="people-hint">保存人员后，仍需由对应人员执行确认或阶段操作。</p>
+      <p v-if="roles.includes('CONFIRM')" class="people-hint">需求确认人可多选，任意一人确认即可进入下一步。</p>
       <p v-if="roles.includes('ACCEPT')" class="people-hint">验收人员可多选，任意一人验收通过即可。</p>
       <el-form-item v-for="role in roles" :key="role" :label="labels[role]">
-        <PeopleSelector v-model="choices[role]" kind="requirement" :selected="selected" :multiple="role !== 'CONFIRM'" :disabled="saving" />
+        <PeopleSelector v-model="choices[role]" kind="requirement" :selected="selected" :multiple="true" :disabled="saving" />
       </el-form-item>
       <p v-if="saveFailed" role="alert">保存失败，所选人员已保留。若信息已更新，请重新加载后调整。<el-button link @click="load">重新加载人员</el-button></p>
       <el-button :disabled="saving" @click="emit('close')">取消</el-button>

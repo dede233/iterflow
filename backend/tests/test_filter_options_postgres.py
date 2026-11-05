@@ -1,0 +1,6 @@
+from filter_options_acceptance import exercise_filter_options
+from seeded_postgres_fixture import collaboration_pg as collaboration_pg
+
+
+def test_scoped_filter_options_postgres(collaboration_pg):
+    exercise_filter_options(collaboration_pg)

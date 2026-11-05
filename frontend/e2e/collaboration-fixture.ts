@@ -6,7 +6,11 @@ export async function mockCollaboration(route: Route): Promise<boolean> {
   if (route.request().method() !== 'GET') return false
   const path = new URL(route.request().url()).pathname
   let data: unknown
-  if (/\/requirements\/\d+\/workflow$/.test(path)) data = { revision: 1, content_revision: 1, confirmed_revision: 1, needs_confirmation: false, legacy_completed: true, design_status: 'NOT_REQUIRED', paused_from: null, records: [] }
+  if (/\/(requirements|versions)\/filter-options\/(participants|versions|owners)$/.test(path)) {
+    const selectedId = Number(new URL(route.request().url()).searchParams.get('selected_id'))
+    data = { items: selectedId > 0 ? [{ id: selectedId, label: `可见选项 #${selectedId}` }] : [], total: selectedId > 0 ? 1 : 0, page: 1, page_size: 20 }
+  }
+  else if (/\/requirements\/\d+\/workflow$/.test(path)) data = { revision: 1, content_revision: 1, confirmed_revision: 1, needs_confirmation: false, legacy_completed: true, design_status: 'NOT_REQUIRED', paused_from: null, records: [] }
   else if (/\/requirements\/\d+\/participants$/.test(path)) data = { revision: 1, participants: ['CONFIRM', 'DEVELOP', 'ACCEPT'].map(role => ({ user_id: 1, role, display_name: '环节人员', active: true })) }
   else if (/\/feedbacks\/\d+\/collaboration$/.test(path)) data = { revision: 1, recipients: [{ id: 1, display_name: '接收人' }], handler_id: null, accepted_by: null, accepted_at: null }
   else if (path === '/api/v1/me/mail-preferences') data = { revision: 1, mode: 'TASKS', email: null, verified: false, pending_email: null, smtp_enabled: false }

@@ -10,6 +10,7 @@ from pathlib import PurePosixPath
 from typing import BinaryIO
 from uuid import uuid4
 
+from sqlalchemy import event
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings, get_settings
@@ -126,6 +127,18 @@ class FileService:
         mime_type: str,
         actor: User,
     ) -> FileObject:
+        try:
+            item = self.store_in_transaction(content, original_name, mime_type, actor.id)
+            self.db.commit()
+        except Exception:
+            self.db.rollback()
+            raise
+        self.db.refresh(item)
+        return item
+
+    def store_in_transaction(
+        self, content: bytes, original_name: str, mime_type: str, operator_id: int
+    ) -> FileObject:
         safe_name = validate_upload(
             size=len(content),
             mime_type=mime_type,
@@ -143,20 +156,12 @@ class FileService:
             size=len(content),
             sha256=hashlib.sha256(content).hexdigest(),
             storage_driver=driver,
-            created_by=actor.id,
-            updated_by=actor.id,
+            created_by=operator_id,
+            updated_by=operator_id,
         )
-        try:
-            self.db.add(item)
-            self.db.commit()
-            self.db.refresh(item)
-        except Exception:
-            self.db.rollback()
-            try:
-                storage.delete(storage_key)
-            except Exception:
-                logger.exception("failed to compensate storage upload", extra={"key": storage_key})
-            raise
+        self.db.info.setdefault("pending_uploads", []).append((storage, storage_key))
+        self.db.add(item)
+        self.db.flush()
         return item
 
     def get_scoped(self, file_id: int, actor: User, data_scope: DataScope) -> FileObject:
@@ -229,3 +234,19 @@ class FileService:
                 extra={"key": storage_key},
             )
             raise
+
+
+@event.listens_for(Session, "after_commit")
+def _keep_uploaded_files(session):
+    if not session.in_nested_transaction():
+        session.info.pop("pending_uploads", None)
+
+
+@event.listens_for(Session, "after_transaction_end")
+def _discard_uncommitted_uploads(session, transaction):
+    if transaction.parent is None:
+        for storage, key in session.info.pop("pending_uploads", []):
+            try:
+                storage.delete(key)
+            except Exception:
+                logger.exception("Failed to discard uncommitted upload", extra={"key": key})

@@ -62,9 +62,9 @@ async function fixture(page: Page) {
 }
 
 const screens = [
-  { name: 'Feedback', path: '/feedbacks/1', buttons: ['编辑', '转需求', '受理', '标记重复', '无法复现', '关闭'] },
+  { name: 'Feedback', path: '/feedbacks/1', buttons: ['编辑', '删除', '转需求', '受理', '标记重复', '无法复现', '关闭'] },
   { name: 'Requirement', path: '/requirements/2', buttons: ['编辑'] },
-  { name: 'Version', path: '/versions/3', buttons: ['编辑', '发布', '退回测试'] },
+  { name: 'Version', path: '/versions/3', buttons: ['编辑', '发布', '取消版本'] },
 ]
 
 for (const width of widths) {
@@ -97,7 +97,7 @@ for (const width of widths) {
       await expect(heading).toBeVisible()
       for (const name of screen.buttons) await expect(header.getByRole('button', { name, exact: true })).toBeVisible()
 
-      // The public bug has six NEW-feedback actions. Do not weaken the fixture by hiding any.
+      // Include all seven NEW-feedback actions, including soft deletion, in the layout and keyboard regression.
       await expect(header.getByRole('button')).toHaveCount(screen.buttons.length)
       await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth))
         .toBeLessThanOrEqual(width + 1)

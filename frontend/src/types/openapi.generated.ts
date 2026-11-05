@@ -4,6 +4,66 @@
  */
 
 export interface paths {
+    "/requirements/filter-options/participants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 需求参与人筛选选项
+         * @description 需要 rd.requirement.view。仅返回当前 Requirement DataScope 内未删除需求的有效参与人，保留已停用账号并标注；不要求用户管理或需求编辑权限，不返回用户名、邮箱或角色。 keyword trim 后按可见标签做大小写不敏感的字面部分匹配；分页稳定且 total 去重。selected_id 与搜索及权限范围使用 AND 组合，不存在或不可见时返回空列表。
+         */
+        get: operations["requirements_filter_options_participants_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/requirements/filter-options/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 需求版本筛选选项
+         * @description 需要 rd.requirement.view。仅返回当前 Requirement DataScope 内未删除需求的 current_version_id 关联选项。只有同时具备 rd.version.view 且通过 Version DataScope 时返回版本号和名称，否则仅返回需求已公开的版本 ID 占位标签；搜索不匹配不可见的版本号或名称。 keyword trim 后按可见标签做大小写不敏感的字面部分匹配；分页稳定且 total 去重。selected_id 与搜索及权限范围使用 AND 组合，不存在或不可见时返回空列表。
+         */
+        get: operations["requirements_filter_options_versions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/versions/filter-options/owners": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 版本负责人筛选选项
+         * @description 需要 rd.version.view。仅返回当前 Version DataScope 内版本实际引用的负责人，保留已停用账号并标注；不要求用户管理或版本编辑权限，不返回用户名、邮箱或角色。 keyword trim 后按可见标签做大小写不敏感的字面部分匹配；分页稳定且 total 去重。selected_id 与搜索及权限范围使用 AND 组合，不存在或不可见时返回空列表。
+         */
+        get: operations["versions_filter_options_owners_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/requirements/{requirement_id}/workflow": {
         parameters: {
             query?: never;
@@ -294,6 +354,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/feedbacks/batch-actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 批量流程操作
+         * @description 每次最多50条且ID不可重复；逐项沿用单条操作权限、DataScope、阶段人员、内容确认、原因和revision门禁。每项独立事务，返回逐项结果；已成功项不自动重放。不支持批量发布、删除或跨阶段跳转。
+         */
+        post: operations["batch_feedback_actions_api_v1_feedbacks_batch_actions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/feedbacks/{feedback_id}": {
         parameters: {
             query?: never;
@@ -305,7 +385,11 @@ export interface paths {
         get: operations["get_feedback_api_v1_feedbacks__feedback_id__get"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * 软删除
+         * @description 需现有编辑权限及数据范围；仅待受理反馈/待确认需求，且无需求、反馈、版本或重复反馈引用。保留行、附件、评论、审计及通知历史，普通读取和新关联不可再访问。revision CAS，删除原因必填。
+         */
+        delete: operations["delete_feedback_api_v1_feedbacks__feedback_id__delete"];
         options?: never;
         head?: never;
         /**
@@ -438,6 +522,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/requirements/batch-actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 批量流程操作
+         * @description 每次最多50条且ID不可重复；逐项沿用单条操作权限、DataScope、阶段人员、内容确认、原因和revision门禁。每项独立事务，返回逐项结果；已成功项不自动重放。不支持批量发布、删除或跨阶段跳转。
+         */
+        post: operations["batch_requirement_actions_api_v1_requirements_batch_actions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/requirements/{requirement_id}": {
         parameters: {
             query?: never;
@@ -449,11 +553,35 @@ export interface paths {
         get: operations["get_requirement_api_v1_requirements__requirement_id__get"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * 软删除
+         * @description 需现有编辑权限及数据范围；仅待受理反馈/待确认需求，且无需求、反馈、版本或重复反馈引用。保留行、附件、评论、审计及通知历史，普通读取和新关联不可再访问。revision CAS，删除原因必填。
+         */
+        delete: operations["delete_requirement_api_v1_requirements__requirement_id__delete"];
         options?: never;
         head?: never;
         /** 编辑需求 */
         patch: operations["update_requirement_api_v1_requirements__requirement_id__patch"];
+        trace?: never;
+    };
+    "/requirements/{requirement_id}/images/{file_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查看需求正文图片
+         * @description 按需求查看权限和数据范围读取已绑定的正文图片，包括确认历史引用。
+         */
+        get: operations["get_description_image_api_v1_requirements__requirement_id__images__file_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/requirements/{requirement_id}/feedbacks": {
@@ -509,7 +637,10 @@ export interface paths {
          */
         get: operations["list_versions_api_v1_versions_get"];
         put?: never;
-        /** 创建版本 */
+        /**
+         * 创建版本
+         * @description 需要 rd.version.create。可成对提供 requirement_id 和 requirement_revision，在同一事务中创建版本并关联一个当前可见、未关联版本且非 ONLINE/CANCELED 的需求；此时还需 rd.version.edit 和 rd.requirement.view。关联保持需求状态，需求 revision 加一，并推进版本内容 revision；任何权限、范围、状态、revision 或审计失败均整体回滚，不留下空版本。不会自动迁移已有版本归属或执行发布。版本号重复（含并发唯一冲突）返回 40934，data 为 {field: version_no, reason: duplicate}，仅回显用户提交的版本号，不返回已有版本详情。
+         */
         post: operations["create_version_api_v1_versions_post"];
         delete?: never;
         options?: never;
@@ -552,8 +683,8 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * 变更版本状态（禁止进入 RELEASED）
-         * @description READY 可退回 TESTING，但必须填写 reason。RELEASED 只能通过发布接口进入。
+         * 取消版本（开发和验收进度自动汇总）
+         * @description 需要 rd.version.status、数据范围和最新revision。仅接受取消未发布版本；旧客户端手动推进开发、测试或READY及退回操作返回40921，提示在需求中推进。状态枚举保留历史输入解析兼容，RELEASED只能通过发布事务产生。
          */
         patch: operations["change_version_status_api_v1_versions__version_id__status_patch"];
         trace?: never;
@@ -573,7 +704,7 @@ export interface paths {
         put?: never;
         /**
          * 向版本添加需求
-         * @description 需要 rd.version.edit 与 rd.requirement.view；目标 Version 与 Requirement 均须在各自 DataScope 内。通过 VersionService；READY/RELEASED/CANCELED 冻结返回 409。
+         * @description 需要 rd.version.edit 与 rd.requirement.view；目标 Version 与 Requirement 均须在各自 DataScope 内。通过 VersionService；仅RELEASED/CANCELED冻结返回409。自动READY仍可调整清单，操作后重新汇总进度。
          */
         post: operations["add_version_requirement_api_v1_versions__version_id__requirements_post"];
         delete?: never;
@@ -593,9 +724,29 @@ export interface paths {
         put?: never;
         /**
          * 批量关联需求
-         * @description 需要 rd.version.edit 与 rd.requirement.view；目标 Version 与 Requirement 均须在各自 DataScope 内。通过 VersionService；READY/RELEASED/CANCELED 冻结返回 409。
+         * @description 需要 rd.version.edit 与 rd.requirement.view；目标 Version 与 Requirement 均须在各自 DataScope 内。通过 VersionService；仅RELEASED/CANCELED冻结返回409。自动READY仍可调整清单，操作后重新汇总进度。
          */
         post: operations["bulk_add_version_requirements"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/versions/{version_id}/requirements/submit-acceptance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 从版本集中提交需求验收
+         * @description 需要 rd.version.view、rd.requirement.view、rd.requirement.status；不新增版本推进权限。 每项独立事务，按版本后需求的顺序加锁，并重新校验账号、权限、双方DataScope、version_revision、需求revision及当前有效关联。 仅未发布且未取消版本中的CONFIRMED或DEVELOPING需求可提交到TESTING。 必须存在有效开发和验收人员，由开发人员本人操作；既有管理员代操作须填写原因。 当前内容须已确认，设计须DONE或NOT_REQUIRED。CONFIRMED直接提验须填写trim后至少2字符的原因； 仅记录实际CONFIRMED到TESTING及shortcut标记，不伪造开始开发或验收事件。DEVELOPING按正常提验校验。 版本revision不因需求阶段变化增加，版本进度自动汇总；每项失败无状态、步骤、审计或通知写入。 旧revision、归属变化或门禁失败在该项结果中返回409/403/404/422，不自动重试，不自动验收或发布。
+         */
+        post: operations["submit_version_requirements_acceptance"];
         delete?: never;
         options?: never;
         head?: never;
@@ -653,7 +804,7 @@ export interface paths {
         put?: never;
         /**
          * 发布前检查
-         * @description 需要 rd.version.publish 及 Version 数据范围。基础开发人员、产品负责人和研发负责人保留完整版本权限；SELF 仍限本人创建或负责的版本。检查 READY、全部有效需求 DONE 与当前内容确认资格；通过 200，否则 409。逐人开发完成确认已取消。
+         * @description 需要 rd.version.publish 及 Version 数据范围。基础开发人员、产品负责人和研发负责人保留完整版本权限；SELF 仍限本人创建或负责的版本。检查 自动汇总READY、至少一条有效需求且全部DONE与当前内容确认资格；通过200，否则409。无关联、暂停、取消及需重新确认的需求均阻止发布。全量需求参与检查，但仅返回调用人有权查看的阻塞详情，不泄露不可见需求数量。逐人开发完成确认已取消。
          */
         post: operations["check_version_publish_api_v1_versions__version_id__publish_check_post"];
         delete?: never;
@@ -673,7 +824,7 @@ export interface paths {
         put?: never;
         /**
          * 发布版本
-         * @description 需要 rd.version.publish 及数据范围。重新锁定校验 READY、全部有效需求 DONE 和内容确认资格。Release(SUCCESS)、Version、Requirement/Feedback ONLINE、通知事件和审计原子提交；异常回滚，重复发布 409。
+         * @description 需要 rd.version.publish 及数据范围。在版本到需求的既有锁序内重新计算有效READY，校验至少一条有效需求且全部DONE和内容确认资格，并保留revision及非终态CAS。无需先手动推进版本阶段。Release(SUCCESS)、Version、Requirement/Feedback ONLINE、通知事件和审计原子提交；异常回滚，重复发布 409。
          */
         post: operations["publish_version_api_v1_versions__version_id__publish_post"];
         delete?: never;
@@ -825,6 +976,26 @@ export interface paths {
          * @description 仅记录当前账号已知晓；跨设备生效，不修改邮箱、验证状态或邮件偏好。
          */
         post: operations["acknowledge_mail_notice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/email-unbind": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 取消绑定当前账号的通知邮箱
+         * @description 原子清空当前邮箱、验证状态及未完成验证码；保留邮件偏好、站内通知和账号知晓记录。旧 revision 返回 409，最新 revision 重复解绑不重复写入或审计。未开始投递的旧邮件会跳过，已经发送的邮件不撤回。
+         */
+        post: operations["unbind_email"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1429,6 +1600,33 @@ export interface components {
              */
             can_view_api_docs: boolean;
         };
+        /** BatchActionItem */
+        BatchActionItem: {
+            /** 记录编号 */
+            id: number;
+            /** 修订号 */
+            revision: number;
+        };
+        /** BatchActionResponse */
+        BatchActionResponse: {
+            /** 逐项结果 */
+            results: components["schemas"]["BatchActionResult"][];
+        };
+        /** BatchActionResult */
+        BatchActionResult: {
+            /** 记录编号 */
+            id: number;
+            /** 是否成功 */
+            success: boolean;
+            /** 响应状态码 */
+            status_code: number;
+            /** 业务代码 */
+            code: number;
+            /** 结果说明 */
+            message: string;
+            /** 修订号 */
+            revision: number | null;
+        };
         /** BlockingRequirement */
         BlockingRequirement: {
             /** 唯一标识 ID */
@@ -1797,6 +1995,11 @@ export interface components {
          * @enum {string}
          */
         EditingEntityType: "FEEDBACK" | "REQUIREMENT" | "VERSION";
+        /** EmailUnbindRequest */
+        EmailUnbindRequest: {
+            /** 修订号 */
+            revision: number;
+        };
         /** EmailVerificationConfirm */
         EmailVerificationConfirm: {
             /** 修订号 */
@@ -1811,6 +2014,26 @@ export interface components {
             /** 邮箱 */
             email: string;
         };
+        /** EntityDelete */
+        EntityDelete: {
+            /** 修订号 */
+            revision: number;
+            /** 操作原因 */
+            reason: string;
+        };
+        /** EntityDeleted */
+        EntityDeleted: {
+            /** 记录编号 */
+            id: number;
+            /** 修订号 */
+            revision: number;
+            /**
+             * 已删除
+             * @default true
+             * @constant
+             */
+            deleted: true;
+        };
         /** ErrorResponse */
         ErrorResponse: {
             /** 错误码 */
@@ -1821,6 +2044,18 @@ export interface components {
             data: unknown | null;
             /** 请求追踪 ID */
             request_id: string | null;
+        };
+        /** FeedbackBatchAction */
+        FeedbackBatchAction: {
+            /** 待操作记录 */
+            items: components["schemas"]["BatchActionItem"][];
+            /** 操作原因 */
+            reason?: string | null;
+            /**
+             * 流程操作
+             * @enum {string}
+             */
+            action: "ACCEPTED" | "CLOSED";
         };
         /** FeedbackCollaborationOut */
         FeedbackCollaborationOut: {
@@ -1860,10 +2095,24 @@ export interface components {
              * @default P2
              */
             priority: components["schemas"]["Priority"];
+            /**
+             * 正文新图片
+             * @description 正文临时图片编号对应的 PNG、JPEG 或 WebP 数据。仅随保存提交，单张最多 4 MiB，总计 8 MiB。
+             */
+            description_images?: {
+                [key: string]: string;
+            };
             /** 描述 */
             description?: string | null;
             /** 验收标准 */
             acceptance_criteria?: string | null;
+            /**
+             * 需求描述格式
+             * @description 旧数据默认 PLAIN；HTML 使用服务端白名单清洗，详情和历史快照按格式安全显示。更新未提供时保留原格式。
+             * @default PLAIN
+             * @enum {string}
+             */
+            description_format: "PLAIN" | "HTML";
             /** 环节人员 */
             participants?: components["schemas"]["ParticipantInput"][];
             /** 需求 ID */
@@ -2070,6 +2319,24 @@ export interface components {
             /** 创建人 ID */
             created_by: number | null;
         };
+        /** 筛选选项 */
+        FilterOption: {
+            /** 选项 ID */
+            id: number;
+            /** 显示名称 */
+            label: string;
+        };
+        /** 筛选选项分页 */
+        FilterOptionPage: {
+            /** 数据列表 */
+            items: components["schemas"]["FilterOption"][];
+            /** 页码 */
+            page: number;
+            /** 每页条数 */
+            page_size: number;
+            /** 总数 */
+            total: number;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** 校验错误详情 */
@@ -2217,7 +2484,7 @@ export interface components {
         };
         /**
          * ParticipantInput
-         * @description 环节人员。CONFIRM 最多一人；DESIGN、DEVELOP、ACCEPT 可多人。同一人员与环节组合不能重复。ACCEPT 任意一名有效人员验收通过即可完成需求。
+         * @description 环节人员均可多选。同一人员与环节组合不能重复；CONFIRM 和 ACCEPT 均由任意一名有效且有权限的人员操作即可推进，保留实际操作人及人员快照。
          */
         ParticipantInput: {
             /** 人员编号 */
@@ -2425,9 +2692,39 @@ export interface components {
             /** 操作原因 */
             reason?: string | null;
         };
+        /** VersionRequirementSubmitAcceptance */
+        VersionRequirementSubmitAcceptance: {
+            /** 版本修订号 */
+            version_revision: number;
+            /**
+             * 需求清单
+             * @description 需求ID不可重复；每项携带检查时的需求revision。
+             */
+            items: components["schemas"]["BatchActionItem"][];
+            /**
+             * 提交说明
+             * @description 提供时trim后至少2字符；待开发直接提验或管理员代操作必填。
+             */
+            reason?: string | null;
+        };
+        /** RequirementBatchAction */
+        RequirementBatchAction: {
+            /** 待操作记录 */
+            items: components["schemas"]["BatchActionItem"][];
+            /** 操作原因 */
+            reason?: string | null;
+            /**
+             * 流程操作
+             * @enum {string}
+             */
+            action: "CONFIRM" | "DEVELOPING" | "TESTING" | "DONE";
+        };
         /** RequirementCreate */
         RequirementCreate: {
-            /** 需求标题 */
+            /**
+             * 需求标题
+             * @description 去除首尾空白后至少两个可见字符；空字符串、纯空白或仅不可见字符返回422。
+             */
             title: string;
             /** 需求类型 */
             requirement_type: string;
@@ -2447,8 +2744,22 @@ export interface components {
             owner_id?: null;
             /** 环节人员 */
             participants?: components["schemas"]["ParticipantInput"][];
+            /**
+             * 正文新图片
+             * @description 正文临时图片编号对应的 PNG、JPEG 或 WebP 数据。仅随保存提交，单张最多 4 MiB，总计 8 MiB。
+             */
+            description_images?: {
+                [key: string]: string;
+            };
             /** 描述 */
             description: string;
+            /**
+             * 需求描述格式
+             * @description 旧数据默认 PLAIN；HTML 使用服务端白名单清洗，详情和历史快照按格式安全显示。更新未提供时保留原格式。
+             * @default PLAIN
+             * @enum {string}
+             */
+            description_format: "PLAIN" | "HTML";
             /** 验收标准 */
             acceptance_criteria?: string | null;
             /** 版本 ID */
@@ -2487,6 +2798,13 @@ export interface components {
             current_version_id: number | null;
             /** 描述 */
             description: string;
+            /**
+             * 需求描述格式
+             * @description 旧数据默认 PLAIN；HTML 使用服务端白名单清洗，详情和历史快照按格式安全显示。更新未提供时保留原格式。
+             * @default PLAIN
+             * @enum {string}
+             */
+            description_format: "PLAIN" | "HTML";
             /** 验收标准 */
             acceptance_criteria: string | null;
             /**
@@ -2542,7 +2860,10 @@ export interface components {
         };
         /** RequirementUpdate */
         RequirementUpdate: {
-            /** 需求标题 */
+            /**
+             * 需求标题
+             * @description 去除首尾空白后至少两个可见字符；空字符串、纯空白或仅不可见字符返回422。
+             */
             title?: string | null;
             /** 需求类型 */
             requirement_type?: string | null;
@@ -2557,8 +2878,22 @@ export interface components {
              * @description 历史总负责人只读；新写入不再接受 owner_id。
              */
             owner_id?: null;
+            /**
+             * 正文新图片
+             * @description 正文临时图片编号对应的 PNG、JPEG 或 WebP 数据。仅随保存提交，单张最多 4 MiB，总计 8 MiB。
+             */
+            description_images?: {
+                [key: string]: string;
+            };
             /** 描述 */
             description?: string | null;
+            /**
+             * 需求描述格式
+             * @description 旧数据默认 PLAIN；HTML 使用服务端白名单清洗，详情和历史快照按格式安全显示。更新未提供时保留原格式。
+             * @default PLAIN
+             * @enum {string}
+             */
+            description_format: "PLAIN" | "HTML";
             /** 验收标准 */
             acceptance_criteria?: string | null;
             /**
@@ -2796,8 +3131,21 @@ export interface components {
             planned_release_date?: string | null;
             /** 描述 */
             description?: string | null;
+            /**
+             * 关联需求 ID
+             * @description 创建时关联的现有需求，必须与 requirement_revision 成对提供；不关联时同时为空或省略。
+             */
+            requirement_id?: number | null;
+            /**
+             * 关联需求版本号
+             * @description 关联需求的当前 revision，必须与 requirement_id 成对提供。
+             */
+            requirement_revision?: number | null;
         };
-        /** VersionOut */
+        /**
+         * VersionOut
+         * @description status为关联需求自动汇总的只读有效进度，详情、列表筛选、统计和所有写响应保持一致。真实RELEASED/CANCELED终态保留，历史非终态存储不覆盖派生结果；读取不写库。无需求为PLANNING；全DONE且确认有效为READY；全TESTING/DONE未就绪为TESTING；已开始工作但混合其他阶段为DEVELOPING，其余PLANNING。暂停和取消需求仍参与清单并阻止发布。
+         */
         VersionOut: {
             /** 版本 ID */
             id: number;
@@ -2902,7 +3250,10 @@ export interface components {
              */
             revision: number;
         };
-        /** WorkflowAction */
+        /**
+         * WorkflowAction
+         * @description REOPEN 仅允许已取消且不属于已发布版本的需求，原因必填；回到 DRAFT 并清除当前确认资格，保留历史、人员及关联。
+         */
         WorkflowAction: {
             /** 修订号 */
             revision: number;
@@ -2910,7 +3261,7 @@ export interface components {
              * 动作
              * @enum {string}
              */
-            action: "CONFIRM" | "REQUEST_CHANGES" | "DESIGN_PENDING" | "DESIGN_START" | "DESIGN_DONE" | "DESIGN_CANCEL";
+            action: "CONFIRM" | "REOPEN" | "REQUEST_CHANGES" | "DESIGN_PENDING" | "DESIGN_START" | "DESIGN_DONE" | "DESIGN_CANCEL";
             /** 原因 */
             reason?: string | null;
         };
@@ -2963,6 +3314,162 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    requirements_filter_options_participants_get: {
+        parameters: {
+            query?: {
+                keyword?: string;
+                page?: number;
+                page_size?: number;
+                selected_id?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FilterOptionPage"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    requirements_filter_options_versions_get: {
+        parameters: {
+            query?: {
+                keyword?: string;
+                page?: number;
+                page_size?: number;
+                selected_id?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FilterOptionPage"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    versions_filter_options_owners_get: {
+        parameters: {
+            query?: {
+                keyword?: string;
+                page?: number;
+                page_size?: number;
+                selected_id?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FilterOptionPage"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     workflow_api_v1_requirements__requirement_id__workflow_get: {
         parameters: {
             query?: never;
@@ -3880,6 +4387,57 @@ export interface operations {
             };
         };
     };
+    batch_feedback_actions_api_v1_feedbacks_batch_actions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FeedbackBatchAction"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchActionResponse"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_feedback_api_v1_feedbacks__feedback_id__get: {
         parameters: {
             query?: never;
@@ -3911,6 +4469,77 @@ export interface operations {
             };
             /** @description 无权执行该操作 */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_feedback_api_v1_feedbacks__feedback_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                feedback_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EntityDelete"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntityDeleted"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或 revision 冲突 */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4523,6 +5152,57 @@ export interface operations {
             };
         };
     };
+    batch_requirement_actions_api_v1_requirements_batch_actions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequirementBatchAction"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchActionResponse"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_requirement_api_v1_requirements__requirement_id__get: {
         parameters: {
             query?: never;
@@ -4554,6 +5234,77 @@ export interface operations {
             };
             /** @description 无权执行该操作 */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_requirement_api_v1_requirements__requirement_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requirement_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EntityDelete"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntityDeleted"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或 revision 冲突 */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4630,6 +5381,67 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_description_image_api_v1_requirements__requirement_id__images__file_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requirement_id: number;
+                file_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": unknown;
+                    "image/jpeg": unknown;
+                    "image/webp": unknown;
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Validation Error */
@@ -4856,6 +5668,24 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description revision CAS 冲突 (40910) 或该操作的业务冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Validation Error */
@@ -5238,6 +6068,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_version_requirements_acceptance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                version_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VersionRequirementSubmitAcceptance"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchActionResponse"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Validation Error */
@@ -5862,6 +6754,57 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["MailNoticeAcknowledge"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MailPreferencesOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或 revision 冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unbind_email: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmailUnbindRequest"];
             };
         };
         responses: {

@@ -21,7 +21,9 @@ from app.schemas.requirement import (
 )
 from app.services.audit_service import AuditService
 from app.services.collaboration_service import CollaborationService
+from app.services.requirement_images import bind_images
 from app.services.revision_conflict import revision_conflict_data
+from app.services.rich_text import sanitize_requirement_description
 from app.services.workflow_service import WorkflowService
 
 ALLOWED_TRANSITIONS: dict[RequirementStatus, set[ManualRequirementStatus]] = {
@@ -76,7 +78,13 @@ class RequirementService:
             created_by=operator_id,
             updated_by=operator_id,
             **payload.model_dump(
-                exclude={"version_id", "version_revision", "participants", "owner_id"}
+                exclude={
+                    "version_id",
+                    "version_revision",
+                    "participants",
+                    "owner_id",
+                    "description_images",
+                }
             ),
         )
         collaboration = CollaborationService(self.db)
@@ -85,6 +93,14 @@ class RequirementService:
         )
         self.db.add(item)
         self.db.flush()
+        item.description = bind_images(
+            self.db,
+            item.id,
+            operator_id,
+            item.description,
+            item.description_format,
+            payload.description_images,
+        )
         for person in payload.participants:
             self.db.add(RequirementParticipant(requirement_id=item.id, **person.model_dump()))
         self.db.flush()
@@ -121,12 +137,29 @@ class RequirementService:
         if not current:
             raise NotFoundError("需求不存在")
         WorkflowService(self.db).lock(current)
-        values = payload.model_dump(exclude_unset=True, exclude={"revision", "owner_id"}) | {
-            "updated_by": operator_id
-        }
+        values = payload.model_dump(
+            exclude_unset=True, exclude={"revision", "owner_id", "description_images"}
+        ) | {"updated_by": operator_id}
+        if "description" in values or "description_format" in values:
+            try:
+                values["description"] = sanitize_requirement_description(
+                    values.get("description", current.description),
+                    values.get("description_format", current.description_format),
+                )
+            except ValueError as exc:
+                raise AppError(42265, str(exc), 422) from exc
+        if "description" in values or payload.description_images:
+            values["description"] = bind_images(
+                self.db,
+                current.id,
+                operator_id,
+                values.get("description", current.description),
+                values.get("description_format", current.description_format),
+                payload.description_images,
+            )
         content_changed = any(
             key in values and values[key] != getattr(current, key)
-            for key in ("description", "acceptance_criteria")
+            for key in ("description", "description_format", "acceptance_criteria")
         )
         if content_changed:
             if current.status == RequirementStatus.ONLINE:

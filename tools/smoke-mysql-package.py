@@ -607,6 +607,12 @@ try:
                     },
                 )
                 r = request("GET", f"/requirements/{r['id']}", h).json()
+                version_revision = v["revision"]
+                expected_progress = {
+                    "CONFIRMED": "PLANNING",
+                    "DEVELOPING": "DEVELOPING",
+                    "TESTING": "TESTING",
+                }
                 for status in ("CONFIRMED", "DEVELOPING", "TESTING"):
                     r = request(
                         "PATCH",
@@ -614,6 +620,9 @@ try:
                         h,
                         json={"status": status, "revision": r["revision"]},
                     ).json()
+                    v = request("GET", f"/versions/{v['id']}", h).json()
+                    assert v["status"] == expected_progress[status]
+                    assert v["revision"] == version_revision
                 # Even an administrator must give a reason to act for the acceptance owner.
                 request(
                     "PATCH",
@@ -628,13 +637,22 @@ try:
                     h,
                     json={"status": "DONE", "revision": r["revision"]},
                 ).json()
+                v = request("GET", f"/versions/{v['id']}", h).json()
+                assert v["status"] == "READY" and v["revision"] == version_revision
+                # Progress is derived; old clients cannot manually override it.
                 for status in ("DEVELOPING", "TESTING", "READY"):
-                    v = request(
+                    denied = request(
                         "PATCH",
                         f"/versions/{v['id']}/status",
                         h,
+                        expected=409,
                         json={"status": status, "revision": v["revision"]},
                     ).json()
+                    assert denied["code"] == 40921
+                    current = request("GET", f"/versions/{v['id']}", h).json()
+                    assert current["status"] == "READY"
+                    assert current["revision"] == version_revision
+                assert sql(f"SELECT COUNT(*) FROM `{db_name}`.rd_release")[0][0] == 0
                 result = request(
                     "POST",
                     f"/versions/{v['id']}/publish",

@@ -1,3 +1,4 @@
+import { withDescriptionImages } from '@/utils/requirementImages'
 import { api } from './client'
 import type {
   LinkedFeedback,
@@ -18,11 +19,11 @@ export const getRequirement = (id: number) =>
 export const listRequirementFeedbacks = (id: number) =>
   api.get<LinkedFeedback[]>(`/requirements/${id}/feedbacks`).then((r) => r.data)
 
-export const createRequirement = (payload: RequirementCreatePayload) =>
-  api.post<Requirement>('/requirements', payload).then((r) => r.data)
+export const createRequirement = async (payload: RequirementCreatePayload) =>
+  api.post<Requirement>('/requirements', await withDescriptionImages(payload)).then((r) => r.data)
 
-export const updateRequirement = (id: number, payload: RequirementUpdatePayload) =>
-  api.patch<Requirement>(`/requirements/${id}`, payload, { skipRevisionConflictAlert: true }).then((r) => r.data)
+export const updateRequirement = async (id: number, payload: RequirementUpdatePayload) =>
+  api.patch<Requirement>(`/requirements/${id}`, await withDescriptionImages(payload), { skipRevisionConflictAlert: true }).then((r) => r.data)
 
 export const changeRequirementStatus = (
   id: number,
@@ -31,5 +32,5 @@ export const changeRequirementStatus = (
   reason?: string | null,
 ) =>
   api
-    .patch<Requirement>(`/requirements/${id}/status`, { status, revision, reason: reason ?? null }, { skipRevisionConflictAlert: true })
+    .patch<Requirement>(`/requirements/${id}/status`, { status, revision, reason: reason ?? null }, { skipRevisionConflictAlert: true, skipForbiddenAlert: true })
     .then((r) => r.data)

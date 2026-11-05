@@ -1,0 +1,95 @@
+{
+  "source": "f879eaa17700dfcfe455f09974e606e41dd1de04",
+  "local_checks": {
+    "frontend_unit": 399,
+    "browser": 18,
+    "postgresql_unique": 24,
+    "mysql57_unique": 22,
+    "contract_and_documentation": 20,
+    "typescript_build_bundle": "PASS",
+    "ruff": "PASS",
+    "mypy_files": 108
+  },
+  "test_deployment": "PASS",
+  "attempt1": {
+    "result": "APP_ROLLBACK_NO_DB_RESTORE",
+    "gate": "all-table equality",
+    "observed_change": "refresh-session rotation user 7 2026-11-03T04:41:38Z"
+  },
+  "attempt2": {
+    "result": "APP_ROLLBACK_NO_DB_RESTORE",
+    "all_table_preservation": "PASS",
+    "failure": "TEST proxy reload requires running worker"
+  },
+  "retry2_control_sha256": "4a4b2163fc140ecf43be84717e9539b2f875ff8dc406a8136f031de847962519",
+  "production": "UNCHANGED",
+  "attempt3": {
+    "status": "PASS",
+    "source": "f879eaa17700dfcfe455f09974e606e41dd1de04",
+    "completed_utc": "2026-11-03T05:20:38Z",
+    "elapsed_seconds": 48.75,
+    "schema": "mysql57_0011",
+    "tables_preserved": 29,
+    "attachments_preserved": true,
+    "pre_backup": "/opt/iterflow/backups/mail-notice-test-email-unbind-pre-20261103T051957Z",
+    "api_image": "iterflow-api:email-unbind-f879eaa",
+    "web_image": "iterflow-web:email-unbind-f879eaa",
+    "worker": "RUNNING_RESTORED_AFTER_QA",
+    "final_verify": "FINAL_VERIFY_PASS",
+    "receipt_origin": "Observed server terminal output; originals retained under upgrade-evidence/email-unbind-f879eaa/retry2"
+  },
+  "artifact": {
+    "bytes": 557258,
+    "sha256": "8e1883c8faec3a796f30e2bfd7ad8ac8a5ff764debc09db9a78d83c8c4a679c9"
+  },
+  "online_acceptance": {
+    "status": "PASS",
+    "account": "ceshi008",
+    "id": 9,
+    "checks": [
+      "own_account_only_and_already_unbound_idempotent",
+      "verification_queued_for_synthetic_account_with_worker_paused",
+      "browser_unbind_clears_pending_and_preserves_mode_and_acknowledgement",
+      "independent_session_stale_revision_and_cancelled_challenge_checked",
+      "site_notification_queued_after_unbind",
+      "site_notification_delivered_and_binding_stays_cleared"
+    ],
+    "pending_revision": 3,
+    "requirement_id": 22,
+    "requirement_no": "REQ-20261103-0005",
+    "notification_ids": [
+      438,
+      436
+    ],
+    "completed_local": "2026-11-03T13:27:37+0800"
+  },
+  "queue_acceptance": {
+    "status": "PASS",
+    "email_skipped_actions": [
+      "CREATED",
+      "CONFIRM",
+      "VERIFY_EMAIL"
+    ],
+    "skip_reason": "PREFERENCE_OR_EMAIL_CHANGED",
+    "site_sent_actions": [
+      "CREATED",
+      "CONFIRM"
+    ],
+    "unbind_audit_count": 1
+  },
+  "public_checks": {
+    "TEST": {
+      "status": 200,
+      "index_sha256": "525086c421f1f6e95be4b37b6251a786b13206ab875af9c25eea87113f43b972"
+    },
+    "PRODUCTION": {
+      "status": 200,
+      "index_sha256": "69c02cd420cef46f7d11141992b1fc2161ad1d88be04d245c37b46e2f25a3e9a"
+    },
+    "checked_utc": "2026-11-03T05:22:29.995769+00:00"
+  },
+  "limits": [
+    "Online mutation covered pending-only account; verified binding, transaction rollback and in-flight SMTP covered isolated dual database/browser tests.",
+    "No migration, database restore, production mutation, push, merge, tag or Release."
+  ]
+}

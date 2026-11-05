@@ -35,12 +35,13 @@ class BaseRepository[T]:
                 values.pop("main_requirement_id", None)
         id_column = model.id
         revision_column = model.revision
+        criteria = [id_column == entity_id, revision_column == revision]
+        if hasattr(model, "deleted_at"):
+            criteria.append(model.deleted_at.is_(None))
         result = cast(
             CursorResult[Any],
             self.db.execute(
-                update(self.model)
-                .where(id_column == entity_id, revision_column == revision)
-                .values(**values, revision=revision_column + 1)
+                update(self.model).where(*criteria).values(**values, revision=revision_column + 1)
             ),
         )
         return bool(result.rowcount)

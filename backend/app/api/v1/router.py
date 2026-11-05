@@ -9,6 +9,7 @@ from app.api.v1 import (
     editing,
     feedbacks,
     files,
+    filter_options,
     mail,
     notifications,
     releases,
@@ -21,6 +22,8 @@ from app.api.v1 import (
 
 api_router = APIRouter()
 for module in (
+    # Static filter paths must precede /requirements/{requirement_id}/participants.
+    filter_options,
     collaboration,
     auth,
     dashboard,

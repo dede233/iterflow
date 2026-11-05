@@ -1,9 +1,10 @@
 from datetime import datetime
-from typing import NamedTuple
+from typing import NamedTuple, cast
 
 from sqlalchemy import ColumnElement, func, or_, select
 from sqlalchemy.orm import Session
 
+from app.domain.version_progress import effective_version_status_expression
 from app.models.entities import Feedback, Release, Requirement, Version
 from app.models.enums import (
     DataScope,
@@ -13,6 +14,7 @@ from app.models.enums import (
     VersionStatus,
 )
 from app.repositories.requirement_repository import RequirementRepository
+from app.repositories.version_repository import VersionRepository
 
 
 class DashboardReleaseRecord(NamedTuple):
@@ -56,13 +58,15 @@ class DashboardRepository:
 
     @staticmethod
     def _feedback_scope(user_id: int, data_scope: DataScope) -> list[ColumnElement[bool]]:
-        return [] if data_scope is DataScope.ALL else [Feedback.submitter_id == user_id]
+        return [Feedback.deleted_at.is_(None)] + (
+            [] if data_scope is DataScope.ALL else [Feedback.submitter_id == user_id]
+        )
 
     @staticmethod
     def _requirement_scope(user_id: int, data_scope: DataScope) -> list[ColumnElement[bool]]:
         if data_scope is DataScope.ALL:
-            return []
-        return [RequirementRepository.self_criterion(user_id)]
+            return [Requirement.deleted_at.is_(None)]
+        return [Requirement.deleted_at.is_(None), RequirementRepository.self_criterion(user_id)]
 
     @staticmethod
     def _version_scope(user_id: int, data_scope: DataScope) -> list[ColumnElement[bool]]:
@@ -93,27 +97,30 @@ class DashboardRepository:
     def version_status_counts(
         self, user_id: int, data_scope: DataScope
     ) -> dict[VersionStatus, int]:
-        rows = self.db.execute(
-            select(Version.status, func.count(Version.id))
+        progress = (
+            select(Version.id, effective_version_status_expression().label("status"))
             .where(*self._version_scope(user_id, data_scope))
-            .group_by(Version.status)
+            .subquery()
+        )
+        rows = self.db.execute(
+            select(progress.c.status, func.count(progress.c.id)).group_by(progress.c.status)
         ).all()
-        return {status: int(count) for status, count in rows}
+        return {VersionStatus(cast(str, status)): int(cast(int, count)) for status, count in rows}
 
     def recent_active_versions(
         self, user_id: int, data_scope: DataScope, limit: int = 5
     ) -> list[Version]:
-        return list(
-            self.db.scalars(
-                select(Version)
-                .where(
-                    *self._version_scope(user_id, data_scope),
-                    Version.status.in_(self.ACTIVE_VERSION_STATUSES),
-                )
-                .order_by(Version.updated_at.desc(), Version.id.desc())
-                .limit(limit)
-            ).all()
-        )
+        rows = self.db.execute(
+            select(Version, effective_version_status_expression())
+            .where(
+                *self._version_scope(user_id, data_scope),
+                Version.status.in_(self.ACTIVE_VERSION_STATUSES),
+            )
+            .order_by(Version.updated_at.desc(), Version.id.desc())
+            .limit(limit)
+            .execution_options(populate_existing=True)
+        ).all()
+        return [VersionRepository.with_progress(*row) for row in rows]
 
     def release_total_count(self, user_id: int, data_scope: DataScope) -> int:
         return int(

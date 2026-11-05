@@ -20,6 +20,11 @@ class MailNoticeAcknowledge(BaseModel):
     revision: int = Field(ge=1)
 
 
+class EmailUnbindRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    revision: int = Field(ge=1)
+
+
 class MailPreferenceChange(BaseModel):
     revision: int = Field(ge=1)
     mode: MailMode

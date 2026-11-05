@@ -164,3 +164,110 @@ it.each(['conflict', 'no-edit', 'switch', 'reconfirm'])('does not automatically 
   expect(wrapper.findComponent({ name: 'RequirementPeopleDialog' }).exists()).toBe(false)
   wrapper.unmount()
 })
+
+it.each(['missing-acceptor', 'unfinished-design', 'unconfirmed-content'])('blocks submission before opening a status form: %s', async mode => {
+  mocks.workflow.mockResolvedValue({ revision: 8, needs_confirmation: mode === 'unconfirmed-content', design_status: mode === 'unfinished-design' ? 'IN_PROGRESS' : 'NOT_REQUIRED', records: [] })
+  mocks.participants.mockResolvedValue({ participants: [
+    { user_id: 2, role: 'DEVELOP', active: true },
+    ...(mode === 'missing-acceptor' ? [] : [{ user_id: 3, role: 'ACCEPT', active: true }]),
+  ] })
+  const wrapper = panel()
+  await wrapper.setProps({ item: { id: 1, revision: 8, status: 'DEVELOPING' } as any }); await flushPromises()
+  await wrapper.find('.progress-toggle').trigger('click')
+  const button = wrapper.findAll('button').find(b => b.text() === '提交验收')!
+  expect(button.attributes('disabled')).toBeDefined()
+  await button.trigger('click')
+  expect(wrapper.emitted('status')).toBeUndefined()
+  expect(mocks.act).not.toHaveBeenCalled()
+  wrapper.unmount()
+})
+
+it('opens a focused personnel editor with a clear missing-role hint', async () => {
+  useAuthStore().user!.permission_codes.push('rd.requirement.edit')
+  mocks.workflow.mockResolvedValue({ revision: 8, needs_confirmation: false, design_status: 'NOT_REQUIRED', records: [] })
+  mocks.participants.mockResolvedValue({ participants: [] })
+  const wrapper = panel()
+  await wrapper.setProps({ item: { id: 1, revision: 8, status: 'CONFIRMED' } as any }); await flushPromises()
+  await wrapper.find('.progress-toggle').trigger('click')
+  expect(wrapper.text()).toContain('尚未设置有效的开发人员')
+  await wrapper.findAll('button').find(b => b.text() === '设置开发人员')!.trigger('click')
+  expect(wrapper.findComponent({ name: 'RequirementPeopleDialog' }).props('roles')).toEqual(['DEVELOP'])
+  expect(wrapper.emitted('status')).toBeUndefined()
+  wrapper.unmount()
+})
+
+it.each([
+  ['CONFIRMED', '开始开发', 'DEVELOP'], ['DEVELOPING', '提交验收', 'DEVELOP'],
+  ['TESTING', '验收通过', 'ACCEPT'], ['TESTING', '退回开发', 'ACCEPT'],
+  ['DONE', '重新开发', 'DEVELOP'], ['PAUSED', '恢复开发', 'DEVELOP'],
+])('marks delegated %s / %s as requiring an explicit reason', async (status, label, role) => {
+  useAuthStore().user!.can_view_api_docs = true
+  mocks.workflow.mockResolvedValue({ revision: 8, needs_confirmation: false, design_status: 'NOT_REQUIRED', records: [] })
+  mocks.participants.mockResolvedValue({ participants: [
+    { user_id: 3, role, active: true }, { user_id: 4, role: 'ACCEPT', active: true },
+  ] })
+  const wrapper = panel()
+  await wrapper.setProps({ item: { id: 1, revision: 8, status } as any }); await flushPromises()
+  await wrapper.find('.progress-toggle').trigger('click')
+  await wrapper.findAll('button').find(b => b.text() === label)!.trigger('click')
+  expect(wrapper.emitted('status')?.[0]?.[0]).toMatchObject({ needsReason: true, reasonLabel: '代操作原因（必填）' })
+  wrapper.unmount()
+})
+
+it('keeps confirmation available while progress is collapsed', async () => {
+  const wrapper = panel(); await flushPromises()
+  expect(wrapper.findAll('li')).toHaveLength(0)
+  await wrapper.findAll('button').find(b => b.text() === '确认当前内容')!.trigger('click')
+  await wrapper.find('form').trigger('submit'); await flushPromises()
+  expect(mocks.act).toHaveBeenCalledExactlyOnceWith(1, { action: 'CONFIRM', revision: 8, reason: null })
+  wrapper.unmount()
+})
+it('allows any of multiple active confirmers and requires a reason to reopen cancellation', async () => {
+  mocks.participants.mockResolvedValue({ participants: [
+    { user_id: 3, role: 'CONFIRM', display_name: '第一确认人', active: true },
+    { user_id: 2, role: 'CONFIRM', display_name: '第二确认人', active: true },
+  ] })
+  const wrapper = panel(); await flushPromises()
+  expect(wrapper.find('.progress-summary').text()).toContain('第一确认人、第二确认人')
+  expect(wrapper.findAll('button').some(b => b.text() === '确认当前内容')).toBe(true)
+  await wrapper.setProps({ item: { id: 1, revision: 8, status: 'CANCELED' } as any }); await flushPromises()
+  expect(wrapper.findAll('button').some(b => b.text() === '确认当前内容')).toBe(false)
+  await wrapper.findAll('button').find(b => b.text() === '重新打开需求')!.trigger('click')
+  await wrapper.find('form').trigger('submit'); await flushPromises()
+  expect(mocks.act).not.toHaveBeenCalled()
+  await wrapper.find('textarea').setValue('恢复这个需求')
+  await wrapper.find('form').trigger('submit'); await flushPromises()
+  expect(mocks.act).toHaveBeenCalledExactlyOnceWith(1, { action: 'REOPEN', revision: 8, reason: '恢复这个需求' })
+  wrapper.unmount()
+})
+it('keeps collapsed prerequisite guards and removes all write actions online', async () => {
+  mocks.workflow.mockResolvedValue({ revision: 8, needs_confirmation: false, design_status: 'IN_PROGRESS', records: [] })
+  mocks.participants.mockResolvedValue({ participants: [{ user_id: 2, role: 'DEVELOP', active: true }] })
+  useAuthStore().user!.permission_codes.push('rd.requirement.edit')
+  const wrapper = panel()
+  await wrapper.setProps({ item: { id: 1, revision: 8, status: 'DEVELOPING' } as any }); await flushPromises()
+  const button = wrapper.findAll('button').find(b => b.text() === '提交验收')!
+  expect(button.attributes('disabled')).toBeDefined()
+  expect(wrapper.text()).toContain('尚未设置有效的验收人员')
+  await button.trigger('click'); expect(wrapper.emitted('status')).toBeUndefined()
+  await wrapper.setProps({ item: { id: 1, revision: 8, status: 'ONLINE' } as any }); await flushPromises()
+  expect(wrapper.find('.progress-actions').exists()).toBe(false)
+  await wrapper.find('.progress-toggle').trigger('click')
+  expect(wrapper.findAll('.step-people-button')).toHaveLength(0)
+  wrapper.unmount()
+})
+
+it('renders explicit rich-text history safely and keeps legacy snapshots literal', async () => {
+  mocks.workflow.mockResolvedValue({ revision: 8, needs_confirmation: false, design_status: 'NOT_REQUIRED', records: [
+    { id: 'rich', action: 'CONFIRM', actor_id: 2, created_at: '2026-11-04T00:00:00Z', detail: { description: '<p><strong>富文本范围</strong><script>alert(1)</script></p>', description_format: 'HTML' } },
+    { id: 'legacy', action: 'CONFIRM', actor_id: 2, created_at: '2026-11-03T00:00:00Z', detail: { description: '<b>旧文本范围</b>' } },
+  ] })
+  const wrapper = panel(); await flushPromises()
+  await wrapper.find('.progress-toggle').trigger('click')
+  const content = wrapper.findAll('.rich-text-content')
+  expect(content[0]!.find('strong').text()).toBe('富文本范围')
+  expect(content[0]!.find('script').exists()).toBe(false)
+  expect(content[1]!.text()).toBe('<b>旧文本范围</b>')
+  expect(content[1]!.find('b').exists()).toBe(false)
+  wrapper.unmount()
+})

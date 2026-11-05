@@ -45,6 +45,7 @@ export interface ReqStatusAction {
   target: ManualRequirementStatus
   label: string
   needsReason: boolean
+  reasonLabel?: string
 }
 
 // Human-settable transitions keyed by current status (mirrors backend).

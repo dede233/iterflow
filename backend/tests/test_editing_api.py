@@ -22,6 +22,7 @@ from app.models.entities import (
     User,
     UserRole,
     Version,
+    VersionRequirement,
 )
 from app.models.enums import (
     DataScope,
@@ -52,6 +53,7 @@ def editing_api() -> Iterator[tuple[TestClient, dict[str, dict[str, str]]]]:
         FeedbackRecipient.__table__,
         CollaborationEvent.__table__,
         Version.__table__,
+        VersionRequirement.__table__,
         Requirement.__table__,
         RequirementStep.__table__,
         RequirementParticipant.__table__,

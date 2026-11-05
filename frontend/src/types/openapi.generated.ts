@@ -1070,6 +1070,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/systems/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 业务系统选择项
+         * @description 需求或版本查看、创建、编辑权限可读取启用系统的最小选择项，不返回管理元数据。
+         */
+        get: operations["system_options_api_v1_systems_options_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/systems": {
         parameters: {
             query?: never;
@@ -1755,6 +1775,13 @@ export interface components {
              * @default 0
              */
             sort_order: number;
+        };
+        /** BusinessSystemOption */
+        BusinessSystemOption: {
+            /** 系统 ID */
+            id: number;
+            /** 系统名称 */
+            name: string;
         };
         /** BusinessSystemOut */
         BusinessSystemOut: {
@@ -2692,21 +2719,6 @@ export interface components {
             /** 操作原因 */
             reason?: string | null;
         };
-        /** VersionRequirementSubmitAcceptance */
-        VersionRequirementSubmitAcceptance: {
-            /** 版本修订号 */
-            version_revision: number;
-            /**
-             * 需求清单
-             * @description 需求ID不可重复；每项携带检查时的需求revision。
-             */
-            items: components["schemas"]["BatchActionItem"][];
-            /**
-             * 提交说明
-             * @description 提供时trim后至少2字符；待开发直接提验或管理员代操作必填。
-             */
-            reason?: string | null;
-        };
         /** RequirementBatchAction */
         RequirementBatchAction: {
             /** 待操作记录 */
@@ -2772,6 +2784,8 @@ export interface components {
         };
         /** RequirementOut */
         RequirementOut: {
+            /** 所属业务系统名称 */
+            system_name?: string | null;
             /** 当前待处理人 */
             current_handlers?: components["schemas"]["PersonOption"][];
             /** 需求 ID */
@@ -3121,6 +3135,8 @@ export interface components {
         };
         /** VersionCreate */
         VersionCreate: {
+            /** 所属业务系统 ID */
+            system_id: number;
             /** 版本号 */
             version_no: string;
             /** 版本名称 */
@@ -3147,6 +3163,10 @@ export interface components {
          * @description status为关联需求自动汇总的只读有效进度，详情、列表筛选、统计和所有写响应保持一致。真实RELEASED/CANCELED终态保留，历史非终态存储不覆盖派生结果；读取不写库。无需求为PLANNING；全DONE且确认有效为READY；全TESTING/DONE未就绪为TESTING；已开始工作但混合其他阶段为DEVELOPING，其余PLANNING。暂停和取消需求仍参与清单并阻止发布。
          */
         VersionOut: {
+            /** 所属业务系统 ID */
+            system_id: number | null;
+            /** 所属业务系统名称 */
+            system_name?: string | null;
             /** 版本 ID */
             id: number;
             /** 版本号 */
@@ -3192,6 +3212,21 @@ export interface components {
             /** 总条数 */
             total: number;
         };
+        /** VersionRequirementSubmitAcceptance */
+        VersionRequirementSubmitAcceptance: {
+            /** 版本修订号 */
+            version_revision: number;
+            /**
+             * 需求清单
+             * @description 需求ID不可重复；每项携带检查时的需求revision。
+             */
+            items: components["schemas"]["BatchActionItem"][];
+            /**
+             * 提交说明
+             * @description 提供时trim后至少2字符；待开发直接提验或管理员代操作必填。
+             */
+            reason?: string | null;
+        };
         /** VersionRequirementsOut */
         VersionRequirementsOut: {
             /** 版本 ID */
@@ -3236,6 +3271,8 @@ export interface components {
         };
         /** VersionUpdate */
         VersionUpdate: {
+            /** 所属业务系统 ID */
+            system_id?: number | null;
             /** 版本名称 */
             name?: string | null;
             /** 负责人 ID */
@@ -5039,6 +5076,7 @@ export interface operations {
             query?: {
                 page?: number;
                 page_size?: number;
+                system_id?: number | null;
                 keyword?: string | null;
                 status?: components["schemas"]["RequirementStatus"] | null;
                 priority?: components["schemas"]["Priority"] | null;
@@ -5580,6 +5618,7 @@ export interface operations {
             query?: {
                 page?: number;
                 page_size?: number;
+                system_id?: number | null;
                 keyword?: string | null;
                 status?: components["schemas"]["VersionStatus"] | null;
                 planned_release_from?: string | null;
@@ -7029,6 +7068,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    system_options_api_v1_systems_options_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessSystemOption"][];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

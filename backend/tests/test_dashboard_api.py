@@ -13,6 +13,7 @@ from app.core.database import get_db
 from app.core.security import create_access_token
 from app.main import app
 from app.models.entities import (
+    BusinessSystem,
     CollaborationEvent,
     Feedback,
     FeedbackRecipient,
@@ -49,6 +50,7 @@ def dashboard_api(tmp_path: Path) -> Iterator[DashboardFixture]:
         connect_args={"check_same_thread": False},
     )
     for table in (
+        BusinessSystem.__table__,
         User.__table__,
         Role.__table__,
         Permission.__table__,

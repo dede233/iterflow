@@ -11,6 +11,7 @@ from app.schemas.system import (
     BusinessModuleUpdate,
     BusinessSystemCatalogOut,
     BusinessSystemCreate,
+    BusinessSystemOption,
     BusinessSystemOut,
     BusinessSystemUpdate,
 )
@@ -18,6 +19,23 @@ from app.services.system_catalog_service import SystemCatalogService
 from app.services.system_query_service import SystemQueryService
 
 router = APIRouter(prefix="/systems", tags=["systems"])
+
+
+@router.get("/options", response_model=list[BusinessSystemOption])
+def system_options(
+    db: Session = Depends(get_db),
+    user: User = Depends(
+        require_any_permission(
+            "rd.requirement.view",
+            "rd.requirement.create",
+            "rd.requirement.edit",
+            "rd.version.view",
+            "rd.version.create",
+            "rd.version.edit",
+        )
+    ),
+):
+    return SystemQueryService(db).list_enabled()["systems"]
 
 
 @router.get(

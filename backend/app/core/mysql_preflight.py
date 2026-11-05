@@ -92,16 +92,23 @@ def validate_mysql(
             and allow_legacy
         )
         if not (
-            head == "mysql57_0012"
+            head == "mysql57_0013"
             or legacy
-            or (allow_legacy and head in {"mysql57_0009", "mysql57_0010", "mysql57_0011"})
+            or (
+                allow_legacy
+                and head in {"mysql57_0009", "mysql57_0010", "mysql57_0011", "mysql57_0012"}
+            )
         ):
             raise RuntimeError("MySQL Alembic head is missing or unsupported")
-        if head in {"mysql57_0011", "mysql57_0012"} and "notice_acknowledged_at" not in {
+        if head in {
+            "mysql57_0011",
+            "mysql57_0012",
+            "mysql57_0013",
+        } and "notice_acknowledged_at" not in {
             c["name"] for c in inspect(connection).get_columns("sys_mail_preference")
         }:
             raise RuntimeError("Mail notice acknowledgement column is missing")
-        if head == "mysql57_0012":
+        if head in {"mysql57_0012", "mysql57_0013"}:
             for table in ("rd_requirement", "rd_feedback"):
                 columns = {c["name"] for c in inspect(connection).get_columns(table)}
                 required = {"deleted_at", "deleted_by"}
@@ -113,6 +120,16 @@ def validate_mysql(
                 c["name"] for c in inspect(connection).get_columns("rd_requirement_actor")
             }:
                 raise RuntimeError("Multiple confirmer migration is incomplete")
+        if head == "mysql57_0013":
+            inspector = inspect(connection)
+            if "system_id" not in {c["name"] for c in inspector.get_columns("rd_version")}:
+                raise RuntimeError("Version system binding column is missing")
+            if not any(
+                fk["constrained_columns"] == ["system_id"]
+                and fk["referred_table"] == "sys_business_system"
+                for fk in inspector.get_foreign_keys("rd_version")
+            ):
+                raise RuntimeError("Version system binding foreign key is missing")
         portable = "iterflow_file_key_node" in tables
         business_tables = set(Base.metadata.tables)
         if legacy:
@@ -159,6 +176,7 @@ def validate_mysql(
                 "mysql57_0010",
                 "mysql57_0011",
                 "mysql57_0012",
+                "mysql57_0013",
             }:
                 expected |= {
                     "completion_rd_requirement_participant_" + event

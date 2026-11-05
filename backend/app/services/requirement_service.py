@@ -24,6 +24,7 @@ from app.services.collaboration_service import CollaborationService
 from app.services.requirement_images import bind_images
 from app.services.revision_conflict import revision_conflict_data
 from app.services.rich_text import sanitize_requirement_description
+from app.services.system_binding_service import SystemBindingService
 from app.services.workflow_service import WorkflowService
 
 ALLOWED_TRANSITIONS: dict[RequirementStatus, set[ManualRequirementStatus]] = {
@@ -70,6 +71,7 @@ class RequirementService:
         *,
         viewer_scope: DataScope,
     ) -> Requirement:
+        SystemBindingService(self.db).validate_catalog(payload.system_id, payload.module_id)
         item = Requirement(
             requirement_no=next_business_no(
                 self.db, Requirement, Requirement.requirement_no, "REQ"
@@ -140,6 +142,12 @@ class RequirementService:
         values = payload.model_dump(
             exclude_unset=True, exclude={"revision", "owner_id", "description_images"}
         ) | {"updated_by": operator_id}
+        system_id = values.get("system_id", current.system_id)
+        module_id = values.get("module_id", current.module_id)
+        if system_id != current.system_id or module_id != current.module_id:
+            binding = SystemBindingService(self.db)
+            binding.validate_catalog(system_id, module_id)
+            binding.validate_requirement_change(current, system_id)
         if "description" in values or "description_format" in values:
             try:
                 values["description"] = sanitize_requirement_description(

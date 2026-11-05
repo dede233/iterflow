@@ -6,6 +6,7 @@ from uuid import uuid4
 from seeded_postgres_fixture import RedactedHeaders
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
+from system_binding_fixture import create_test_system
 
 from app.models.entities import Notification, OperationLog, Release, Requirement, Version
 from app.services.audit_service import AuditService
@@ -23,6 +24,7 @@ VERSION_PERMISSIONS = {
 
 def exercise_version_role(fixture, role_code, monkeypatch):
     client, engine, _, admin = fixture
+    system_id = create_test_system(engine)
     role_ids = {r["code"]: r["id"] for r in client.get("/api/v1/roles", headers=admin).json()}
     suffix = uuid4().hex[:8]
 
@@ -70,6 +72,7 @@ def exercise_version_role(fixture, role_code, monkeypatch):
                 "/api/v1/versions",
                 headers=header,
                 json={
+                    "system_id": system_id,
                     "version_no": f"VR-{name}-{suffix}",
                     "name": "权限实机版本",
                 },
@@ -101,7 +104,9 @@ def exercise_version_role(fixture, role_code, monkeypatch):
         _, denied = account(code, number)
         assert (
             client.post(
-                "/api/v1/versions", headers=denied, json={"version_no": "DENIED", "name": "拒绝"}
+                "/api/v1/versions",
+                headers=denied,
+                json={"system_id": system_id, "version_no": "DENIED", "name": "拒绝"},
             ).status_code
             == 403
         )
@@ -120,6 +125,7 @@ def exercise_version_role(fixture, role_code, monkeypatch):
             json={
                 "title": "开发提交与验收人确认门禁",
                 "requirement_type": "FEATURE",
+                "system_id": system_id,
                 "description": "角色回归",
                 "participants": [
                     {"role": "CONFIRM", "user_id": dev2_id},

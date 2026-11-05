@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import BusinessSystemSelect from '@/components/BusinessSystemSelect.vue'
 import BatchActionsDialog from '@/components/BatchActionsDialog.vue'
 import { onBeforeUnmount, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -33,19 +34,20 @@ const createDialog = ref(false)
 const filterDrawer = ref(false)
 const detailDrawer = ref(false)
 const activeRequirementId = ref<number | null>(null)
-const filters = reactive({ page: 1, page_size: 20, keyword: '', status: '' as RequirementListParams['status'], priority: '' as RequirementListParams['priority'], source: '' as RequirementListParams['source'], current_version_id: null as number | null, participant_id: null as number | null, participant_role: '' as RequirementListParams['participant_role'] })
+const filters = reactive({ system_id: null as number | null, page: 1, page_size: 20, keyword: '', status: '' as RequirementListParams['status'], priority: '' as RequirementListParams['priority'], source: '' as RequirementListParams['source'], current_version_id: null as number | null, participant_id: null as number | null, participant_role: '' as RequirementListParams['participant_role'] })
 let requestSequence = 0
 const positiveId = (value: number | null) => value != null && Number.isSafeInteger(value) && value >= 1 ? value : undefined
 
 async function load(): Promise<void> {
   const q = queryState.applied()
-  const current = { page: Number(q.page ?? 1), page_size: Number(q.page_size ?? 20), keyword: q.keyword ?? '', status: q.status as RequirementListParams['status'], priority: q.priority as RequirementListParams['priority'], source: q.source as RequirementListParams['source'], current_version_id: q.current_version_id ? Number(q.current_version_id) : null, participant_id: q.participant_id ? Number(q.participant_id) : null, participant_role: q.participant_role as RequirementListParams['participant_role'] }
+  const current = { system_id: q.system_id ? Number(q.system_id) : null, page: Number(q.page ?? 1), page_size: Number(q.page_size ?? 20), keyword: q.keyword ?? '', status: q.status as RequirementListParams['status'], priority: q.priority as RequirementListParams['priority'], source: q.source as RequirementListParams['source'], current_version_id: q.current_version_id ? Number(q.current_version_id) : null, participant_id: q.participant_id ? Number(q.participant_id) : null, participant_role: q.participant_role as RequirementListParams['participant_role'] }
 
   const sequence = ++requestSequence
   loading.value = true
   failed.value = false
   try {
     const page = await listRequirements({
+      system_id: current.system_id || undefined,
       page: current.page, page_size: current.page_size,
       keyword: current.keyword.trim() || undefined, status: current.status || undefined,
       priority: current.priority || undefined, source: current.source || undefined,
@@ -92,6 +94,7 @@ async function onRequirementCreated(id: number): Promise<void> {
 const queryState = useListQuery({
   path: '/requirements', readDraft: () => ({ ...filters }),
   restore: q => {
+    filters.system_id = q.system_id ? Number(q.system_id) : null
     filters.page = Number(q.page ?? 1)
     filters.page_size = Number(q.page_size ?? 20)
     filters.keyword = (q.keyword ?? '') as typeof filters.keyword
@@ -123,6 +126,7 @@ const queryState = useListQuery({
     </PageHeader>
 
     <ListFilterPanel v-model="filterDrawer" :mobile="isMobile" title="筛选需求" @search="applyFilters" @reset="resetFilters">
+      <el-form-item label="业务系统"><BusinessSystemSelect v-model="filters.system_id" /></el-form-item>
       <el-form-item label="关键词"><el-input v-model="filters.keyword" placeholder="编号 / 标题" :maxlength="200" clearable @keyup.enter="applyFilters" /></el-form-item>
       <el-form-item label="状态"><el-select v-model="filters.status" clearable placeholder="全部"><el-option v-for="s in REQUIREMENT_STATUSES" :key="s.value" :label="s.label" :value="s.value" /></el-select></el-form-item>
       <el-form-item label="优先级"><el-select v-model="filters.priority" clearable placeholder="全部"><el-option v-for="p in REQUIREMENT_PRIORITIES" :key="p.value" :label="p.label" :value="p.value" /></el-select></el-form-item>
@@ -143,6 +147,7 @@ const queryState = useListQuery({
     >
       <el-table-column prop="requirement_no" label="编号" width="180" />
       <el-table-column prop="title" label="标题" min-width="240" show-overflow-tooltip />
+      <el-table-column label="业务系统" min-width="130"><template #default="scope">{{ scope.row.system_name || '未指定' }}</template></el-table-column>
       <el-table-column prop="priority" label="优先级" width="90" />
       <el-table-column label="来源" width="90">
         <template #default="s">{{ s.row.source === 'FEEDBACK' ? '反馈转化' : '直接创建' }}</template>
@@ -174,7 +179,7 @@ const queryState = useListQuery({
         @open="openDetail(r.id)"
       >
         <template #status>
-          <StatusTag :status="r.status" :label="requirementStatusLabel[r.status]" :type="requirementStatusTagType(r.status)" size="sm" />
+          <span>{{ r.system_name || '未指定系统' }}</span> <StatusTag :status="r.status" :label="requirementStatusLabel[r.status]" :type="requirementStatusTagType(r.status)" size="sm" />
         </template>
           <span>{{ r.current_handlers?.map(p => p.display_name).join('、') || '暂无待处理人员' }}</span>
           <span>{{ r.priority }}</span>

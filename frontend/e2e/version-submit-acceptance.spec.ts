@@ -15,11 +15,11 @@ type Options = {
 
 async function fixture(page: Page, options: Options = {}) {
   const stamp = '2026-11-04T00:00:00Z'
-  const version = { id: 1, version_no: 'V-SUBMIT', name: '集中提交验收版本', status: 'DEVELOPING', revision: 8, owner_id: 1, description: '省去开始开发登记，保留独立验收', planned_release_date: null, released_at: null, created_at: stamp, updated_at: stamp, updated_by: 1 }
+  const version = { id: 1, system_id: 1, system_name: '系统甲', version_no: 'V-SUBMIT', name: '集中提交验收版本', status: 'DEVELOPING', revision: 8, owner_id: 1, description: '省去开始开发登记，保留独立验收', planned_release_date: null, released_at: null, created_at: stamp, updated_at: stamp, updated_by: 1 }
   const rows = ['CONFIRMED', 'DEVELOPING', 'DRAFT', 'DONE'].map((status, index) => ({
     id: index + 1, requirement_no: `REQ-SUBMIT-${index + 1}`, title: ['已完成开发待登记', '正常开发中需求', '尚未确认的需求', '已通过验收的需求'][index]!,
     status, requirement_type: 'FEATURE', source: 'DIRECT', priority: 'P2', owner_id: null,
-    current_version_id: options.moved && index === 0 ? 2 : 1,
+    system_id: 1, system_name: '系统甲', current_version_id: options.moved && index === 0 ? 2 : 1,
     description: '仅使用本地合成数据验证集中提交验收', description_format: 'PLAIN', acceptance_criteria: '验收人员确认后才可发布',
     revision: index + 3, current_handlers: [], created_at: stamp, updated_at: stamp, updated_by: 1,
   }))
@@ -68,12 +68,13 @@ async function fixture(page: Page, options: Options = {}) {
     const permissions = options.readonly ? ['rd.version.view', 'rd.requirement.view']
       : options.editable === false ? ['rd.version.view', 'rd.requirement.view', 'rd.requirement.status'] : ['*']
     const responses: Record<string, unknown> = {
+      '/api/v1/systems/options': [{ id: 1, name: '系统甲' }],
       '/api/v1/auth/me': { id: actor, username: 'version-submit-local', display_name: '合成测试人员', status: 'ACTIVE', revision: 1, must_change_password: false, data_scope: 'ALL', permission_codes: permissions, can_view_api_docs: !!options.administrator, role_ids: [] },
       '/api/v1/me/mail-preferences': { revision: 1, mode: 'TASKS', email: null, pending_email: null, verified: false, smtp_enabled: false, notice_acknowledged: true },
       '/api/v1/notifications/unread-count': { unread_count: 0 }, '/api/v1/systems': { systems: [], modules: [] },
       '/api/v1/versions/1': version,
       '/api/v1/versions/1/requirements': { version_id: 1, items: rows, stats: { total: 4, completed: 1, completion_rate: .25, by_status: Object.fromEntries(rows.map(row => [row.status, rows.filter(other => other.status === row.status).length])) } },
-      '/api/v1/versions/2': { ...version, id: 2, version_no: 'V-OTHER', name: '切换后的另一个版本', revision: 12 },
+      '/api/v1/versions/2': { ...version, id: 2, system_id: 1, system_name: '系统甲', version_no: 'V-OTHER', name: '切换后的另一个版本', revision: 12 },
       '/api/v1/versions/2/requirements': { version_id: 2, items: [], stats: { total: 0, completed: 0, completion_rate: 0, by_status: {} } },
       '/api/v1/requirements': { items: rows, total: rows.length, page: 1, page_size: 20 },
       '/api/v1/releases': { items: [], total: 0, page: 1, page_size: 20 },

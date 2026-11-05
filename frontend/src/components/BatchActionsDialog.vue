@@ -25,7 +25,7 @@ const sessionVersionId = ref(props.versionId)
 const kind = computed(() => open.value ? sessionKind.value : props.kind)
 const versionScope = computed(() => (open.value ? sessionScope.value : props.scope) === 'version-list')
 const versionSubmission = computed(() => kind.value === 'requirements' && versionScope.value && action.value === 'SUBMIT_ACCEPTANCE')
-const checkedVersion = ref<{ id: number; revision: number } | null>(null)
+const checkedVersion = ref<{ id: number; revision: number; system_id: number | null } | null>(null)
 const peopleEditor = ref<number | null>(null)
 const locked = computed(() => busy.value || peopleEditor.value !== null)
 const canEditPeople = computed(() => auth.hasPermission('rd.requirement.view') && auth.hasPermission('rd.requirement.edit'))
@@ -128,6 +128,7 @@ async function inspect(id: number): Promise<Preview> {
     const sourceHint: Record<string, string> = { CONFIRM: '已上线或已取消的需求不能确认内容', DEVELOPING: '仅待开发需求可开始开发', TESTING: '仅开发中需求可提交验收', SUBMIT_ACCEPTANCE: '仅待开发或开发中需求可提交验收', DONE: '仅待验收需求可验收通过' }
     let blocker = source[action.value]?.includes(item.status) ? '' : `当前为「${statusLabel(item.status)}」，${sourceHint[action.value]}。`
     if (versionSubmission.value && item.current_version_id !== sessionVersionId.value) blocker = '需求已不在当前版本中，请刷新版本清单后重新选择。'
+    if (versionSubmission.value && !blocker && (!checkedVersion.value?.system_id || !item.system_id || checkedVersion.value.system_id !== item.system_id)) blocker = '需求或版本未指定业务系统，或双方系统不一致；请先在详情中处理。'
     const role = action.value === 'CONFIRM' ? 'CONFIRM' : action.value === 'DONE' ? 'ACCEPT' : 'DEVELOP'
     const roleName = { CONFIRM: '需求确认人', ACCEPT: '验收人员', DEVELOP: '开发人员' }[role]
     const members = people.participants.filter(p => p.role === role && p.active)
@@ -165,7 +166,7 @@ async function check() {
       if (['RELEASED', 'CANCELED'].includes(version.status)) {
         busy.value = false; error.value = '当前版本已发布或已取消，不能集中提交验收。请关闭窗口刷新版本清单。'; return
       }
-      checkedVersion.value = { id: version.id, revision: version.revision }
+      checkedVersion.value = { id: version.id, revision: version.revision, system_id: version.system_id }
     } catch (e) {
       if (request === sequence) { busy.value = false; error.value = `${actionErrorMessage(e)} 请刷新版本清单后重新检查。` }
       return

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import BusinessSystemSelect from '@/components/BusinessSystemSelect.vue'
 import { onBeforeUnmount, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
@@ -33,14 +34,14 @@ const createDialog = ref(false)
 const filterDrawer = ref(false)
 const detailDrawer = ref(false)
 const activeVersionId = ref<number | null>(null)
-const filters = reactive({ page: 1, page_size: 20, keyword: '', status: '' as VersionListParams['status'], owner_id: null as number | null })
+const filters = reactive({ system_id: null as number | null, page: 1, page_size: 20, keyword: '', status: '' as VersionListParams['status'], owner_id: null as number | null })
 const dateRange = ref<[string, string] | null>(null)
 let requestSequence = 0
 const positiveId = (value: number | null) => value != null && Number.isSafeInteger(value) && value >= 1 ? value : undefined
 
 async function load(): Promise<void> {
   const q = queryState.applied()
-  const current = { page: Number(q.page ?? 1), page_size: Number(q.page_size ?? 20), keyword: q.keyword ?? '', status: q.status as VersionListParams['status'], owner_id: q.owner_id ? Number(q.owner_id) : null }
+  const current = { system_id: q.system_id ? Number(q.system_id) : null, page: Number(q.page ?? 1), page_size: Number(q.page_size ?? 20), keyword: q.keyword ?? '', status: q.status as VersionListParams['status'], owner_id: q.owner_id ? Number(q.owner_id) : null }
   const currentRange = [q.planned_release_from, q.planned_release_to]
 
   const [from, to] = currentRange
@@ -53,6 +54,7 @@ async function load(): Promise<void> {
   failed.value = false
   try {
     const page = await listVersions({
+      system_id: current.system_id || undefined,
       page: current.page, page_size: current.page_size,
       keyword: current.keyword.trim() || undefined, status: current.status || undefined,
       planned_release_from: from || undefined, planned_release_to: to || undefined,
@@ -95,6 +97,7 @@ async function onVersionCreated(id: number): Promise<void> {
 const queryState = useListQuery({
   path: '/versions', readDraft: () => ({ ...filters, planned_release_from: dateRange.value?.[0], planned_release_to: dateRange.value?.[1] }),
   restore: q => {
+    filters.system_id = q.system_id ? Number(q.system_id) : null
     filters.page = Number(q.page ?? 1)
     filters.page_size = Number(q.page_size ?? 20)
     filters.keyword = (q.keyword ?? '') as typeof filters.keyword
@@ -122,6 +125,7 @@ const queryState = useListQuery({
     </PageHeader>
 
     <ListFilterPanel v-model="filterDrawer" :mobile="isMobile" title="筛选版本" @search="applyFilters" @reset="resetFilters">
+      <el-form-item label="业务系统"><BusinessSystemSelect v-model="filters.system_id" /></el-form-item>
       <el-form-item label="关键词"><el-input v-model="filters.keyword" placeholder="版本号 / 名称" :maxlength="200" clearable @keyup.enter="applyFilters" /></el-form-item>
       <el-form-item label="状态"><el-select v-model="filters.status" clearable placeholder="全部"><el-option v-for="s in VERSION_STATUSES" :key="s.value" :label="s.label" :value="s.value" /></el-select></el-form-item>
       <el-form-item label="计划上线日期"><el-date-picker v-model="dateRange" type="daterange" value-format="YYYY-MM-DD" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" popper-class="version-filter-date-popper" /></el-form-item>
@@ -137,6 +141,7 @@ const queryState = useListQuery({
       row-key="id"
       @row-click="(row: VersionItem) => openDetail(row.id)"
     >
+      <el-table-column label="业务系统" min-width="130"><template #default="scope">{{ scope.row.system_name || '未指定' }}</template></el-table-column>
       <el-table-column prop="version_no" label="版本号" width="160" />
       <el-table-column prop="name" label="版本名称" min-width="200" show-overflow-tooltip />
       <el-table-column label="状态" width="110">
@@ -160,7 +165,7 @@ const queryState = useListQuery({
     <div v-else v-loading="loading" class="cards">
       <ListCard v-for="r in rows" :key="r.id" :code="r.version_no" :title="r.name" @open="openDetail(r.id)">
         <template #status>
-          <StatusTag :status="r.status" :label="versionStatusLabel[r.status]" :type="versionStatusTagType(r.status)" size="sm" />
+          <span>{{ r.system_name || '未指定系统' }}</span> <StatusTag :status="r.status" :label="versionStatusLabel[r.status]" :type="versionStatusTagType(r.status)" size="sm" />
         </template>
         <span>计划上线：{{ r.planned_release_date || '-' }}</span>
       </ListCard>

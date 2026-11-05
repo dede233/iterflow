@@ -7,6 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, func, select, text
 from sqlalchemy.orm import Session
+from system_binding_fixture import create_test_system
 
 from app.core.database import Base, get_db
 from app.core.exceptions import ConflictError
@@ -319,16 +320,22 @@ def test_bulk_add_is_atomic_and_preserves_status(collaboration_api):
     from app.services.version_service import VersionService
 
     client, headers, engine = collaboration_api
+    system_id = create_test_system(engine)
     requirements = [
         client.post(
             "/api/v1/requirements",
             headers=headers[1],
-            json={"title": f"批量需求{i}", "description": "说明", "requirement_type": "FEATURE"},
+            json={
+                "system_id": system_id,
+                "title": f"批量需求{i}",
+                "description": "说明",
+                "requirement_type": "FEATURE",
+            },
         ).json()
         for i in range(2)
     ]
     with Session(engine) as db:
-        version = Version(version_no="BATCH", name="批量版本", created_by=1)
+        version = Version(system_id=system_id, version_no="BATCH", name="批量版本", created_by=1)
         db.add(version)
         db.commit()
         version_id = version.id
@@ -365,17 +372,24 @@ def test_concurrent_batches_cannot_partially_attach(collaboration_api):
     from app.services.version_service import VersionService
 
     client, headers, engine = collaboration_api
+    system_id = create_test_system(engine)
     requirements = [
         client.post(
             "/api/v1/requirements",
             headers=headers[1],
-            json={"title": f"并发需求{i}", "description": "说明", "requirement_type": "FEATURE"},
+            json={
+                "system_id": system_id,
+                "title": f"并发需求{i}",
+                "description": "说明",
+                "requirement_type": "FEATURE",
+            },
         ).json()
         for i in range(2)
     ]
     with Session(engine) as db:
         versions = [
-            Version(version_no=f"CONCURRENT{i}", name="版本", created_by=1) for i in range(2)
+            Version(system_id=system_id, version_no=f"CONCURRENT{i}", name="版本", created_by=1)
+            for i in range(2)
         ]
         db.add_all(versions)
         db.commit()

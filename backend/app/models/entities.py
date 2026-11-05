@@ -243,6 +243,9 @@ class Requirement(Base, AuditMixin):
         index=True,
     )
     system_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("sys_business_system.id"))
+    system_name = column_property(
+        select(BusinessSystem.name).where(BusinessSystem.id == system_id).scalar_subquery()
+    )
     module_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("sys_business_module.id"))
     owner_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("sys_user.id"), index=True)
     if not MYSQL:
@@ -390,6 +393,12 @@ class CollaborationEvent(Base):
 
 
 class Version(Base, AuditMixin):
+    system_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("sys_business_system.id"), index=True
+    )
+    system_name = column_property(
+        select(BusinessSystem.name).where(BusinessSystem.id == system_id).scalar_subquery()
+    )
     __tablename__ = "rd_version"
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     version_no: Mapped[str] = mapped_column(identifier_type(32), unique=True, index=True)

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import BusinessSystemSelect from '@/components/BusinessSystemSelect.vue'
 import PeopleSelector from '@/components/PeopleSelector.vue'
 import type { Participant } from '@/api/collaboration'
 import { defineAsyncComponent, reactive, ref } from 'vue'
@@ -19,6 +20,7 @@ const saving = ref(false)
 const roles = reactive<Record<Participant['role'], number[]>>({ CONFIRM: [], DESIGN: [], DEVELOP: [], ACCEPT: [] })
 const roleLabels = { CONFIRM: '需求确认人', DESIGN: '设计人员（可选）', DEVELOP: '开发人员', ACCEPT: '验收人员' }
 const form = reactive({
+  system_id: null as number | null,
   title: '',
   requirement_type: 'FEATURE',
   priority: 'P2' as RequirementCreatePayload['priority'],
@@ -45,6 +47,7 @@ async function submit(): Promise<void> {
   try {
     const created = await createRequirement({
       participants: Object.entries(roles).flatMap(([role, ids]) => ids.map(user_id => ({ role: role as Participant['role'], user_id }))),
+      system_id: form.system_id,
       title: form.title.trim(),
       requirement_type: form.requirement_type,
       priority: form.priority,
@@ -67,6 +70,7 @@ async function submit(): Promise<void> {
     <SectionCard :title="props.embedded ? undefined : '需求信息'" :description="props.embedded ? undefined : '需求也可以从反馈转化创建。'" class="editor-card">
       <el-form label-position="top" @submit.prevent="submit">
         <div class="editor-grid">
+        <el-form-item label="业务系统"><BusinessSystemSelect v-model="form.system_id" /></el-form-item>
         <el-form-item label="需求类型" required>
           <el-select v-model="form.requirement_type" style="width: 100%">
             <el-option v-for="t in REQUIREMENT_TYPES" :key="t.value" :label="t.label" :value="t.value" />

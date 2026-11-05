@@ -11,6 +11,7 @@ from app.schemas.requirement import RequirementOut
 
 
 class VersionCreate(BaseModel):
+    system_id: int = Field(ge=1)
     version_no: str = Field(min_length=1, max_length=32)
     name: str = Field(min_length=1, max_length=100)
     owner_id: int | None = None
@@ -40,6 +41,7 @@ class VersionCreate(BaseModel):
 
 
 class VersionUpdate(BaseModel):
+    system_id: int | None = Field(default=None, ge=1)
     name: str | None = Field(default=None, max_length=100)
     owner_id: int | None = None
     planned_release_date: date | None = None
@@ -48,6 +50,8 @@ class VersionUpdate(BaseModel):
 
     @model_validator(mode="after")
     def reject_null_name(self) -> Self:
+        if "system_id" in self.model_fields_set and self.system_id is None:
+            raise ValueError("system_id cannot be null")
         if "name" in self.model_fields_set and self.name is None:
             raise ValueError("name cannot be null")
         return self
@@ -92,6 +96,8 @@ class PublishVersionRequest(BaseModel):
 
 
 class VersionOut(BaseModel):
+    system_id: int | None
+    system_name: str | None = None
     model_config = ConfigDict(from_attributes=True)
     id: int
     version_no: str

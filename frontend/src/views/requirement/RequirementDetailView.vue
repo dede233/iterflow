@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import BusinessSystemSelect from '@/components/BusinessSystemSelect.vue'
 import RequirementProgress from '@/components/RequirementProgress.vue'
 import { computed, defineAsyncComponent, onMounted, reactive, ref, watch } from 'vue'
 import RequirementNumber from '@/components/RequirementNumber.vue'
@@ -141,7 +142,7 @@ async function submitStatus(): Promise<void> {
 // --- edit dialog ---
 const editDialog = ref(false)
 const editSubmitting = ref(false)
-const editForm = reactive({
+const editForm = reactive({ system_id: null as number | null,
   title: '',
   requirement_type: '',
   priority: 'P2' as RequirementPriority,
@@ -162,6 +163,7 @@ function fillEditForm(latest: Requirement): void {
   const editorHtml = format === 'HTML' ? latest.description : plainTextToHtml(latest.description)
   originalDescription = { text: latest.description, format, editorHtml }
   Object.assign(editForm, {
+    system_id: latest.system_id,
     title: latest.title,
     requirement_type: latest.requirement_type,
     priority: latest.priority,
@@ -184,6 +186,7 @@ async function submitEdit(): Promise<void> {
   try {
     const descriptionUnchanged = editForm.description === originalDescription.editorHtml
     await updateRequirement(item.value.id, {
+      ...(editForm.system_id !== item.value.system_id ? { system_id: editForm.system_id, module_id: null } : {}),
       title: editForm.title.trim(),
       requirement_type: editForm.requirement_type,
       priority: editForm.priority,
@@ -249,6 +252,7 @@ onMounted(load)
       <div class="detail-grid">
       <SectionCard title="需求详情" description="范围与验收标准" class="detail-main">
         <el-descriptions :column="isMobile ? 1 : 2">
+          <el-descriptions-item label="业务系统">{{ item.system_name || (item.system_id ? `系统 #${item.system_id}` : '未指定') }}</el-descriptions-item>
           <el-descriptions-item label="类型">
             {{ requirementTypeLabel[item.requirement_type] ?? item.requirement_type }}
           </el-descriptions-item>
@@ -285,7 +289,7 @@ onMounted(load)
     </template>
 
     <el-dialog v-model="createVersionDialog" title="创建版本并关联需求" width="min(720px, calc(100vw - 24px))" append-to-body destroy-on-close :close-on-click-modal="false" :show-close="!creatingVersion" :close-on-press-escape="!creatingVersion">
-      <VersionCreateView v-if="createVersionDialog && item" embedded :requirement="{ id: item.id, revision: item.revision, title: item.title }" :requirement-refreshing="refreshingVersionRequirement" @cancel="createVersionDialog = false" @created="onVersionCreated" @refresh-requirement="refreshVersionRequirement" @saving="creatingVersion = $event" />
+      <VersionCreateView v-if="createVersionDialog && item" embedded :requirement="{ id: item.id, revision: item.revision, title: item.title, system_id: item.system_id, system_name: item.system_name }" :requirement-refreshing="refreshingVersionRequirement" @cancel="createVersionDialog = false" @created="onVersionCreated" @refresh-requirement="refreshVersionRequirement" @saving="creatingVersion = $event" />
     </el-dialog>
 
     <!-- status dialog -->
@@ -326,6 +330,7 @@ onMounted(load)
         你仍可继续编辑；如数据已变化，保存时会通过 revision 冲突保护避免静默覆盖。
       </el-alert>
       <el-form label-position="top" @submit.prevent="submitEdit">
+        <el-form-item label="业务系统"><BusinessSystemSelect v-model="editForm.system_id" :current-name="item?.system_name" /></el-form-item>
         <el-form-item label="需求类型">
           <el-select v-model="editForm.requirement_type" style="width: 100%">
             <el-option v-for="t in REQUIREMENT_TYPES" :key="t.value" :label="t.label" :value="t.value" />

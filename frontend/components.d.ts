@@ -16,6 +16,7 @@ declare module 'vue' {
     AuthShell: typeof import('./src/components/ui/AuthShell.vue')['default']
     BatchActionsDialog: typeof import('./src/components/BatchActionsDialog.vue')['default']
     BulkRequirementPicker: typeof import('./src/components/BulkRequirementPicker.vue')['default']
+    BusinessSystemSelect: typeof import('./src/components/BusinessSystemSelect.vue')['default']
     CollaborationPeople: typeof import('./src/components/CollaborationPeople.vue')['default']
     DashboardOverviewContent: typeof import('./src/components/DashboardOverviewContent.vue')['default']
     DeleteEntityButton: typeof import('./src/components/DeleteEntityButton.vue')['default']

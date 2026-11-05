@@ -63,6 +63,7 @@ onScopeDispose(() => { sequence++ })
     </div>
     <article v-else-if="item" class="requirement-summary">
       <RequirementNumber :number="item.requirement_no" />
+      <p>业务系统：{{ item.system_name || (item.system_id ? `系统 #${item.system_id}` : '未指定') }}</p>
       <h2>{{ item.title }}</h2>
       <el-descriptions :column="isMobile ? 1 : 2">
         <el-descriptions-item label="状态">{{ requirementStatusLabel[item.status] }}</el-descriptions-item>

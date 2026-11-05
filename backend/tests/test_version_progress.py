@@ -8,6 +8,7 @@ from test_entity_actions import actions_api as actions_api
 
 from app.domain.version_progress import effective_version_status, loaded_version_status
 from app.models.entities import (
+    BusinessSystem,
     Feedback,
     OperationLog,
     Permission,
@@ -36,6 +37,7 @@ def progress_api(actions_api):
         "rd.release.view",
         "rd.requirement.create",
     }
+    db.add(BusinessSystem(id=1, code="PROGRESS", name="进度测试系统"))
     roles = list(db.scalars(select(Role).where(Role.code.in_(["ALLTEST", "SELFTEST"]))))
     for code in codes:
         permission = Permission(code=code, name=code)
@@ -49,6 +51,7 @@ def progress_api(actions_api):
 
 def version(db, owner, number, states=(), *, stored="READY"):
     item = Version(
+        system_id=1,
         version_no=f"VP-{number}",
         name=f"版本{number}",
         status=stored,
@@ -60,6 +63,7 @@ def version(db, owner, number, states=(), *, stored="READY"):
     requirements = []
     for index, (status, confirmed, paused_from) in enumerate(states):
         req = Requirement(
+            system_id=1,
             requirement_no=f"VP-REQ-{number}-{index}",
             title=f"需求{number}-{index}",
             requirement_type="FEATURE",
@@ -175,6 +179,7 @@ def test_create_with_completed_requirement_returns_ready_without_status_write(pr
         headers=headers["boss"],
         json={
             "version_no": "VP-NEW",
+            "system_id": 1,
             "name": "直接关联完成需求",
             "requirement_id": req.id,
             "requirement_revision": req.revision,
@@ -189,6 +194,7 @@ def test_ready_roster_remains_editable_with_both_revisions(progress_api):
     client, db, headers, users = progress_api
     item, _ = version(db, users["boss"], "ROSTER", [("DONE", True, None)])
     req = Requirement(
+        system_id=1,
         requirement_no="NEW-SCOPE",
         title="新需求",
         requirement_type="FEATURE",

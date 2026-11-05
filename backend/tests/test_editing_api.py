@@ -10,6 +10,7 @@ from app.core.database import get_db
 from app.core.security import create_access_token
 from app.main import app
 from app.models.entities import (
+    BusinessSystem,
     CollaborationEvent,
     Feedback,
     FeedbackRecipient,
@@ -44,6 +45,7 @@ def editing_api() -> Iterator[tuple[TestClient, dict[str, dict[str, str]]]]:
         "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
     )
     for table in (
+        BusinessSystem.__table__,
         User.__table__,
         Role.__table__,
         Permission.__table__,

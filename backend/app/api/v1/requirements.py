@@ -64,6 +64,7 @@ def _ensure_scoped_version(db: Session, user: User, version_id: int | None) -> N
 def list_requirements(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    system_id: int | None = Query(None, ge=1),
     keyword: str | None = Query(None, max_length=200),
     status: RequirementStatus | None = Query(None),
     priority: Priority | None = Query(None),
@@ -81,6 +82,7 @@ def list_requirements(
         scope,
         page,
         page_size,
+        system_id=system_id,
         keyword=keyword,
         status=status,
         priority=priority,

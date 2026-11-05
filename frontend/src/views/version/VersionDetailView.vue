@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import BusinessSystemSelect from '@/components/BusinessSystemSelect.vue'
 import BatchActionsDialog from '@/components/BatchActionsDialog.vue'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
@@ -235,7 +236,7 @@ async function submitPublish(): Promise<void> {
 // --- edit dialog ---
 const editDialog = ref(false)
 const editSubmitting = ref(false)
-const editForm = reactive({ name: '', planned_release_date: null as string | null, description: '' })
+const editForm = reactive({ system_id: null as number | null, name: '', planned_release_date: null as string | null, description: '' })
 
 function openEdit(): void {
   if (!item.value || !canEdit.value) return
@@ -246,6 +247,7 @@ function openEdit(): void {
 
 function fillEditForm(latest: VersionItem): void {
   Object.assign(editForm, {
+    system_id: latest.system_id,
     name: latest.name,
     planned_release_date: latest.planned_release_date ?? null,
     description: latest.description ?? '',
@@ -261,6 +263,7 @@ async function submitEdit(): Promise<void> {
   editSubmitting.value = true
   try {
     await updateVersion(item.value.id, {
+      ...(editForm.system_id !== item.value.system_id ? { system_id: editForm.system_id } : {}),
       name: editForm.name.trim(),
       planned_release_date: editForm.planned_release_date || null,
       description: editForm.description.trim() || null,
@@ -396,8 +399,10 @@ onMounted(load)
         </template>
       </PageHeader>
 
+      <el-alert v-if="!item.system_id && !frozen" title="此历史版本未指定业务系统，请先补齐需求系统，再编辑版本选择同一系统。" type="warning" :closable="false" />
       <SectionCard title="版本概况" description="进度由关联需求自动汇总；开发和验收在需求中完成。">
         <el-descriptions :column="isMobile ? 1 : 2">
+          <el-descriptions-item label="业务系统">{{ item.system_name || (item.system_id ? `系统 #${item.system_id}` : '未指定') }}</el-descriptions-item>
           <el-descriptions-item label="计划上线">{{ item.planned_release_date || '-' }}</el-descriptions-item>
           <el-descriptions-item label="实际上线">{{ formatLocalDateTime(item.released_at) }}</el-descriptions-item>
           <el-descriptions-item label="说明" :span="isMobile ? 1 : 2">
@@ -561,6 +566,7 @@ onMounted(load)
         你仍可继续编辑；如数据已变化，保存时会通过 revision 冲突保护避免静默覆盖。
       </el-alert>
       <el-form label-position="top" @submit.prevent="submitEdit">
+        <el-form-item label="业务系统"><BusinessSystemSelect v-model="editForm.system_id" :current-name="item?.system_name" :clearable="false" :disabled="frozen" /></el-form-item>
         <el-form-item label="版本名称">
           <el-input v-model="editForm.name" maxlength="100" show-word-limit />
         </el-form-item>
@@ -579,14 +585,14 @@ onMounted(load)
 
     <!-- add requirement dialog -->
     <el-dialog v-model="addDialog" title="批量添加需求" width="min(780px, 94vw)" destroy-on-close append-to-body :close-on-click-modal="false">
-      <BulkRequirementPicker v-if="addDialog && item" :version-id="item.id" :revision="item.revision" @updated="onBulkAdded" @cancel="addDialog = false" />
+      <BulkRequirementPicker v-if="addDialog && item" :version-id="item.id" :revision="item.revision" :system-id="item.system_id" @updated="onBulkAdded" @cancel="addDialog = false" />
     </el-dialog>
 
     <!-- move requirement dialog -->
     <el-dialog v-model="moveDialog" title="迁移需求到其他版本" width="min(480px, 92vw)" destroy-on-close>
       <el-form label-position="top">
         <el-form-item label="目标版本" required>
-          <ScopedObjectSelector v-model="moveTarget.target_version_id" kind="version" :allowed="can('rd.version.view')" :active="moveDialog" :disabled="moveSubmitting" :exclude-id="id" />
+          <ScopedObjectSelector v-model="moveTarget.target_version_id" kind="version" :allowed="can('rd.version.view')" :active="moveDialog" :disabled="moveSubmitting" :exclude-id="id" :system-id="moveTarget.requirement?.system_id" />
         </el-form-item>
         <el-form-item label="迁移原因" required>
           <el-input v-model="moveTarget.reason" type="textarea" :rows="3" />

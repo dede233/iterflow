@@ -10,6 +10,7 @@ from app.repositories.user_repository import UserRepository
 from app.schemas.workflow import DesignStatus, WorkflowAction, WorkflowOut, WorkflowRecord
 from app.services.collaboration_service import CollaborationService
 from app.services.revision_conflict import revision_conflict_data
+from app.services.system_binding_service import SystemBindingService
 
 
 class WorkflowService:
@@ -140,6 +141,10 @@ class WorkflowService:
             raise ConflictError("需求已修改, 请刷新后重试", revision_conflict_data(item))
         if item.status not in {"CONFIRMED", "DEVELOPING"}:
             raise AppError(40971, "仅待开发或开发中的需求可提交验收", 409)
+        version = self.db.get(Version, item.current_version_id, populate_existing=True)
+        if version is None:
+            raise AppError(40975, "需求未关联版本", 409)
+        SystemBindingService(self.db).ensure_match(version, item)
         shortcut = item.status == "CONFIRMED"
         if shortcut and (not reason or len(reason.strip()) < 2):
             raise AppError(42261, "待开发直接提交验收须填写原因(至少 2 个字符)", 422)

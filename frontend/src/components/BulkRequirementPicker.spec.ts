@@ -11,7 +11,7 @@ afterEach(() => vi.unstubAllGlobals())
 beforeEach(() => {
   vi.resetAllMocks(); setActivePinia(createPinia())
   useAuthStore().user = { id: 1, permission_codes: ['rd.requirement.view'] } as any
-  mocks.list.mockImplementation(({ page }) => Promise.resolve({ total: 40, items: [{ id: page, revision: page + 2, title: `需求 ${page}`, requirement_no: `REQ-${page}`, status: 'DRAFT', current_version_id: null }] }))
+  mocks.list.mockImplementation(({ page }) => Promise.resolve({ total: 40, items: [{ id: page, system_id: 1, revision: page + 2, title: `需求 ${page}`, requirement_no: `REQ-${page}`, status: 'DRAFT', current_version_id: null }] }))
 })
 it.each([true, false])('keeps revisions and sends a valid UUID with randomUUID available=%s', async available => {
   vi.stubGlobal('crypto', {
@@ -19,7 +19,7 @@ it.each([true, false])('keeps revisions and sends a valid UUID with randomUUID a
     randomUUID: available ? browserCrypto.randomUUID.bind(browserCrypto) : undefined,
   })
   mocks.post.mockRejectedValue({ response: { status: 409, data: { data: { items: [{ requirement_id: 1, reason: '已修改' }] } } } })
-  const wrapper = mount(BulkRequirementPicker, { props: { versionId: 7, revision: 9 }, global: { directives: { loading: () => {} }, stubs: {
+  const wrapper = mount(BulkRequirementPicker, { props: { versionId: 7, revision: 9, systemId: 1 }, global: { directives: { loading: () => {} }, stubs: {
     'el-form': { template: '<form><slot/></form>' }, 'el-form-item': { template: '<div><slot/></div>' },
     'el-select': true, 'el-option': true, 'el-input': true,
     'el-button': { template: '<button><slot/></button>' },

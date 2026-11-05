@@ -95,3 +95,9 @@ class BusinessSystemUpdate(_CatalogUpdate):
 
 class BusinessModuleUpdate(_CatalogUpdate):
     pass
+
+
+class BusinessSystemOption(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    name: str

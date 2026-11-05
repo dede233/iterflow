@@ -38,6 +38,7 @@ def snapshot(db):
 
 def create_for(client, headers, requirement, **changes):
     body = {
+        "system_id": 1,
         "version_no": "V-NEW",
         "name": "由需求创建版本",
         "requirement_id": requirement["id"],
@@ -90,7 +91,7 @@ def test_create_requirement_fields_are_paired_and_positive(ver_api, fields):
     response = client.post(
         "/api/v1/versions",
         headers=headers["alice"],
-        json={"version_no": "V-NEW", "name": "版本", **fields},
+        json={"system_id": 1, "version_no": "V-NEW", "name": "版本", **fields},
     )
     assert response.status_code == 422
     assert snapshot(db) == before
@@ -110,7 +111,9 @@ def test_link_requires_additional_permissions_without_restricting_plain_create(v
     assert create_for(client, actor, requirement).status_code == 403
     assert snapshot(db) == before
     plain = client.post(
-        "/api/v1/versions", headers=actor, json={"version_no": "PLAIN", "name": "仅创建版本"}
+        "/api/v1/versions",
+        headers=actor,
+        json={"system_id": 1, "version_no": "PLAIN", "name": "仅创建版本"},
     )
     assert plain.status_code == 200 and plain.json()["revision"] == 1
     before = snapshot(db)
@@ -240,7 +243,7 @@ def test_unrelated_integrity_failure_is_not_reported_as_duplicate_version(ver_ap
         response = client.post(
             "/api/v1/versions",
             headers=headers["alice"],
-            json={"version_no": "NOT-DUPLICATE", "name": "版本"},
+            json={"system_id": 1, "version_no": "NOT-DUPLICATE", "name": "版本"},
         )
     assert response.status_code == 500
     assert response.json()["code"] != 40934

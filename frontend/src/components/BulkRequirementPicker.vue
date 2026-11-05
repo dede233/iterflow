@@ -6,7 +6,7 @@ import { createRequestId } from '@/utils/requestId'
 import { useAuthStore } from '@/stores/auth'
 import { REQUIREMENT_STATUSES, REQUIREMENT_PRIORITIES, requirementStatusLabel } from '@/constants/requirement'
 import type { Requirement, RequirementListParams } from '@/types/domain'
-const props = defineProps<{ versionId: number; revision: number }>()
+const props = defineProps<{ versionId: number; revision: number; systemId?: number | null }>()
 const emit = defineEmits<{ updated: []; cancel: [] }>()
 const auth = useAuthStore()
 const rows = ref<Requirement[]>([])
@@ -21,6 +21,8 @@ const requestId = createRequestId()
 let sequence = 0
 const identity = computed(() => `${auth.user?.id}:${auth.accessToken}:${auth.permissionCodes.join(',')}`)
 function disabledReason(row: Requirement) {
+  if (!props.systemId) return '请先补齐版本的业务系统'
+  if (!row.system_id || row.system_id !== props.systemId) return '需求与版本的业务系统不一致或未指定'
   if (row.current_version_id) return row.current_version_id === props.versionId ? '已在本版本' : '已有其他版本，请使用迁移'
   return ['ONLINE', 'CANCELED'].includes(row.status) ? '终态需求不可添加' : ''
 }
@@ -28,7 +30,7 @@ async function load() {
   const request = ++sequence; failed.value = false; loading.value = true; rows.value = []
   if (!auth.hasPermission('rd.requirement.view')) { loading.value = false; return }
   try {
-    const result = await listRequirements({ page: page.value, page_size: 20, keyword: filters.keyword || undefined, status: filters.status || undefined, priority: filters.priority || undefined })
+    const result = await listRequirements({ system_id: props.systemId || undefined, page: page.value, page_size: 20, keyword: filters.keyword || undefined, status: filters.status || undefined, priority: filters.priority || undefined })
     if (request !== sequence) return
     rows.value = result.items; total.value = result.total
   } catch { if (request === sequence) failed.value = true }
@@ -61,6 +63,7 @@ async function submit() {
       <el-form-item label="优先级"><el-select v-model="filters.priority" clearable><el-option v-for="p in REQUIREMENT_PRIORITIES" :key="p.value" :label="p.label" :value="p.value" /></el-select></el-form-item>
       <el-button native-type="submit">搜索</el-button>
     </el-form>
+    <p v-if="!props.systemId" role="alert">版本未指定业务系统，请先编辑版本补齐后再添加需求。</p>
     <p>已选 {{ selected.size }} / 50 条 · 跨页保留选择</p>
     <div class="bulk-tools"><el-button :disabled="saving" @click="allPage">选择当前页可用需求</el-button><el-button :disabled="saving" @click="selected.clear()">清空选择</el-button></div>
     <p v-if="failed">列表加载失败 <el-button link @click="load">重试</el-button></p>

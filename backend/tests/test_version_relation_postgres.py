@@ -6,6 +6,7 @@ from uuid import uuid4
 import pytest
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
+from system_binding_fixture import create_test_system
 
 from app.core.database import Base
 from app.core.exceptions import ConflictError, NotFoundError
@@ -73,6 +74,7 @@ def postgres_engine():
 
 
 def _seed_relation(engine, *, hidden_source: bool = False) -> dict[str, int]:
+    system_id = create_test_system(engine)
     with Session(engine) as session:
         owner = User(
             username=f"owner-{uuid4().hex[:8]}",
@@ -91,6 +93,7 @@ def _seed_relation(engine, *, hidden_source: bool = False) -> dict[str, int]:
         session.add_all([owner, other])
         session.flush()
         source = Version(
+            system_id=system_id,
             version_no=f"VS-{uuid4().hex[:8]}",
             name="source",
             status=VersionStatus.PLANNING,
@@ -98,6 +101,7 @@ def _seed_relation(engine, *, hidden_source: bool = False) -> dict[str, int]:
             created_by=owner.id,
         )
         target_a = Version(
+            system_id=system_id,
             version_no=f"VA-{uuid4().hex[:8]}",
             name="target-a",
             status=VersionStatus.PLANNING,
@@ -105,6 +109,7 @@ def _seed_relation(engine, *, hidden_source: bool = False) -> dict[str, int]:
             created_by=owner.id,
         )
         target_b = Version(
+            system_id=system_id,
             version_no=f"VB-{uuid4().hex[:8]}",
             name="target-b",
             status=VersionStatus.PLANNING,
@@ -114,6 +119,7 @@ def _seed_relation(engine, *, hidden_source: bool = False) -> dict[str, int]:
         session.add_all([source, target_a, target_b])
         session.flush()
         requirement = Requirement(
+            system_id=system_id,
             requirement_no=f"REQ-{uuid4().hex[:8]}",
             title="concurrent relation",
             requirement_type="FEATURE",

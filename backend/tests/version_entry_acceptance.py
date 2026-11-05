@@ -6,6 +6,7 @@ from threading import Barrier
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from system_binding_fixture import create_test_system
 
 from app.core.exceptions import AppError
 from app.models.entities import (
@@ -25,6 +26,7 @@ from app.services.version_service import VersionService
 
 def exercise_version_entry(fixture, scenario, monkeypatch):
     client, engine, uid, headers = fixture
+    system_id = create_test_system(engine)
     response = client.post(
         "/api/v1/requirements",
         headers=headers,
@@ -32,11 +34,13 @@ def exercise_version_entry(fixture, scenario, monkeypatch):
             "title": "新建版本关联需求",
             "description": "隔离验收内容",
             "requirement_type": "FEATURE",
+            "system_id": system_id,
         },
     )
     assert response.status_code == 200, response.text
     requirement = response.json()
     linked = VersionCreate(
+        system_id=system_id,
         version_no="ENTRY-LINK",
         name="需求入口版本",
         requirement_id=requirement["id"],
@@ -99,7 +103,13 @@ def exercise_version_entry(fixture, scenario, monkeypatch):
         with Session(engine) as db:
             try:
                 VersionService(db).create(
-                    VersionCreate(version_no="ENTRY-FK", name="非法负责人", owner_id=99999999), uid
+                    VersionCreate(
+                        system_id=system_id,
+                        version_no="ENTRY-FK",
+                        name="非法负责人",
+                        owner_id=99999999,
+                    ),
+                    uid,
                 )
             except IntegrityError:
                 pass
@@ -132,9 +142,11 @@ def exercise_version_entry(fixture, scenario, monkeypatch):
                     )
                 else:
                     payload = (
-                        VersionCreate(version_no="ENTRY-DUP", name="并发同号")
+                        VersionCreate(system_id=system_id, version_no="ENTRY-DUP", name="并发同号")
                         if scenario == "duplicate_race"
-                        else linked.model_copy(update={"version_no": f"ENTRY-{index}"})
+                        else linked.model_copy(
+                            update={"system_id": system_id, "version_no": f"ENTRY-{index}"}
+                        )
                     )
                     VersionService(db).create(payload, uid)
                 return 200, 0

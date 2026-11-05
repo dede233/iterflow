@@ -71,6 +71,7 @@ def _scoped_version_or_404(db: Session, user: User, version_id: int) -> Version:
 def list_versions(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    system_id: int | None = Query(None, ge=1),
     keyword: str | None = Query(None, max_length=200),
     status: VersionStatus | None = Query(None),
     planned_release_from: date | None = Query(None),
@@ -96,6 +97,7 @@ def list_versions(
         scope,
         page,
         page_size,
+        system_id=system_id,
         keyword=keyword,
         status=status,
         planned_release_from=planned_release_from,

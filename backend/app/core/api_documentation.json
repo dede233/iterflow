@@ -445,6 +445,17 @@
         }
       }
     },
+    "BusinessSystemOption": {
+      "title": "BusinessSystemOption",
+      "properties": {
+        "id": {
+          "title": "系统 ID"
+        },
+        "name": {
+          "title": "系统名称"
+        }
+      }
+    },
     "BusinessSystemOut": {
       "title": "BusinessSystemOut",
       "properties": {
@@ -1869,27 +1880,6 @@
         }
       }
     },
-    "VersionRequirementSubmitAcceptance": {
-      "title": "VersionRequirementSubmitAcceptance",
-      "properties": {
-        "version_revision": {
-          "title": "版本修订号"
-        },
-        "items": {
-          "title": "需求清单",
-          "description": "需求ID不可重复；每项携带检查时的需求revision。",
-          "items": {}
-        },
-        "reason": {
-          "title": "提交说明",
-          "description": "提供时trim后至少2字符；待开发直接提验或管理员代操作必填。",
-          "anyOf": [
-            {},
-            {}
-          ]
-        }
-      }
-    },
     "RequirementBatchAction": {
       "title": "RequirementBatchAction",
       "properties": {
@@ -1985,6 +1975,13 @@
     "RequirementOut": {
       "title": "RequirementOut",
       "properties": {
+        "system_name": {
+          "title": "所属业务系统名称",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
         "current_handlers": {
           "title": "当前待处理人",
           "items": {}
@@ -2540,6 +2537,9 @@
     "VersionCreate": {
       "title": "VersionCreate",
       "properties": {
+        "system_id": {
+          "title": "所属业务系统 ID"
+        },
         "version_no": {
           "title": "版本号"
         },
@@ -2589,6 +2589,20 @@
       "title": "VersionOut",
       "description": "status为关联需求自动汇总的只读有效进度，详情、列表筛选、统计和所有写响应保持一致。真实RELEASED/CANCELED终态保留，历史非终态存储不覆盖派生结果；读取不写库。无需求为PLANNING；全DONE且确认有效为READY；全TESTING/DONE未就绪为TESTING；已开始工作但混合其他阶段为DEVELOPING，其余PLANNING。暂停和取消需求仍参与清单并阻止发布。",
       "properties": {
+        "system_id": {
+          "title": "所属业务系统 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "system_name": {
+          "title": "所属业务系统名称",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
         "id": {
           "title": "版本 ID"
         },
@@ -2666,6 +2680,27 @@
         }
       }
     },
+    "VersionRequirementSubmitAcceptance": {
+      "title": "VersionRequirementSubmitAcceptance",
+      "properties": {
+        "version_revision": {
+          "title": "版本修订号"
+        },
+        "items": {
+          "title": "需求清单",
+          "description": "需求ID不可重复；每项携带检查时的需求revision。",
+          "items": {}
+        },
+        "reason": {
+          "title": "提交说明",
+          "description": "提供时trim后至少2字符；待开发直接提验或管理员代操作必填。",
+          "anyOf": [
+            {},
+            {}
+          ]
+        }
+      }
+    },
     "VersionRequirementsOut": {
       "title": "VersionRequirementsOut",
       "properties": {
@@ -2725,6 +2760,13 @@
     "VersionUpdate": {
       "title": "VersionUpdate",
       "properties": {
+        "system_id": {
+          "title": "所属业务系统 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
         "name": {
           "title": "版本名称",
           "anyOf": [
@@ -3403,6 +3445,15 @@
           "mail"
         ],
         "summary": "retry_mail_delivery"
+      }
+    },
+    "/systems/options": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "业务系统选择项",
+        "description": "需求或版本查看、创建、编辑权限可读取启用系统的最小选择项，不返回管理元数据。"
       }
     },
     "/systems": {

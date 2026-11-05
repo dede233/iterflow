@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event, func, select, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session, sessionmaker
+from system_binding_fixture import create_test_system
 from test_release_date_filters_postgres import dates as dates
 from test_release_date_filters_postgres import (
     test_date_bounds_total_pagination_and_permission as _date_bounds,
@@ -115,6 +116,7 @@ def mysql_api(monkeypatch, tmp_path):
 
 def test_mysql_full_lifecycle(mysql_api):
     client, engine, _, _ = mysql_api
+    system_id = create_test_system(engine)
     logged = client.post(
         "/api/v1/auth/login", json={"username": "test-admin", "password": "Fresh-test-password-57!"}
     )
@@ -163,6 +165,7 @@ def test_mysql_full_lifecycle(mysql_api):
         headers=headers,
         json={
             "recipient_ids": [user_id],
+            "system_id": system_id,
             "title": "Phase 8.2 real HTTP feedback",
             "feedback_type": "NEW_FEATURE",
             "urgency": "NORMAL",
@@ -215,7 +218,11 @@ def test_mysql_full_lifecycle(mysql_api):
     version_response = client.post(
         "/api/v1/versions",
         headers=headers,
-        json={"version_no": f"8.2-{uuid4().hex[:8]}", "name": "Phase 8.2 acceptance"},
+        json={
+            "system_id": system_id,
+            "version_no": f"8.2-{uuid4().hex[:8]}",
+            "name": "Phase 8.2 acceptance",
+        },
     )
     assert version_response.status_code == 200, version_response.text
     version = version_response.json()
@@ -635,6 +642,7 @@ def test_mysql_catalog_chinese_search_revision_and_files(mysql_api):
 
 def test_mysql_many_feedbacks_and_move_history(mysql_api):
     client, engine, _user_id, headers = mysql_api
+    system_id = create_test_system(engine)
     feedbacks = []
     requirement = None
     for i in range(2):
@@ -642,6 +650,7 @@ def test_mysql_many_feedbacks_and_move_history(mysql_api):
             "/api/v1/feedbacks",
             headers=headers,
             json={
+                "system_id": system_id,
                 "title": f"归并{i}",
                 "recipient_ids": [mysql_api[2]],
                 "feedback_type": "SYSTEM_ISSUE",
@@ -678,7 +687,7 @@ def test_mysql_many_feedbacks_and_move_history(mysql_api):
         response = client.post(
             "/api/v1/versions",
             headers=headers,
-            json={"version_no": f"MOVE-{i}", "name": f"版本{i}"},
+            json={"system_id": system_id, "version_no": f"MOVE-{i}", "name": f"版本{i}"},
         )
         assert response.status_code == 200, response.text
         versions.append(response.json())
@@ -888,8 +897,12 @@ def test_mysql_concurrent_migration_preserves_history(mysql_api):
         == "READY"
     )
     with Session(engine) as session:
+        system_id = session.get(Version, ids["version"]).system_id
         session.add_all(
-            [Version(version_no="T1", name="target 1"), Version(version_no="T2", name="target 2")]
+            [
+                Version(version_no="T1", name="target 1", system_id=system_id),
+                Version(version_no="T2", name="target 2", system_id=system_id),
+            ]
         )
         session.commit()
     barrier = Barrier(2)

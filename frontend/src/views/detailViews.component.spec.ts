@@ -141,6 +141,7 @@ const feedback: Feedback = {
 
 const elementStub = { template: '<div><slot /><slot name="footer" /></div>' }
 const stubs = {
+  BusinessSystemSelect: true,
   RequirementCollaboratorsPanel: true,
   'el-alert': { template: '<div class="alert"><slot name="title" /><slot /></div>' },
   'el-button': {
@@ -444,8 +445,8 @@ describe('detail views enforce permission-aware loading in mounted components', 
     await flushPromises()
     await wrapper.findAll('button').find((button) => button.text() === '编辑')!.trigger('click')
     await flushPromises()
-    expect(wrapper.find('.alert').text()).toContain('测试用户B 正在编辑')
-    expect(wrapper.find('.alert').text()).toContain('仍可继续编辑')
+    expect(wrapper.findAll('.alert').some(alert => alert.text().includes('测试用户B 正在编辑'))).toBe(true)
+    expect(wrapper.findAll('.alert').some(alert => alert.text().includes('仍可继续编辑'))).toBe(true)
     const saveButton = wrapper.findAll('button').find((button) => button.text() === '保存')
     expect(saveButton?.attributes('disabled')).toBeUndefined()
     wrapper.unmount()

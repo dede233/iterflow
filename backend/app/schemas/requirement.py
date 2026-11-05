@@ -82,6 +82,7 @@ class RequirementAssigneeChange(BaseModel):
 
 
 class RequirementOut(BaseModel):
+    system_name: str | None = None
     current_handlers: list[PersonOption] = Field(default_factory=list)
     model_config = ConfigDict(from_attributes=True)
     id: int

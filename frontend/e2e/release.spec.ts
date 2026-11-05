@@ -77,6 +77,7 @@ test('Phase 7 real restricted users: presence, conflict, publish, notification a
   const adminToken = (await adminLogin.json()).access_token as string
   const permissions: { id: number; code: string; deprecated: boolean }[] = await api(request, adminToken, 'GET', '/roles/permissions')
   const suffix = randomUUID().slice(0, 8)
+  const system = await api(request, adminToken, 'POST', '/systems', { code: `P7_${suffix}`, name: `主链系统 ${suffix}` })
   async function user(name: string, scope: 'SELF' | 'ALL', codes: string[]) {
     const role = await api(request, adminToken, 'POST', '/roles', {
       code: `P7_${name}_${suffix}`, name: `P7 ${name}`, data_scope: scope,
@@ -133,7 +134,7 @@ test('Phase 7 real restricted users: presence, conflict, publish, notification a
     expect(initialRequirement.revision).toBe(requirement.revision)
     // Assignment is API setup; the subsequent title/priority editing and statuses are real UI.
     const people = await api(request, a.token, 'PUT', `/requirements/${requirement.id}/participants`, { revision: requirement.revision, participants: [{ user_id: b.id, role: 'CONFIRM' }, { user_id: a.id, role: 'DEVELOP' }, { user_id: b.id, role: 'DEVELOP' }, { user_id: b.id, role: 'ACCEPT' }] })
-    const assigned = await api(request, a.token, 'PATCH', `/requirements/${requirement.id}`, { priority: 'P1', revision: people.revision })
+    const assigned = await api(request, a.token, 'PATCH', `/requirements/${requirement.id}`, { system_id: system.id, priority: 'P1', revision: people.revision })
     // A same-hash navigation does not remount the detail view. Reload after API setup
     // and verify both editors have actually fetched the assigned revision.
     const loadedA = pageA.waitForResponse(r => r.url().endsWith(`/requirements/${requirement.id}`) && r.request().method() === 'GET').then(r => r.json())

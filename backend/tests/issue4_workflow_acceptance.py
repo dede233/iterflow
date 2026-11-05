@@ -158,5 +158,5 @@ def exercise_issue4(fixture, scenario):
         command.downgrade(config, previous)
     with engine.connect() as db:
         assert db.scalar(text("SELECT version_num FROM alembic_version")) == (
-            "mysql57_0012" if mysql else "0015_system_binding"
+            "mysql57_0012" if mysql else "0016_announcements"
         )

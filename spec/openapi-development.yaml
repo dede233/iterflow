@@ -17,6 +17,8 @@ tags:
 - name: Collaboration
 - name: System
 - name: File
+- name: announcements
+  description: 迭程产品更新公告、草稿管理与账号已读记录
 paths:
   /requirements/filter-options/participants:
     get:
@@ -819,6 +821,454 @@ paths:
       security:
       - bearerAuth: []
       description: 仅允许启用的系统角色 SUPER_ADMIN 或 DEVELOPMENT_LEAD 读取当前 OpenAPI 文档。权限、账号停用和首次改密限制由后端实时执行；响应禁止缓存。
+  /announcements:
+    get:
+      tags:
+      - announcements
+      summary: 更新公告列表
+      operationId: list_announcements_api_v1_announcements_get
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 20
+          title: Page Size
+      - name: manage
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+          title: Manage
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnnouncementPage'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 业务状态或 revision 冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: 请求参数或业务数据无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+      - announcements
+      summary: 创建公告草稿（超级管理员）
+      operationId: create_announcement_api_v1_announcements_post
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnnouncementCreate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnnouncementOut'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 业务状态或 revision 冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: 请求参数或业务数据无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /announcements/notice:
+    get:
+      tags:
+      - announcements
+      summary: 当前账号未读公告提示
+      operationId: announcement_notice_api_v1_announcements_notice_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnnouncementNotice'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 业务状态或 revision 冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: 请求参数或业务数据无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearerAuth: []
+  /announcements/{announcement_id}:
+    get:
+      tags:
+      - announcements
+      summary: 读取公告详情
+      operationId: get_announcement_api_v1_announcements__announcement_id__get
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: announcement_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Announcement Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnnouncementOut'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 业务状态或 revision 冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: 请求参数或业务数据无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      tags:
+      - announcements
+      summary: 修正公告（不重置已读）
+      operationId: update_announcement_api_v1_announcements__announcement_id__patch
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: announcement_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Announcement Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnnouncementUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnnouncementOut'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 业务状态或 revision 冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: 请求参数或业务数据无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /announcements/{announcement_id}/publish:
+    post:
+      tags:
+      - announcements
+      summary: 发布公告（部署验收后手动执行）
+      operationId: publish_announcement_api_v1_announcements__announcement_id__publish_post
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: announcement_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Announcement Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RevisionPayload'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnnouncementOut'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 业务状态或 revision 冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: 请求参数或业务数据无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /announcements/{announcement_id}/read:
+    post:
+      tags:
+      - announcements
+      summary: 当前账号标记已读
+      operationId: read_announcement_api_v1_announcements__announcement_id__read_post
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: announcement_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Announcement Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RevisionPayload'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnnouncementOut'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 业务状态或 revision 冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: 请求参数或业务数据无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /announcements/{announcement_id}/images/{file_id}:
+    get:
+      tags:
+      - announcements
+      summary: 读取有权限的公告图片
+      operationId: announcement_image_api_v1_announcements__announcement_id__images__file_id__get
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: announcement_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Announcement Id
+      - name: file_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: File Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            image/png: {}
+            image/jpeg: {}
+            image/webp: {}
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 业务状态或 revision 冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: 请求参数或业务数据无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /audits:
     get:
       tags:
@@ -4849,6 +5299,185 @@ components:
       - revision
       - version_revision
       title: AddRequirementRequest
+    AnnouncementCreate:
+      properties:
+        title:
+          type: string
+          maxLength: 200
+          minLength: 2
+          title: 公告标题
+        version_label:
+          type: string
+          maxLength: 100
+          minLength: 1
+          title: 版本标识
+        release_date:
+          type: string
+          format: date
+          title: 上线日期
+        content:
+          type: string
+          maxLength: 100000
+          minLength: 2
+          title: 公告正文
+        important:
+          type: boolean
+          title: 重要更新
+          default: false
+        image_uploads:
+          additionalProperties:
+            type: string
+          type: object
+          title: 待上传图片
+      type: object
+      required:
+      - title
+      - version_label
+      - release_date
+      - content
+      title: AnnouncementCreate
+    AnnouncementNotice:
+      properties:
+        unread_count:
+          type: integer
+          title: 未读数量
+        latest:
+          anyOf:
+          - $ref: '#/components/schemas/AnnouncementOut'
+          - type: 'null'
+          title: 最新未读公告
+        important:
+          anyOf:
+          - $ref: '#/components/schemas/AnnouncementOut'
+          - type: 'null'
+          title: 重要更新
+      type: object
+      required:
+      - unread_count
+      - latest
+      - important
+      title: AnnouncementNotice
+    AnnouncementOut:
+      properties:
+        id:
+          type: integer
+          title: 公告标识
+        title:
+          type: string
+          title: 公告标题
+        version_label:
+          type: string
+          title: 版本标识
+        release_date:
+          type: string
+          format: date
+          title: 上线日期
+        content:
+          type: string
+          title: 公告正文
+        important:
+          type: boolean
+          title: 重要更新
+        revision:
+          type: integer
+          title: 修订号
+        published_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: 发布时间
+        read_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: 当前账号阅读时间
+      type: object
+      required:
+      - id
+      - title
+      - version_label
+      - release_date
+      - content
+      - important
+      - revision
+      - published_at
+      - read_at
+      title: AnnouncementOut
+    AnnouncementPage:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/AnnouncementOut'
+          type: array
+          title: 公告列表
+        page:
+          type: integer
+          title: 页码
+        page_size:
+          type: integer
+          title: 每页条数
+        total:
+          type: integer
+          title: 总数
+        unread_count:
+          type: integer
+          title: 未读数量
+        can_manage:
+          type: boolean
+          title: 是否可管理公告
+      type: object
+      required:
+      - items
+      - page
+      - page_size
+      - total
+      - unread_count
+      - can_manage
+      title: AnnouncementPage
+    AnnouncementUpdate:
+      properties:
+        title:
+          type: string
+          maxLength: 200
+          minLength: 2
+          title: 公告标题
+        version_label:
+          type: string
+          maxLength: 100
+          minLength: 1
+          title: 版本标识
+        release_date:
+          type: string
+          format: date
+          title: 上线日期
+        content:
+          type: string
+          maxLength: 100000
+          minLength: 2
+          title: 公告正文
+        important:
+          type: boolean
+          title: 重要更新
+          default: false
+        image_uploads:
+          additionalProperties:
+            type: string
+          type: object
+          title: 待上传图片
+        revision:
+          type: integer
+          minimum: 1.0
+          title: 修订号
+      type: object
+      required:
+      - title
+      - version_label
+      - release_date
+      - content
+      - revision
+      title: AnnouncementUpdate
     AttachmentOut:
       properties:
         file_id:
@@ -7515,6 +8144,16 @@ components:
       - data
       - request_id
       title: RevisionConflictResponse
+    RevisionPayload:
+      properties:
+        revision:
+          type: integer
+          minimum: 1.0
+          title: 修订号
+      type: object
+      required:
+      - revision
+      title: RevisionPayload
     RoleCreate:
       properties:
         code:

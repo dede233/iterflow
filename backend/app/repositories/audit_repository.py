@@ -83,6 +83,7 @@ class AuditRepository:
         # per-user ownership, so SELF never grants their audit history.
         if all_scope:
             for entity_type in (
+                "ANNOUNCEMENT",
                 "ROLE",
                 "SYSTEM",
                 "DICTIONARY",

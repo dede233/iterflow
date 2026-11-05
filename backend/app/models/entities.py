@@ -648,3 +648,23 @@ if MYSQL:
         .correlate_except(RequirementFeedback)
         .scalar_subquery()
     )
+
+
+class Announcement(Base, AuditMixin):
+    __tablename__ = "sys_announcement"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    title: Mapped[str] = mapped_column(String(200))
+    version_label: Mapped[str] = mapped_column(String(100))
+    release_date: Mapped[date] = mapped_column(Date)
+    content: Mapped[str] = mapped_column(Text)
+    important: Mapped[bool] = mapped_column(Boolean, default=False)
+    published_at: Mapped[datetime | None] = mapped_column(timestamp_type(), index=True)
+
+
+class AnnouncementRead(Base):
+    __tablename__ = "sys_announcement_read"
+    announcement_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("sys_announcement.id"), primary_key=True
+    )
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("sys_user.id"), primary_key=True)
+    read_at: Mapped[datetime] = mapped_column(timestamp_type(), default=utcnow)

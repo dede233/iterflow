@@ -6,7 +6,7 @@ import { rememberImage, forgetImage, pendingImage } from '@/utils/requirementIma
 import StarterKit from '@tiptap/starter-kit'
 import { richTextPlainText, safeRichTextLink, sanitizeRichText } from '@/utils/richText'
 
-const props = withDefaults(defineProps<{ modelValue: string; requirementId?: number; disabled?: boolean; label?: string }>(), { disabled: false, label: '需求描述' })
+const props = withDefaults(defineProps<{ modelValue: string; requirementId?: number; announcementId?: number; disabled?: boolean; label?: string }>(), { disabled: false, label: '需求描述' })
 const emit = defineEmits<{ 'update:modelValue': [value: string]; blur: [] }>()
 const linkOpen = ref(false)
 const linkUrl = ref('')
@@ -17,6 +17,7 @@ const picker = ref<HTMLInputElement>()
 const imageError = ref('')
 const owned = new Set<string>()
 provide('editorRequirementId', () => props.requirementId)
+provide('editorAnnouncementId', () => props.announcementId)
 onBeforeUnmount(() => owned.forEach(forgetImage))
 const picture = Node.create({
   name: 'requirementImage', group: 'block', atom: true,
@@ -38,7 +39,7 @@ function insertImages(files: File[]) {
     if (node.type.name === 'requirementImage') { count++; bytes += pendingImage(node.attrs.fileId)?.size || 0 }
   })
   if (count + files.length > 12 || bytes > 8 * 1024 * 1024) {
-    imageError.value = '每条需求最多 12 张图片，本次新增图片合计限 8 MiB'
+    imageError.value = '每篇内容最多 12 张图片，本次新增图片合计限 8 MiB'
     return
   }
   const nodes = files.map(file => {

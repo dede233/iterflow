@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.api.v1 import (
+    announcements,
     audits,
     auth,
     collaboration,
@@ -28,6 +29,7 @@ for module in (
     auth,
     dashboard,
     docs,
+    announcements,
     audits,
     feedbacks,
     requirements,

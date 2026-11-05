@@ -14,6 +14,7 @@ export async function mockCollaboration(route: Route): Promise<boolean> {
   else if (/\/requirements\/\d+\/participants$/.test(path)) data = { revision: 1, participants: ['CONFIRM', 'DEVELOP', 'ACCEPT'].map(role => ({ user_id: 1, role, display_name: '环节人员', active: true })) }
   else if (/\/feedbacks\/\d+\/collaboration$/.test(path)) data = { revision: 1, recipients: [{ id: 1, display_name: '接收人' }], handler_id: null, accepted_by: null, accepted_at: null }
   else if (path === '/api/v1/me/mail-preferences') data = { revision: 1, mode: 'TASKS', email: null, verified: false, pending_email: null, smtp_enabled: false }
+  else if (path === '/api/v1/announcements/notice') data = { unread_count: 0, latest: null, important: null }
   else if (path === '/api/v1/systems/options') data = [{ id: 1, name: '系统甲' }]
   else return false
   await route.fulfill({ status: 200, json: data })

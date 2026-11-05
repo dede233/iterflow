@@ -2,10 +2,10 @@
 import { h, type VNodeChild } from 'vue'
 import { sanitizeRichText, type DescriptionFormat } from '@/utils/richText'
 import RequirementImage from './RequirementImage.vue'
-const props = withDefaults(defineProps<{ requirementId?: number; content?: string | null; format?: DescriptionFormat }>(), { content: '', format: 'PLAIN' })
+const props = withDefaults(defineProps<{ requirementId?: number; announcementId?: number; content?: string | null; format?: DescriptionFormat }>(), { content: '', format: 'PLAIN' })
 function renderNode(node: ChildNode): VNodeChild {
   if (!(node instanceof HTMLElement)) return node.textContent || ''
-  if (node.tagName === 'IMG') return h(RequirementImage, { fileId: node.getAttribute('data-file-id')!, requirementId: props.requirementId })
+  if (node.tagName === 'IMG') return h(RequirementImage, { fileId: node.getAttribute('data-file-id')!, requirementId: props.requirementId, announcementId: props.announcementId })
   return h(node.tagName.toLowerCase(), Object.fromEntries(Array.from(node.attributes, a => [a.name, a.value])),
     Array.from(node.childNodes, renderNode))
 }

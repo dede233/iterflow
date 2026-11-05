@@ -2,18 +2,19 @@
 import { ref, watch } from 'vue'
 import { api } from '@/api/client'
 import { pendingImage } from '@/utils/requirementImages'
-const props = defineProps<{ fileId: string; requirementId?: number }>()
+const props = defineProps<{ fileId: string; requirementId?: number; announcementId?: number }>()
 const url = ref('')
 const failed = ref(false)
 const dialog = ref<HTMLDialogElement>()
-watch(() => [props.fileId, props.requirementId] as const, async ([fileId, requirementId], _, cleanup) => {
+watch(() => [props.fileId, props.requirementId, props.announcementId] as const, async ([fileId, requirementId, announcementId], _, cleanup) => {
   let active = true
   let objectUrl = ''
   url.value = ''
   failed.value = false
   cleanup(() => { active = false; if (objectUrl) URL.revokeObjectURL(objectUrl) })
   try {
-    const blob = fileId.startsWith('local-') ? pendingImage(fileId) : requirementId ?
+    const blob = fileId.startsWith('local-') ? pendingImage(fileId) : announcementId ?
+      (await api.get<Blob>(`/announcements/${announcementId}/images/${fileId}`, { responseType: 'blob' })).data : requirementId ?
       (await api.get<Blob>(`/requirements/${requirementId}/images/${fileId}`, { responseType: 'blob' })).data : undefined
     if (!active) return
     if (!blob) { failed.value = true; return }
@@ -24,11 +25,11 @@ watch(() => [props.fileId, props.requirementId] as const, async ([fileId, requir
 </script>
 <template>
   <span class="requirement-image" contenteditable="false">
-    <button v-if="url" type="button" aria-label="查看大图" @click="dialog?.showModal()"><img :src="url" alt="需求图片"></button>
+    <button v-if="url" type="button" aria-label="查看大图" @click="dialog?.showModal()"><img :src="url" :alt="announcementId ? '公告图片' : '需求图片'"></button>
     <span v-else>{{ failed ? '图片无法读取' : '正在载入图片…' }}</span>
-    <dialog ref="dialog" aria-label="需求图片大图" @click.self="dialog?.close()">
+    <dialog ref="dialog" :aria-label="announcementId ? '公告图片大图' : '需求图片大图'" @click.self="dialog?.close()">
       <button type="button" autofocus @click="dialog?.close()">关闭</button>
-      <img v-if="url" :src="url" alt="需求图片大图">
+      <img v-if="url" :src="url" :alt="announcementId ? '公告图片大图' : '需求图片大图'">
     </dialog>
   </span>
 </template>

@@ -15,6 +15,9 @@ vi.mock('vue-router', () => ({
 vi.mock('@/components/MobileBottomNav.vue', () => ({
   default: defineComponent({ render: () => null }),
 }))
+vi.mock('@/components/AnnouncementNotice.vue', () => ({
+  default: defineComponent({ render: () => null }),
+}))
 vi.mock('@/components/MailSetupNotice.vue', () => ({
   default: defineComponent({ render: () => null }),
 }))

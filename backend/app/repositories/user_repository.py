@@ -98,6 +98,22 @@ class UserRepository(BaseRepository[User]):
         ).all()
         return set(rows)
 
+    def can_manage_announcements(self, user_id: int) -> bool:
+        return (
+            self.db.scalar(
+                select(Role.id)
+                .join(UserRole, UserRole.role_id == Role.id)
+                .where(
+                    UserRole.user_id == user_id,
+                    Role.code == "SUPER_ADMIN",
+                    Role.is_system.is_(True),
+                    Role.enabled.is_(True),
+                )
+                .limit(1)
+            )
+            is not None
+        )
+
     def can_view_api_docs(self, user_id: int) -> bool:
         return (
             self.db.scalar(

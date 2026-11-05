@@ -37,6 +37,10 @@
     },
     {
       "name": "File"
+    },
+    {
+      "name": "announcements",
+      "description": "迭程产品更新公告、草稿管理与账号已读记录"
     }
   ],
   "schemas": {
@@ -53,6 +57,143 @@
         "version_revision": {
           "title": "版本修订号",
           "description": "目标版本的乐观锁修订号；版本内容变更时用于并发校验。"
+        }
+      }
+    },
+    "AnnouncementCreate": {
+      "title": "AnnouncementCreate",
+      "properties": {
+        "title": {
+          "title": "公告标题"
+        },
+        "version_label": {
+          "title": "版本标识"
+        },
+        "release_date": {
+          "title": "上线日期"
+        },
+        "content": {
+          "title": "公告正文"
+        },
+        "important": {
+          "title": "重要更新"
+        },
+        "image_uploads": {
+          "title": "待上传图片",
+          "additionalProperties": {}
+        }
+      }
+    },
+    "AnnouncementNotice": {
+      "title": "AnnouncementNotice",
+      "properties": {
+        "unread_count": {
+          "title": "未读数量"
+        },
+        "latest": {
+          "title": "最新未读公告",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "important": {
+          "title": "重要更新",
+          "anyOf": [
+            {},
+            {}
+          ]
+        }
+      }
+    },
+    "AnnouncementOut": {
+      "title": "AnnouncementOut",
+      "properties": {
+        "id": {
+          "title": "公告标识"
+        },
+        "title": {
+          "title": "公告标题"
+        },
+        "version_label": {
+          "title": "版本标识"
+        },
+        "release_date": {
+          "title": "上线日期"
+        },
+        "content": {
+          "title": "公告正文"
+        },
+        "important": {
+          "title": "重要更新"
+        },
+        "revision": {
+          "title": "修订号"
+        },
+        "published_at": {
+          "title": "发布时间",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "read_at": {
+          "title": "当前账号阅读时间",
+          "anyOf": [
+            {},
+            {}
+          ]
+        }
+      }
+    },
+    "AnnouncementPage": {
+      "title": "AnnouncementPage",
+      "properties": {
+        "items": {
+          "title": "公告列表",
+          "items": {}
+        },
+        "page": {
+          "title": "页码"
+        },
+        "page_size": {
+          "title": "每页条数"
+        },
+        "total": {
+          "title": "总数"
+        },
+        "unread_count": {
+          "title": "未读数量"
+        },
+        "can_manage": {
+          "title": "是否可管理公告"
+        }
+      }
+    },
+    "AnnouncementUpdate": {
+      "title": "AnnouncementUpdate",
+      "properties": {
+        "title": {
+          "title": "公告标题"
+        },
+        "version_label": {
+          "title": "版本标识"
+        },
+        "release_date": {
+          "title": "上线日期"
+        },
+        "content": {
+          "title": "公告正文"
+        },
+        "important": {
+          "title": "重要更新"
+        },
+        "image_uploads": {
+          "title": "待上传图片",
+          "additionalProperties": {}
+        },
+        "revision": {
+          "title": "修订号"
         }
       }
     },
@@ -2230,6 +2371,14 @@
         }
       }
     },
+    "RevisionPayload": {
+      "title": "RevisionPayload",
+      "properties": {
+        "revision": {
+          "title": "修订号"
+        }
+      }
+    },
     "RoleCreate": {
       "title": "RoleCreate",
       "properties": {
@@ -3027,6 +3176,66 @@
         ],
         "summary": "查看接口文档",
         "description": "仅允许启用的系统角色 SUPER_ADMIN 或 DEVELOPMENT_LEAD 读取当前 OpenAPI 文档。权限、账号停用和首次改密限制由后端实时执行；响应禁止缓存。"
+      }
+    },
+    "/announcements": {
+      "get": {
+        "tags": [
+          "announcements"
+        ],
+        "summary": "更新公告列表"
+      },
+      "post": {
+        "tags": [
+          "announcements"
+        ],
+        "summary": "创建公告草稿（超级管理员）"
+      }
+    },
+    "/announcements/notice": {
+      "get": {
+        "tags": [
+          "announcements"
+        ],
+        "summary": "当前账号未读公告提示"
+      }
+    },
+    "/announcements/{announcement_id}": {
+      "get": {
+        "tags": [
+          "announcements"
+        ],
+        "summary": "读取公告详情"
+      },
+      "patch": {
+        "tags": [
+          "announcements"
+        ],
+        "summary": "修正公告（不重置已读）"
+      }
+    },
+    "/announcements/{announcement_id}/publish": {
+      "post": {
+        "tags": [
+          "announcements"
+        ],
+        "summary": "发布公告（部署验收后手动执行）"
+      }
+    },
+    "/announcements/{announcement_id}/read": {
+      "post": {
+        "tags": [
+          "announcements"
+        ],
+        "summary": "当前账号标记已读"
+      }
+    },
+    "/announcements/{announcement_id}/images/{file_id}": {
+      "get": {
+        "tags": [
+          "announcements"
+        ],
+        "summary": "读取有权限的公告图片"
       }
     },
     "/audits": {

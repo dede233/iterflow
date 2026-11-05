@@ -1102,7 +1102,7 @@ def test_mysql_restart_and_isolated_backup_restore(mysql_api, monkeypatch, tmp_p
                     "WHERE trigger_schema=DATABASE()"
                 )
             )
-            assert restored_triggers == 91
+            assert restored_triggers == 97
         with Session(restore_engine) as session:
             assert session.get(Requirement, ids["requirement"]).current_version_id == ids["version"]
             assert session.get(Feedback, ids["feedback"]).main_requirement_id == ids["requirement"]
@@ -1202,7 +1202,7 @@ def test_mysql_preflight_requires_empty_or_verified_schema(mysql_api):
 
     with mysql_api[1].connect() as connection:
         result = validate_mysql(connection)
-        assert result["table_count"] == 30
+        assert result["table_count"] == 32
         with pytest.raises(RuntimeError, match="empty"):
             validate_mysql(connection, empty=True)
         connection.execute(text("DROP TRIGGER domain_sys_user_insert"))
@@ -1310,7 +1310,7 @@ def test_mysql_runtime_principal_cannot_remove_database_protection(mysql_api, mo
     event.listen(runtime, "connect", database.configure_mysql)
     try:
         with runtime.connect() as connection:
-            assert validate_mysql(connection, inspect_triggers=False)["table_count"] == 30
+            assert validate_mysql(connection, inspect_triggers=False)["table_count"] == 32
             with pytest.raises(DBAPIError):
                 connection.execute(text("DROP TRIGGER domain_sys_user_insert"))
             with pytest.raises(DBAPIError):
@@ -1532,7 +1532,7 @@ def test_mysql_upgrade_legacy_0001_preserves_full_keys(monkeypatch):
         monkeypatch.setattr(migrate, "engine", engine)
         migrate.main()
         with engine.connect() as c:
-            assert validate_mysql(c)["table_count"] == 30
+            assert validate_mysql(c)["table_count"] == 32
         with Session(engine) as session:
             assert set(session.scalars(select(FileObject.storage_key))) == set(keys)
     finally:

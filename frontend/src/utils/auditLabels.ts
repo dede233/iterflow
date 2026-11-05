@@ -1,4 +1,5 @@
 export const auditEntityLabels: Record<string, string> = {
+  ANNOUNCEMENT: '更新公告',
   FEEDBACK: '反馈',
   REQUIREMENT: '需求',
   VERSION: '版本',
@@ -13,6 +14,7 @@ export const auditEntityLabels: Record<string, string> = {
 }
 
 export const auditActionLabels: Record<string, string> = {
+  PUBLISH: '发布公告',
   CREATE: '创建',
   UPDATE: '更新',
   STATUS_CHANGE: '变更状态',

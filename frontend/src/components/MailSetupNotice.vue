@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/auth'
 import type { components } from '@/types/openapi.generated'
 
 type Preferences = components['schemas']['MailPreferencesOut']
+const emit = defineEmits<{ visibility: [visible: boolean] }>()
 const auth = useAuthStore()
 const route = useRoute()
 const router = useRouter()
@@ -15,6 +16,7 @@ const identity = computed(() => `${auth.user?.id ?? ''}:${auth.accessToken}`)
 const eligiblePage = computed(() => route.path !== '/profile' && !auth.mustChangePassword)
 const visible = computed(() => Boolean(auth.user && eligiblePage.value && !dismissed.value && item.value?.smtp_enabled
   && item.value.mode !== 'OFF' && !item.value.verified && item.value.notice_acknowledged === false))
+watch(visible, value => emit('visibility', value), { immediate: true })
 const hasEmail = computed(() => Boolean(item.value?.pending_email || item.value?.email))
 let sequence = 0
 

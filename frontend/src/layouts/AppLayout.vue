@@ -1,13 +1,17 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import MobileBottomNav from '@/components/MobileBottomNav.vue'
+import AnnouncementNotice from '@/components/AnnouncementNotice.vue'
+import { useAnnouncementsStore } from '@/stores/announcements'
 import MailSetupNotice from '@/components/MailSetupNotice.vue'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationsStore } from '@/stores/notifications'
 import { useNotificationFreshness } from '@/composables/useNotificationFreshness'
 
+const mailNoticeVisible = ref(false)
+const announcements = useAnnouncementsStore()
 const notifications = useNotificationsStore()
 useNotificationFreshness()
 const auth = useAuthStore()
@@ -32,6 +36,7 @@ const groups = computed<NavigationGroup[]>(() => [
     items: [
       { to: '/', label: '首页', icon: 'home', permission: 'dashboard.view' },
       { to: '/notifications', label: '通知中心', icon: 'bell' },
+      { to: '/announcements', label: '更新公告', icon: 'release' },
     ],
   },
   {
@@ -95,6 +100,7 @@ async function logout(): Promise<void> {
           >
             <AppIcon :name="item.icon" :size="18" class="nav-icon" />
             <span class="nav-label">{{ item.label }}</span>
+            <span v-if="item.to === '/announcements' && announcements.unreadCount" class="announcement-dot" aria-label="有未读更新公告" />
             <span
               v-if="item.to === '/notifications' && notifications.unreadCount > 0"
               class="notification-badge"
@@ -124,9 +130,11 @@ async function logout(): Promise<void> {
     <header class="mobile-header mobile-only">
       <span class="brand-mark">迭</span>
       <span class="brand-text"><strong>迭程</strong> IterFlow</span>
+      <router-link to="/announcements" style="margin-left:auto;font-size:13px">更新公告<span v-if="announcements.unreadCount" aria-label="有未读更新公告"> ·</span></router-link>
     </header>
 
     <main class="content">
+      <AnnouncementNotice :blocked="mailNoticeVisible" />
       <router-view v-slot="{ Component, route: childRoute }">
         <component
           :is="Component"
@@ -137,11 +145,12 @@ async function logout(): Promise<void> {
     </main>
 
     <MobileBottomNav />
-    <MailSetupNotice />
+    <MailSetupNotice @visibility="mailNoticeVisible = $event" />
   </div>
 </template>
 
 <style scoped>
+.announcement-dot { width:8px;height:8px;border-radius:50%;background:#ef4444;flex-shrink:0; }
 .shell {
   min-height: 100vh;
   background-color: var(--if-bg-page);

@@ -2306,13 +2306,14 @@ export interface components {
          * @description Minimal activity information for an authorized business detail view.
          */
         EntityActivityOut: {
-            /** Id */
+            /** 操作记录 ID */
             id: number;
-            /** Action */
+            /** 操作类型 */
             action: string;
+            /** 操作人 */
             operator: components["schemas"]["AuditOperatorOut"] | null;
             /**
-             * Created At
+             * 操作时间
              * Format: date-time
              */
             created_at: string;

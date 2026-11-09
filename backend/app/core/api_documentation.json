@@ -985,6 +985,28 @@
         }
       }
     },
+    "EntityActivityOut": {
+      "title": "EntityActivityOut",
+      "description": "Minimal activity information for an authorized business detail view.",
+      "properties": {
+        "id": {
+          "title": "操作记录 ID"
+        },
+        "action": {
+          "title": "操作类型"
+        },
+        "operator": {
+          "title": "操作人",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "created_at": {
+          "title": "操作时间"
+        }
+      }
+    },
     "EntityDelete": {
       "title": "EntityDelete",
       "properties": {
@@ -3358,6 +3380,15 @@
         "description": "CREATE_NEW 仅需要 rd.feedback.convert。LINK_EXISTING 还需要 rd.requirement.view，且目标需求必须在当前 Requirement DataScope 内。操作与关系及审计写入同一事务。"
       }
     },
+    "/feedbacks/{feedback_id}/activities": {
+      "get": {
+        "tags": [
+          "feedbacks"
+        ],
+        "summary": "查看反馈最近操作记录",
+        "description": "需要反馈查看权限及对象数据范围。按操作时间和ID倒序返回最多10条，不截断历史存储，不返回审计原始内容或请求信息。"
+      }
+    },
     "/requirements": {
       "get": {
         "tags": [
@@ -3429,6 +3460,15 @@
         ],
         "summary": "变更需求状态",
         "description": "六阶段流转：开发参与人提交验收，可指定多名验收人，其中任意一名有效验收人确认即可进入 DONE，其他验收人无需重复确认；不再要求每名开发人员单独确认。记录实际操作人，并通过 revision CAS 防止重复流转。人员资格、内容确认、原因、审计及事务回滚统一校验。ONLINE 仅由成功发布产生。"
+      }
+    },
+    "/requirements/{requirement_id}/activities": {
+      "get": {
+        "tags": [
+          "requirements"
+        ],
+        "summary": "查看需求最近操作记录",
+        "description": "需要需求查看权限及对象数据范围。按操作时间和ID倒序返回最多10条，不截断历史存储，不返回审计原始内容或请求信息。"
       }
     },
     "/versions": {
@@ -3539,6 +3579,15 @@
         ],
         "summary": "发布版本",
         "description": "需要 rd.version.publish 及数据范围。在版本到需求的既有锁序内重新计算有效READY，校验至少一条有效需求且全部DONE和内容确认资格，并保留revision及非终态CAS。无需先手动推进版本阶段。Release(SUCCESS)、Version、Requirement/Feedback ONLINE、通知事件和审计原子提交；异常回滚，重复发布 409。"
+      }
+    },
+    "/versions/{version_id}/activities": {
+      "get": {
+        "tags": [
+          "versions"
+        ],
+        "summary": "查看版本最近操作记录",
+        "description": "需要版本查看权限及对象数据范围。按操作时间和ID倒序返回最多10条，不截断历史存储，不返回审计原始内容或请求信息。"
       }
     },
     "/releases": {

@@ -41,6 +41,8 @@
 
 Fresh Self-Review 发现 `tools/smoke-mysql-package.py` 使用旧无系统版本夹具及恢复后 91 个触发器断言。准备阶段修正为：用正常 API 创建隔离业务系统，反馈转需求继承该系统，创建同系统版本，恢复后继续证明绑定保留，并核对当前 97 个触发器。保留既有 RBAC、CAS、版本派生进度、发布/通知/附件、三次重启及隔离恢复检查；随同一候选进入双 MySQL CI。此复查由同一 Agent 完成，不称独立审查。
 
+首轮候选 `c8403d1` 的运行 [42583098051](https://github.com/dede233/iterflow/actions/runs/42583098051) 在后端全量发现两项文档门禁失败：`EntityActivityOut` 字段缺少中文标题，新增三类 activities 接口及该 schema 没有更新随包中文标签。该次统计为 675 PASS、2 FAIL、1 项 S3 在该 job 未配置而跳过（独立 S3 job 负责真实验证）。修正仅补当前开发契约中的四个字段标题、重新生成 `backend/app/core/api_documentation.json` 及前端类型注释，不改变接口字段结构、业务逻辑或历史发布契约。定向文档/契约/架构 22 项、生成类型一致性与 diff 检查通过，以新 SHA 重新执行完整八项。原 run 与日志保留，不将通过的旧 job 混作新候选结论。本地首次定向命令误列不存在的测试文件，收集前停止；原日志另存，改为仓库实际测试文件后通过，未连接外部数据库。
+
 ## 正式迁移与最小运行权限
 
 本次正式目标为 `mysql57_0012 → mysql57_0013 → mysql57_0014`，PostgreSQL 对应 `0014_issue4 → 0015_system_binding → 0016_announcements`。只追加既有迁移，不修改已发布历史迁移：

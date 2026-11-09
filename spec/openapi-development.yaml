@@ -6622,18 +6622,19 @@ components:
       properties:
         id:
           type: integer
-          title: Id
+          title: 操作记录 ID
         action:
           type: string
-          title: Action
+          title: 操作类型
         operator:
           anyOf:
           - $ref: '#/components/schemas/AuditOperatorOut'
           - type: 'null'
+          title: 操作人
         created_at:
           type: string
           format: date-time
-          title: Created At
+          title: 操作时间
       type: object
       required:
       - id

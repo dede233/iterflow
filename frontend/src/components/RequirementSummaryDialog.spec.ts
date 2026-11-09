@@ -4,6 +4,7 @@ import { beforeEach, expect, it, vi } from 'vitest'
 import { useAuthStore } from '@/stores/auth'
 import type { Requirement } from '@/types/domain'
 const mocks = vi.hoisted(() => ({ get: vi.fn(), feedbacks: vi.fn() }))
+vi.mock('@/api/entityActivities', () => ({ listEntityActivities: vi.fn().mockResolvedValue([]) }))
 vi.mock('@/api/requirements', () => ({ getRequirement: mocks.get, listRequirementFeedbacks: mocks.feedbacks }))
 import RequirementSummaryDialog from './RequirementSummaryDialog.vue'
 

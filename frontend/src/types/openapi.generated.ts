@@ -602,6 +602,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/feedbacks/{feedback_id}/activities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查看反馈最近操作记录
+         * @description 需要反馈查看权限及对象数据范围。按操作时间和ID倒序返回最多10条，不截断历史存储，不返回审计原始内容或请求信息。
+         */
+        get: operations["list_feedback_activities_api_v1_feedbacks__feedback_id__activities_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/requirements": {
         parameters: {
             query?: never;
@@ -726,6 +746,26 @@ export interface paths {
          * @description 六阶段流转：开发参与人提交验收，可指定多名验收人，其中任意一名有效验收人确认即可进入 DONE，其他验收人无需重复确认；不再要求每名开发人员单独确认。记录实际操作人，并通过 revision CAS 防止重复流转。人员资格、内容确认、原因、审计及事务回滚统一校验。ONLINE 仅由成功发布产生。
          */
         patch: operations["change_status_api_v1_requirements__requirement_id__status_patch"];
+        trace?: never;
+    };
+    "/requirements/{requirement_id}/activities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查看需求最近操作记录
+         * @description 需要需求查看权限及对象数据范围。按操作时间和ID倒序返回最多10条，不截断历史存储，不返回审计原始内容或请求信息。
+         */
+        get: operations["list_requirement_activities_api_v1_requirements__requirement_id__activities_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/versions": {
@@ -931,6 +971,26 @@ export interface paths {
          * @description 需要 rd.version.publish 及数据范围。在版本到需求的既有锁序内重新计算有效READY，校验至少一条有效需求且全部DONE和内容确认资格，并保留revision及非终态CAS。无需先手动推进版本阶段。Release(SUCCESS)、Version、Requirement/Feedback ONLINE、通知事件和审计原子提交；异常回滚，重复发布 409。
          */
         post: operations["publish_version_api_v1_versions__version_id__publish_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/versions/{version_id}/activities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查看版本最近操作记录
+         * @description 需要版本查看权限及对象数据范围。按操作时间和ID倒序返回最多10条，不截断历史存储，不返回审计原始内容或请求信息。
+         */
+        get: operations["list_version_activities_api_v1_versions__version_id__activities_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2240,6 +2300,22 @@ export interface components {
             revision: number;
             /** 邮箱 */
             email: string;
+        };
+        /**
+         * EntityActivityOut
+         * @description Minimal activity information for an authorized business detail view.
+         */
+        EntityActivityOut: {
+            /** Id */
+            id: number;
+            /** Action */
+            action: string;
+            operator: components["schemas"]["AuditOperatorOut"] | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /** EntityDelete */
         EntityDelete: {
@@ -5829,6 +5905,64 @@ export interface operations {
             };
         };
     };
+    list_feedback_activities_api_v1_feedbacks__feedback_id__activities_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                feedback_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntityActivityOut"][];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_requirements_api_v1_requirements_get: {
         parameters: {
             query?: {
@@ -6358,6 +6492,64 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_requirement_activities_api_v1_requirements__requirement_id__activities_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requirement_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntityActivityOut"][];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Validation Error */
@@ -7208,6 +7400,64 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_version_activities_api_v1_versions__version_id__activities_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                version_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntityActivityOut"][];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Validation Error */

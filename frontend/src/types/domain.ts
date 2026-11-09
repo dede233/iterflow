@@ -48,6 +48,7 @@ export type ReleasePage = Schema<'ReleasePage'>
 export type ReleaseListParams = NonNullable<paths['/releases']['get']['parameters']['query']>
 export type AuditOperator = Schema<'AuditOperatorOut'>
 export type AuditItem = Schema<'AuditOut'>
+export type EntityActivity = Schema<'EntityActivityOut'>
 export type AuditListParams = NonNullable<paths['/audits']['get']['parameters']['query']>
 export type AuditPage = Schema<'AuditPage'>
 export type NotificationItem = Schema<'NotificationOut'>

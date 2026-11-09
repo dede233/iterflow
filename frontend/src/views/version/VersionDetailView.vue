@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import BusinessSystemAttribution from '@/components/BusinessSystemAttribution.vue'
+import RecentEntityActivity from '@/components/RecentEntityActivity.vue'
 import BusinessSystemSelect from '@/components/BusinessSystemSelect.vue'
 import BatchActionsDialog from '@/components/BatchActionsDialog.vue'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
@@ -125,6 +127,7 @@ function openRelease(releaseId: number): void {
   else { activeReleaseId.value = releaseId; releaseDrawer.value = true }
 }
 const loading = ref(false)
+const activityRefresh = ref(0)
 const failed = ref(false)
 
 const canEdit = computed(() => can('rd.version.edit'))
@@ -352,6 +355,7 @@ async function removeReq(req: Requirement): Promise<void> {
 }
 
 async function load(): Promise<void> {
+  activityRefresh.value++
   loading.value = true
   failed.value = false
   try {
@@ -398,11 +402,11 @@ onMounted(load)
         </el-button>
         </template>
       </PageHeader>
+      <BusinessSystemAttribution :system-id="item.system_id" :system-name="item.system_name" />
 
       <el-alert v-if="!item.system_id && !frozen" title="此历史版本未指定业务系统，请先补齐需求系统，再编辑版本选择同一系统。" type="warning" :closable="false" />
       <SectionCard title="版本概况" description="进度由关联需求自动汇总；开发和验收在需求中完成。">
         <el-descriptions :column="isMobile ? 1 : 2">
-          <el-descriptions-item label="业务系统">{{ item.system_name || (item.system_id ? `系统 #${item.system_id}` : '未指定') }}</el-descriptions-item>
           <el-descriptions-item label="计划上线">{{ item.planned_release_date || '-' }}</el-descriptions-item>
           <el-descriptions-item label="实际上线">{{ formatLocalDateTime(item.released_at) }}</el-descriptions-item>
           <el-descriptions-item label="说明" :span="isMobile ? 1 : 2">
@@ -410,6 +414,8 @@ onMounted(load)
           </el-descriptions-item>
         </el-descriptions>
       </SectionCard>
+
+      <RecentEntityActivity kind="version" :id="item.id" :revision="item.revision" :refresh-key="activityRefresh" />
 
       <!-- progress + requirements -->
       <SectionCard v-if="canViewRequirements" title="需求清单" :description="`可见需求 ${stats?.total ?? 0} 项`" class="section">

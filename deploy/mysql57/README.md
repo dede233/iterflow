@@ -27,7 +27,7 @@ MySQL 双指针改为关系事实派生：API 字段不变，数据库生成列�
 - 迁移账号具有目标库 CREATE/ALTER/INDEX/REFERENCES/TRIGGER/CREATE ROUTINE/EXECUTE、DML、
   读 schema 元数据权限；binary logging 开启时由 DBA 确认创建 trigger/function 的能力，
   本路径预检要求 log_bin_trust_function_creators=ON。不要自行授予运行账号 SUPER。
-- 推荐运行账号只拥有 `runtime-grants.sql` 的 28 业务表 DML、Alembic 与键登记表 SELECT，
+- 推荐运行账号只拥有 `runtime-grants.sql` 的 30 业务表 DML、Alembic 与键登记表 SELECT，
   没有 DDL/TRIGGER/GRANT/管理权限或其他继承授权。用户已明确接受此次使用现有高权限
   iterflow 账号的例外；它可删除数据库保护对象，不属于最小权限验证通过。
 - 保留触发器 DEFINER 账号及必要权限，不能在迁移后删除该账号。
@@ -140,3 +140,6 @@ Apple Silicon 测试使用独立 QEMU x86_64 VM；旧 ARM VM + amd64 用户态�
 失败，不能宣称该环境稳定。正式远程版本/配置仍须核实并执行部署前门禁，不能据本包宣称已上线。
 
 全员开发完成门禁见 `docs/development-completion.md`。既有人员不自动确认；每条有效需求至少一名开发人员且全部本人确认后才可完成及发布。2026-10-11 已构建并验证源 `2b37509` 的 amd64 包，实际服务器从 mysql57_0002 追加升级至 mysql57_0005；完整证据与保留数据、双份备份边界见线上升级记录。
+
+
+升级包含新增表时，必须同步 `runtime-grants.sql` 中对应表级授权（替换为目标数据库及既有运行账号），再以运行账号执行就绪检查。`mysql57_0014` 新增 `sys_announcement` 与 `sys_announcement_read` 的 SELECT/INSERT/UPDATE/DELETE；不得授予整库、DDL 或 GRANT 权限。迁移账号的 preflight 通过不代表运行账号可访问新表。

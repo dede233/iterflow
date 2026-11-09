@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import BusinessSystemAttribution from '@/components/BusinessSystemAttribution.vue'
+import RecentEntityActivity from '@/components/RecentEntityActivity.vue'
 import BusinessSystemSelect from '@/components/BusinessSystemSelect.vue'
 import RequirementProgress from '@/components/RequirementProgress.vue'
 import { computed, defineAsyncComponent, onMounted, reactive, ref, watch } from 'vue'
@@ -69,6 +71,7 @@ async function showConflict(error: unknown, revision: number, onReload?: (latest
 const item = ref<Requirement | null>(null)
 const feedbacks = ref<LinkedFeedback[]>([])
 const loading = ref(false)
+const activityRefresh = ref(0)
 const failed = ref(false)
 const canEdit = computed(() => can('rd.requirement.edit') && item.value?.status !== 'ONLINE')
 const canViewFeedbacks = computed(() => can('rd.feedback.view'))
@@ -207,6 +210,7 @@ async function submitEdit(): Promise<void> {
 }
 
 async function load(): Promise<void> {
+  activityRefresh.value++
   loading.value = true
   failed.value = false
   try {
@@ -247,12 +251,12 @@ onMounted(load)
 
         </template>
       </PageHeader>
+      <BusinessSystemAttribution :system-id="item.system_id" :system-name="item.system_name" />
 
       <RequirementProgress :item="item" @updated="load" @status="openStatusDialog" />
       <div class="detail-grid">
       <SectionCard title="需求详情" description="范围与验收标准" class="detail-main">
         <el-descriptions :column="isMobile ? 1 : 2">
-          <el-descriptions-item label="业务系统">{{ item.system_name || (item.system_id ? `系统 #${item.system_id}` : '未指定') }}</el-descriptions-item>
           <el-descriptions-item label="类型">
             {{ requirementTypeLabel[item.requirement_type] ?? item.requirement_type }}
           </el-descriptions-item>
@@ -273,6 +277,8 @@ onMounted(load)
         </dl>
       </SectionCard>
       </div>
+
+      <RecentEntityActivity kind="requirement" :id="item.id" :revision="item.revision" :refresh-key="activityRefresh" />
 
       <!-- source feedbacks -->
       <SectionCard v-if="canViewFeedbacks" title="来源反馈" class="section">

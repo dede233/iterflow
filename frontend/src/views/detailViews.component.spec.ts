@@ -52,6 +52,7 @@ vi.mock('@/api/versions', () => ({
   removeVersionRequirement: vi.fn(),
   updateVersion: mocks.updateVersion,
 }))
+vi.mock('@/api/entityActivities', () => ({ listEntityActivities: vi.fn().mockResolvedValue([]) }))
 vi.mock('@/api/releases', () => ({ listReleases: mocks.listReleases }))
 vi.mock('@/api/systems', () => ({ listSystems: mocks.listSystems }))
 vi.mock('@/api/requirements', () => ({

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import BusinessSystemAttribution from '@/components/BusinessSystemAttribution.vue'
+import RecentEntityActivity from '@/components/RecentEntityActivity.vue'
 import { defineAsyncComponent } from 'vue'
 import DeleteEntityButton from '@/components/DeleteEntityButton.vue'
 import { plainTextToHtml, richTextPlainText } from '@/utils/richText'
@@ -79,6 +81,7 @@ const conflict = useRevisionConflict()
 
 const item = ref<Feedback | null>(null)
 const loading = ref(false)
+const activityRefresh = ref(0)
 const failed = ref(false)
 const attachments = ref<AttachmentItem[]>([])
 const comments = ref<CommentItem[]>([])
@@ -340,12 +343,14 @@ async function submitComment(): Promise<void> {
     await createFeedbackComment(feedbackId, commentText.value.trim())
     commentText.value = ''
     comments.value = await listFeedbackComments(feedbackId)
+    activityRefresh.value++
   } finally {
     commentSubmitting.value = false
   }
 }
 
 async function load(): Promise<void> {
+  activityRefresh.value++
   loading.value = true
   failed.value = false
   try {
@@ -405,6 +410,7 @@ onMounted(async () => {
         </el-button>
         </template>
       </PageHeader>
+      <BusinessSystemAttribution :system-id="item.system_id" :system-name="item.system_name" />
       <p v-if="item.status === 'NEW' && canEdit && collaboration && !canAccept" role="status">请联系指定接收人受理此反馈；如需调整接收人，可在“接收与处理”中设置。</p>
       <CollaborationPeople v-if="can('rd.feedback.view')" kind="feedback" :id="item.id" :revision="item.revision" :editable="canEdit" @loaded="collaboration = $event" @updated="load" />
 
@@ -417,7 +423,6 @@ onMounted(async () => {
           <el-descriptions-item label="紧急程度">
             {{ feedbackUrgencyLabel[item.urgency] ?? item.urgency }}
           </el-descriptions-item>
-          <el-descriptions-item label="所属系统">{{ item.system_name || (item.system_id == null ? '-' : '未知系统') }}</el-descriptions-item>
           <el-descriptions-item label="所属模块">{{ item.module_name || (item.module_id == null ? '-' : '未知模块') }}</el-descriptions-item>
           <el-descriptions-item label="详细描述" :span="isMobile ? 1 : 2">
             <div class="multiline">{{ item.description }}</div>
@@ -443,6 +448,8 @@ onMounted(async () => {
         </dl>
       </SectionCard>
       </div>
+
+      <RecentEntityActivity kind="feedback" :id="item.id" :revision="item.revision" :refresh-key="activityRefresh" />
 
       <!-- attachments -->
       <SectionCard title="附件" class="section">

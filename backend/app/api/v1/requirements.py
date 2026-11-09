@@ -13,6 +13,7 @@ from app.models.enums import Priority, RequirementSource, RequirementStatus
 from app.repositories.requirement_repository import RequirementRepository
 from app.repositories.user_repository import UserRepository
 from app.repositories.version_repository import VersionRepository
+from app.schemas.audit import EntityActivityOut
 from app.schemas.entity_actions import (
     BatchActionResponse,
     EntityDelete,
@@ -28,6 +29,7 @@ from app.schemas.requirement import (
     RequirementUpdate,
 )
 from app.services.entity_actions_service import EntityActionsService
+from app.services.entity_activity_service import EntityActivityService
 from app.services.feedback_service import FeedbackService
 from app.services.file_service import FileService
 from app.services.requirement_images import IMAGE_ENTITY
@@ -226,3 +228,16 @@ def change_status(
 ):
     _scoped_requirement_or_404(db, user, requirement_id)
     return RequirementService(db).change_status(requirement_id, payload, user.id)
+
+
+@router.get(
+    "/{requirement_id}/activities",
+    response_model=list[EntityActivityOut],
+    responses=api_error_responses(404),
+)
+def list_requirement_activities(
+    requirement_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("rd.requirement.view")),
+):
+    return EntityActivityService(db).recent("requirement", requirement_id, user)

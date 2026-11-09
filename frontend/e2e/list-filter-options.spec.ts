@@ -1,3 +1,4 @@
+import { mockReadPanels } from './collaboration-fixture'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 
 async function fixture(page: Page, domain: 'requirements' | 'versions', restricted = false) {
@@ -30,6 +31,7 @@ async function fixture(page: Page, domain: 'requirements' | 'versions', restrict
       const items = searched ? second ? [selected] : Array.from({ length: 20 }, (_, i) => ({ id: i + 101, label: `${params.keyword}候选${i + 1}` })) : [selected]
       return json({ items, total: searched ? 21 : 1, page: Number(params.page), page_size: 20 })
     }
+    if (await mockReadPanels(route)) return
     unexpected.push(`${route.request().method()} ${path}`)
     return route.fulfill({ status: 500, json: { message: 'unexpected request' } })
   })

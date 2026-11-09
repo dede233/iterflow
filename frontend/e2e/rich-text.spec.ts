@@ -1,3 +1,4 @@
+import { mockReadPanels } from './collaboration-fixture'
 import { expect, test, type Page } from '@playwright/test'
 
 async function setup(page: Page, description = '<img src=x onerror="window.richAttack=1">旧文本', format = 'PLAIN', confirmed = false) {
@@ -35,6 +36,7 @@ async function setup(page: Page, description = '<img src=x onerror="window.richA
       '/api/v1/releases': { items: [], total: 0, page: 1, page_size: 20 },
     }
     if (method === 'GET' && path in responses) return json(responses[path])
+    if (await mockReadPanels(route)) return
     unexpected.push(`${method} ${path}`)
     return route.fulfill({ status: 500, json: { message: 'Unexpected synthetic request' } })
   })

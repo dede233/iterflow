@@ -1,3 +1,4 @@
+import { mockReadPanels } from './collaboration-fixture'
 import { expect, test, type Page } from '@playwright/test'
 
 const base = { revision: 1, mode: 'TASKS', email: null, verified: false, pending_email: null, smtp_enabled: true, notice_acknowledged: false }
@@ -24,6 +25,7 @@ async function setup(page: Page, overrides = {}) {
     }
     if (path === '/api/v1/notifications') return route.fulfill({ json: [] })
     if (path === '/api/v1/notifications/unread-count') return route.fulfill({ json: { unread_count: 0 } })
+    if (await mockReadPanels(route)) return
     throw new Error(`Unexpected API request: ${route.request().method()} ${path}`)
   })
   return () => acknowledgements
@@ -39,8 +41,9 @@ test('notice fits five viewports, saves acknowledgement and stays hidden after r
     await page.reload()
     const dialog = page.getByRole('dialog', { name: '邮件通知已上线' })
     await expect(dialog).toBeVisible()
-    await page.locator('.el-overlay').evaluate(async el => {
-      await Promise.all(el.getAnimations({ subtree: true }).map(animation => animation.finished))
+    await dialog.evaluate(async el => {
+      const overlay = el.closest('.el-overlay')!
+      await Promise.all(overlay.getAnimations({ subtree: true }).map(animation => animation.finished))
     })
     const bounds = await dialog.boundingBox()
     expect(bounds!.x).toBeGreaterThanOrEqual(0)

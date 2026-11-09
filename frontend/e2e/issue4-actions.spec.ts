@@ -1,3 +1,4 @@
+import { mockReadPanels } from './collaboration-fixture'
 import { expect, test, type Page } from '@playwright/test'
 
 async function setup(page: Page, options: { feedback?: boolean; detail?: boolean; readonly?: boolean; online?: boolean; delegated?: boolean; conflict?: boolean; unknownBatch?: boolean } = {}) {
@@ -41,7 +42,11 @@ async function setup(page: Page, options: { feedback?: boolean; detail?: boolean
       responses[`/api/v1/feedbacks/${row.id}/comments`] = []
       responses[`/api/v1/feedbacks/${row.id}/attachments`] = []
     }
-    if (method !== 'GET' || !(path in responses)) { unexpected.push(`${method} ${path}`); return route.fulfill({ status: 500, json: { message: 'Unexpected request' } }) }
+    if (method !== 'GET' || !(path in responses)) {
+      if (await mockReadPanels(route)) return
+      unexpected.push(`${method} ${path}`)
+      return route.fulfill({ status: 500, json: { message: 'Unexpected request' } })
+    }
     return route.fulfill({ json: responses[path] })
   })
   await page.goto(`/#/${kind}${options.detail ? '/1' : ''}`)

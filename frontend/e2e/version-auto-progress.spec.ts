@@ -1,3 +1,4 @@
+import { mockReadPanels } from './collaboration-fixture'
 import { expect, test, type Page } from '@playwright/test'
 
 type Options = { status: string; readonly?: boolean; deferredPublish?: boolean }
@@ -37,6 +38,7 @@ async function fixture(page: Page, options: Options) {
       '/api/v1/releases': { items: [], total: 0, page: 1, page_size: 20 },
     }
     if (method === 'GET' && path in responses) return json(responses[path])
+    if (await mockReadPanels(route)) return
     unexpected.push(`${method} ${path}`)
     return json({ message: 'Unexpected synthetic request' }, 500)
   })

@@ -1,3 +1,4 @@
+import { mockReadPanels } from './collaboration-fixture'
 import { expect, test } from '@playwright/test'
 
 for (const layout of ['page', 'drawer']) {
@@ -41,6 +42,7 @@ for (const width of [320, 375, 768, 1200, 1440, 1800]) {
       }
       responses['/api/v1/requirements'] = { items: [responses['/api/v1/requirements/1']], total: 1, page: 1, page_size: 20 }
       if (!(path in responses) || route.request().method() !== 'GET') {
+        if (await mockReadPanels(route)) return
         unexpected.push(`${route.request().method()} ${path}`)
         return route.fulfill({ status: 500, json: { message: 'Unexpected request' } })
       }

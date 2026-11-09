@@ -1,3 +1,4 @@
+import { mockReadPanels } from './collaboration-fixture'
 import { expect, test, type Page } from '@playwright/test'
 
 const time = '2026-10-01T01:00:00Z'
@@ -21,6 +22,7 @@ async function fixture(page: Page, permissions = ['rd.release.view', 'rd.version
     if (path === '/releases/123' || path === '/releases/124') return json(release(Number(path.split('/').at(-1))))
     if (path === '/versions') return json({ items: [version], total: 42, page: 2, page_size: 20 })
     if (path === '/versions/456') return failure ? json({ code: 40400, message: 'private detail' }, 404) : json(version)
+    if (await mockReadPanels(route)) return
     unexpected.push(path)
     return json({}, 500)
   })

@@ -2,8 +2,8 @@ import { mockCollaboration } from './collaboration-fixture'
 import { expect, test, type Page } from '@playwright/test'
 const widths = [375, 390, 768, 1280, 1440]
 const permissions = ['rd.feedback.view', 'rd.feedback.convert', 'rd.feedback.edit', 'rd.requirement.view', 'rd.version.view', 'rd.version.edit', 'rd.version.publish', 'rd.release.view', 'sys.audit.view']
-const requirement = (id: number, status = 'CONFIRMED', priority = 'P0') => ({ id, requirement_no: `REQ-${id}`, title: id === 7 ? '可见需求 · 长标题验收'.repeat(4) : `需求 ${id}`, status, priority, source: 'DIRECT', requirement_type: 'FEATURE', description: '可见内容', current_version_id: 1, owner_id: 1, revision: 13, created_at: '2026-10-01T00:00:00Z' })
-const version = (id: number) => ({ id, version_no: `V1.8-${id}`, name: `可见版本 ${id}`, status: id === 2 ? 'READY' : 'PLANNING', revision: 3, description: null, owner_id: 1 })
+const requirement = (id: number, status = 'CONFIRMED', priority = 'P0') => ({ id, system_id: 1, system_name: '系统甲', requirement_no: `REQ-${id}`, title: id === 7 ? '可见需求 · 长标题验收'.repeat(4) : `需求 ${id}`, status, priority, source: 'DIRECT', requirement_type: 'FEATURE', description: '可见内容', current_version_id: 1, owner_id: 1, revision: 13, created_at: '2026-10-01T00:00:00Z' })
+const version = (id: number) => ({ id, system_id: 1, system_name: '系统甲', version_no: `V1.8-${id}`, name: `可见版本 ${id}`, status: id === 2 ? 'READY' : 'PLANNING', revision: 3, description: null, owner_id: 1 })
 const feedback = { id: 1, feedback_no: 'FB-1', title: '链路反馈', status: 'ACCEPTED', feedback_type: 'OTHER', urgency: 'NORMAL', main_requirement_id: 7, duplicate_of_id: null, description: '测试反馈', revision: 4, submitter_id: 1 }
 const release = { id: 9, version_id: 1, result: 'SUCCESS', release_notes: '只读发布记录', rollback_notes: null, released_at: '2026-10-01T00:00:00Z', created_at: '2026-10-01T00:00:00Z', revision: 1 }
 async function fixture(page: Page, readRequirement = true, unlinked = false) {

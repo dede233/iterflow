@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ReleaseTargetManager from "@/components/ReleaseTargetManager.vue"
 import { computed, onMounted, reactive, ref } from 'vue'
 import { isAxiosError } from 'axios'
 import { ElMessage } from 'element-plus'
@@ -18,6 +19,7 @@ import type { BusinessSystemItem } from '@/types/domain'
 type Editor = { item: BusinessSystemItem | null }
 
 const { isMobile } = useResponsive()
+const targetSystem = ref<BusinessSystemItem | null>(null)
 const systems = ref<BusinessSystemItem[]>([])
 const loading = ref(false)
 const failed = ref(false)
@@ -107,9 +109,10 @@ onMounted(load)
             <template #default="scope"><StatusTag :status="scope.row.enabled ? 'ENABLED' : 'DISABLED'" :label="scope.row.enabled ? '启用' : '停用'" /></template>
           </el-table-column>
           <el-table-column prop="sort_order" label="排序" width="80" />
-          <el-table-column label="操作" width="90" fixed="right">
+          <el-table-column label="操作" width="190" fixed="right">
             <template #default="scope">
               <el-button link type="primary" :aria-label="`编辑系统 ${scope.row.name}`" @click="openEditSystem(scope.row)">编辑</el-button>
+              <el-button link type="primary" @click="targetSystem = scope.row">发布目标</el-button>
             </template>
           </el-table-column>
           <template #empty><EmptyState description="暂无系统，先创建一个业务系统" compact /></template>
@@ -118,13 +121,14 @@ onMounted(load)
           <article v-for="system in systems" :key="system.id" class="catalog-card">
             <div class="catalog-card__head"><div><strong>{{ system.name }}</strong><span class="catalog-code">{{ system.code }}</span></div><StatusTag :status="system.enabled ? 'ENABLED' : 'DISABLED'" :label="system.enabled ? '启用' : '停用'" size="sm" /></div>
             <div class="catalog-card__meta">排序 {{ system.sort_order }}</div>
-            <div class="catalog-card__actions"><el-button :aria-label="`编辑系统 ${system.name}`" @click="openEditSystem(system)">编辑</el-button></div>
+            <div class="catalog-card__actions"><el-button :aria-label="`编辑系统 ${system.name}`" @click="openEditSystem(system)">编辑</el-button><el-button @click="targetSystem = system">发布目标</el-button></div>
           </article>
           <EmptyState v-if="!loading && !systems.length" description="暂无系统，先创建一个业务系统" compact />
         </div>
       </SectionCard>
     </template>
 
+    <el-dialog :model-value="!!targetSystem" title="管理发布目标" width="min(720px, calc(100vw - 24px))" append-to-body destroy-on-close @close="targetSystem = null"><ReleaseTargetManager v-if="targetSystem" :system-id="targetSystem.id" :system-name="targetSystem.name" /></el-dialog>
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="min(560px, 92vw)" append-to-body destroy-on-close>
       <el-form label-position="top" @submit.prevent="save">
         <el-row :gutter="16">

@@ -264,7 +264,7 @@ def restore_package(stage, dump, files, headers, requirement_id, file_id, system
                 "SELECT COUNT(*) FROM information_schema.triggers WHERE trigger_schema=%s",
                 (restored,),
             )[0][0]
-            == 97
+            == 110
         )
         dc("stop", "api", "notification-worker")
         post_dump = dc(
@@ -272,7 +272,7 @@ def restore_package(stage, dump, files, headers, requirement_id, file_id, system
         ).stdout
         return {
             "package_isolated_restore": True,
-            "restored_guard_triggers": 97,
+            "restored_guard_triggers": 110,
             "restored_business_system_binding": True,
             "restored_function_runtime_upload": True,
             "package_post_restore_backup_sha256": hashlib.sha256(post_dump).hexdigest(),

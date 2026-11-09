@@ -20,11 +20,18 @@ class WorkflowService:
 
     def lock(self, item: Requirement):
         version_id = item.current_version_id
+        frozen = False
         if version_id is not None:
-            self.db.execute(select(Version.id).where(Version.id == version_id).with_for_update())
+            frozen = bool(
+                self.db.scalar(
+                    select(Version.release_frozen).where(Version.id == version_id).with_for_update()
+                )
+            )
         self.db.refresh(item, with_for_update=True)
         if item.current_version_id != version_id:
             raise ConflictError("需求版本归属已改变, 请刷新后重试")
+        if frozen:
+            raise AppError(40986, "首次发布已开始, 需求内容、人员与进度已冻结", 409)
 
     def people(self, item: Requirement, role: str | None = None):
         query = (

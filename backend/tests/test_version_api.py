@@ -19,6 +19,9 @@ from app.models.entities import (
     Feedback,
     OperationLog,
     Permission,
+    ReleaseBatch,
+    ReleaseBatchTarget,
+    ReleaseTarget,
     Requirement,
     RequirementFeedback,
     RequirementParticipant,
@@ -69,6 +72,9 @@ def ver_api(tmp_path: Path) -> Iterator[Fixture]:
         RequirementStep.__table__,
         RequirementParticipant.__table__,
         Version.__table__,
+        ReleaseTarget.__table__,
+        ReleaseBatch.__table__,
+        ReleaseBatchTarget.__table__,
         VersionRequirement.__table__,
     ):
         table.create(engine)

@@ -198,6 +198,8 @@ class VersionService:
     def update(self, version_id: int, payload: VersionUpdate, operator_id: int) -> Version:
         current = self._lock_version(version_id)
         self._ensure_version_revision(current, payload.revision)
+        if current.release_frozen and "description" in payload.model_fields_set:
+            raise AppError(40986, "首次发布已开始, 版本内容已冻结", 409)
         if "system_id" in payload.model_fields_set and payload.system_id != current.system_id:
             assert payload.system_id is not None  # VersionUpdate rejects explicit null.
             SystemBindingService(self.db).validate_version_change(current, payload.system_id)
@@ -230,6 +232,8 @@ class VersionService:
         current = self._lock_version(version_id)
         if current.revision != payload.revision:
             raise self._version_conflict(version_id)
+        if current.release_frozen and current.status != VersionStatus.RELEASED:
+            raise AppError(40986, "首次发布已有实际成功, 不能取消版本", 409)
         current_status = VersionStatus(current.status)
         if payload.status != ManualVersionStatus.CANCELED:
             raise AppError(40921, "版本进度由关联需求自动汇总, 请在需求中推进开发与验收", 409)
@@ -263,6 +267,8 @@ class VersionService:
     # ------------------------------------------------------------------ #
     @staticmethod
     def _ensure_mutable(version: Version) -> None:
+        if version.release_frozen:
+            raise AppError(40986, "首次发布已开始, 需求清单已冻结", 409)
         if VersionStatus(version.status) in FROZEN_VERSION_STATES:
             raise AppError(40930, f"版本处于 {version.status}，需求清单已冻结", 409)  # noqa: RUF001
 
@@ -717,7 +723,26 @@ class VersionService:
         return target
 
     def publish(
-        self, version_id: int, payload: PublishVersionRequest, operator_id: int
+        self,
+        version_id: int,
+        payload: PublishVersionRequest,
+        operator_id: int,
+        *,
+        commit: bool = True,
+    ) -> dict[str, Any]:
+        try:
+            return self._publish(version_id, payload, operator_id, commit=commit)
+        except Exception:
+            self.db.rollback()
+            raise
+
+    def _publish(
+        self,
+        version_id: int,
+        payload: PublishVersionRequest,
+        operator_id: int,
+        *,
+        commit: bool = True,
     ) -> dict[str, Any]:
         """The single, atomic version-publish transaction (V1.5).
 
@@ -739,6 +764,11 @@ class VersionService:
             raise NotFoundError("版本不存在")
         if version.revision != payload.revision:
             raise self._version_conflict(version_id)
+
+        from app.services.target_release_service import TargetReleaseService
+
+        target_service = TargetReleaseService(self.db)
+        batch = target_service.publish_guard(version, payload)
 
         # Same version -> requirement lock order as workflow/content changes.
         self.db.execute(
@@ -776,6 +806,7 @@ class VersionService:
                 )
                 .values(
                     status=VersionStatus.RELEASED,
+                    release_frozen=version.release_frozen or batch is not None,
                     released_at=payload.released_at,
                     updated_by=operator_id,
                     revision=Version.revision + 1,
@@ -917,7 +948,19 @@ class VersionService:
             "RELEASE_CREATE",
             after={"version_id": version.id, "result": ReleaseResult.SUCCESS},
         )
-        self.db.commit()
+        if batch is not None:
+            target_service.finish_initial(batch, operator_id)
+        elif payload.legacy_single:
+            self.audit.log(
+                "VERSION",
+                version.id,
+                "LEGACY_SINGLE_PUBLISH",
+                after={"reason": payload.legacy_reason},
+            )
+        if commit:
+            self.db.commit()
+        else:
+            self.db.flush()
         self.db.refresh(release)
         return {
             "release": release,

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import TargetReleaseRecords from "@/components/TargetReleaseRecords.vue"
 import { onBeforeUnmount, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import ReleaseVersionDrawer from '@/components/ReleaseVersionDrawer.vue'
@@ -20,6 +21,7 @@ import type { ReleaseItem } from '@/types/domain'
 
 const { isMobile } = useResponsive()
 const { can } = usePermission()
+const historyTab = ref('overall')
 const rows = ref<ReleaseItem[]>([])
 const total = ref(0)
 const loading = ref(false)
@@ -95,6 +97,9 @@ const queryState = useListQuery({
     <PageHeader title="发布记录" description="查看版本的实际发布历史与发布说明。" eyebrow="发布">
       <template #actions><el-button v-if="isMobile" @click="filterDrawer = true"><AppIcon name="filter" :size="16" />筛选</el-button></template>
     </PageHeader>
+    <el-radio-group v-model="historyTab" aria-label="发布历史范围"><el-radio-button value="overall">整体发布记录</el-radio-button><el-radio-button value="targets">目标实际记录</el-radio-button></el-radio-group>
+    <TargetReleaseRecords v-if="historyTab === 'targets'" />
+    <template v-else>
     <ListFilterPanel v-model="filterDrawer" :mobile="isMobile" title="筛选发布记录" @search="applyFilters" @reset="resetFilters">
       <el-form-item label="版本 ID"><el-input-number v-model="filters.version_id" :min="1" :precision="0" step-strictly controls-position="right" /></el-form-item>
       <el-form-item label="发布日期"><el-date-picker v-model="dateRange" type="daterange" value-format="YYYY-MM-DD" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" popper-class="release-filter-date-popper" /></el-form-item>
@@ -132,6 +137,7 @@ const queryState = useListQuery({
       </div>
     </SectionCard>
     <el-pagination class="pager" layout="prev, pager, next, total" :total="total" :current-page="filters.page" :page-size="filters.page_size" background @current-change="(page: number) => { void queryState.paginate(page) }" />
+    </template>
     <ReleaseVersionDrawer v-model="detailDrawer" :kind="detailKind" :id="activeId" :return-to="listTarget('/releases', queryState.applied())" @updated="load" />
   </section>
 </template>

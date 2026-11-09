@@ -64,6 +64,185 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/systems/{system_id}/release-targets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查看系统发布目标
+         * @description 沿用系统管理权限及 ALL 范围，包含停用目标；无删除和改属接口。
+         */
+        get: operations["catalog_api_v1_systems__system_id__release_targets_get"];
+        put?: never;
+        /** 新增系统发布目标 */
+        post: operations["create_target_api_v1_systems__system_id__release_targets_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/systems/release-targets/{target_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** 编辑或停用发布目标 */
+        patch: operations["update_target_api_v1_systems_release_targets__target_id__patch"];
+        trace?: never;
+    };
+    "/versions/{version_id}/release-targets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 选择同系统发布目标
+         * @description 按版本查看/发布或发布记录查看权限及版本 DataScope 返回同系统启用目标；历史无归属版本补发可显式选择系统。
+         */
+        get: operations["target_options_api_v1_versions__version_id__release_targets_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/versions/{version_id}/release-batches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 查看发布批次和累计覆盖 */
+        get: operations["batches_api_v1_versions__version_id__release_batches_get"];
+        put?: never;
+        /**
+         * 创建首次、补发或重新发布批次
+         * @description 沿用版本发布资格及范围；版本 revision CAS。INITIAL 先检查全部需求可发布；SUPPLEMENT 仅新增未覆盖目标；REPUBLISH 必须明确原因。历史整体 Release 不推断目标。
+         */
+        post: operations["create_batch_api_v1_versions__version_id__release_batches_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/versions/{version_id}/release-batches/{batch_id}/targets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * 带原因调整未完成发布目标
+         * @description 同时校验版本和批次 revision，已完成目标不可移除或改写。调整后首次全部完成须经 publish 显式确认收尾。
+         */
+        patch: operations["adjust_batch_api_v1_versions__version_id__release_batches__batch_id__targets_patch"];
+        trace?: never;
+    };
+    "/versions/{version_id}/release-batches/{batch_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 取消尚未完成的发布计划
+         * @description 首次已有实际成功不可取消；补发/重新发布保留成功记录，仅取消剩余目标。
+         */
+        post: operations["cancel_batch_api_v1_versions__version_id__release_batches__batch_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/versions/{version_id}/release-batches/{batch_id}/targets/{batch_target_id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 登记一个目标实际发布成功
+         * @description 人工登记外部实际成功，不自动执行平台发布。版本/批次/目标三 revision CAS；首次首个成功后冻结内容与清单，最后成功在同一事务生成唯一整体 Release/ONLINE/通知；补发不重复全局上线。
+         */
+        post: operations["complete_target_api_v1_versions__version_id__release_batches__batch_id__targets__batch_target_id__complete_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/target-release-records": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查询目标实际发布记录
+         * @description 沿用发布记录查看权限及版本 DataScope；包括首次尚未整体完成的真实成功、补发和重新发布。
+         */
+        get: operations["target_records_api_v1_target_release_records_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/target-release-records/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 选择可见发布记录目标
+         * @description 仅返回当前范围内存在实际成功记录的目标，不泄露范围外目标名称。
+         */
+        get: operations["record_options_api_v1_target_release_records_options_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/requirements/{requirement_id}/workflow": {
         parameters: {
             query?: never;
@@ -2918,6 +3097,17 @@ export interface components {
              * @description 对象的乐观锁修订号；写入时提交最后读取的修订号。
              */
             revision: number;
+            /** 首次批次 ID */
+            initial_batch_id?: number | null;
+            /** 批次修订号 */
+            batch_revision?: number | null;
+            /**
+             * 明确传统单次发布
+             * @default false
+             */
+            legacy_single: boolean;
+            /** 传统发布原因 */
+            legacy_reason?: string | null;
         };
         /** RecipientsChange */
         RecipientsChange: {
@@ -2930,6 +3120,150 @@ export interface components {
         RefreshRequest: {
             /** 刷新令牌 */
             refresh_token: string;
+        };
+        /** ReleaseBatchAdjust */
+        ReleaseBatchAdjust: {
+            /** 版本修订号 */
+            version_revision: number;
+            /** 批次修订号 */
+            revision: number;
+            /** 调整后目标 ID */
+            target_ids: number[];
+            /** 调整原因 */
+            reason: string;
+        };
+        /** ReleaseBatchCancel */
+        ReleaseBatchCancel: {
+            /** 版本修订号 */
+            version_revision: number;
+            /** 批次修订号 */
+            revision: number;
+            /** 取消原因 */
+            reason: string;
+        };
+        /** ReleaseBatchCreate */
+        ReleaseBatchCreate: {
+            /** 版本修订号 */
+            version_revision: number;
+            /**
+             * 批次类型
+             * @enum {string}
+             */
+            kind: "INITIAL" | "SUPPLEMENT" | "REPUBLISH";
+            /** 历史版本补发业务系统 ID */
+            system_id?: number | null;
+            /** 计划目标 ID */
+            target_ids: number[];
+            /** 发布说明 */
+            release_notes: string;
+            /** 重新发布原因 */
+            reason?: string | null;
+        };
+        /** ReleaseBatchOut */
+        ReleaseBatchOut: {
+            /** 批次 ID */
+            id: number;
+            /** 版本 ID */
+            version_id: number;
+            /** 业务系统 ID */
+            system_id: number;
+            /**
+             * 批次类型
+             * @enum {string}
+             */
+            kind: "INITIAL" | "SUPPLEMENT" | "REPUBLISH";
+            /**
+             * 批次状态
+             * @enum {string}
+             */
+            status: "PLANNED" | "IN_PROGRESS" | "COMPLETED" | "CANCELED";
+            /** 发布说明 */
+            release_notes: string;
+            /** 重新发布原因 */
+            reason: string | null;
+            /** 原整体发布记录 ID */
+            release_id: number | null;
+            /** 批次修订号 */
+            revision: number;
+            /** 版本修订号 */
+            version_revision: number;
+            /**
+             * 计划创建时间
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * 最近登记时间
+             * Format: date-time
+             */
+            updated_at: string;
+            /** 当前计划目标数 */
+            total: number;
+            /** 已完成目标数 */
+            completed: number;
+            /** 计划及实际目标记录 */
+            targets: components["schemas"]["ReleaseBatchTargetOut"][];
+        };
+        /** ReleaseBatchTargetOut */
+        ReleaseBatchTargetOut: {
+            /** 批次目标 ID */
+            id: number;
+            /** 发布目标 ID */
+            target_id: number;
+            /** 计划目标名称快照 */
+            name: string;
+            /** 计划目标编码快照 */
+            code: string;
+            /**
+             * 平台快照
+             * @enum {string}
+             */
+            platform: "PC_WEB" | "WECHAT_MINI_PROGRAM";
+            /** AppID 快照 */
+            app_id: string | null;
+            /** 访问地址快照 */
+            url: string | null;
+            /** 仍在计划中 */
+            active: boolean;
+            /** 移除原因 */
+            removed_reason: string | null;
+            /** 实际上线时间 */
+            completed_at: string | null;
+            /** 系统登记时间 */
+            recorded_at: string | null;
+            /** 实际登记人 ID */
+            completed_by: number | null;
+            /** 登记人名称快照 */
+            operator_name: string | null;
+            /** 目标发布说明 */
+            notes: string | null;
+            /** 凭证说明或链接 */
+            evidence: string | null;
+            /** 目标修订号 */
+            revision: number;
+        };
+        /** ReleaseBatchesOut */
+        ReleaseBatchesOut: {
+            /** 版本 ID */
+            version_id: number;
+            /** 版本修订号 */
+            version_revision: number;
+            /** 有效发布系统 ID */
+            system_id: number | null;
+            /** 首次发布内容已冻结 */
+            release_frozen: boolean;
+            /** 原整体发布未记录目标 */
+            legacy_unrecorded: boolean;
+            /** 累计实际覆盖目标数 */
+            coverage_count: number;
+            /** 发布批次 */
+            items: components["schemas"]["ReleaseBatchOut"][];
+            /** 页码 */
+            page: number;
+            /** 每页数量 */
+            page_size: number;
+            /** 批次总数 */
+            total: number;
         };
         /**
          * ReleaseOut
@@ -2981,6 +3315,106 @@ export interface components {
          * @enum {string}
          */
         ReleaseResult: "SUCCESS";
+        /** ReleaseTargetComplete */
+        ReleaseTargetComplete: {
+            /** 版本修订号 */
+            version_revision: number;
+            /** 批次修订号 */
+            batch_revision: number;
+            /** 目标修订号 */
+            revision: number;
+            /**
+             * 实际上线时间
+             * Format: date-time
+             */
+            released_at: string;
+            /** 目标发布说明 */
+            notes?: string | null;
+            /** 凭证说明或链接 */
+            evidence?: string | null;
+        };
+        /** ReleaseTargetCreate */
+        ReleaseTargetCreate: {
+            /** 目标编码 */
+            code: string;
+            /** 目标名称 */
+            name: string;
+            /**
+             * 平台类型
+             * @enum {string}
+             */
+            platform: "PC_WEB" | "WECHAT_MINI_PROGRAM";
+            /** 小程序 AppID */
+            app_id?: string | null;
+            /** 访问地址 */
+            url?: string | null;
+            /**
+             * 是否启用
+             * @default true
+             */
+            enabled: boolean;
+        };
+        /** ReleaseTargetOut */
+        ReleaseTargetOut: {
+            /**
+             * 版本已覆盖该目标
+             * @default false
+             */
+            covered: boolean;
+            /**
+             * 版本已有未完成目标计划
+             * @default false
+             */
+            pending: boolean;
+            /** 目标 ID */
+            id: number;
+            /** 业务系统 ID */
+            system_id: number;
+            /** 目标编码 */
+            code: string;
+            /** 目标名称 */
+            name: string;
+            /**
+             * 平台类型
+             * @enum {string}
+             */
+            platform: "PC_WEB" | "WECHAT_MINI_PROGRAM";
+            /** 小程序 AppID */
+            app_id: string | null;
+            /** 访问地址 */
+            url: string | null;
+            /** 是否启用 */
+            enabled: boolean;
+            /** 修订号 */
+            revision: number;
+            /**
+             * 创建时间
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * 更新时间
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** ReleaseTargetUpdate */
+        ReleaseTargetUpdate: {
+            /** 修订号 */
+            revision: number;
+            /** 目标编码 */
+            code?: string | null;
+            /** 目标名称 */
+            name?: string | null;
+            /** 平台类型 */
+            platform?: ("PC_WEB" | "WECHAT_MINI_PROGRAM") | null;
+            /** 小程序 AppID */
+            app_id?: string | null;
+            /** 访问地址 */
+            url?: string | null;
+            /** 是否启用 */
+            enabled?: boolean | null;
+        };
         /** RemoveRequirementRequest */
         RemoveRequirementRequest: {
             /**
@@ -3061,6 +3495,11 @@ export interface components {
         };
         /** RequirementOut */
         RequirementOut: {
+            /**
+             * 首次发布内容已冻结
+             * @default false
+             */
+            release_frozen: boolean;
             /** 所属业务系统名称 */
             system_name?: string | null;
             /** 当前待处理人 */
@@ -3298,6 +3737,77 @@ export interface components {
          * @enum {string}
          */
         StorageDriver: "LOCAL" | "S3";
+        /** TargetReleaseOption */
+        TargetReleaseOption: {
+            /** 发布目标 ID */
+            id: number;
+            /** 目标显示名称 */
+            label: string;
+        };
+        /** TargetReleasePage */
+        TargetReleasePage: {
+            /** 实际发布记录 */
+            items: components["schemas"]["TargetReleaseRecordOut"][];
+            /** 页码 */
+            page: number;
+            /** 每页数量 */
+            page_size: number;
+            /** 总记录数 */
+            total: number;
+        };
+        /** TargetReleaseRecordOut */
+        TargetReleaseRecordOut: {
+            /** 批次目标 ID */
+            id: number;
+            /** 发布目标 ID */
+            target_id: number;
+            /** 计划目标名称快照 */
+            name: string;
+            /** 计划目标编码快照 */
+            code: string;
+            /**
+             * 平台快照
+             * @enum {string}
+             */
+            platform: "PC_WEB" | "WECHAT_MINI_PROGRAM";
+            /** AppID 快照 */
+            app_id: string | null;
+            /** 访问地址快照 */
+            url: string | null;
+            /** 仍在计划中 */
+            active: boolean;
+            /** 移除原因 */
+            removed_reason: string | null;
+            /** 实际上线时间 */
+            completed_at: string | null;
+            /** 系统登记时间 */
+            recorded_at: string | null;
+            /** 实际登记人 ID */
+            completed_by: number | null;
+            /** 登记人名称快照 */
+            operator_name: string | null;
+            /** 目标发布说明 */
+            notes: string | null;
+            /** 凭证说明或链接 */
+            evidence: string | null;
+            /** 目标修订号 */
+            revision: number;
+            /** 版本 ID */
+            version_id: number;
+            /** 版本号 */
+            version_no: string;
+            /** 版本名称 */
+            version_name: string;
+            /** 业务系统 ID */
+            system_id: number;
+            /** 批次 ID */
+            batch_id: number;
+            /**
+             * 批次类型
+             * @enum {string}
+             */
+            batch_kind: "INITIAL" | "SUPPLEMENT" | "REPUBLISH";
+        };
         /** TokenPair */
         TokenPair: {
             /** 访问令牌 */
@@ -3445,6 +3955,11 @@ export interface components {
          * @description status为关联需求自动汇总的只读有效进度，详情、列表筛选、统计和所有写响应保持一致。真实RELEASED/CANCELED终态保留，历史非终态存储不覆盖派生结果；读取不写库。无需求为PLANNING；全DONE且确认有效为READY；全TESTING/DONE未就绪为TESTING；已开始工作但混合其他阶段为DEVELOPING，其余PLANNING。暂停和取消需求仍参与清单并阻止发布。
          */
         VersionOut: {
+            /**
+             * 首次发布内容已冻结
+             * @default false
+             */
+            release_frozen: boolean;
             /** 所属业务系统 ID */
             system_id: number | null;
             /** 所属业务系统名称 */
@@ -3785,6 +4300,768 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    catalog_api_v1_systems__system_id__release_targets_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                system_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseTargetOut"][];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或 revision 冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_target_api_v1_systems__system_id__release_targets_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                system_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReleaseTargetCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseTargetOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或 revision 冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_target_api_v1_systems_release_targets__target_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                target_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReleaseTargetUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseTargetOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或 revision 冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    target_options_api_v1_versions__version_id__release_targets_get: {
+        parameters: {
+            query?: {
+                system_id?: number | null;
+            };
+            header?: never;
+            path: {
+                version_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseTargetOut"][];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或 revision 冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    batches_api_v1_versions__version_id__release_batches_get: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                version_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseBatchesOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或 revision 冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_batch_api_v1_versions__version_id__release_batches_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                version_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReleaseBatchCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseBatchOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或 revision 冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    adjust_batch_api_v1_versions__version_id__release_batches__batch_id__targets_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                version_id: number;
+                batch_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReleaseBatchAdjust"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseBatchOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或 revision 冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_batch_api_v1_versions__version_id__release_batches__batch_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                version_id: number;
+                batch_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReleaseBatchCancel"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseBatchOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或 revision 冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    complete_target_api_v1_versions__version_id__release_batches__batch_id__targets__batch_target_id__complete_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                version_id: number;
+                batch_id: number;
+                batch_target_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReleaseTargetComplete"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseBatchOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或 revision 冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    target_records_api_v1_target_release_records_get: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number;
+                target_id?: number | null;
+                version_id?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TargetReleasePage"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或 revision 冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    record_options_api_v1_target_release_records_options_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TargetReleaseOption"][];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或 revision 冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

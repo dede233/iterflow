@@ -64,7 +64,7 @@ async function fixture(page: Page) {
 const screens = [
   { name: 'Feedback', path: '/feedbacks/1', buttons: ['编辑', '删除', '转需求', '受理', '标记重复', '无法复现', '关闭'] },
   { name: 'Requirement', path: '/requirements/2', buttons: ['编辑'] },
-  { name: 'Version', path: '/versions/3', buttons: ['编辑', '发布', '取消版本'] },
+  { name: 'Version', path: '/versions/3', buttons: ['编辑', '传统单次发布', '取消版本'] },
 ]
 
 for (const width of widths) {

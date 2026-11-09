@@ -109,6 +109,7 @@ def exercise_binding(fixture, scenario):
         command.upgrade(cfg, "head")
         with engine.connect() as conn:
             after = dict(conn.execute(text("SELECT * FROM rd_version")).mappings().one())
+            assert not after.pop("release_frozen")
             assert after.pop("system_id") is None and after == before
             assert (
                 dict(conn.execute(text("SELECT * FROM rd_requirement")).mappings().one())

@@ -82,6 +82,7 @@ class RequirementAssigneeChange(BaseModel):
 
 
 class RequirementOut(BaseModel):
+    release_frozen: bool = Field(default=False, title="首次发布内容已冻结")
     system_name: str | None = None
     current_handlers: list[PersonOption] = Field(default_factory=list)
     model_config = ConfigDict(from_attributes=True)

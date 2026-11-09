@@ -22,6 +22,9 @@ from app.models.entities import (
     FileObject,
     OperationLog,
     Permission,
+    ReleaseBatch,
+    ReleaseBatchTarget,
+    ReleaseTarget,
     Requirement,
     RequirementFeedback,
     RequirementParticipant,
@@ -30,6 +33,7 @@ from app.models.entities import (
     RolePermission,
     User,
     UserRole,
+    Version,
 )
 from app.models.enums import DataScope, UserStatus
 
@@ -65,6 +69,10 @@ def req_api(tmp_path: Path) -> Iterator[Fixture]:
         Feedback.__table__,
         FeedbackRecipient.__table__,
         CollaborationEvent.__table__,
+        Version.__table__,
+        ReleaseTarget.__table__,
+        ReleaseBatch.__table__,
+        ReleaseBatchTarget.__table__,
         Requirement.__table__,
         RequirementStep.__table__,
         RequirementParticipant.__table__,

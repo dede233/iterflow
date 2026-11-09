@@ -31,6 +31,7 @@ const mocks = vi.hoisted(() => ({
   warningMessage: vi.fn(),
 }))
 
+vi.mock('@/components/VersionReleaseBatches.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('vue-router', () => ({
   useRoute: () => ({ params: { id: '7' } }),
   useRouter: () => ({ push: mocks.routerPush, replace: vi.fn(), back: vi.fn() }),
@@ -523,9 +524,9 @@ it('publish check close/reopen invalidates old success and finally; server check
   const wrapper = mount(VersionDetailView, { global: { stubs, directives: { loading: {} } } })
   await flushPromises()
   const button = (text: string) => wrapper.findAll('button').find(node => node.text() === text)!
-  await button('发布').trigger('click')
+  await button('传统单次发布').trigger('click')
   await button('取消').trigger('click')
-  await button('发布').trigger('click')
+  await button('传统单次发布').trigger('click')
   oldFinish({ passed: true, checks: [{ type: 'OLD', passed: true, message: 'stale allowed' }] })
   await flushPromises()
   expect(wrapper.text()).not.toContain('stale allowed')

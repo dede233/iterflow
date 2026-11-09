@@ -93,9 +93,28 @@ class PublishVersionRequest(BaseModel):
     released_at: datetime
     release_notes: str = Field(min_length=1)
     revision: int = Field(ge=1)
+    initial_batch_id: int | None = Field(default=None, ge=1, title="首次批次 ID")
+    batch_revision: int | None = Field(default=None, ge=1, title="批次修订号")
+    legacy_single: bool = Field(default=False, title="明确传统单次发布")
+    legacy_reason: str | None = Field(
+        default=None, min_length=2, max_length=500, title="传统发布原因"
+    )
+
+    @model_validator(mode="after")
+    def batch_or_legacy(self) -> Self:
+        if (self.initial_batch_id is None) != (self.batch_revision is None):
+            raise ValueError("首次批次和批次 revision 必须成对提供")
+        if self.legacy_single and self.initial_batch_id is not None:
+            raise ValueError("目标批次和传统发布不能同时选择")
+        if self.legacy_reason is not None:
+            self.legacy_reason = self.legacy_reason.strip()
+            if len(self.legacy_reason) < 2 or "\x00" in self.legacy_reason:
+                raise ValueError("请填写有效的传统发布原因")
+        return self
 
 
 class VersionOut(BaseModel):
+    release_frozen: bool = Field(default=False, title="首次发布内容已冻结")
     system_id: int | None
     system_name: str | None = None
     model_config = ConfigDict(from_attributes=True)

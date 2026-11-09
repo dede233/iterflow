@@ -46,9 +46,9 @@ async function load() {
 watch(() => [props.item.id, props.item.revision, identity.value], load, { immediate: true, flush: 'sync' })
 onScopeDispose(() => { sequence++ })
 const current = computed(() => steps.indexOf(props.item.status === 'PAUSED' ? flow.value?.paused_from || '' : props.item.status))
-const canAct = computed(() => !props.readonly && auth.hasPermission('rd.requirement.status') && !['ONLINE', 'CANCELED'].includes(props.item.status))
-const canReopen = computed(() => !props.readonly && auth.hasPermission('rd.requirement.status') && props.item.status === 'CANCELED')
-const canEditPeople = computed(() => !props.readonly && auth.hasPermission('rd.requirement.edit') && auth.hasPermission('rd.requirement.view') && !['ONLINE', 'CANCELED'].includes(props.item.status))
+const canAct = computed(() => !props.readonly && !props.item.release_frozen && auth.hasPermission('rd.requirement.status') && !['ONLINE', 'CANCELED'].includes(props.item.status))
+const canReopen = computed(() => !props.readonly && !props.item.release_frozen && auth.hasPermission('rd.requirement.status') && props.item.status === 'CANCELED')
+const canEditPeople = computed(() => !props.readonly && !props.item.release_frozen && auth.hasPermission('rd.requirement.edit') && auth.hasPermission('rd.requirement.view') && !['ONLINE', 'CANCELED'].includes(props.item.status))
 watch(canEditPeople, allowed => { if (!allowed) { peopleEditor.value = null; assignAfterConfirm.value = null } }, { flush: 'sync' })
 watch(() => [props.item.status, props.item.revision, assignAfterConfirm.value, workflowDialogClosed.value], () => {
   if (!workflowDialogClosed.value || assignAfterConfirm.value === null || props.item.revision <= assignAfterConfirm.value) return

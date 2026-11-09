@@ -13,7 +13,14 @@ from app.core.database import configure_mysql
 from app.core.mysql_preflight import validate_mysql
 
 
-def test_runtime_template_covers_announcement_migration(mysql_api):
+@pytest.mark.parametrize(
+    "new_tables",
+    [
+        ("sys_announcement", "sys_announcement_read"),
+        ("sys_release_target", "rd_release_batch", "rd_release_batch_target"),
+    ],
+)
+def test_runtime_template_covers_new_tables(mysql_api, new_tables):
     _, admin, _, _ = mysql_api
     name = "grant_test_" + uuid4().hex[:16]
     password = token_urlsafe(32)
@@ -34,9 +41,9 @@ def test_runtime_template_covers_announcement_migration(mysql_api):
             text(f"CREATE USER '{name}'@'%' IDENTIFIED BY :password"), {"password": password}
         )
     try:
-        old = [s for s in statements if "`sys_announcement" not in s]
-        added = [s for s in statements if "`sys_announcement" in s]
-        assert len(added) == 2
+        old = [s for s in statements if not any(f"`{table}`" in s for table in new_tables)]
+        added = [s for s in statements if any(f"`{table}`" in s for table in new_tables)]
+        assert len(added) == len(new_tables)
         with admin.connect() as connection:
             for statement in old:
                 connection.execute(text(statement))
@@ -49,7 +56,7 @@ def test_runtime_template_covers_announcement_migration(mysql_api):
         runtime.dispose()
         with runtime.connect() as connection:
             validate_mysql(connection, inspect_triggers=False)
-            for table in ("sys_announcement", "sys_announcement_read"):
+            for table in new_tables:
                 privileges = set(
                     connection.scalars(
                         text(

@@ -1,5 +1,15 @@
 # 状态机
 
+## 多目标发布授权增量（2026-11-09）
+
+版本继续只归属一个系统；INITIAL 计划的逐目标实际成功为发布子进度，不新增需求主状态。第一次实际成功后冻结需求/人员/内容、需求清单及系统归属，版本仍显示原 READY，并展示批次完成数；PLANNED 计划本身尚不冻结需求，但每次实际登记均重查原发布条件。
+
+INITIAL 最后目标成功通过专用发布登记接口复用 Version 发布原子事务，唯一 Release + Version RELEASED + Requirement/Feedback ONLINE + 全局通知/审计同一提交。若带原因调整计划后全部完成，另由 POST /versions/{id}/publish 携带批次及双方 revision 明确收尾；不通过计划编辑静默发布。原仅 publish 可产生 RELEASED 的路径限制按此明确授权扩展到该专用原子登记入口，普通状态接口仍禁止。
+
+SUPPLEMENT 仅用于已 RELEASED 版本的未覆盖目标；已覆盖目标须显式 REPUBLISH 批次并填写原因。二者均不重开版本/需求、不创建第二条主链 Release、不重复全局上线通知。成功记录不可改写或撤销，批次内目标唯一。
+
+原单次发布对没有目标配置且无首次计划的旧客户端保持兼容；有目标配置时必须显式传统发布并填写原因。有活动首次计划时不能绕过目标进度直接发布；首次已有成功不能取消或退回编辑。旧 Release 不回填目标、旧系统不推断；历史无系统的已发布版本补发在批次中明确同一系统，不修改历史版本归属。
+
 ## Feedback
 
 完整状态：`NEW, ACCEPTED, REQUIREMENT_LINKED, ONLINE, DUPLICATE, CANNOT_REPRODUCE, CLOSED`

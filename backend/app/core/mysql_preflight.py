@@ -92,12 +92,20 @@ def validate_mysql(
             and allow_legacy
         )
         if not (
-            head == "mysql57_0014"
+            head == "mysql57_0015"
             or legacy
             or (
                 allow_legacy
                 and head
-                in {"mysql57_0009", "mysql57_0010", "mysql57_0011", "mysql57_0012", "mysql57_0013"}
+                in {
+                    "mysql57_0009",
+                    "mysql57_0010",
+                    "mysql57_0011",
+                    "mysql57_0012",
+                    "mysql57_0013",
+                    "mysql57_0014",
+                    "mysql57_0015",
+                }
             )
         ):
             raise RuntimeError("MySQL Alembic head is missing or unsupported")
@@ -106,11 +114,12 @@ def validate_mysql(
             "mysql57_0012",
             "mysql57_0013",
             "mysql57_0014",
+            "mysql57_0015",
         } and "notice_acknowledged_at" not in {
             c["name"] for c in inspect(connection).get_columns("sys_mail_preference")
         }:
             raise RuntimeError("Mail notice acknowledgement column is missing")
-        if head in {"mysql57_0012", "mysql57_0013", "mysql57_0014"}:
+        if head in {"mysql57_0012", "mysql57_0013", "mysql57_0014", "mysql57_0015"}:
             for table in ("rd_requirement", "rd_feedback"):
                 columns = {c["name"] for c in inspect(connection).get_columns(table)}
                 required = {"deleted_at", "deleted_by"}
@@ -122,7 +131,7 @@ def validate_mysql(
                 c["name"] for c in inspect(connection).get_columns("rd_requirement_actor")
             }:
                 raise RuntimeError("Multiple confirmer migration is incomplete")
-        if head in {"mysql57_0013", "mysql57_0014"}:
+        if head in {"mysql57_0013", "mysql57_0014", "mysql57_0015"}:
             inspector = inspect(connection)
             if "system_id" not in {c["name"] for c in inspector.get_columns("rd_version")}:
                 raise RuntimeError("Version system binding column is missing")
@@ -134,8 +143,10 @@ def validate_mysql(
                 raise RuntimeError("Version system binding foreign key is missing")
         portable = "iterflow_file_key_node" in tables
         business_tables = set(Base.metadata.tables)
-        if head != "mysql57_0014":
+        if head not in {"mysql57_0014", "mysql57_0015"}:
             business_tables -= {"sys_announcement", "sys_announcement_read"}
+        if head != "mysql57_0015":
+            business_tables -= {"sys_release_target", "rd_release_batch", "rd_release_batch_target"}
         if legacy:
             business_tables -= {
                 "rd_feedback_recipient",
@@ -151,7 +162,22 @@ def validate_mysql(
         if portable:
             expected_tables.add("iterflow_file_key_node")
         if tables != expected_tables:
-            raise RuntimeError("Initialized schema table set differs from the MySQL baseline")
+            raise RuntimeError(
+                "Initialized schema table set differs from the MySQL baseline; "
+                "check migrations and runtime table grants"
+            )
+        if head == "mysql57_0015":
+            if "release_frozen" not in {
+                c["name"] for c in inspect(connection).get_columns("rd_version")
+            }:
+                raise RuntimeError("Release freeze column is missing")
+            if not any(
+                i["name"] == "uq_release_batch_initial"
+                and i["unique"]
+                and i["column_names"] == ["initial_version_id"]
+                for i in inspect(connection).get_indexes("rd_release_batch")
+            ):
+                raise RuntimeError("Initial release uniqueness is missing")
         if not portable and head != "mysql57_0001":
             raise RuntimeError("Exact file storage key registry is missing")
         if inspect_triggers:
@@ -182,6 +208,7 @@ def validate_mysql(
                 "mysql57_0012",
                 "mysql57_0013",
                 "mysql57_0014",
+                "mysql57_0015",
             }:
                 expected |= {
                     "completion_rd_requirement_participant_" + event
@@ -191,6 +218,13 @@ def validate_mysql(
                     c["name"] for c in inspect(connection).get_columns("rd_requirement_participant")
                 }:
                     raise RuntimeError("Developer completion timestamp is missing")
+            if head == "mysql57_0015":
+                expected |= {
+                    "immutable_release_target_update",
+                    "immutable_release_target_delete",
+                    "frozen_release_version_insert",
+                    "frozen_release_version_update",
+                }
             if not expected <= triggers:
                 raise RuntimeError("Required database integrity/domain triggers are missing")
             if (

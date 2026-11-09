@@ -242,10 +242,11 @@ test('Phase 7 real restricted users: presence, conflict, publish, notification a
     for (const label of ['开始开发', '提测', '待发布', '退回测试']) {
       await expect(pageA.getByRole('button', { name: label, exact: true })).toHaveCount(0)
     }
-    await pageA.getByRole('button', { name: '发布', exact: true }).click()
-    const publishDialog = pageA.getByRole('dialog', { name: '发布版本' })
+    await pageA.getByRole('button', { name: '传统单次发布', exact: true }).click()
+    const publishDialog = pageA.getByRole('dialog', { name: '传统单次发布' })
     await expect(publishDialog.getByRole('button', { name: '确认发布' })).toBeEnabled()
-    await publishDialog.locator('textarea').fill('Phase 7 real browser release')
+    await publishDialog.locator('.el-form-item').filter({ hasText: '发布说明' }).locator('textarea').fill('Phase 7 real browser release')
+    await publishDialog.locator('.el-form-item').filter({ hasText: '传统单次发布原因' }).locator('textarea').fill('传统发布兼容验收')
     const current = await api(request, a.token, 'GET', `/requirements/${requirement.id}`)
     // A real concurrent business change invalidates an already displayed successful publish check.
     let reopened = await api(request, a.token, 'PATCH', `/requirements/${requirement.id}/status`, { status: 'DEVELOPING', revision: current.revision, reason: 'Phase 7 concurrent publish check' })
@@ -259,8 +260,9 @@ test('Phase 7 real restricted users: presence, conflict, publish, notification a
     await expect(publishDialog).toBeVisible()
     for (const next of ['TESTING', 'DONE']) reopened = await api(request, b.token, 'PATCH', `/requirements/${requirement.id}/status`, { status: next, revision: reopened.revision })
     await pageA.reload()
-    await pageA.getByRole('button', { name: '发布', exact: true }).click()
-    await publishDialog.locator('textarea').fill('Phase 7 real browser release')
+    await pageA.getByRole('button', { name: '传统单次发布', exact: true }).click()
+    await publishDialog.locator('.el-form-item').filter({ hasText: '发布说明' }).locator('textarea').fill('Phase 7 real browser release')
+    await publishDialog.locator('.el-form-item').filter({ hasText: '传统单次发布原因' }).locator('textarea').fill('传统发布兼容验收')
     await expect(publishDialog.getByRole('button', { name: '确认发布' })).toBeEnabled()
     const published = pageA.waitForResponse(r => r.url().endsWith(`/versions/${version.id}/publish`) && r.request().method() === 'POST')
     await publishDialog.getByRole('button', { name: '确认发布' }).click()
@@ -407,4 +409,61 @@ test('real product announcement images and cross-session reading', async ({ brow
   await reader.screenshot({path:'test-results/announcement-real-mobile.png',fullPage:true})
   await page.screenshot({path:'test-results/announcement-real-desktop.png',fullPage:true})
   await context.close();await readerContext.close();await anotherContext.close()
+})
+
+test('Real target publishing: partial freeze, atomic initial completion and later supplement', async ({ page, request }) => {
+  test.setTimeout(180_000)
+  const username = process.env.INIT_ADMIN_USERNAME!
+  const password = process.env.ITERFLOW_BROWSER_NEW_PASSWORD!
+  const loginResult = await request.post('/api/v1/auth/login', { data: { username, password } })
+  expect(loginResult.status()).toBe(200)
+  const token = (await loginResult.json()).access_token as string
+  const me = await api(request, token, 'GET', '/auth/me')
+  await login(page, username, password)
+  for (const width of [1440, 375]) {
+    await page.setViewportSize({ width, height: 1000 })
+    const suffix = randomUUID().slice(0, 8)
+    const system = await api(request, token, 'POST', '/systems', { code: `MT_${suffix}`, name: `多目标主链 ${suffix}` })
+    for (const code of ['A', 'B', 'C']) await api(request, token, 'POST', `/systems/${system.id}/release-targets`, { code, name: `真实小程序 ${code}`, platform: 'WECHAT_MINI_PROGRAM', app_id: `wx${suffix}${code}` })
+    let req = await api(request, token, 'POST', '/requirements', { title: `多小程序需求 ${suffix}`, description: '仅用于本地隔离容器验收', requirement_type: 'FEATURE', system_id: system.id, participants: ['CONFIRM', 'DEVELOP', 'ACCEPT'].map(role => ({ role, user_id: me.id })) })
+    await api(request, token, 'POST', `/requirements/${req.id}/workflow`, { revision: req.revision, action: 'CONFIRM' })
+    req = await api(request, token, 'GET', `/requirements/${req.id}`)
+    for (const next of ['DEVELOPING', 'TESTING', 'DONE']) req = await api(request, token, 'PATCH', `/requirements/${req.id}/status`, { status: next, revision: req.revision })
+    const version = await api(request, token, 'POST', '/versions', { version_no: `MT-${suffix}`, name: `多目标版本 ${suffix}`, system_id: system.id, requirement_id: req.id, requirement_revision: req.revision })
+    await page.goto(`/#/versions/${version.id}`)
+    await page.getByRole('button', { name: '创建首次发布计划', exact: true }).click()
+    const plan = page.getByRole('dialog', { name: '创建发布计划', exact: true })
+    for (const code of ['A', 'B']) await plan.locator('.el-checkbox').filter({ hasText: `真实小程序 ${code}` }).click()
+    await plan.getByRole('textbox', { name: /本批发布说明/ }).fill('首次覆盖 A、B，随后补发 C')
+    await plan.getByRole('button', { name: '确认计划', exact: true }).click(); await expect(plan).toBeHidden()
+    const panel = page.locator('#release-target-batches')
+    const completion = page.getByRole('dialog', { name: '登记目标实际上线', exact: true })
+    for (const code of ['A', 'B']) {
+      await panel.getByRole('button', { name: `登记 真实小程序 ${code} 实际上线`, exact: true }).click()
+      await completion.getByRole('button', { name: '确认实际已上线', exact: true }).click(); await expect(completion).toBeHidden()
+      if (code === 'A') {
+        await expect(panel).toContainText('进行中 · 1/2')
+        const current = await api(request, token, 'GET', `/requirements/${req.id}`)
+        expect(current.status).toBe('DONE'); expect(current.release_frozen).toBe(true)
+        const frozenEdit = await request.patch(`/api/v1/requirements/${req.id}`, { headers: { Authorization: `Bearer ${token}` }, data: { revision: current.revision, title: '应拒绝的修改' } })
+        expect(frozenEdit.status()).toBe(409)
+        expect((await api(request, token, 'GET', `/releases?version_id=${version.id}`)).total).toBe(0)
+        await page.screenshot({ path: test.info().outputPath(`real-partial-${width}.png`), fullPage: true })
+      }
+    }
+    const released = await api(request, token, 'GET', `/releases?version_id=${version.id}`)
+    expect(released.total).toBe(1)
+    expect((await api(request, token, 'GET', `/requirements/${req.id}`)).status).toBe('ONLINE')
+    await panel.getByRole('button', { name: '新增补发 / 重新发布', exact: true }).click()
+    await plan.locator('.el-checkbox').filter({ hasText: '真实小程序 C' }).click()
+    await plan.getByRole('textbox', { name: /本批发布说明/ }).fill('后续新增小程序 C')
+    await plan.getByRole('button', { name: '确认计划', exact: true }).click(); await expect(plan).toBeHidden()
+    await panel.getByRole('button', { name: '登记 真实小程序 C 实际上线', exact: true }).click()
+    await completion.getByRole('button', { name: '确认实际已上线', exact: true }).click(); await expect(completion).toBeHidden()
+    await expect(panel).toContainText('累计覆盖 3 个目标')
+    expect((await api(request, token, 'GET', `/releases?version_id=${version.id}`)).items).toEqual(released.items)
+    expect((await api(request, token, 'GET', `/target-release-records?version_id=${version.id}`)).total).toBe(3)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true)
+    await page.screenshot({ path: test.info().outputPath(`real-supplement-${width}.png`), fullPage: true })
+  }
 })

@@ -272,6 +272,9 @@ class CollaborationService:
         )
 
     def change_participants(self, item: Requirement, payload: ParticipantsChange, actor_id: int):
+        from app.services.workflow_service import WorkflowService
+
+        WorkflowService(self.db).lock(item)
         if item.status in {"ONLINE", "CANCELED"}:
             raise AppError(40960, "终态需求不能调整环节人员", 409)
         ids = sorted({p.user_id for p in payload.participants})

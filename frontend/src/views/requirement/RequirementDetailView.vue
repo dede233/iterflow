@@ -73,7 +73,7 @@ const feedbacks = ref<LinkedFeedback[]>([])
 const loading = ref(false)
 const activityRefresh = ref(0)
 const failed = ref(false)
-const canEdit = computed(() => can('rd.requirement.edit') && item.value?.status !== 'ONLINE')
+const canEdit = computed(() => !item.value?.release_frozen && can('rd.requirement.edit') && item.value?.status !== 'ONLINE')
 const canViewFeedbacks = computed(() => can('rd.feedback.view'))
 const canCreateVersion = computed(() => !!item.value && !item.value.current_version_id && !['ONLINE', 'CANCELED'].includes(item.value.status) && ['rd.version.create', 'rd.version.edit', 'rd.version.view', 'rd.requirement.view'].every(permission => can(permission)))
 const createVersionDialog = ref(false)
@@ -251,6 +251,7 @@ onMounted(load)
 
         </template>
       </PageHeader>
+      <el-alert v-if="item.release_frozen && item.status !== 'ONLINE'" title="首次目标发布已开始，需求内容、人员及进度已冻结。" type="warning" :closable="false" />
       <BusinessSystemAttribution :system-id="item.system_id" :system-name="item.system_name" />
 
       <RequirementProgress :item="item" @updated="load" @status="openStatusDialog" />

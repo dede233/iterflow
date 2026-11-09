@@ -163,7 +163,7 @@ async function check() {
       const version = await getVersion(sessionVersionId.value)
       if (request !== sequence) return
       if (version.id !== sessionVersionId.value || !Number.isInteger(version.revision) || version.revision < 1) throw new Error('Invalid version response')
-      if (['RELEASED', 'CANCELED'].includes(version.status)) {
+      if (version.release_frozen || ['RELEASED', 'CANCELED'].includes(version.status)) {
         busy.value = false; error.value = '当前版本已发布或已取消，不能集中提交验收。请关闭窗口刷新版本清单。'; return
       }
       checkedVersion.value = { id: version.id, revision: version.revision, system_id: version.system_id }

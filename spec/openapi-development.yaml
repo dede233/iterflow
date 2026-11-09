@@ -231,6 +231,712 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
       description: 需要 rd.version.view。仅返回当前 Version DataScope 内版本实际引用的负责人，保留已停用账号并标注；不要求用户管理或版本编辑权限，不返回用户名、邮箱或角色。
         keyword trim 后按可见标签做大小写不敏感的字面部分匹配；分页稳定且 total 去重。selected_id 与搜索及权限范围使用 AND 组合，不存在或不可见时返回空列表。
+  /systems/{system_id}/release-targets:
+    get:
+      tags:
+      - TargetRelease
+      summary: 查看系统发布目标
+      operationId: catalog_api_v1_systems__system_id__release_targets_get
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: system_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+          title: System Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ReleaseTargetOut'
+                title: Response Catalog Api V1 Systems  System Id  Release Targets Get
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 业务状态或 revision 冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: 沿用系统管理权限及 ALL 范围，包含停用目标；无删除和改属接口。
+    post:
+      tags:
+      - TargetRelease
+      summary: 新增系统发布目标
+      operationId: create_target_api_v1_systems__system_id__release_targets_post
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: system_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+          title: System Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReleaseTargetCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReleaseTargetOut'
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 业务状态或 revision 冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: ''
+  /systems/release-targets/{target_id}:
+    patch:
+      tags:
+      - TargetRelease
+      summary: 编辑或停用发布目标
+      operationId: update_target_api_v1_systems_release_targets__target_id__patch
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: target_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+          title: Target Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReleaseTargetUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReleaseTargetOut'
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 业务状态或 revision 冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: ''
+  /versions/{version_id}/release-targets:
+    get:
+      tags:
+      - TargetRelease
+      summary: 选择同系统发布目标
+      operationId: target_options_api_v1_versions__version_id__release_targets_get
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: version_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+          title: Version Id
+      - name: system_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+            minimum: 1
+          - type: 'null'
+          title: System Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ReleaseTargetOut'
+                title: Response Target Options Api V1 Versions  Version Id  Release Targets Get
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 业务状态或 revision 冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: 按版本查看/发布或发布记录查看权限及版本 DataScope 返回同系统启用目标；历史无归属版本补发可显式选择系统。
+  /versions/{version_id}/release-batches:
+    get:
+      tags:
+      - TargetRelease
+      summary: 查看发布批次和累计覆盖
+      operationId: batches_api_v1_versions__version_id__release_batches_get
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: version_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+          title: Version Id
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 20
+          title: Page Size
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReleaseBatchesOut'
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 业务状态或 revision 冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: ''
+    post:
+      tags:
+      - TargetRelease
+      summary: 创建首次、补发或重新发布批次
+      operationId: create_batch_api_v1_versions__version_id__release_batches_post
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: version_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+          title: Version Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReleaseBatchCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReleaseBatchOut'
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 业务状态或 revision 冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: 沿用版本发布资格及范围；版本 revision CAS。INITIAL 先检查全部需求可发布；SUPPLEMENT 仅新增未覆盖目标；REPUBLISH 必须明确原因。历史整体
+        Release 不推断目标。
+  /versions/{version_id}/release-batches/{batch_id}/targets:
+    patch:
+      tags:
+      - TargetRelease
+      summary: 带原因调整未完成发布目标
+      operationId: adjust_batch_api_v1_versions__version_id__release_batches__batch_id__targets_patch
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: version_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+          title: Version Id
+      - name: batch_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+          title: Batch Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReleaseBatchAdjust'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReleaseBatchOut'
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 业务状态或 revision 冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: 同时校验版本和批次 revision，已完成目标不可移除或改写。调整后首次全部完成须经 publish 显式确认收尾。
+  /versions/{version_id}/release-batches/{batch_id}/cancel:
+    post:
+      tags:
+      - TargetRelease
+      summary: 取消尚未完成的发布计划
+      operationId: cancel_batch_api_v1_versions__version_id__release_batches__batch_id__cancel_post
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: version_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+          title: Version Id
+      - name: batch_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+          title: Batch Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReleaseBatchCancel'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReleaseBatchOut'
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 业务状态或 revision 冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: 首次已有实际成功不可取消；补发/重新发布保留成功记录，仅取消剩余目标。
+  /versions/{version_id}/release-batches/{batch_id}/targets/{batch_target_id}/complete:
+    post:
+      tags:
+      - TargetRelease
+      summary: 登记一个目标实际发布成功
+      operationId: complete_target_api_v1_versions__version_id__release_batches__batch_id__targets__batch_target_id__complete_post
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: version_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+          title: Version Id
+      - name: batch_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+          title: Batch Id
+      - name: batch_target_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+          title: Batch Target Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReleaseTargetComplete'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReleaseBatchOut'
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 业务状态或 revision 冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: 人工登记外部实际成功，不自动执行平台发布。版本/批次/目标三 revision CAS；首次首个成功后冻结内容与清单，最后成功在同一事务生成唯一整体 Release/ONLINE/通知；补发不重复全局上线。
+  /target-release-records:
+    get:
+      tags:
+      - TargetRelease
+      summary: 查询目标实际发布记录
+      operationId: target_records_api_v1_target_release_records_get
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 20
+          title: Page Size
+      - name: target_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+            minimum: 1
+          - type: 'null'
+          title: Target Id
+      - name: version_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+            minimum: 1
+          - type: 'null'
+          title: Version Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TargetReleasePage'
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 业务状态或 revision 冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: 沿用发布记录查看权限及版本 DataScope；包括首次尚未整体完成的真实成功、补发和重新发布。
+  /target-release-records/options:
+    get:
+      tags:
+      - TargetRelease
+      summary: 选择可见发布记录目标
+      operationId: record_options_api_v1_target_release_records_options_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/TargetReleaseOption'
+                type: array
+                title: Response Record Options Api V1 Target Release Records Options Get
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 业务状态或 revision 冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearerAuth: []
+      description: 仅返回当前范围内存在实际成功记录的目标，不泄露范围外目标名称。
   /requirements/{requirement_id}/workflow:
     get:
       tags:
@@ -7784,6 +8490,29 @@ components:
           minimum: 1.0
           title: 修订号
           description: 对象的乐观锁修订号；写入时提交最后读取的修订号。
+        initial_batch_id:
+          anyOf:
+          - type: integer
+            minimum: 1.0
+          - type: 'null'
+          title: 首次批次 ID
+        batch_revision:
+          anyOf:
+          - type: integer
+            minimum: 1.0
+          - type: 'null'
+          title: 批次修订号
+        legacy_single:
+          type: boolean
+          title: 明确传统单次发布
+          default: false
+        legacy_reason:
+          anyOf:
+          - type: string
+            maxLength: 500
+            minLength: 2
+          - type: 'null'
+          title: 传统发布原因
       additionalProperties: false
       type: object
       required:
@@ -7819,6 +8548,329 @@ components:
       required:
       - refresh_token
       title: RefreshRequest
+    ReleaseBatchAdjust:
+      properties:
+        version_revision:
+          type: integer
+          minimum: 1.0
+          title: 版本修订号
+        revision:
+          type: integer
+          minimum: 1.0
+          title: 批次修订号
+        target_ids:
+          items:
+            type: integer
+            exclusiveMinimum: 0.0
+          type: array
+          maxItems: 50
+          minItems: 1
+          title: 调整后目标 ID
+        reason:
+          type: string
+          maxLength: 500
+          minLength: 2
+          title: 调整原因
+      additionalProperties: false
+      type: object
+      required:
+      - version_revision
+      - revision
+      - target_ids
+      - reason
+      title: ReleaseBatchAdjust
+    ReleaseBatchCancel:
+      properties:
+        version_revision:
+          type: integer
+          minimum: 1.0
+          title: 版本修订号
+        revision:
+          type: integer
+          minimum: 1.0
+          title: 批次修订号
+        reason:
+          type: string
+          maxLength: 500
+          minLength: 2
+          title: 取消原因
+      additionalProperties: false
+      type: object
+      required:
+      - version_revision
+      - revision
+      - reason
+      title: ReleaseBatchCancel
+    ReleaseBatchCreate:
+      properties:
+        version_revision:
+          type: integer
+          minimum: 1.0
+          title: 版本修订号
+        kind:
+          type: string
+          enum:
+          - INITIAL
+          - SUPPLEMENT
+          - REPUBLISH
+          title: 批次类型
+        system_id:
+          anyOf:
+          - type: integer
+            minimum: 1.0
+          - type: 'null'
+          title: 历史版本补发业务系统 ID
+        target_ids:
+          items:
+            type: integer
+            exclusiveMinimum: 0.0
+          type: array
+          maxItems: 50
+          minItems: 1
+          title: 计划目标 ID
+        release_notes:
+          type: string
+          maxLength: 5000
+          minLength: 2
+          title: 发布说明
+        reason:
+          anyOf:
+          - type: string
+            maxLength: 500
+            minLength: 2
+          - type: 'null'
+          title: 重新发布原因
+      additionalProperties: false
+      type: object
+      required:
+      - version_revision
+      - kind
+      - target_ids
+      - release_notes
+      title: ReleaseBatchCreate
+    ReleaseBatchOut:
+      properties:
+        id:
+          type: integer
+          title: 批次 ID
+        version_id:
+          type: integer
+          title: 版本 ID
+        system_id:
+          type: integer
+          title: 业务系统 ID
+        kind:
+          type: string
+          enum:
+          - INITIAL
+          - SUPPLEMENT
+          - REPUBLISH
+          title: 批次类型
+        status:
+          type: string
+          enum:
+          - PLANNED
+          - IN_PROGRESS
+          - COMPLETED
+          - CANCELED
+          title: 批次状态
+        release_notes:
+          type: string
+          title: 发布说明
+        reason:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: 重新发布原因
+        release_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: 原整体发布记录 ID
+        revision:
+          type: integer
+          title: 批次修订号
+        version_revision:
+          type: integer
+          title: 版本修订号
+        created_at:
+          type: string
+          format: date-time
+          title: 计划创建时间
+        updated_at:
+          type: string
+          format: date-time
+          title: 最近登记时间
+        total:
+          type: integer
+          title: 当前计划目标数
+        completed:
+          type: integer
+          title: 已完成目标数
+        targets:
+          items:
+            $ref: '#/components/schemas/ReleaseBatchTargetOut'
+          type: array
+          title: 计划及实际目标记录
+      type: object
+      required:
+      - id
+      - version_id
+      - system_id
+      - kind
+      - status
+      - release_notes
+      - reason
+      - release_id
+      - revision
+      - version_revision
+      - created_at
+      - updated_at
+      - total
+      - completed
+      - targets
+      title: ReleaseBatchOut
+    ReleaseBatchTargetOut:
+      properties:
+        id:
+          type: integer
+          title: 批次目标 ID
+        target_id:
+          type: integer
+          title: 发布目标 ID
+        name:
+          type: string
+          title: 计划目标名称快照
+        code:
+          type: string
+          title: 计划目标编码快照
+        platform:
+          type: string
+          enum:
+          - PC_WEB
+          - WECHAT_MINI_PROGRAM
+          title: 平台快照
+        app_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: AppID 快照
+        url:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: 访问地址快照
+        active:
+          type: boolean
+          title: 仍在计划中
+        removed_reason:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: 移除原因
+        completed_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: 实际上线时间
+        recorded_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: 系统登记时间
+        completed_by:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: 实际登记人 ID
+        operator_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: 登记人名称快照
+        notes:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: 目标发布说明
+        evidence:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: 凭证说明或链接
+        revision:
+          type: integer
+          title: 目标修订号
+      type: object
+      required:
+      - id
+      - target_id
+      - name
+      - code
+      - platform
+      - app_id
+      - url
+      - active
+      - removed_reason
+      - completed_at
+      - recorded_at
+      - completed_by
+      - operator_name
+      - notes
+      - evidence
+      - revision
+      title: ReleaseBatchTargetOut
+    ReleaseBatchesOut:
+      properties:
+        version_id:
+          type: integer
+          title: 版本 ID
+        version_revision:
+          type: integer
+          title: 版本修订号
+        system_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: 有效发布系统 ID
+        release_frozen:
+          type: boolean
+          title: 首次发布内容已冻结
+        legacy_unrecorded:
+          type: boolean
+          title: 原整体发布未记录目标
+        coverage_count:
+          type: integer
+          title: 累计实际覆盖目标数
+        items:
+          items:
+            $ref: '#/components/schemas/ReleaseBatchOut'
+          type: array
+          title: 发布批次
+        page:
+          type: integer
+          title: 页码
+        page_size:
+          type: integer
+          title: 每页数量
+        total:
+          type: integer
+          title: 批次总数
+      type: object
+      required:
+      - version_id
+      - version_revision
+      - system_id
+      - release_frozen
+      - legacy_unrecorded
+      - coverage_count
+      - items
+      - page
+      - page_size
+      - total
+      title: ReleaseBatchesOut
     ReleaseOut:
       properties:
         id:
@@ -7898,6 +8950,201 @@ components:
       enum:
       - SUCCESS
       title: ReleaseResult
+    ReleaseTargetComplete:
+      properties:
+        version_revision:
+          type: integer
+          minimum: 1.0
+          title: 版本修订号
+        batch_revision:
+          type: integer
+          minimum: 1.0
+          title: 批次修订号
+        revision:
+          type: integer
+          minimum: 1.0
+          title: 目标修订号
+        released_at:
+          type: string
+          format: date-time
+          title: 实际上线时间
+        notes:
+          anyOf:
+          - type: string
+            maxLength: 5000
+          - type: 'null'
+          title: 目标发布说明
+        evidence:
+          anyOf:
+          - type: string
+            maxLength: 1000
+          - type: 'null'
+          title: 凭证说明或链接
+      additionalProperties: false
+      type: object
+      required:
+      - version_revision
+      - batch_revision
+      - revision
+      - released_at
+      title: ReleaseTargetComplete
+    ReleaseTargetCreate:
+      properties:
+        code:
+          type: string
+          maxLength: 64
+          minLength: 1
+          title: 目标编码
+        name:
+          type: string
+          maxLength: 100
+          minLength: 1
+          title: 目标名称
+        platform:
+          type: string
+          enum:
+          - PC_WEB
+          - WECHAT_MINI_PROGRAM
+          title: 平台类型
+        app_id:
+          anyOf:
+          - type: string
+            maxLength: 64
+          - type: 'null'
+          title: 小程序 AppID
+        url:
+          anyOf:
+          - type: string
+            maxLength: 500
+          - type: 'null'
+          title: 访问地址
+        enabled:
+          type: boolean
+          title: 是否启用
+          default: true
+      additionalProperties: false
+      type: object
+      required:
+      - code
+      - name
+      - platform
+      title: ReleaseTargetCreate
+    ReleaseTargetOut:
+      properties:
+        covered:
+          type: boolean
+          title: 版本已覆盖该目标
+          default: false
+        pending:
+          type: boolean
+          title: 版本已有未完成目标计划
+          default: false
+        id:
+          type: integer
+          title: 目标 ID
+        system_id:
+          type: integer
+          title: 业务系统 ID
+        code:
+          type: string
+          title: 目标编码
+        name:
+          type: string
+          title: 目标名称
+        platform:
+          type: string
+          enum:
+          - PC_WEB
+          - WECHAT_MINI_PROGRAM
+          title: 平台类型
+        app_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: 小程序 AppID
+        url:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: 访问地址
+        enabled:
+          type: boolean
+          title: 是否启用
+        revision:
+          type: integer
+          title: 修订号
+        created_at:
+          type: string
+          format: date-time
+          title: 创建时间
+        updated_at:
+          type: string
+          format: date-time
+          title: 更新时间
+      type: object
+      required:
+      - id
+      - system_id
+      - code
+      - name
+      - platform
+      - app_id
+      - url
+      - enabled
+      - revision
+      - created_at
+      - updated_at
+      title: ReleaseTargetOut
+    ReleaseTargetUpdate:
+      properties:
+        revision:
+          type: integer
+          minimum: 1.0
+          title: 修订号
+        code:
+          anyOf:
+          - type: string
+            maxLength: 64
+            minLength: 1
+          - type: 'null'
+          title: 目标编码
+        name:
+          anyOf:
+          - type: string
+            maxLength: 100
+            minLength: 1
+          - type: 'null'
+          title: 目标名称
+        platform:
+          anyOf:
+          - type: string
+            enum:
+            - PC_WEB
+            - WECHAT_MINI_PROGRAM
+          - type: 'null'
+          title: 平台类型
+        app_id:
+          anyOf:
+          - type: string
+            maxLength: 64
+          - type: 'null'
+          title: 小程序 AppID
+        url:
+          anyOf:
+          - type: string
+            maxLength: 500
+          - type: 'null'
+          title: 访问地址
+        enabled:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: 是否启用
+      additionalProperties: false
+      type: object
+      required:
+      - revision
+      title: ReleaseTargetUpdate
     RemoveRequirementRequest:
       properties:
         revision:
@@ -8032,6 +9279,10 @@ components:
       title: RequirementCreate
     RequirementOut:
       properties:
+        release_frozen:
+          type: boolean
+          title: 首次发布内容已冻结
+          default: false
         system_name:
           anyOf:
           - type: string
@@ -8466,6 +9717,162 @@ components:
       - LOCAL
       - S3
       title: StorageDriver
+    TargetReleaseOption:
+      properties:
+        id:
+          type: integer
+          title: 发布目标 ID
+        label:
+          type: string
+          title: 目标显示名称
+      type: object
+      required:
+      - id
+      - label
+      title: TargetReleaseOption
+    TargetReleasePage:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/TargetReleaseRecordOut'
+          type: array
+          title: 实际发布记录
+        page:
+          type: integer
+          title: 页码
+        page_size:
+          type: integer
+          title: 每页数量
+        total:
+          type: integer
+          title: 总记录数
+      type: object
+      required:
+      - items
+      - page
+      - page_size
+      - total
+      title: TargetReleasePage
+    TargetReleaseRecordOut:
+      properties:
+        id:
+          type: integer
+          title: 批次目标 ID
+        target_id:
+          type: integer
+          title: 发布目标 ID
+        name:
+          type: string
+          title: 计划目标名称快照
+        code:
+          type: string
+          title: 计划目标编码快照
+        platform:
+          type: string
+          enum:
+          - PC_WEB
+          - WECHAT_MINI_PROGRAM
+          title: 平台快照
+        app_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: AppID 快照
+        url:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: 访问地址快照
+        active:
+          type: boolean
+          title: 仍在计划中
+        removed_reason:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: 移除原因
+        completed_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: 实际上线时间
+        recorded_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: 系统登记时间
+        completed_by:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: 实际登记人 ID
+        operator_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: 登记人名称快照
+        notes:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: 目标发布说明
+        evidence:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: 凭证说明或链接
+        revision:
+          type: integer
+          title: 目标修订号
+        version_id:
+          type: integer
+          title: 版本 ID
+        version_no:
+          type: string
+          title: 版本号
+        version_name:
+          type: string
+          title: 版本名称
+        system_id:
+          type: integer
+          title: 业务系统 ID
+        batch_id:
+          type: integer
+          title: 批次 ID
+        batch_kind:
+          type: string
+          enum:
+          - INITIAL
+          - SUPPLEMENT
+          - REPUBLISH
+          title: 批次类型
+      type: object
+      required:
+      - id
+      - target_id
+      - name
+      - code
+      - platform
+      - app_id
+      - url
+      - active
+      - removed_reason
+      - completed_at
+      - recorded_at
+      - completed_by
+      - operator_name
+      - notes
+      - evidence
+      - revision
+      - version_id
+      - version_no
+      - version_name
+      - system_id
+      - batch_id
+      - batch_kind
+      title: TargetReleaseRecordOut
     TokenPair:
       properties:
         access_token:
@@ -8741,6 +10148,10 @@ components:
       title: VersionCreate
     VersionOut:
       properties:
+        release_frozen:
+          type: boolean
+          title: 首次发布内容已冻结
+          default: false
         system_id:
           anyOf:
           - type: integer

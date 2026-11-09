@@ -5,6 +5,7 @@ from app.core.exceptions import AppError
 from app.models.entities import (
     BusinessModule,
     BusinessSystem,
+    ReleaseBatch,
     Requirement,
     Version,
     VersionRequirement,
@@ -61,6 +62,16 @@ class SystemBindingService:
             raise AppError(40975, "修改后的系统与当前版本不一致，请先移出版本", 409)  # noqa: RUF001
 
     def validate_version_change(self, version: Version, system_id: int) -> None:
+        if version.release_frozen or self.db.scalar(
+            select(ReleaseBatch.id)
+            .where(
+                ReleaseBatch.version_id == version.id,
+                ReleaseBatch.kind == "INITIAL",
+                ReleaseBatch.status != "CANCELED",
+            )
+            .limit(1)
+        ):
+            raise AppError(40986, "已有首次发布计划, 请先处理该计划, 不能更改业务系统", 409)
         if version.status in {"RELEASED", "CANCELED"}:
             raise AppError(40975, "终态版本不能修改业务系统", 409)
         self.validate_catalog(system_id)

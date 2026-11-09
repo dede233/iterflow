@@ -15,6 +15,14 @@ export const auditEntityLabels: Record<string, string> = {
 
 export const auditActionLabels: Record<string, string> = {
   PUBLISH: '发布公告',
+  RELEASE_TARGET_CREATE: '创建发布目标',
+  RELEASE_TARGET_UPDATE: '编辑发布目标',
+  RELEASE_BATCH_CREATE: '创建发布批次',
+  RELEASE_BATCH_ADJUST: '调整发布目标计划',
+  RELEASE_BATCH_CANCEL: '取消批次未完成目标',
+  RELEASE_TARGET_COMPLETE: '登记目标实际上线',
+  RELEASE_BATCH_COMPLETE: '完成首次发布批次',
+  LEGACY_SINGLE_PUBLISH: '传统单次发布',
   CREATE: '创建',
   UPDATE: '更新',
   CONFIRM: '确认当前需求内容',

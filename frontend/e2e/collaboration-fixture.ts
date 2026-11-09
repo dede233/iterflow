@@ -7,6 +7,7 @@ export async function mockReadPanels(route: Route): Promise<boolean> {
   const path = new URL(route.request().url()).pathname
   let data: unknown
   if (/\/(feedbacks|requirements|versions)\/\d+\/activities$/.test(path)) data = []
+  else if (/\/versions\/\d+\/release-batches$/.test(path)) data = { version_id: Number(path.split('/')[4]), version_revision: 1, system_id: 1, release_frozen: false, legacy_unrecorded: false, coverage_count: 0, items: [], total: 0, page: 1, page_size: 20 }
   else if (path === '/api/v1/announcements/notice') data = { unread_count: 0, latest: null, important: null }
   else if (path === '/api/v1/systems/options') data = [{ id: 1, name: '系统甲' }]
   else return false

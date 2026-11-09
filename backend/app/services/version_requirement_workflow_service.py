@@ -107,7 +107,7 @@ class VersionRequirementWorkflowService:
             or RequirementRepository(self.db).get_scoped(requirement_id, operator_id, scope) is None
         ):
             raise NotFoundError("需求不存在")
-        if version.status in {"RELEASED", "CANCELED"}:
+        if version.release_frozen or version.status in {"RELEASED", "CANCELED"}:
             raise AppError(40971, "已发布或已取消版本不能提交需求验收", 409)
         if version.revision != payload.version_revision:
             raise ConflictError("版本清单已修改, 请刷新后重试", revision_conflict_data(version))

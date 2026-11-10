@@ -1,5 +1,8 @@
 # AGENTS.md
 
+2026-11-10 用户确认TEST验收通过，授权将支付宝/平台联动/反馈模块移除及之前未上正式的全部增量一起做上线准备，推送当前codex/multi-target-release分支跑完整八项CI、修复门禁并核对双远端master无漂移。仅准备，不合并master、不创建tag/Release、不切换任何环境、不连接或修改真实数据库。正式最近验证5401215/mysql57_0012，TEST80c322d/mysql57_0016；本批目标正式0012→0016及五张新表最小运行权限，升级/回退边界和实际证据入口见`docs/production-preparation-2026-11-10.md`。本轮直接Git核查不代表重查服务器。
+
+
 2026-11-10 支付宝小程序、平台字段联动与反馈模块移除已部署保留TEST：API/worker/Web冻结80c322d，mysql57_0015→0016。首轮隔离演练因等价OR顺序被校验误拒绝，真实DDL未开始并恢复旧TEST；修正外部证明与原始0015测试夹具后，第二轮preflight/prepare/backup/rehearse/deploy/verify全部PASS，35表全行/附件/账号会话/审计公告及SMTP保留、正式保护通过。在线目标新增/编辑联动、支付宝首次发布及补记、唯一Release/旧历史/CAS/权限、反馈新建编辑及桌面/375px验收PASS，合成版本30/需求37/反馈24保留。正式5401215/mysql57_0012未变，未连接正式数据库，无推送/合并/tag/Release。证据及回退边界见`docs/alipay-feedback-test-deployment-2026-11-10.md`，等待用户验收。
 
 

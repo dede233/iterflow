@@ -768,7 +768,7 @@ class VersionService:
         from app.services.target_release_service import TargetReleaseService
 
         target_service = TargetReleaseService(self.db)
-        batch = target_service.publish_guard(version, payload)
+        coverage = target_service.prepare_publish(version, payload, operator_id)
 
         # Same version -> requirement lock order as workflow/content changes.
         self.db.execute(
@@ -806,7 +806,6 @@ class VersionService:
                 )
                 .values(
                     status=VersionStatus.RELEASED,
-                    release_frozen=version.release_frozen or batch is not None,
                     released_at=payload.released_at,
                     updated_by=operator_id,
                     revision=Version.revision + 1,
@@ -948,14 +947,16 @@ class VersionService:
             "RELEASE_CREATE",
             after={"version_id": version.id, "result": ReleaseResult.SUCCESS},
         )
-        if batch is not None:
-            target_service.finish_initial(batch, operator_id)
-        elif payload.legacy_single:
-            self.audit.log(
-                "VERSION",
-                version.id,
-                "LEGACY_SINGLE_PUBLISH",
-                after={"reason": payload.legacy_reason},
+        if coverage is not None:
+            system_id, targets = coverage
+            target_service.append_coverage(
+                version,
+                system_id,
+                targets,
+                payload.released_at,
+                operator_id,
+                kind="INITIAL",
+                notes=payload.release_notes,
             )
         if commit:
             self.db.commit()

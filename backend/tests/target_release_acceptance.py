@@ -1,7 +1,7 @@
-"""Target publishing invariants, shared by task-isolated PostgreSQL and MySQL."""
+"""Release coverage is bookkeeping, never a version-publish gate (PG and MySQL)."""
 
 from concurrent.futures import ThreadPoolExecutor
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from threading import Barrier
 
@@ -20,6 +20,7 @@ from app.models.entities import (
     OperationLog,
     Permission,
     Release,
+    ReleaseBatch,
     ReleaseBatchTarget,
     Requirement,
     RequirementFeedback,
@@ -30,23 +31,28 @@ from app.models.entities import (
     Version,
     VersionRequirement,
 )
-from app.schemas.target_release import ReleaseTargetComplete
+from app.schemas.target_release import ReleaseCoverageCreate
+from app.schemas.version import PublishVersionRequest
 from app.services.target_release_service import TargetReleaseService
 from app.services.version_service import VersionService
 
 SCENARIOS = [
-    "initial",
+    "publish_selected",
+    "publish_empty",
     "supplement",
-    "adjust",
-    "cancel",
+    "legacy",
+    "legacy_plan",
+    "scope",
     "snapshot",
     "rollback",
+    "record_rollback",
     "race",
+    "publish_race",
     "migration",
     "domains",
-    "legacy",
-    "scope",
-    "traditional",
+    "validation",
+    "publish_gate",
+    "retired",
 ]
 
 
@@ -69,7 +75,7 @@ def exercise_targets(fixture, scenario, monkeypatch):
                 dict(
                     code=code,
                     name=f"小程序{code}",
-                    platform="WECHAT_MINI_PROGRAM",
+                    platform="PC_WEB" if code == "B" else "WECHAT_MINI_PROGRAM",
                     app_id=f"wx{code}",
                 ),
                 201,
@@ -125,31 +131,30 @@ def exercise_targets(fixture, scenario, monkeypatch):
     def batches():
         return request("GET", path + "/release-batches")
 
-    def create(kind="INITIAL", ids=None, reason=None):
+    def publish(ids=None, status=200, **extra):
         return request(
             "POST",
-            path + "/release-batches",
+            path + "/publish",
             dict(
-                version_revision=version()["revision"],
-                kind=kind,
-                target_ids=ids or [t["id"] for t in targets[:2]],
-                release_notes="本批发布说明",
-                reason=reason,
+                revision=version()["revision"],
+                released_at=datetime.now(UTC).isoformat(),
+                release_notes="正常版本发布",
+                target_ids=ids or [],
+                **extra,
             ),
-            201,
+            status,
         )
 
-    def complete(batch, index=0, status=200):
-        row = batch["targets"][index]
+    def record(ids=None, status=201, **extra):
         return request(
             "POST",
-            path + f"/release-batches/{batch['id']}/targets/{row['id']}/complete",
+            path + "/release-coverage",
             dict(
                 version_revision=version()["revision"],
-                batch_revision=batch["revision"],
-                revision=row["revision"],
                 released_at=datetime.now(UTC).isoformat(),
-                notes="外部平台已实际完成",
+                target_ids=ids or [targets[2]["id"]],
+                notes="实际已发布, 补充记录",
+                **extra,
             ),
             status,
         )
@@ -161,6 +166,25 @@ def exercise_targets(fixture, scenario, monkeypatch):
                 for m in [Release, Notification, OperationLog, ReleaseBatchTarget]
             )
 
+    def snapshot():
+        with engine.connect() as conn:
+            return {
+                m.__tablename__: [
+                    dict(r) for r in conn.execute(select(m.__table__).order_by(m.id)).mappings()
+                ]
+                for m in [
+                    Release,
+                    Version,
+                    Requirement,
+                    Feedback,
+                    Notification,
+                    OperationLog,
+                    ReleaseBatch,
+                    ReleaseBatchTarget,
+                ]
+            }
+
+    first = [targets[0]["id"], targets[1]["id"]]
     if scenario == "migration":
         # Only directory rows exist: refuse downgrade without dropping history.
         mysql = engine.dialect.name == "mysql"
@@ -187,48 +211,6 @@ def exercise_targets(fixture, scenario, monkeypatch):
         else:
             command.check(cfg)
         return
-    if scenario == "scope":
-        visible_batch = create()
-        visible_batch = complete(visible_batch)
-        complete(visible_batch, 1)
-        assert request("GET", "/target-release-records")["total"] == 2
-        from app.core.security import create_access_token
-
-        with Session(engine) as db:
-            user = User(
-                username="target-outsider",
-                display_name="范围外用户",
-                password_hash="unused",
-                must_change_password=False,
-            )
-            role = Role(code="TARGET_SELF", name="仅本人目标", data_scope="SELF")
-            db.add_all([user, role])
-            db.flush()
-            codes = ["rd.version.view", "rd.release.view", "sys.system.manage"]
-            for permission in db.scalars(select(Permission).where(Permission.code.in_(codes))):
-                db.add(RolePermission(role_id=role.id, permission_id=permission.id))
-            db.add(UserRole(user_id=user.id, role_id=role.id))
-            db.commit()
-            own = {"Authorization": "Bearer " + create_access_token(user.id)}
-        request("GET", path + "/release-batches", status=404, auth=own)
-        request("GET", path + "/release-targets", status=404, auth=own)
-        request("GET", f"/systems/{system_id}/release-targets", status=403, auth=own)
-        request(
-            "POST",
-            path + "/release-batches",
-            dict(
-                version_revision=1,
-                kind="INITIAL",
-                target_ids=[targets[0]["id"]],
-                release_notes="无权限发布",
-            ),
-            403,
-            auth=own,
-        )
-        assert request("GET", "/target-release-records", auth=own)["total"] == 0
-        assert request("GET", "/target-release-records/options", auth=own) == []
-        request("GET", path + "/release-batches", status=401, auth={})
-        return
     if scenario == "legacy":
         with Session(engine) as db:
             ver = db.get(Version, vid)
@@ -241,75 +223,181 @@ def exercise_targets(fixture, scenario, monkeypatch):
                     created_by=uid,
                     updated_by=uid,
                     released_at=datetime.now(UTC),
-                    release_notes="历史发布记录",
+                    release_notes="历史发布",
                     result="SUCCESS",
                 )
             )
             db.commit()
-            original = dict(db.execute(select(Release.__table__)).mappings().one())
+        before = snapshot()
         assert batches()["legacy_unrecorded"] and batches()["coverage_count"] == 0
-        body = dict(
-            version_revision=version()["revision"],
-            kind="SUPPLEMENT",
-            target_ids=[targets[0]["id"]],
-            release_notes="历史版本补发",
-        )
-        request("POST", path + "/release-batches", body, 409)
-        body["system_id"] = system_id
-        batch = request("POST", path + "/release-batches", body, 201)
-        complete(batch)
-        assert version()["system_id"] is None and batches()["coverage_count"] == 1
+        record(status=409)
+        record(system_id=system_id)
+        assert version()["system_id"] is None
+        after = snapshot()
+        for model in [Release, Requirement, Feedback, Notification]:
+            assert after[model.__tablename__] == before[model.__tablename__]
+        other = create_test_system(engine)
+        record(first, status=409, system_id=other)
+        return
+    if scenario == "legacy_plan":
         with Session(engine) as db:
-            assert dict(db.execute(select(Release.__table__)).mappings().one()) == original
-        return
-    if scenario == "traditional":
-        body = dict(
-            revision=version()["revision"],
-            released_at=datetime.now(UTC).isoformat(),
-            release_notes="传统单次发布",
-        )
-        request("POST", path + "/publish", body, 409)
-        body.update(legacy_single=True, legacy_reason="无需单独记账的传统发布")
-        request("POST", path + "/publish", body)
+            ver = db.get(Version, vid)
+            ver.release_frozen = True
+            b = ReleaseBatch(
+                version_id=vid,
+                system_id=system_id,
+                kind="INITIAL",
+                status="IN_PROGRESS",
+                release_notes="旧计划",
+                created_by=uid,
+                updated_by=uid,
+            )
+            db.add(b)
+            db.flush()
+            for index, t in enumerate(targets[:2]):
+                db.add(
+                    ReleaseBatchTarget(
+                        batch_id=b.id,
+                        target_id=t["id"],
+                        name=t["name"],
+                        code=t["code"],
+                        platform=t["platform"],
+                        active=True,
+                        completed_at=datetime.now(UTC) if index == 0 else None,
+                        recorded_at=datetime.now(UTC) if index == 0 else None,
+                        completed_by=uid if index == 0 else None,
+                        operator_name="历史登记人" if index == 0 else None,
+                        created_by=uid,
+                        updated_by=uid,
+                    )
+                )
+            db.commit()
+            bid = b.id
+        before = snapshot()
+        # An incomplete legacy plan cannot block normal publication or infer B as released.
+        publish()
+        assert version()["status"] == "RELEASED" and batches()["coverage_count"] == 1
+        history = next(b for b in batches()["items"] if b["id"] == bid)
+        assert history["status"] == "CANCELED" and not history["targets"][1]["active"]
         assert (
-            counts()[0] == 1 and batches()["legacy_unrecorded"] and batches()["coverage_count"] == 0
+            snapshot()[ReleaseBatchTarget.__tablename__][0]
+            == before[ReleaseBatchTarget.__tablename__][0]
         )
+        record([targets[1]["id"]])
+        assert batches()["coverage_count"] == 2 and counts()[0] == 1
         return
-    batch = create()
-    assert not batches()["release_frozen"] and batch["total"] == 2
-    if scenario == "cancel":
+    if scenario == "retired":
+        before = snapshot()
         request(
             "POST",
-            path + f"/release-batches/{batch['id']}/cancel",
+            path + "/release-batches",
             dict(
-                version_revision=version()["revision"],
-                revision=batch["revision"],
-                reason="本次取消",
+                version_revision=1, kind="INITIAL", target_ids=first, release_notes="旧客户端计划"
             ),
+            409,
         )
-        assert create()["id"] != batch["id"]
+        request(
+            "POST",
+            path + "/release-batches/1/targets/1/complete",
+            dict(
+                version_revision=1,
+                batch_revision=1,
+                revision=1,
+                released_at=datetime.now(UTC).isoformat(),
+            ),
+            409,
+        )
+        request(
+            "PATCH",
+            path + "/release-batches/1/targets",
+            dict(version_revision=1, revision=1, target_ids=first, reason="旧客户端调整"),
+            409,
+        )
+        request(
+            "POST",
+            path + "/release-batches/1/cancel",
+            dict(version_revision=1, revision=1, reason="旧客户端取消"),
+            409,
+        )
+        publish(status=409, initial_batch_id=1, batch_revision=1)
+        assert snapshot() == before
         return
-    if scenario == "race":
+    if scenario == "publish_gate":
+        with Session(engine) as db:
+            db.get(Requirement, rid).status = "TESTING"
+            db.commit()
+        before = snapshot()
+        publish(first, status=409)
+        record(first, status=409)
+        assert snapshot() == before
+        return
+    if scenario in {"rollback", "record_rollback"}:
+        if scenario == "record_rollback":
+            publish()
+        before = snapshot()
+        original = TargetReleaseService.append_coverage
+
+        def fail(*args, **kwargs):
+            original(*args, **kwargs)
+            raise RuntimeError("injected after coverage rows and audit")
+
+        with monkeypatch.context() as patch:
+            patch.setattr(TargetReleaseService, "append_coverage", fail)
+            with Session(engine) as db, pytest.raises(RuntimeError, match="injected"):
+                if scenario == "rollback":
+                    VersionService(db).publish(
+                        vid,
+                        PublishVersionRequest(
+                            revision=version()["revision"],
+                            released_at=datetime.now(UTC).isoformat(),
+                            release_notes="事务验证",
+                            target_ids=first,
+                        ),
+                        uid,
+                    )
+                else:
+                    TargetReleaseService(db).record_coverage(
+                        vid,
+                        ReleaseCoverageCreate(
+                            version_revision=version()["revision"],
+                            target_ids=first,
+                            released_at=datetime.now(UTC).isoformat(),
+                        ),
+                        uid,
+                    )
+        assert snapshot() == before
+        return
+    if scenario in {"race", "publish_race"}:
+        if scenario == "race":
+            publish()
         barrier = Barrier(2)
-        vrev = version()["revision"]
+        rev = version()["revision"]
 
         def run():
             with Session(engine) as db:
                 barrier.wait(timeout=15)
                 try:
-                    row = batch["targets"][0]
-                    TargetReleaseService(db).complete(
-                        vid,
-                        batch["id"],
-                        row["id"],
-                        ReleaseTargetComplete(
-                            version_revision=vrev,
-                            batch_revision=batch["revision"],
-                            revision=row["revision"],
-                            released_at=datetime.now(UTC).isoformat(),
-                        ),
-                        uid,
-                    )
+                    if scenario == "race":
+                        TargetReleaseService(db).record_coverage(
+                            vid,
+                            ReleaseCoverageCreate(
+                                version_revision=rev,
+                                target_ids=first,
+                                released_at=datetime.now(UTC).isoformat(),
+                            ),
+                            uid,
+                        )
+                    else:
+                        VersionService(db).publish(
+                            vid,
+                            PublishVersionRequest(
+                                revision=rev,
+                                target_ids=first,
+                                released_at=datetime.now(UTC).isoformat(),
+                                release_notes="并发发布",
+                            ),
+                            uid,
+                        )
                     return "ok"
                 except AppError:
                     return "blocked"
@@ -317,53 +405,135 @@ def exercise_targets(fixture, scenario, monkeypatch):
         with ThreadPoolExecutor(2) as pool:
             a, b = pool.submit(run), pool.submit(run)
             assert sorted([a.result(timeout=25), b.result(timeout=25)]) == ["blocked", "ok"]
-        batch = batches()["items"][0]
-        assert batch["completed"] == 1 and counts()[0] == 0
-        # Last success racing itself must produce exactly one global Release.
-        barrier = Barrier(2)
-        vrev = version()["revision"]
+        assert counts()[0] == 1 and batches()["coverage_count"] == 2
+        return
+    if scenario == "validation":
+        record(first, status=409)
+        publish([first[0], first[0]], status=422)
+        other = create_test_system(engine)
+        foreign = request(
+            "POST",
+            f"/systems/{other}/release-targets",
+            dict(code="X", name="其他系统PC", platform="PC_WEB"),
+            201,
+        )
+        before = snapshot()
+        publish([foreign["id"]], status=409)
+        assert snapshot() == before
+        publish()
+        before = snapshot()
+        for ids, status in [
+            ([foreign["id"]], 409),
+            ([first[0]] * 2, 422),
+            (list(range(1, 52)), 422),
+        ]:
+            record(ids, status=status)
+        request(
+            "POST",
+            path + "/release-coverage",
+            dict(
+                version_revision=version()["revision"],
+                target_ids=[],
+                released_at=datetime.now(UTC).isoformat(),
+            ),
+            422,
+        )
+        request(
+            "POST",
+            path + "/release-coverage",
+            dict(
+                version_revision=version()["revision"],
+                target_ids=first,
+                released_at=(datetime.now(UTC) + timedelta(days=1)).isoformat(),
+            ),
+            422,
+        )
+        request(
+            "POST",
+            path + "/release-coverage",
+            dict(
+                version_revision=version()["revision"],
+                target_ids=first,
+                released_at="2026-11-01T12:00:00",
+            ),
+            422,
+        )
+        assert snapshot() == before
+        return
+    publish([] if scenario == "publish_empty" else first)
+    assert version()["status"] == "RELEASED" and not version()["release_frozen"]
+    assert request("GET", f"/requirements/{rid}")["status"] == "ONLINE"
+    assert request("GET", f"/feedbacks/{fid}")["status"] == "ONLINE"
+    assert counts()[0] == 1
+    if scenario == "publish_empty":
+        assert batches()["coverage_count"] == 0 and batches()["items"] == []
+        record(first)
+        assert batches()["coverage_count"] == 2
+        return
+    assert batches()["coverage_count"] == 2  # C remains unselected, version still online.
+    if scenario == "scope":
+        from app.core.security import create_access_token
 
-        def last():
-            with Session(engine) as db:
-                barrier.wait(timeout=15)
-                try:
-                    row = batch["targets"][1]
-                    TargetReleaseService(db).complete(
-                        vid,
-                        batch["id"],
-                        row["id"],
-                        ReleaseTargetComplete(
-                            version_revision=vrev,
-                            batch_revision=batch["revision"],
-                            revision=row["revision"],
-                            released_at=datetime.now(UTC).isoformat(),
-                        ),
-                        uid,
+        with Session(engine) as db:
+            user = User(
+                username="target-outsider",
+                display_name="范围外用户",
+                password_hash="unused",
+                must_change_password=False,
+            )
+            role = Role(code="TARGET_SELF", name="仅本人目标", data_scope="SELF")
+            db.add_all([user, role])
+            db.flush()
+            for permission in db.scalars(
+                select(Permission).where(
+                    Permission.code.in_(
+                        [
+                            "rd.version.view",
+                            "rd.release.view",
+                            "rd.version.publish",
+                            "sys.system.manage",
+                        ]
                     )
-                    return "ok"
-                except AppError:
-                    return "blocked"
-
-        with ThreadPoolExecutor(2) as pool:
-            a, b = pool.submit(last), pool.submit(last)
-            assert sorted([a.result(timeout=25), b.result(timeout=25)]) == ["blocked", "ok"]
-        assert counts()[0] == 1 and version()["status"] == "RELEASED"
+                )
+            ):
+                db.add(RolePermission(role_id=role.id, permission_id=permission.id))
+            db.add(UserRole(user_id=user.id, role_id=role.id))
+            db.commit()
+            own = {"Authorization": "Bearer " + create_access_token(user.id)}
+        request("GET", path + "/release-batches", status=404, auth=own)
+        request("GET", path + "/release-targets", status=404, auth=own)
+        request("GET", f"/systems/{system_id}/release-targets", status=403, auth=own)
+        body = dict(
+            version_revision=version()["revision"],
+            target_ids=[targets[2]["id"]],
+            released_at=datetime.now(UTC).isoformat(),
+        )
+        request("POST", path + "/release-coverage", body, 404, auth=own)
+        assert request("GET", "/target-release-records", auth=own)["total"] == 0
+        assert request("GET", "/target-release-records/options", auth=own) == []
+        request("POST", path + "/release-coverage", body, 401, auth={})
+        with Session(engine) as db:
+            role = db.scalar(select(Role).where(Role.code == "TARGET_SELF"))
+            perm = db.scalar(select(Permission).where(Permission.code == "rd.version.publish"))
+            db.delete(db.get(RolePermission, (role.id, perm.id)))
+            db.commit()
+        request("POST", path + "/release-coverage", body, 403, auth=own)
         return
     if scenario == "snapshot":
         t = targets[0]
         request(
             "PATCH",
             f"/systems/release-targets/{t['id']}",
-            dict(revision=t["revision"], name="目录已改名"),
+            dict(revision=t["revision"], name="目录已改名", enabled=False),
         )
         assert batches()["items"][0]["targets"][0]["name"] == "小程序A"
+        t = targets[2]
         request(
             "PATCH",
             f"/systems/release-targets/{t['id']}",
-            dict(revision=t["revision"] + 1, enabled=False),
+            dict(revision=t["revision"], enabled=False),
         )
-        complete(batch, 0, status=409)
-        assert counts()[0] == 0 and batches()["items"][0]["completed"] == 0
+        record(status=409)
         request(
             "PATCH",
             f"/systems/release-targets/{t['id']}",
@@ -373,81 +543,13 @@ def exercise_targets(fixture, scenario, monkeypatch):
         request(
             "POST",
             f"/systems/{system_id}/release-targets",
-            dict(code="B", name="重复", platform="PC_WEB"),
+            dict(code="B", name="重复编码", platform="PC_WEB"),
             409,
-        )
-        request(
-            "POST",
-            path + "/release-batches",
-            dict(
-                version_revision=version()["revision"],
-                kind="INITIAL",
-                target_ids=[targets[1]["id"]] * 2,
-                release_notes="重复目标",
-            ),
-            422,
-        )
-        return
-    batch = complete(batch)
-    assert batches()["release_frozen"] and batch["completed"] == 1
-    assert version()["status"] == "READY" and counts()[0] == 0
-    assert request("GET", f"/requirements/{rid}")["release_frozen"]
-    if scenario == "adjust":
-        body = dict(
-            version_revision=version()["revision"],
-            revision=batch["revision"],
-            target_ids=[targets[1]["id"]],
-            reason="移除已完成",
-        )
-        request("PATCH", path + f"/release-batches/{batch['id']}/targets", body, 409)
-        body.update(target_ids=[targets[0]["id"]], reason="另一个目标取消")
-        batch = request("PATCH", path + f"/release-batches/{batch['id']}/targets", body)
-        assert counts()[0] == 0 and batch["completed"] == batch["total"] == 1
-        request(
-            "POST",
-            path + "/publish",
-            dict(
-                revision=version()["revision"],
-                initial_batch_id=batch["id"],
-                batch_revision=batch["revision"],
-                released_at=datetime.now(UTC).isoformat(),
-                release_notes="确认整体上线",
-            ),
-        )
-        assert version()["status"] == "RELEASED"
-        return
-    if scenario == "rollback":
-        original = VersionService._publish
-
-        def fail(*args, **kwargs):
-            original(*args, **kwargs)
-            raise RuntimeError("injected transaction failure after all side effects")
-
-        before = counts()
-        with monkeypatch.context() as patch:
-            patch.setattr(VersionService, "_publish", fail)
-            with Session(engine) as db:
-                row = batch["targets"][1]
-                with pytest.raises(RuntimeError, match="injected"):
-                    TargetReleaseService(db).complete(
-                        vid,
-                        batch["id"],
-                        row["id"],
-                        ReleaseTargetComplete(
-                            version_revision=version()["revision"],
-                            batch_revision=batch["revision"],
-                            revision=row["revision"],
-                            released_at=datetime.now(UTC).isoformat(),
-                        ),
-                        uid,
-                    )
-        assert (
-            counts() == before
-            and batches()["items"][0]["completed"] == 1
-            and version()["status"] == "READY"
         )
         return
     if scenario == "domains":
+        with engine.begin() as conn:
+            conn.execute(text("UPDATE rd_version SET release_frozen=true"))
         with engine.connect() as conn:
             for sql in [
                 "UPDATE rd_release_batch_target SET notes='rewrite' WHERE completed_at IS NOT NULL",
@@ -460,73 +562,29 @@ def exercise_targets(fixture, scenario, monkeypatch):
                     conn.execute(text(sql))
                 conn.rollback()
         return
-    # The partial freeze also blocks old endpoints and direct single-release bypass.
-    request("PATCH", f"/requirements/{rid}", dict(revision=1, title="修改内容"), 409)
-    request(
-        "PUT",
-        f"/requirements/{rid}/participants",
-        dict(revision=1, participants=[dict(user_id=uid, role="DEVELOP")]),
-        409,
+    before = snapshot()
+    rev = version()["revision"]
+    record(first, status=409)  # Covered targets cannot silently become new releases.
+    assert snapshot() == before
+    record()
+    after = snapshot()
+    for model in [Release, Requirement, Feedback, Notification]:
+        assert after[model.__tablename__] == before[model.__tablename__]
+    assert batches()["coverage_count"] == 3
+    assert (
+        after[Version.__tablename__][0]["released_at"]
+        == before[Version.__tablename__][0]["released_at"]
     )
     request(
         "POST",
-        f"/requirements/{rid}/workflow",
-        dict(revision=1, action="REQUEST_CHANGES", reason="不能改变内容确认"),
-        409,
-    )
-    request(
-        "DELETE",
-        path + f"/requirements/{rid}",
-        dict(revision=1, version_revision=version()["revision"], reason="不能移出清单"),
-        409,
-    )
-    request(
-        "PATCH",
-        path + "/status",
-        dict(revision=version()["revision"], status="CANCELED", reason="不能取消部分实际发布"),
-        409,
-    )
-    request(
-        "POST",
-        path + "/publish",
+        path + "/release-coverage",
         dict(
-            revision=version()["revision"],
+            version_revision=rev,
+            target_ids=[targets[2]["id"]],
             released_at=datetime.now(UTC).isoformat(),
-            release_notes="不能绕过",
-            legacy_single=True,
-            legacy_reason="明确单次",
         ),
         409,
     )
-    request(
-        "POST",
-        path + f"/release-batches/{batch['id']}/cancel",
-        dict(version_revision=version()["revision"], revision=batch["revision"], reason="不能取消"),
-        409,
-    )
-    request("PATCH", path, dict(revision=version()["revision"], description="修改发布内容"), 409)
-    batch = complete(batch, 1)
-    assert batch["status"] == "COMPLETED" and version()["status"] == "RELEASED"
-    assert request("GET", f"/requirements/{rid}")["status"] == "ONLINE"
-    assert request("GET", f"/feedbacks/{fid}")["status"] == "ONLINE"
-    assert counts()[0] == 1 and request("GET", "/target-release-records")["total"] == 2
-    if scenario == "initial":
-        before = counts()
-        complete(batch, 1, status=409)
-        assert counts() == before
-        return
-    # Later additions do not change the original release or send global notifications.
-    with Session(engine) as db:
-        release_before = dict(db.execute(select(Release.__table__)).mappings().one())
-    before = counts()
-    supplement = create("SUPPLEMENT", [targets[2]["id"]])
-    supplement = complete(supplement)
-    assert supplement["status"] == "COMPLETED" and batches()["coverage_count"] == 3
-    assert counts()[0:2] == before[0:2]
-    republish = create("REPUBLISH", [targets[0]["id"]], "外部回滚后重发")
-    complete(republish)
-    assert counts()[0:2] == before[0:2]
-    with Session(engine) as db:
-        assert dict(db.execute(select(Release.__table__)).mappings().one()) == release_before
-    assert request("GET", "/target-release-records")["total"] == 4
+    assert request("GET", "/target-release-records")["total"] == 3
+    assert request("GET", f"/target-release-records?target_id={targets[2]['id']}")["total"] == 1
     assert len(request("GET", "/target-release-records/options")) == 3

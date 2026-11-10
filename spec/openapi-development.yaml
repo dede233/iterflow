@@ -602,8 +602,68 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-      description: 沿用版本发布资格及范围；版本 revision CAS。INITIAL 先检查全部需求可发布；SUPPLEMENT 仅新增未覆盖目标；REPUBLISH 必须明确原因。历史整体
-        Release 不推断目标。
+      description: 旧计划写接口已停用，返回409并提示改用正常版本发布或已发布目标补记；已有记录保留只读。
+      deprecated: true
+  /versions/{version_id}/release-coverage:
+    post:
+      tags:
+      - TargetRelease
+      summary: 补记已发布目标
+      operationId: record_coverage_api_v1_versions__version_id__release_coverage_post
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: version_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+          title: Version Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReleaseCoverageCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReleaseBatchOut'
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 业务状态或 revision 冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: 仅为已发布版本补记实际发布覆盖范围。原子记录同系统多个启用目标及时间、操作人和快照；版本 revision CAS；不改变原 Release、版本/需求上线状态或重复通知。已覆盖目标不可重复登记。
   /versions/{version_id}/release-batches/{batch_id}/targets:
     patch:
       tags:
@@ -670,7 +730,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-      description: 同时校验版本和批次 revision，已完成目标不可移除或改写。调整后首次全部完成须经 publish 显式确认收尾。
+      description: 旧计划写接口已停用，返回409并提示改用正常版本发布或已发布目标补记；已有记录保留只读。
+      deprecated: true
   /versions/{version_id}/release-batches/{batch_id}/cancel:
     post:
       tags:
@@ -737,7 +798,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-      description: 首次已有实际成功不可取消；补发/重新发布保留成功记录，仅取消剩余目标。
+      description: 旧计划写接口已停用，返回409并提示改用正常版本发布或已发布目标补记；已有记录保留只读。
+      deprecated: true
   /versions/{version_id}/release-batches/{batch_id}/targets/{batch_target_id}/complete:
     post:
       tags:
@@ -811,7 +873,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-      description: 人工登记外部实际成功，不自动执行平台发布。版本/批次/目标三 revision CAS；首次首个成功后冻结内容与清单，最后成功在同一事务生成唯一整体 Release/ONLINE/通知；补发不重复全局上线。
+      description: 旧计划写接口已停用，返回409并提示改用正常版本发布或已发布目标补记；已有记录保留只读。
+      deprecated: true
   /target-release-records:
     get:
       tags:
@@ -4271,8 +4334,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-      description: 需要 rd.version.publish 及数据范围。在版本到需求的既有锁序内重新计算有效READY，校验至少一条有效需求且全部DONE和内容确认资格，并保留revision及非终态CAS。无需先手动推进版本阶段。Release(SUCCESS)、Version、Requirement/Feedback
-        ONLINE、通知事件和审计原子提交；异常回滚，重复发布 409。
+      description: 通过原有发布检查后原子生成唯一 Release 并同步需求/反馈上线及通知。target_ids 可选，仅记录实际已发布的小程序/PC，不要求全部目录目标完成，也不要求传统发布原因。旧未完成计划只保留历史，不阻塞发布。
   /versions/{version_id}/activities:
     get:
       tags:
@@ -8490,6 +8552,13 @@ components:
           minimum: 1.0
           title: 修订号
           description: 对象的乐观锁修订号；写入时提交最后读取的修订号。
+        target_ids:
+          items:
+            type: integer
+            exclusiveMinimum: 0.0
+          type: array
+          maxItems: 50
+          title: 本次已发布目标 ID
         initial_batch_id:
           anyOf:
           - type: integer
@@ -8871,6 +8940,49 @@ components:
       - page_size
       - total
       title: ReleaseBatchesOut
+    ReleaseCoverageCreate:
+      properties:
+        version_revision:
+          type: integer
+          minimum: 1.0
+          title: 版本修订号
+        system_id:
+          anyOf:
+          - type: integer
+            minimum: 1.0
+          - type: 'null'
+          title: 历史版本目标所属业务系统 ID
+        target_ids:
+          items:
+            type: integer
+            exclusiveMinimum: 0.0
+          type: array
+          maxItems: 50
+          minItems: 1
+          title: 已发布目标 ID
+        released_at:
+          type: string
+          format: date-time
+          title: 实际上线时间
+        notes:
+          anyOf:
+          - type: string
+            maxLength: 5000
+          - type: 'null'
+          title: 发布说明
+        evidence:
+          anyOf:
+          - type: string
+            maxLength: 1000
+          - type: 'null'
+          title: 凭证说明或链接
+      additionalProperties: false
+      type: object
+      required:
+      - version_revision
+      - target_ids
+      - released_at
+      title: ReleaseCoverageCreate
     ReleaseOut:
       properties:
         id:

@@ -70,6 +70,7 @@ declare module 'vue' {
     PageHeader: typeof import('./src/components/ui/PageHeader.vue')['default']
     PeopleSelector: typeof import('./src/components/PeopleSelector.vue')['default']
     PermissionAssignmentDrawer: typeof import('./src/components/PermissionAssignmentDrawer.vue')['default']
+    PublishedTargetSelect: typeof import('./src/components/PublishedTargetSelect.vue')['default']
     RecentEntityActivity: typeof import('./src/components/RecentEntityActivity.vue')['default']
     ReleaseTargetManager: typeof import('./src/components/ReleaseTargetManager.vue')['default']
     ReleaseVersionDrawer: typeof import('./src/components/ReleaseVersionDrawer.vue')['default']

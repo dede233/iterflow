@@ -134,9 +134,30 @@ export interface paths {
         put?: never;
         /**
          * 创建首次、补发或重新发布批次
-         * @description 沿用版本发布资格及范围；版本 revision CAS。INITIAL 先检查全部需求可发布；SUPPLEMENT 仅新增未覆盖目标；REPUBLISH 必须明确原因。历史整体 Release 不推断目标。
+         * @deprecated
+         * @description 旧计划写接口已停用，返回409并提示改用正常版本发布或已发布目标补记；已有记录保留只读。
          */
         post: operations["create_batch_api_v1_versions__version_id__release_batches_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/versions/{version_id}/release-coverage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 补记已发布目标
+         * @description 仅为已发布版本补记实际发布覆盖范围。原子记录同系统多个启用目标及时间、操作人和快照；版本 revision CAS；不改变原 Release、版本/需求上线状态或重复通知。已覆盖目标不可重复登记。
+         */
+        post: operations["record_coverage_api_v1_versions__version_id__release_coverage_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -158,7 +179,8 @@ export interface paths {
         head?: never;
         /**
          * 带原因调整未完成发布目标
-         * @description 同时校验版本和批次 revision，已完成目标不可移除或改写。调整后首次全部完成须经 publish 显式确认收尾。
+         * @deprecated
+         * @description 旧计划写接口已停用，返回409并提示改用正常版本发布或已发布目标补记；已有记录保留只读。
          */
         patch: operations["adjust_batch_api_v1_versions__version_id__release_batches__batch_id__targets_patch"];
         trace?: never;
@@ -174,7 +196,8 @@ export interface paths {
         put?: never;
         /**
          * 取消尚未完成的发布计划
-         * @description 首次已有实际成功不可取消；补发/重新发布保留成功记录，仅取消剩余目标。
+         * @deprecated
+         * @description 旧计划写接口已停用，返回409并提示改用正常版本发布或已发布目标补记；已有记录保留只读。
          */
         post: operations["cancel_batch_api_v1_versions__version_id__release_batches__batch_id__cancel_post"];
         delete?: never;
@@ -194,7 +217,8 @@ export interface paths {
         put?: never;
         /**
          * 登记一个目标实际发布成功
-         * @description 人工登记外部实际成功，不自动执行平台发布。版本/批次/目标三 revision CAS；首次首个成功后冻结内容与清单，最后成功在同一事务生成唯一整体 Release/ONLINE/通知；补发不重复全局上线。
+         * @deprecated
+         * @description 旧计划写接口已停用，返回409并提示改用正常版本发布或已发布目标补记；已有记录保留只读。
          */
         post: operations["complete_target_api_v1_versions__version_id__release_batches__batch_id__targets__batch_target_id__complete_post"];
         delete?: never;
@@ -1147,7 +1171,7 @@ export interface paths {
         put?: never;
         /**
          * 发布版本
-         * @description 需要 rd.version.publish 及数据范围。在版本到需求的既有锁序内重新计算有效READY，校验至少一条有效需求且全部DONE和内容确认资格，并保留revision及非终态CAS。无需先手动推进版本阶段。Release(SUCCESS)、Version、Requirement/Feedback ONLINE、通知事件和审计原子提交；异常回滚，重复发布 409。
+         * @description 通过原有发布检查后原子生成唯一 Release 并同步需求/反馈上线及通知。target_ids 可选，仅记录实际已发布的小程序/PC，不要求全部目录目标完成，也不要求传统发布原因。旧未完成计划只保留历史，不阻塞发布。
          */
         post: operations["publish_version_api_v1_versions__version_id__publish_post"];
         delete?: never;
@@ -3097,6 +3121,8 @@ export interface components {
              * @description 对象的乐观锁修订号；写入时提交最后读取的修订号。
              */
             revision: number;
+            /** 本次已发布目标 ID */
+            target_ids?: number[];
             /** 首次批次 ID */
             initial_batch_id?: number | null;
             /** 批次修订号 */
@@ -3264,6 +3290,24 @@ export interface components {
             page_size: number;
             /** 批次总数 */
             total: number;
+        };
+        /** ReleaseCoverageCreate */
+        ReleaseCoverageCreate: {
+            /** 版本修订号 */
+            version_revision: number;
+            /** 历史版本目标所属业务系统 ID */
+            system_id?: number | null;
+            /** 已发布目标 ID */
+            target_ids: number[];
+            /**
+             * 实际上线时间
+             * Format: date-time
+             */
+            released_at: string;
+            /** 发布说明 */
+            notes?: string | null;
+            /** 凭证说明或链接 */
+            evidence?: string | null;
         };
         /**
          * ReleaseOut
@@ -4664,6 +4708,77 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["ReleaseBatchCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseBatchOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或 revision 冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    record_coverage_api_v1_versions__version_id__release_coverage_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                version_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReleaseCoverageCreate"];
             };
         };
         responses: {

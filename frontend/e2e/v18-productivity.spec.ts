@@ -103,8 +103,8 @@ for (const width of widths) {
   })
   test(`V1.8 publish permission is not target read permission ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1000 }); const state = await fixture(page, false)
-    await page.goto('/#/versions/2?return_to=%2F%2Fevil.test'); await page.getByRole('button', { name: '传统单次发布', exact: true }).click()
-    const dialog = page.getByRole('dialog', { name: '传统单次发布', exact: true }); await expect(dialog).toContainText('仍有未完成需求'); await expect(dialog).toContainText('REQ-99（开发中）')
+    await page.goto('/#/versions/2?return_to=%2F%2Fevil.test'); await page.getByRole('button', { name: '发布版本', exact: true }).click()
+    const dialog = page.getByRole('dialog', { name: '发布版本', exact: true }); await expect(dialog).toContainText('仍有未完成需求'); await expect(dialog).toContainText('REQ-99（开发中）')
     await expect(dialog).toContainText('无法查看详情'); await expect(dialog.getByRole('link', { name: '查看需求' })).toHaveCount(0)
     await expect(dialog.getByRole('button', { name: '确认发布' })).toBeDisabled()
     expect(state.requests.some(r => r.path.startsWith('/requirements'))).toBe(false)
@@ -149,8 +149,8 @@ test('V1.8 Feedback LINK_EXISTING and duplicate selectors keep parent CAS', asyn
 
 test('V1.8 readable domain but inaccessible blocker retains safe summary without link', async ({ page }) => {
   const state = await fixture(page)
-  await page.goto('/#/versions/2'); await page.getByRole('button', { name: '传统单次发布', exact: true }).click()
-  const dialog = page.getByRole('dialog', { name: '传统单次发布' })
+  await page.goto('/#/versions/2'); await page.getByRole('button', { name: '发布版本', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: '发布版本' })
   await expect(dialog).toContainText('REQ-99（开发中）'); await expect(dialog).toContainText('无法查看详情')
   await expect.poll(() => state.requests.filter(r => r.path === '/requirements/99').length).toBe(1)
   await expect(dialog.getByRole('link', { name: '查看需求' })).toHaveCount(0)

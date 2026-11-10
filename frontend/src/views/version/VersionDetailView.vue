@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PublishedTargetSelect from '@/components/PublishedTargetSelect.vue'
 import VersionReleaseBatches from "@/components/VersionReleaseBatches.vue"
 import BusinessSystemAttribution from '@/components/BusinessSystemAttribution.vue'
 import RecentEntityActivity from '@/components/RecentEntityActivity.vue'
@@ -136,7 +137,6 @@ const canChangeStatus = computed(() => can('rd.version.status'))
 const canViewRequirements = computed(() => can('rd.requirement.view'))
 const canViewReleases = computed(() => can('rd.release.view'))
 // Every active version can explain its blockers; only passing checks enable publishing.
-const targetPlanActive = ref(false)
 const canPublish = computed(
   () => can('rd.version.publish') && !!item.value && !['RELEASED', 'CANCELED'].includes(item.value.status),
 )
@@ -186,7 +186,8 @@ async function submitStatus(): Promise<void> {
 const publishDialog = ref(false)
 const publishSubmitting = ref(false)
 const checkLoading = ref(false)
-const legacyReason = ref('')
+const publishedTargetIds = ref<number[]>([])
+const targetOptionsReady = ref(false)
 const releaseNotes = ref('')
 const checkCandidatePassed = ref(false)
 const checks = ref<PublishCheckItem[]>([])
@@ -196,7 +197,7 @@ watch(publishDialog, open => { if (!open) { checkSequence++; checks.value = []; 
 
 async function openPublish(): Promise<void> {
   if (!item.value || !canPublish.value || checkLoading.value || publishSubmitting.value) return
-  releaseNotes.value = ''; legacyReason.value = ''
+  releaseNotes.value = ''; publishedTargetIds.value = []; targetOptionsReady.value = false
   checks.value = []
   checkCandidatePassed.value = false
   checkLoading.value = true
@@ -221,13 +222,13 @@ async function openPublish(): Promise<void> {
 
 async function submitPublish(): Promise<void> {
   if (!item.value || !canPublish.value || publishSubmitting.value || checkLoading.value || !checkCandidatePassed.value) return
-  if (!releaseNotes.value.trim() || legacyReason.value.trim().length < 2) {
-    ElMessage.warning('请填写发布说明和传统发布原因（至少 2 个字符）')
+  if (!releaseNotes.value.trim()) {
+    ElMessage.warning('请填写发布说明')
     return
   }
   publishSubmitting.value = true
   try {
-    await publishVersion(item.value.id, releaseNotes.value.trim(), item.value.revision, legacyReason.value.trim())
+    await publishVersion(item.value.id, releaseNotes.value.trim(), item.value.revision, [...publishedTargetIds.value])
     emit('updated')
     ElMessage.success('版本已发布')
     publishDialog.value = false
@@ -393,7 +394,7 @@ onMounted(load)
         <el-button v-if="embedded" link @click="emit('close')">关闭详情</el-button>
         <RouterLink v-else class="back-link" :to="backTo">返回列表</RouterLink>
         <el-button v-if="canEdit" @click="openEdit">编辑</el-button>
-        <el-button v-if="canPublish && !targetPlanActive && !item.release_frozen" type="primary" @click="openPublish">{{ item.status === 'READY' ? '传统单次发布' : '发布检查' }}</el-button>
+        <el-button v-if="canPublish" type="primary" @click="openPublish">{{ item.status === 'READY' ? '发布版本' : '发布检查' }}</el-button>
         <el-button
           v-for="action in statusActions"
           :key="action.target"
@@ -418,7 +419,7 @@ onMounted(load)
         </el-descriptions>
       </SectionCard>
 
-      <VersionReleaseBatches :version="item" @updated="load" @plan-state="targetPlanActive = $event" />
+      <VersionReleaseBatches :version="item" @updated="load" />
 
       <RecentEntityActivity kind="version" :id="item.id" :revision="item.revision" :refresh-key="activityRefresh" />
 
@@ -505,8 +506,8 @@ onMounted(load)
     <ReleaseVersionDrawer v-if="!embedded" v-model="releaseDrawer" kind="release" :id="activeReleaseId" :return-to="backTo" @updated="load" />
 
     <!-- publish dialog -->
-    <el-dialog v-model="publishDialog" title="传统单次发布" width="min(520px, 92vw)" destroy-on-close>
-      <p>需按小程序分别记录时，请关闭此窗口，在「发布目标与批次」创建首次计划。已有首次计划不能通过传统路径发布。</p>
+    <el-dialog v-model="publishDialog" title="发布版本" width="min(520px, 92vw)" destroy-on-close>
+      <p>可勾选本次已经发布的小程序或 PC，也可以不选，在版本发布后补记。</p>
       <p class="publish-tip">发布后版本将进入「已发布」，其已完成需求与关联反馈会自动置为「已上线」。此操作不可撤销。</p>
       <div v-loading="checkLoading" class="checks">
         <div class="checks-title">发布前检查</div>
@@ -526,9 +527,9 @@ onMounted(load)
         </ul>
       </div>
       <el-form label-position="top">
-        <el-form-item label="传统单次发布原因" required><el-input v-model="legacyReason" type="textarea" maxlength="500" placeholder="说明本次无需记录具体发布目标的原因" /></el-form-item>
+        <el-form-item label="已发布目标（选填，可多选）"><PublishedTargetSelect v-if="item" v-model="publishedTargetIds" :version-id="item.id" :system-id="item.system_id" :active="publishDialog" :disabled="publishSubmitting" @ready="targetOptionsReady = $event" /></el-form-item>
         <el-form-item label="发布说明" required>
-          <el-input v-model="releaseNotes" type="textarea" :rows="3" />
+          <el-input v-model="releaseNotes" type="textarea" :rows="3" aria-label="发布说明" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -536,7 +537,7 @@ onMounted(load)
         <el-button
           type="success"
           :loading="publishSubmitting"
-          :disabled="checkLoading || !checkCandidatePassed"
+          :disabled="checkLoading || !checkCandidatePassed || (publishedTargetIds.length > 0 && !targetOptionsReady)"
           @click="submitPublish"
         >
           确认发布

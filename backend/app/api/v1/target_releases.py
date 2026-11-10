@@ -11,6 +11,7 @@ from app.schemas.target_release import (
     ReleaseBatchCreate,
     ReleaseBatchesOut,
     ReleaseBatchOut,
+    ReleaseCoverageCreate,
     ReleaseTargetComplete,
     ReleaseTargetCreate,
     ReleaseTargetOut,
@@ -103,6 +104,21 @@ def create_batch(
     user: User = Depends(require_permission("rd.version.publish")),
 ):
     return TargetReleaseService(db).create_batch(version_id, payload, user.id)
+
+
+@router.post(
+    "/versions/{version_id}/release-coverage",
+    response_model=ReleaseBatchOut,
+    status_code=201,
+    responses=errors,
+)
+def record_coverage(
+    payload: ReleaseCoverageCreate,
+    version_id: int = Path(ge=1),
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("rd.version.publish")),
+):
+    return TargetReleaseService(db).record_coverage(version_id, payload, user.id)
 
 
 @router.patch(

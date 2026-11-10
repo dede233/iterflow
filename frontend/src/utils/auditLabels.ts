@@ -17,6 +17,7 @@ export const auditActionLabels: Record<string, string> = {
   PUBLISH: '发布公告',
   RELEASE_TARGET_CREATE: '创建发布目标',
   RELEASE_TARGET_UPDATE: '编辑发布目标',
+  RELEASE_COVERAGE_RECORD: '记录已发布目标',
   RELEASE_BATCH_CREATE: '创建发布批次',
   RELEASE_BATCH_ADJUST: '调整发布目标计划',
   RELEASE_BATCH_CANCEL: '取消批次未完成目标',

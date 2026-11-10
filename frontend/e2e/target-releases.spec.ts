@@ -27,22 +27,17 @@ async function fixture(page: Page) {
     if (path === '/api/v1/versions/1/requirements') return reply({ version_id: 1, items: [], stats: { total: 0, completed: 0, completion_rate: 0, by_status: {} } })
     if (path === '/api/v1/releases') return reply({ items: releases, total: releases.length, page: 1, page_size: 20 })
     if (path === '/api/v1/versions/1/release-targets') return reply(targets.map(t => ({ ...t, covered: batches.some(b => b.targets.some((r: any) => r.target_id === t.id && r.completed_at)), pending: batches.some(b => ['PLANNED', 'IN_PROGRESS'].includes(b.status) && b.targets.some((r: any) => r.target_id === t.id && !r.completed_at)) })))
-    if (path === '/api/v1/versions/1/release-batches') {
-      if (method === 'GET') return reply({ version_id: 1, version_revision: version.revision, system_id: 1, release_frozen: version.release_frozen, legacy_unrecorded: false, coverage_count: new Set(batches.flatMap(b => b.targets.filter((t: any) => t.completed_at).map((t: any) => t.target_id))).size, items: [...batches].reverse(), total: batches.length, page: 1, page_size: 20 })
-      const body = route.request().postDataJSON(); writes.push(body); expect(body.version_revision).toBe(version.revision)
-      version.revision++
-      const b = { ...body, id: batches.length + 1, version_id: 1, system_id: 1, status: 'PLANNED', revision: 1, total: body.target_ids.length, completed: 0, created_at: stamp, updated_at: stamp, targets: body.target_ids.map((id: number) => ({ ...targets[id - 1], id: 100 * (batches.length + 1) + id, target_id: id, active: true, completed_at: null, recorded_at: null, completed_by: null, operator_name: null, notes: null, evidence: null, revision: 1 })) }
-      batches.push(b); return reply(b, 201)
-    }
-    const completion = path.match(/release-batches\/(\d+)\/targets\/(\d+)\/complete$/)
-    if (completion) {
+    if (path === '/api/v1/versions/1/release-batches') return reply({ version_id: 1, version_revision: version.revision, system_id: 1, release_frozen: false, legacy_unrecorded: false, coverage_count: new Set(batches.flatMap(b => b.targets.map((t: any) => t.target_id))).size, items: [...batches].reverse(), total: batches.length, page: 1, page_size: 20 })
+    if (path === '/api/v1/versions/1/publish/check') return reply({ passed: true, checks: [{ type: 'R', passed: true, message: '全部需求已验收' }] })
+    if (path === '/api/v1/versions/1/publish' || path === '/api/v1/versions/1/release-coverage') {
       const body = route.request().postDataJSON(); writes.push(body)
-      const b = batches.find(b => b.id === Number(completion[1])), t = b.targets.find((t: any) => t.id === Number(completion[2]))
-      expect(body).toMatchObject({ version_revision: version.revision, batch_revision: b.revision, revision: t.revision })
-      Object.assign(t, { completed_at: body.released_at, recorded_at: stamp, completed_by: 1, operator_name: '发布管理员', notes: body.notes, evidence: body.evidence, revision: t.revision + 1 })
-      b.completed++; b.revision++; b.status = b.completed === b.total ? 'COMPLETED' : 'IN_PROGRESS'; version.revision++
-      if (b.kind === 'INITIAL') { version.release_frozen = true; if (b.status === 'COMPLETED') { version.status = 'RELEASED'; releases.push({ id: 1, version_id: 1, released_at: body.released_at, result: 'SUCCESS', release_notes: b.release_notes }) } }
-      return reply(b)
+      const publishing = path.endsWith('/publish')
+      expect(publishing ? body.revision : body.version_revision).toBe(version.revision)
+      version.revision++
+      const b = { id: batches.length + 1, version_id: 1, system_id: 1, kind: publishing ? 'INITIAL' : 'SUPPLEMENT', status: 'COMPLETED', revision: 1, total: body.target_ids.length, completed: body.target_ids.length, created_at: stamp, updated_at: stamp, release_notes: body.release_notes || body.notes || '已发布记录', targets: body.target_ids.map((id: number) => ({ ...targets[id - 1], id: 100 * (batches.length + 1) + id, target_id: id, active: true, completed_at: body.released_at, recorded_at: stamp, completed_by: 1, operator_name: '发布管理员', notes: body.notes, evidence: body.evidence, revision: 1 })) }
+      if (body.target_ids.length) batches.push(b)
+      if (publishing) { version.status = 'RELEASED'; releases.push({ id: 1, version_id: 1, released_at: body.released_at, result: 'SUCCESS', release_notes: body.release_notes }) }
+      return reply(publishing ? { version_id: 1, release: releases[0] } : b, publishing ? 200 : 201)
     }
     if (path === '/api/v1/target-release-records') {
       let rows = batches.flatMap(b => b.targets.filter((t: any) => t.completed_at).map((t: any) => ({ ...t, version_id: 1, version_no: version.version_no, version_name: version.name, system_id: 1, batch_id: b.id, batch_kind: b.kind })))
@@ -57,45 +52,41 @@ async function fixture(page: Page) {
 }
 
 for (const width of [1440, 375]) {
-  test(`initial coverage and later supplement at ${width}px`, async ({ page }) => {
+  for (const chooseOnPublish of [true, false]) test(`coverage is optional, later multi-select at ${width}px / selected=${chooseOnPublish}`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1000 })
     const data = await fixture(page)
+    data.targets[1].platform = 'PC_WEB'; data.targets[1].name = 'PC 门户 B'
     await page.goto('/#/versions/1')
-    await page.getByRole('button', { name: '创建首次发布计划', exact: true }).click()
-    const plan = page.getByRole('dialog', { name: '创建发布计划', exact: true })
-    await plan.locator('.el-checkbox').filter({ hasText: '小程序 A' }).click()
-    await expect(plan.getByRole('checkbox', { name: /小程序 A/ })).toBeChecked()
-    await plan.locator('.el-checkbox').filter({ hasText: '小程序 B' }).click()
-    await plan.getByText('本批发布说明', { exact: true }).click()
-    await plan.locator('textarea').fill('首次覆盖两个小程序')
-    await plan.getByRole('button', { name: '确认计划', exact: true }).click()
-    await expect(plan).toBeHidden()
+    await expect(page.getByRole('button', { name: '创建首次发布计划', exact: true })).toHaveCount(0)
+    await page.getByRole('button', { name: '发布版本', exact: true }).click()
+    const publish = page.getByRole('dialog', { name: '发布版本', exact: true })
+    if (chooseOnPublish) await publish.locator('.el-checkbox').filter({ hasText: '小程序 A' }).click()
+    await publish.getByRole('textbox', { name: '发布说明', exact: true }).fill('正常发布，可稍后补记覆盖范围')
+    await publish.getByRole('button', { name: '确认发布', exact: true }).click()
+    await expect(publish).toBeHidden()
+    expect(data.version.status).toBe('RELEASED'); expect(data.releases).toHaveLength(1)
+    expect(data.batches).toHaveLength(chooseOnPublish ? 1 : 0)
+    const original = JSON.stringify(data.releases)
     const panel = page.locator('#release-target-batches')
-    await expect(panel).toContainText('未开始 · 0/2')
-    const completion = page.getByRole('dialog', { name: '登记目标实际上线', exact: true })
-    for (const target of ['A', 'B']) {
-      await panel.getByRole('button', { name: `登记 小程序 ${target} 实际上线`, exact: true }).click()
-      await completion.getByRole('button', { name: '确认实际已上线', exact: true }).click()
-      await expect(completion).toBeHidden()
-      if (target === 'A') {
-        await expect(panel).toContainText('进行中 · 1/2')
-        expect(data.version.status).toBe('READY'); expect(data.releases).toHaveLength(0)
-        await expect(page.getByRole('button', { name: '添加需求', exact: true })).toHaveCount(0)
-        await page.screenshot({ path: test.info().outputPath(`partial-${width}.png`), fullPage: true })
-      }
+    await panel.getByRole('button', { name: '补记已发布目标', exact: true }).click()
+    const record = page.getByRole('dialog', { name: '补记已发布目标', exact: true })
+    if (chooseOnPublish) {
+      await expect(record.getByRole('checkbox', { name: /小程序 A/ })).toBeChecked()
+      await expect(record.getByRole('checkbox', { name: /小程序 A/ })).toBeDisabled()
+    } else await record.locator('.el-checkbox').filter({ hasText: '小程序 A' }).click()
+    for (const name of ['PC 门户 B', '小程序 C']) {
+      await record.locator('.el-checkbox').filter({ hasText: name }).click()
+      await expect(record.getByRole('checkbox', { name: new RegExp(name) })).toBeChecked()
     }
-    await expect(panel).toContainText('已完成 · 2/2'); expect(data.releases).toHaveLength(1)
-    await panel.getByRole('button', { name: '新增补发 / 重新发布', exact: true }).click()
-    await plan.locator('.el-checkbox').filter({ hasText: '小程序 C' }).click()
-    await plan.getByText('本批发布说明', { exact: true }).click(); await plan.locator('textarea').fill('隔周补发新小程序')
-    await plan.getByRole('button', { name: '确认计划', exact: true }).click(); await expect(plan).toBeHidden()
-    await panel.getByRole('button', { name: '登记 小程序 C 实际上线', exact: true }).click()
-    await completion.getByRole('button', { name: '确认实际已上线', exact: true }).click(); await expect(completion).toBeHidden()
-    await expect(panel).toContainText('累计覆盖 3 个目标'); expect(data.releases).toHaveLength(1)
+    await page.screenshot({ path: test.info().outputPath(`select-${width}-${chooseOnPublish}.png`), fullPage: true, animations: 'disabled' })
+    await record.getByRole('button', { name: '保存已发布目标', exact: true }).click(); await expect(record).toBeHidden()
+    await expect(panel).toContainText('已记录 3 个小程序 / PC 目标')
+    expect(JSON.stringify(data.releases)).toBe(original)
+    expect(data.writes).toHaveLength(2)
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true)
+    await page.screenshot({ path: test.info().outputPath(`coverage-${width}-${chooseOnPublish}.png`), fullPage: true, animations: 'disabled' })
     await page.goto('/#/releases'); await page.getByText('目标实际记录', { exact: true }).click()
     await expect(page.locator('.record')).toHaveCount(3)
-    await page.screenshot({ path: test.info().outputPath(`records-${width}.png`), fullPage: true })
     expect(data.errors).toEqual([]); expect(data.unexpected).toEqual([])
   })
   test(`system release-target directory at ${width}px`, async ({ page }) => {

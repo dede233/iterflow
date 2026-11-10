@@ -1,5 +1,8 @@
 # IterFlow 当前接口集成指南
 
+
+2026-11-10 本地发布覆盖调整：`POST /versions/{id}/publish` 新增可选 `target_ids`（最多50个同系统启用目标），与原发布同事务记录实际覆盖；不选不阻塞发布，不再要求传统发布原因。`POST /versions/{id}/release-coverage` 用于已发布版本补记，接收 `version_revision`、1–50个唯一 `target_ids`、带时区 `released_at`、可选 `notes/evidence`，历史无系统版本可提供 `system_id`；返回201及 `ReleaseBatchOut`，仅追加已完成的历史存储行，不创建计划或改变主链 Release。权限仍为 `rd.version.publish` 与原版本范围；CAS/重复/跨系统/停用返回409，非法输入422，无权限403。原计划创建/调整/取消/完成写接口已停用并返回409，历史查询保持。未部署；详见[本轮记录](release-coverage-2026-11-10.md)。
+
 2026-11-04 本地新增 `POST /versions/{version_id}/requirements/submit-acceptance`，接收 `version_revision`、1–50 个唯一 `items[{id, revision}]` 及可选 `reason`，返回逐条 `BatchActionResponse`。仅该入口允许已确认的待开发需求直接进入待验收，快捷提交必须说明原因；开发中需求沿用提验门禁。每项重新校验版本/需求范围、有效关联、双 revision、有效人员、当前内容确认与设计状态，同事务写状态、步骤、通知和审计，单项失败回滚且不撤销其他成功项。版本 revision 不因需求进度变化而递增，普通需求状态接口不放宽跳级。详见 [版本集中提交验收](version-submit-acceptance-2026-11-04.md)，该增量已部署TEST（源码`b9b2cc1`），正式未更新；见[部署与在线验收](version-submit-test-deployment-2026-11-04.md)。
 
 2026-11-04 前序增量：`POST /versions`可成对提供`requirement_id`和`requirement_revision`，原子创建并关联现有需求，失败整体回滚。重复版本号返回40934及`data.field=version_no`、`reason=duplicate`，不返回已有版本详情。版本`status`、列表筛选和统计改为关联需求派生进度；旧手动推进/退回版本阶段返回40921，仅取消版本仍由状态接口执行。发布仍通过专用接口重新检查全部需求、内容确认、权限和revision。READY允许经原双revision清单接口调整，仅RELEASED/CANCELED冻结。详见 [版本流程精简](version-workflow-simplification-2026-11-04.md)；已部署 TEST 的事实见 [TEST 部署记录](version-flow-test-deployment-2026-11-04.md)。

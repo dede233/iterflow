@@ -2,7 +2,7 @@ from datetime import date, datetime
 from typing import Self
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, PositiveInt, model_validator
 
 from app.models.enums import ManualVersionStatus, VersionStatus
 from app.schemas.common import PageResult
@@ -93,6 +93,9 @@ class PublishVersionRequest(BaseModel):
     released_at: datetime
     release_notes: str = Field(min_length=1)
     revision: int = Field(ge=1)
+    target_ids: list[PositiveInt] = Field(
+        default_factory=list, max_length=50, title="本次已发布目标 ID"
+    )
     initial_batch_id: int | None = Field(default=None, ge=1, title="首次批次 ID")
     batch_revision: int | None = Field(default=None, ge=1, title="批次修订号")
     legacy_single: bool = Field(default=False, title="明确传统单次发布")
@@ -102,6 +105,8 @@ class PublishVersionRequest(BaseModel):
 
     @model_validator(mode="after")
     def batch_or_legacy(self) -> Self:
+        if len(self.target_ids) != len(set(self.target_ids)):
+            raise ValueError("发布目标不能重复")
         if (self.initial_batch_id is None) != (self.batch_revision is None):
             raise ValueError("首次批次和批次 revision 必须成对提供")
         if self.legacy_single and self.initial_batch_id is not None:

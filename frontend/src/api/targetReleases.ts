@@ -16,10 +16,7 @@ export const createTarget = (systemId: number, payload: S['ReleaseTargetCreate']
 export const updateTarget = (id: number, payload: S['ReleaseTargetUpdate']) => api.patch<ReleaseTarget>(`/systems/release-targets/${id}`, payload, options).then(r => r.data)
 export const versionTargets = (id: number, system_id?: number | null) => api.get<ReleaseTarget[]>(`/versions/${id}/release-targets`, { params: { system_id } }).then(r => r.data)
 export const listBatches = (id: number, page = 1) => api.get<ReleaseBatches>(`/versions/${id}/release-batches`, { params: { page, page_size: 20 } }).then(r => r.data)
-export const createBatch = (id: number, payload: S['ReleaseBatchCreate']) => api.post<ReleaseBatch>(`/versions/${id}/release-batches`, payload, options).then(r => r.data)
-export const adjustBatch = (id: number, batchId: number, payload: S['ReleaseBatchAdjust']) => api.patch<ReleaseBatch>(`/versions/${id}/release-batches/${batchId}/targets`, payload, options).then(r => r.data)
-export const cancelBatch = (id: number, batchId: number, payload: S['ReleaseBatchCancel']) => api.post<ReleaseBatch>(`/versions/${id}/release-batches/${batchId}/cancel`, payload, options).then(r => r.data)
-export const completeTarget = (id: number, batchId: number, rowId: number, payload: S['ReleaseTargetComplete']) => api.post<ReleaseBatch>(`/versions/${id}/release-batches/${batchId}/targets/${rowId}/complete`, payload, options).then(r => r.data)
-export const finalizeBatch = (id: number, batch: ReleaseBatch, revision: number) => api.post(`/versions/${id}/publish`, { revision, initial_batch_id: batch.id, batch_revision: batch.revision, released_at: new Date().toISOString(), release_notes: batch.release_notes }, options)
 export const targetRecords = (params: { page: number; page_size: number; target_id?: number | null; version_id?: number | null }) => api.get<S['TargetReleasePage']>('/target-release-records', { params }).then(r => r.data)
 export const targetRecordOptions = () => api.get<S['TargetReleaseOption'][]>('/target-release-records/options').then(r => r.data)
+
+export const recordCoverage = (id: number, payload: S['ReleaseCoverageCreate']) => api.post<ReleaseBatch>(`/versions/${id}/release-coverage`, payload, options).then(r => r.data)

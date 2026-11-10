@@ -107,6 +107,20 @@ class ReleaseBatchCreate(TargetRequest):
         return self
 
 
+class ReleaseCoverageCreate(TargetRequest):
+    version_revision: int = Field(ge=1, title="版本修订号")
+    system_id: int | None = Field(default=None, ge=1, title="历史版本目标所属业务系统 ID")
+    target_ids: list[PositiveInt] = Field(min_length=1, max_length=50, title="已发布目标 ID")
+    released_at: OffsetISODatetime = Field(title="实际上线时间")
+    notes: str | None = Field(default=None, max_length=5000, title="发布说明")
+    evidence: str | None = Field(default=None, max_length=1000, title="凭证说明或链接")
+
+    @field_validator("target_ids")
+    @classmethod
+    def distinct_targets(cls, value):
+        return ReleaseBatchCreate.distinct_targets(value)
+
+
 class ReleaseBatchAdjust(TargetRequest):
     version_revision: int = Field(ge=1, title="版本修订号")
     revision: int = Field(ge=1, title="批次修订号")

@@ -1,3 +1,7 @@
+# 当前上线准备 · 2026-11-10
+
+当前候选目标`mysql57_0016`、35张表和110个触发器，TEST已部署并由用户验收。正式最近验证`5401215/mysql57_0012`，本轮仅准备，未切环境。已有正式库须连续0012→0016、补五张新表最小DML并做真实备份隔离演练；完整[升级和回退清单](../../docs/production-preparation-2026-11-10.md)。下列按日期记录保留历史事实，空库初始化流程不能用于已有数据库。
+
 2026-11-09 多目标发布开发目标追加 `mysql57_0015`：35 张表、110 个触发器，三张新增表须配套最小 DML 授权；只在新建隔离库验证，尚未部署。升级和拒绝有损降级边界见 [实施记录](../../docs/multi-target-release-2026-11-09.md)。下段为上一候选的历史事实。
 
 # 迭程 IterFlow：MySQL 5.7 空库部署包
@@ -146,4 +150,4 @@ Apple Silicon 测试使用独立 QEMU x86_64 VM；旧 ARM VM + amd64 用户态�
 全员开发完成门禁见 `docs/development-completion.md`。既有人员不自动确认；每条有效需求至少一名开发人员且全部本人确认后才可完成及发布。2026-10-11 已构建并验证源 `2b37509` 的 amd64 包，实际服务器从 mysql57_0002 追加升级至 mysql57_0005；完整证据与保留数据、双份备份边界见线上升级记录。
 
 
-升级包含新增表时，必须同步 `runtime-grants.sql` 中对应表级授权（替换为目标数据库及既有运行账号），再以运行账号执行就绪检查。`mysql57_0014` 新增 `sys_announcement` 与 `sys_announcement_read` 的 SELECT/INSERT/UPDATE/DELETE；不得授予整库、DDL 或 GRANT 权限。迁移账号的 preflight 通过不代表运行账号可访问新表。
+升级包含新增表时，必须同步 `runtime-grants.sql` 中对应表级授权（替换为目标数据库及既有运行账号），再以运行账号执行就绪检查。`mysql57_0014` 的 `sys_announcement`、`sys_announcement_read` 和 `mysql57_0015` 的 `sys_release_target`、`rd_release_batch`、`rd_release_batch_target` 共五表均需 SELECT/INSERT/UPDATE/DELETE；`mysql57_0016` 只扩展支付宝平台约束，不新增权限；不得授予整库、DDL 或 GRANT 权限。迁移账号的 preflight 通过不代表运行账号可访问新表。

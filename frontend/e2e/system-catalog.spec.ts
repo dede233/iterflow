@@ -81,7 +81,7 @@ for (const width of [1440, 375]) {
     await expect(page.getByRole('dialog')).toHaveCount(0)
     await expect(page.getByRole('button', { name: /模块/ })).toHaveCount(0)
     await expect(page.getByRole('columnheader', { name: '模块', exact: true })).toHaveCount(0)
-    // Existing module data stays usable by feedback; only the management UI is hidden.
+    // Historical module rows remain, but neither management nor feedback exposes selectors.
     modules.push({ ...systems[0], id: 1, system_id: 1, code: 'FEEDBACK', name: '反馈中心' })
     await page.reload()
     await expect(page.getByRole('button', { name: '编辑系统 迭程' })).toBeVisible()
@@ -94,9 +94,8 @@ for (const width of [1440, 375]) {
     await systemSelect.click()
     await expect(page.getByRole('option', { name: '迭程' })).toBeVisible()
     await page.getByRole('option', { name: '迭程' }).click()
-    const moduleSelect = page.locator('.el-form-item').filter({ hasText: '所属模块' }).locator('.el-select')
-    await moduleSelect.click()
-    await expect(page.getByRole('option', { name: '反馈中心' })).toBeVisible()
+    await expect(page.locator('.el-form-item').filter({ hasText: '所属模块' })).toHaveCount(0)
+    expect(modules).toHaveLength(1)
 
     await page.goto('/#/admin/systems')
     await page.getByRole('button', { name: '编辑系统 迭程' }).click()

@@ -230,7 +230,7 @@ beforeEach(() => {
 describe('detail views enforce permission-aware loading in mounted components', () => {
   it('preserves historical feedback results without including them in ordinary edits', async () => {
     permissionSet('rd.feedback.view', 'rd.feedback.edit')
-    mocks.getFeedback.mockResolvedValue({ ...feedback, expected_result: '原期望内容', actual_result: '原实际内容' })
+    mocks.getFeedback.mockResolvedValue({ ...feedback, expected_result: '原期望内容', actual_result: '原实际内容', system_id: 1, module_id: 2 })
     mocks.updateFeedback.mockResolvedValue(feedback)
     const wrapper = mount(FeedbackDetailView, { global: { stubs, directives: { loading: {} } } })
     await flushPromises()
@@ -246,6 +246,8 @@ describe('detail views enforce permission-aware loading in mounted components', 
     const payload = mocks.updateFeedback.mock.calls.at(-1)![1]
     expect(payload).not.toHaveProperty('expected_result')
     expect(payload).not.toHaveProperty('actual_result')
+    expect(payload).not.toHaveProperty('system_id')
+    expect(payload).not.toHaveProperty('module_id')
     wrapper.unmount()
   })
   it('shows feedback reference names without directory permissions in full and embedded detail', async () => {
@@ -264,7 +266,7 @@ describe('detail views enforce permission-aware loading in mounted components', 
       await flushPromises()
       expect(wrapper.text()).toContain('提交人张三 <img src=x>')
       expect(wrapper.text()).toContain('中文历史系统')
-      expect(wrapper.text()).toContain('中文历史模块')
+      expect(wrapper.text()).not.toContain('中文历史模块')
       expect(wrapper.text()).not.toContain('#13')
       expect(wrapper.find('img[src="x"]').exists()).toBe(false)
       expect(mocks.listSystems).not.toHaveBeenCalled()

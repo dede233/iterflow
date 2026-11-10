@@ -26,7 +26,6 @@ import {
   feedbackUrgencyLabel,
 } from '@/constants/feedback'
 import type {
-  BusinessModuleItem,
   BusinessSystemItem,
   Feedback,
   FeedbackListParams,
@@ -45,7 +44,6 @@ const createDialog = ref(false)
 const detailDrawer = ref(false)
 const activeFeedbackId = ref<number | null>(null)
 const systems = ref<BusinessSystemItem[]>([])
-const modules = ref<BusinessModuleItem[]>([])
 const canReadSystems = computed(() => can(['sys.system.view', 'sys.system.manage']))
 
 const filters = reactive({
@@ -54,14 +52,9 @@ const filters = reactive({
   feedback_type: '' as FeedbackListParams['feedback_type'],
   urgency: '' as FeedbackListParams['urgency'],
   system_id: null as number | null,
-  module_id: null as number | null,
   page: 1,
   page_size: 20,
 })
-
-const moduleOptions = computed(() =>
-  filters.system_id ? modules.value.filter((m) => m.system_id === filters.system_id) : [],
-)
 
 let requestSequence = 0
 let disposed = false
@@ -69,7 +62,7 @@ onBeforeUnmount(() => { disposed = true; requestSequence++ })
 
 async function load(): Promise<void> {
   const q = queryState.applied()
-  const current = { page: Number(q.page ?? 1), page_size: Number(q.page_size ?? 20), keyword: q.keyword ?? '', status: q.status as FeedbackListParams['status'], feedback_type: q.feedback_type as FeedbackListParams['feedback_type'], urgency: q.urgency as FeedbackListParams['urgency'], system_id: q.system_id ? Number(q.system_id) : null, module_id: q.module_id ? Number(q.module_id) : null }
+  const current = { page: Number(q.page ?? 1), page_size: Number(q.page_size ?? 20), keyword: q.keyword ?? '', status: q.status as FeedbackListParams['status'], feedback_type: q.feedback_type as FeedbackListParams['feedback_type'], urgency: q.urgency as FeedbackListParams['urgency'], system_id: q.system_id ? Number(q.system_id) : null }
 
   if (disposed) return
   const sequence = ++requestSequence
@@ -84,7 +77,6 @@ async function load(): Promise<void> {
       feedback_type: current.feedback_type || undefined,
       urgency: current.urgency || undefined,
       system_id: current.system_id ?? undefined,
-      module_id: current.module_id ?? undefined,
     })
     if (sequence !== requestSequence) return
     rows.value = page.items
@@ -104,10 +96,6 @@ function applyFilters(): void {
 function resetFilters(): void {
   filterDrawer.value = false
   void queryState.reset()
-}
-
-function onSystemChange(): void {
-  filters.module_id = null
 }
 
 function systemName(id: number | null | undefined): string {
@@ -137,7 +125,6 @@ onMounted(async () => {
       const data = await listSystems()
       if (disposed) return
       systems.value = data.systems
-      modules.value = data.modules
     } catch {
       // System dictionary is optional for filtering; ignore if unavailable.
     }
@@ -154,7 +141,6 @@ const queryState = useListQuery({
     filters.feedback_type = (q.feedback_type ?? '') as typeof filters.feedback_type
     filters.urgency = (q.urgency ?? '') as typeof filters.urgency
     filters.system_id = q.system_id ? Number(q.system_id) : null
-    filters.module_id = q.module_id ? Number(q.module_id) : null
   },
   load, invalidate: () => { requestSequence++ },
 })
@@ -208,14 +194,8 @@ const queryState = useListQuery({
           clearable
           placeholder="全部"
           style="width: 140px"
-          @change="onSystemChange"
         >
           <el-option v-for="s in systems" :key="s.id" :label="s.name" :value="s.id" />
-        </el-select>
-      </el-form-item>
-      <el-form-item v-if="canReadSystems && filters.system_id" label="模块">
-        <el-select v-model="filters.module_id" clearable placeholder="全部" style="width: 140px">
-          <el-option v-for="m in moduleOptions" :key="m.id" :label="m.name" :value="m.id" />
         </el-select>
       </el-form-item>
       <el-form-item>
@@ -311,13 +291,8 @@ const queryState = useListQuery({
           </el-select>
         </el-form-item>
         <el-form-item v-if="canReadSystems" label="系统">
-          <el-select v-model="filters.system_id" clearable placeholder="全部" style="width: 100%" @change="onSystemChange">
+          <el-select v-model="filters.system_id" clearable placeholder="全部" style="width: 100%">
             <el-option v-for="s in systems" :key="s.id" :label="s.name" :value="s.id" />
-          </el-select>
-        </el-form-item>
-        <el-form-item v-if="canReadSystems && filters.system_id" label="模块">
-          <el-select v-model="filters.module_id" clearable placeholder="全部" style="width: 100%">
-            <el-option v-for="m in moduleOptions" :key="m.id" :label="m.name" :value="m.id" />
           </el-select>
         </el-form-item>
       </el-form>

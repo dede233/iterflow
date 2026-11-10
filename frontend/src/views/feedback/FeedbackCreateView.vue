@@ -10,7 +10,7 @@ import { FEEDBACK_TYPES, FEEDBACK_URGENCIES } from '@/constants/feedback'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import PeopleSelector from '@/components/PeopleSelector.vue'
-import type { BusinessModuleItem, BusinessSystemItem } from '@/types/domain'
+import type { BusinessSystemItem } from '@/types/domain'
 
 const router = useRouter()
 const props = withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
@@ -18,7 +18,6 @@ const emit = defineEmits<{ cancel: []; created: [id: number] }>()
 const { can } = usePermission()
 const saving = ref(false)
 const systems = ref<BusinessSystemItem[]>([])
-const modules = ref<BusinessModuleItem[]>([])
 const canReadSystems = computed(() => can(['sys.system.view', 'sys.system.manage']))
 const fileList = ref<UploadUserFile[]>([])
 const recipientIds = ref<number[]>([])
@@ -28,18 +27,9 @@ const form = reactive({
   feedback_type: 'SYSTEM_ISSUE' as (typeof FEEDBACK_TYPES)[number]['value'],
   urgency: 'NORMAL' as (typeof FEEDBACK_URGENCIES)[number]['value'],
   system_id: null as number | null,
-  module_id: null as number | null,
   description: '',
   reproduce_steps: '',
 })
-
-const moduleOptions = computed(() =>
-  form.system_id ? modules.value.filter((m) => m.system_id === form.system_id) : [],
-)
-
-function onSystemChange(): void {
-  form.module_id = null
-}
 
 function cancel(): void {
   if (props.embedded) emit('cancel')
@@ -67,7 +57,6 @@ async function submit(): Promise<void> {
       feedback_type: form.feedback_type,
       urgency: form.urgency,
       system_id: form.system_id ?? null,
-      module_id: form.module_id ?? null,
       description: form.description.trim(),
       recipient_ids: recipientIds.value,
       reproduce_steps: form.reproduce_steps.trim() || null,
@@ -90,9 +79,8 @@ onMounted(async () => {
     try {
       const data = await listSystems()
       systems.value = data.systems
-      modules.value = data.modules
     } catch {
-      // Optional; feedback can be submitted without system/module.
+      // Optional; feedback can be submitted without a system.
     }
   }
 })
@@ -124,20 +112,14 @@ onMounted(async () => {
           </el-radio-group>
         </el-form-item>
         <template v-if="canReadSystems">
-          <el-form-item label="所属系统">
+          <el-form-item label="所属系统" class="span-2">
             <el-select
               v-model="form.system_id"
               clearable
               placeholder="可选"
               style="width: 100%"
-              @change="onSystemChange"
             >
               <el-option v-for="s in systems" :key="s.id" :label="s.name" :value="s.id" />
-            </el-select>
-          </el-form-item>
-          <el-form-item v-if="form.system_id" label="所属模块">
-            <el-select v-model="form.module_id" clearable placeholder="可选" style="width: 100%">
-              <el-option v-for="m in moduleOptions" :key="m.id" :label="m.name" :value="m.id" />
             </el-select>
           </el-form-item>
         </template>

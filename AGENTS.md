@@ -1,5 +1,17 @@
 # AGENTS.md
 
+2026-11-10 用户授权小程序品牌管理正式上线：重新核对master无漂移、no-ff合并同步双远端并完成master自身八项CI，再备份/真实数据隔离演练及短暂维护应用切换。冻结候选d6cfb81（与已验收TEST af3445d产品tree一致），保持mysql57_0016，无迁移/seed/GRANT或真实回库。保留TEST及全部数据、附件、账号会话、公告审计、逐服务SMTP/JWT与恢复配置；正式只读验收，不新增九品牌或自动发布公告，不创建tag/Release。此授权替代上一阶段仅准备限制。执行与最终结果入口见 `docs/grouped-mini-program-production-deployment-2026-11-10.md`。
+
+2026-11-10 用户确认小程序按品牌统一管理TEST验收通过，授权本批上线准备：推送codex/grouped-mini-program-targets候选运行同SHA八项CI、修复门禁并直接核对GitHub/Gitee master无漂移，更新升级/兼容/回退清单。仅准备，不合并master、不创建tag/Release、不切换任何环境或连接真实数据库。正式既有验证0ef3e0d/mysql57_0016，TEST af3445d/mysql57_0016；本轮不新增迁移/权限，不继续九品牌正式录入。最终结果及候选见 `docs/grouped-mini-program-production-preparation-2026-11-10.md` 指定交付目录。
+
+2026-11-10 小程序品牌管理已部署保留TEST：API/worker/Web冻结af3445d，数据库仍mysql57_0016。v3 preflight/prepare/deploy/verify、35表停写全行/110触发器/附件与账号会话保留、逐服务SMTP/运行配置及正式保护PASS；63秒记录维护窗口，无回退。合成品牌目标6/7、需求38/版本31/唯一Release15验证微信首次发布、支付宝后补、独立时间、旧历史/CAS/权限及桌面375px通过。首次两项部署身份guard失败在维护前修正，记录保留。正式0ef3e0d未变且未连接正式库，无迁移/权限修改/回库/推送/合并/tag/Release；九品牌真实录入未继续。执行及回退边界见 `docs/grouped-mini-program-test-deployment-2026-11-10.md`，等待用户验收。
+
+2026-11-10 用户授权将小程序品牌统一管理部署保留TEST，验证微信/支付宝独立选择、各自发布时间与后续补记，正式环境不变。冻结af3445d，配套API/worker/Web，数据库保持mysql57_0016，无迁移/seed/权限修改/真实回库。先核对两环境与残留任务、备份旧应用/TEST数据库及附件/配置，切换前后完整数据证明，再以合成账号/合成品牌在线验收；保留全部既有记录与SMTP配置。宝塔只正常文件上传和短控制命令；不推送/合并/tag/Release，不在正式录入剩余目标。执行见 `docs/grouped-mini-program-test-deployment-2026-11-10.md`。
+
+2026-11-10 用户纠正充电宝用户端目标模型，并确认同品牌下分别勾选微信/支付宝、保留各自发布时间。本地完成小程序品牌统一表单/列表、分平台发布选择和原子品牌保存接口；复用平台记录及快照，无迁移/新权限，旧ID与发布历史保留。511前端、PG品牌9+原发布18、双MySQL各27、11合成浏览器与2真实本机页面、Docker及静态/契约/构建通过。只用本任务隔离资源，不自动部署/推送/合并；正式仅在纠正前按正常界面创建开电微信一条，其余16平台暂停。详情及下一步TEST验收见 `docs/grouped-mini-program-targets-2026-11-10.md`。
+
+2026-11-10 上一批累计增量正式上线已完成：master `0acf583` 双远端一致、同SHA八项CI通过，正式冻结 `0ef3e0d` / `mysql57_0016`；备份、隔离演练、数据/附件/配置保留和只读验收通过，维护219.75秒。TEST恢复并保留 `80c322d` / `mysql57_0016`，无tag/Release。实际结果见 `docs/production-deployment-2026-11-10.md` 所指交付目录 `deployment-result.json`；下方授权和准备记录为历史阶段，不代表本次品牌增量已部署。
+
 2026-11-10 用户授权累计增量正式上线：重新核对master无漂移，合并同步GitHub/Gitee并完成master同SHA八项CI，再进行正式备份、隔离0012→0016演练及短暂维护切换，保留TEST、全部旧数据/附件/配置。冻结产品0ef3e0d（已验收TEST80c322d的运行代码一致）；允许本批必要五表最小runtime DML与追加迁移，不seed、不导入TEST数据、不自动恢复/降级真实库。DDL开始后失败保持停写前向处置，不直接回旧应用；不创建tag/Release或自动发布更新公告。执行及结果见`docs/production-deployment-2026-11-10.md`。本授权替代上一轮仅准备限制，不代表步骤已执行。
 
 

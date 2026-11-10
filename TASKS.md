@@ -1,5 +1,17 @@
 # IterFlow Tasks
 
+## 2026-11-10 小程序品牌管理（TEST验收及候选八项通过，正式上线执行中）
+
+- [x] 一个品牌配置微信/支付宝，发布和补记分别选择平台，保留各自时间。
+- [x] 原子保存及完整成员revision校验，旧ID/历史/唯一Release/通知保留，无迁移或新权限。
+- [x] 511前端、PG与双MySQL、11合成浏览器/2本机真实页面、Docker与静态/构建/契约验证通过，失败和修正留档。
+- [x] 配套部署TEST af3445d，数据/附件/配置保留及微信先发布、支付宝后补、独立时间、权限/CAS、桌面/375px验收通过；见 `docs/grouped-mini-program-test-deployment-2026-11-10.md`。
+- [x] 用户确认TEST验收通过。
+- 本批候选同SHA八项CI与双远端master无漂移核查，最终状态以 `docs/grouped-mini-program-production-preparation-2026-11-10.md` 指定交付回执为准，避免为写入自身SHA循环提交。
+- 本轮授权合并及正式应用升级，实际master八项、备份/隔离演练/切换与保留结果见 `docs/grouped-mini-program-production-deployment-2026-11-10.md` 指定交付回执。
+- [ ] 九品牌真实录入仍不在本次范围；正式纠正前仅添加开电微信一条，其余16平台未添加。
+- 记录：`docs/grouped-mini-program-targets-2026-11-10.md`。上一批累计增量已正式上线0ef3e0d/mysql57_0016，master0acf583双远端与八项CI通过；以下旧准备清单为历史。
+
 2026-11-10 用户已验收最新TEST，累计增量上线准备进入八项CI与master无漂移核查；正式目标mysql57_0012→0016、五张新表最小权限。仅推送准备分支，不合并/部署或连接真实数据库；完整范围、升级和回退清单及同SHA证据入口见 `docs/production-preparation-2026-11-10.md`。
 
 2026-11-10 本地移除反馈新建/编辑/详情及桌面和手机筛选的模块入口，所属系统全宽；旧URL模块条件不再生效。普通编辑保留旧模块，仅换系统时清空，后端及历史数据不变。509单测、8浏览器、类型/构建/预算PASS；未部署、推送、合并或操作数据库，详情和首轮定位修正见 `docs/feedback-module-removal-2026-11-10.md`。

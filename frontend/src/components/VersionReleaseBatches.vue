@@ -52,7 +52,7 @@ async function submit() {
 }
 </script>
 <template>
-  <SectionCard id="release-target-batches" title="已发布目标" :description="`已记录 ${state?.coverage_count ?? 0} 个小程序 / PC 目标；仅管理发布覆盖范围，不影响版本上线状态。`">
+  <SectionCard id="release-target-batches" title="已发布目标" :description="`已记录 ${state?.coverage_count ?? 0} 个平台 / PC 站点；仅管理发布覆盖范围，不影响版本上线状态。`">
     <template #actions><el-button v-if="writable && state && !failed" type="primary" @click="open">补记已发布目标</el-button></template>
     <ErrorState v-if="failed" title="发布目标记录加载失败" retry-label="重新加载" @retry="load" />
     <div v-else v-loading="loading">
@@ -63,7 +63,7 @@ async function submit() {
       </div>
       <p v-if="state && state.total > 20" class="muted">以下展示本页登记的目标，可翻页查看其他发布记录。</p>
       <details v-for="batch in state?.items" :key="batch.id" class="batch">
-        <summary>{{ formatLocalDateTime(batch.created_at) }} · {{ batch.targets.filter(t => t.completed_at).length }} 个已发布目标 · {{ batch.targets.filter(t => t.completed_at).map(t => t.name).join('、') }}<span v-if="batch.status !== 'COMPLETED'">（旧计划历史）</span></summary>
+        <summary>{{ formatLocalDateTime(batch.created_at) }} · {{ batch.targets.filter(t => t.completed_at).length }} 个已发布目标 · {{ batch.targets.filter(t => t.completed_at).map(t => `${t.name}（${platformLabel[t.platform]}）`).join('、') }}<span v-if="batch.status !== 'COMPLETED'">（旧计划历史）</span></summary>
         <div v-for="target in batch.targets" :key="target.id" class="target-row">
           <strong>{{ target.name }} · {{ platformLabel[target.platform] }}</strong>
           <template v-if="target.completed_at"><span class="success">已发布 · {{ formatLocalDateTime(target.completed_at) }}</span><small class="muted">登记人：{{ target.operator_name }} · 登记于 {{ formatLocalDateTime(target.recorded_at) }}</small><p v-if="target.notes" class="notes">{{ target.notes }}</p><p v-if="target.evidence" class="notes">凭证：{{ target.evidence }}</p></template>

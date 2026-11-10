@@ -406,7 +406,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-      description: ''
+      description: 已有多平台品牌必须使用品牌原子编辑接口，旧单平台写入口返回409；保留独立旧目标及PC编辑。
   /versions/{version_id}/release-targets:
     get:
       tags:
@@ -6195,6 +6195,136 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
       description: 需要 sys.file.delete。仅允许删除未绑定 AttachmentRelation 的 standalone FileObject；已绑定业务对象的文件返回
         409。
+  /systems/{system_id}/mini-program-targets:
+    post:
+      tags:
+      - TargetRelease
+      summary: 新增小程序品牌及平台
+      operationId: create_mini_program_target_api_v1_systems__system_id__mini_program_targets_post
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: system_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+          title: System Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MiniProgramTargetCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ReleaseTargetOut'
+                title: Response Create Mini Program Target Api V1 Systems  System Id  Mini Program Targets
+                  Post
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 业务状态或 revision 冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: 沿用 sys.system.manage 和 ALL 数据范围；以业务系统锁序列化，一次原子保存品牌下微信/支付宝平台。编辑须提交全部成员 ID/revision；平台停用保留历史，不重写快照或发布记录。编码前缀不超过57字符，平台编码使用
+        _WX/_ALIPAY 后缀。
+  /systems/mini-program-targets/{target_id}:
+    patch:
+      tags:
+      - TargetRelease
+      summary: 原子编辑小程序品牌及平台
+      operationId: update_mini_program_target_api_v1_systems_mini_program_targets__target_id__patch
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: target_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+          title: Target Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MiniProgramTargetUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ReleaseTargetOut'
+                title: Response Update Mini Program Target Api V1 Systems Mini Program Targets  Target
+                  Id  Patch
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 业务状态或 revision 冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: 沿用 sys.system.manage 和 ALL 数据范围；以业务系统锁序列化，一次原子保存品牌下微信/支付宝平台。编辑须提交全部成员 ID/revision；平台停用保留历史，不重写快照或发布记录。编码前缀不超过57字符，平台编码使用
+        _WX/_ALIPAY 后缀。
 components:
   schemas:
     AddRequirementRequest:
@@ -10618,6 +10748,105 @@ components:
       - created_at
       - detail
       title: WorkflowRecord
+    MiniProgramPlatformInput:
+      properties:
+        platform:
+          type: string
+          enum:
+          - WECHAT_MINI_PROGRAM
+          - ALIPAY_MINI_PROGRAM
+          title: 小程序平台
+        app_id:
+          anyOf:
+          - type: string
+            maxLength: 64
+          - type: 'null'
+          title: 小程序 AppID
+        enabled:
+          type: boolean
+          title: 是否启用该平台
+          default: true
+      additionalProperties: false
+      type: object
+      required:
+      - platform
+      title: MiniProgramPlatformInput
+    TargetMemberRevision:
+      properties:
+        id:
+          type: integer
+          minimum: 1.0
+          title: 平台目标 ID
+        revision:
+          type: integer
+          minimum: 1.0
+          title: 平台修订号
+      additionalProperties: false
+      type: object
+      required:
+      - id
+      - revision
+      title: TargetMemberRevision
+    MiniProgramTargetCreate:
+      properties:
+        code:
+          type: string
+          maxLength: 57
+          minLength: 1
+          title: 品牌目标编码
+        name:
+          type: string
+          maxLength: 100
+          minLength: 1
+          title: 小程序品牌名称
+        platforms:
+          items:
+            $ref: '#/components/schemas/MiniProgramPlatformInput'
+          type: array
+          maxItems: 2
+          minItems: 1
+          title: 微信及支付宝配置
+      additionalProperties: false
+      type: object
+      required:
+      - code
+      - name
+      - platforms
+      title: MiniProgramTargetCreate
+    MiniProgramTargetUpdate:
+      properties:
+        code:
+          type: string
+          maxLength: 57
+          minLength: 1
+          title: 品牌目标编码
+        name:
+          type: string
+          maxLength: 100
+          minLength: 1
+          title: 小程序品牌名称
+        platforms:
+          items:
+            $ref: '#/components/schemas/MiniProgramPlatformInput'
+          type: array
+          maxItems: 2
+          minItems: 1
+          title: 微信及支付宝配置
+        members:
+          items:
+            $ref: '#/components/schemas/TargetMemberRevision'
+          type: array
+          maxItems: 2
+          minItems: 1
+          title: 编辑时的完整平台成员与修订号
+      additionalProperties: false
+      type: object
+      required:
+      - code
+      - name
+      - platforms
+      - members
+      title: MiniProgramTargetUpdate
   securitySchemes:
     bearerAuth:
       type: http

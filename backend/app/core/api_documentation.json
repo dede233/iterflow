@@ -3674,6 +3674,69 @@
           "title": "详细信息"
         }
       }
+    },
+    "MiniProgramPlatformInput": {
+      "title": "MiniProgramPlatformInput",
+      "properties": {
+        "platform": {
+          "title": "小程序平台"
+        },
+        "app_id": {
+          "title": "小程序 AppID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "enabled": {
+          "title": "是否启用该平台"
+        }
+      }
+    },
+    "TargetMemberRevision": {
+      "title": "TargetMemberRevision",
+      "properties": {
+        "id": {
+          "title": "平台目标 ID"
+        },
+        "revision": {
+          "title": "平台修订号"
+        }
+      }
+    },
+    "MiniProgramTargetCreate": {
+      "title": "MiniProgramTargetCreate",
+      "properties": {
+        "code": {
+          "title": "品牌目标编码"
+        },
+        "name": {
+          "title": "小程序品牌名称"
+        },
+        "platforms": {
+          "title": "微信及支付宝配置",
+          "items": {}
+        }
+      }
+    },
+    "MiniProgramTargetUpdate": {
+      "title": "MiniProgramTargetUpdate",
+      "properties": {
+        "code": {
+          "title": "品牌目标编码"
+        },
+        "name": {
+          "title": "小程序品牌名称"
+        },
+        "platforms": {
+          "title": "微信及支付宝配置",
+          "items": {}
+        },
+        "members": {
+          "title": "编辑时的完整平台成员与修订号",
+          "items": {}
+        }
+      }
     }
   },
   "paths": {
@@ -3726,7 +3789,7 @@
           "TargetRelease"
         ],
         "summary": "编辑或停用发布目标",
-        "description": ""
+        "description": "已有多平台品牌必须使用品牌原子编辑接口，旧单平台写入口返回409；保留独立旧目标及PC编辑。"
       }
     },
     "/versions/{version_id}/release-targets": {
@@ -4654,6 +4717,24 @@
         ],
         "summary": "删除附件",
         "description": "需要 sys.file.delete。仅允许删除未绑定 AttachmentRelation 的 standalone FileObject；已绑定业务对象的文件返回 409。"
+      }
+    },
+    "/systems/{system_id}/mini-program-targets": {
+      "post": {
+        "tags": [
+          "TargetRelease"
+        ],
+        "summary": "新增小程序品牌及平台",
+        "description": "沿用 sys.system.manage 和 ALL 数据范围；以业务系统锁序列化，一次原子保存品牌下微信/支付宝平台。编辑须提交全部成员 ID/revision；平台停用保留历史，不重写快照或发布记录。编码前缀不超过57字符，平台编码使用 _WX/_ALIPAY 后缀。"
+      }
+    },
+    "/systems/mini-program-targets/{target_id}": {
+      "patch": {
+        "tags": [
+          "TargetRelease"
+        ],
+        "summary": "原子编辑小程序品牌及平台",
+        "description": "沿用 sys.system.manage 和 ALL 数据范围；以业务系统锁序列化，一次原子保存品牌下微信/支付宝平台。编辑须提交全部成员 ID/revision；平台停用保留历史，不重写快照或发布记录。编码前缀不超过57字符，平台编码使用 _WX/_ALIPAY 后缀。"
       }
     }
   }

@@ -6,6 +6,8 @@ from app.api.openapi import api_error_responses
 from app.core.database import get_db
 from app.models.entities import User
 from app.schemas.target_release import (
+    MiniProgramTargetCreate,
+    MiniProgramTargetUpdate,
     ReleaseBatchAdjust,
     ReleaseBatchCancel,
     ReleaseBatchCreate,
@@ -62,6 +64,35 @@ def update_target(
     user: User = Depends(require_permission("sys.system.manage")),
 ):
     return TargetReleaseService(db).update_target(target_id, payload, user.id)
+
+
+@router.post(
+    "/systems/{system_id}/mini-program-targets",
+    response_model=list[ReleaseTargetOut],
+    status_code=201,
+    responses=errors,
+)
+def create_mini_program_target(
+    payload: MiniProgramTargetCreate,
+    system_id: int = Path(ge=1),
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("sys.system.manage")),
+):
+    return TargetReleaseService(db).save_mini_program(system_id, payload, user.id)
+
+
+@router.patch(
+    "/systems/mini-program-targets/{target_id}",
+    response_model=list[ReleaseTargetOut],
+    responses=errors,
+)
+def update_mini_program_target(
+    payload: MiniProgramTargetUpdate,
+    target_id: int = Path(ge=1),
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("sys.system.manage")),
+):
+    return TargetReleaseService(db).save_mini_program(None, payload, user.id, target_id)
 
 
 @router.get(

@@ -98,7 +98,10 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** 编辑或停用发布目标 */
+        /**
+         * 编辑或停用发布目标
+         * @description 已有多平台品牌必须使用品牌原子编辑接口，旧单平台写入口返回409；保留独立旧目标及PC编辑。
+         */
         patch: operations["update_target_api_v1_systems_release_targets__target_id__patch"];
         trace?: never;
     };
@@ -1861,6 +1864,46 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/systems/{system_id}/mini-program-targets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 新增小程序品牌及平台
+         * @description 沿用 sys.system.manage 和 ALL 数据范围；以业务系统锁序列化，一次原子保存品牌下微信/支付宝平台。编辑须提交全部成员 ID/revision；平台停用保留历史，不重写快照或发布记录。编码前缀不超过57字符，平台编码使用 _WX/_ALIPAY 后缀。
+         */
+        post: operations["create_mini_program_target_api_v1_systems__system_id__mini_program_targets_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/systems/mini-program-targets/{target_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * 原子编辑小程序品牌及平台
+         * @description 沿用 sys.system.manage 和 ALL 数据范围；以业务系统锁序列化，一次原子保存品牌下微信/支付宝平台。编辑须提交全部成员 ID/revision；平台停用保留历史，不重写快照或发布记录。编码前缀不超过57字符，平台编码使用 _WX/_ALIPAY 后缀。
+         */
+        patch: operations["update_mini_program_target_api_v1_systems_mini_program_targets__target_id__patch"];
         trace?: never;
     };
 }
@@ -4182,6 +4225,48 @@ export interface components {
             detail: {
                 [key: string]: unknown;
             };
+        };
+        /** MiniProgramPlatformInput */
+        MiniProgramPlatformInput: {
+            /**
+             * 小程序平台
+             * @enum {string}
+             */
+            platform: "WECHAT_MINI_PROGRAM" | "ALIPAY_MINI_PROGRAM";
+            /** 小程序 AppID */
+            app_id?: string | null;
+            /**
+             * 是否启用该平台
+             * @default true
+             */
+            enabled: boolean;
+        };
+        /** TargetMemberRevision */
+        TargetMemberRevision: {
+            /** 平台目标 ID */
+            id: number;
+            /** 平台修订号 */
+            revision: number;
+        };
+        /** MiniProgramTargetCreate */
+        MiniProgramTargetCreate: {
+            /** 品牌目标编码 */
+            code: string;
+            /** 小程序品牌名称 */
+            name: string;
+            /** 微信及支付宝配置 */
+            platforms: components["schemas"]["MiniProgramPlatformInput"][];
+        };
+        /** MiniProgramTargetUpdate */
+        MiniProgramTargetUpdate: {
+            /** 品牌目标编码 */
+            code: string;
+            /** 小程序品牌名称 */
+            name: string;
+            /** 微信及支付宝配置 */
+            platforms: components["schemas"]["MiniProgramPlatformInput"][];
+            /** 编辑时的完整平台成员与修订号 */
+            members: components["schemas"]["TargetMemberRevision"][];
         };
     };
     responses: never;
@@ -11015,6 +11100,148 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或 revision 冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_mini_program_target_api_v1_systems__system_id__mini_program_targets_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                system_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MiniProgramTargetCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseTargetOut"][];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或 revision 冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_mini_program_target_api_v1_systems_mini_program_targets__target_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                target_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MiniProgramTargetUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseTargetOut"][];
+                };
             };
             /** @description 未登录或登录凭证不可用 */
             401: {

@@ -1,5 +1,13 @@
 # DEVELOPMENT.md
 
+2026-11-10 用户授权小程序品牌管理正式上线：重新核对master无漂移、no-ff合并同步双远端并完成master自身八项CI，再备份/真实数据隔离演练及短暂维护应用切换。冻结候选d6cfb81（与已验收TEST af3445d产品tree一致），保持mysql57_0016，无迁移/seed/GRANT或真实回库。保留TEST及全部数据、附件、账号会话、公告审计、逐服务SMTP/JWT与恢复配置；正式只读验收，不新增九品牌或自动发布公告，不创建tag/Release。此授权替代上一阶段仅准备限制。执行与最终结果入口见 `docs/grouped-mini-program-production-deployment-2026-11-10.md`。
+
+2026-11-10 用户确认小程序按品牌统一管理TEST验收通过，授权本批上线准备：推送codex/grouped-mini-program-targets候选运行同SHA八项CI、修复门禁并直接核对GitHub/Gitee master无漂移，更新升级/兼容/回退清单。仅准备，不合并master、不创建tag/Release、不切换任何环境或连接真实数据库。正式既有验证0ef3e0d/mysql57_0016，TEST af3445d/mysql57_0016；本轮不新增迁移/权限，不继续九品牌正式录入。最终结果及候选见 `docs/grouped-mini-program-production-preparation-2026-11-10.md` 指定交付目录。
+
+2026-11-10 小程序品牌管理已部署保留TEST：API/worker/Web冻结af3445d，数据库仍mysql57_0016。v3 preflight/prepare/deploy/verify、35表停写全行/110触发器/附件与账号会话保留、逐服务SMTP/运行配置及正式保护PASS；63秒记录维护窗口，无回退。合成品牌目标6/7、需求38/版本31/唯一Release15验证微信首次发布、支付宝后补、独立时间、旧历史/CAS/权限及桌面375px通过。首次两项部署身份guard失败在维护前修正，记录保留。正式0ef3e0d未变且未连接正式库，无迁移/权限修改/回库/推送/合并/tag/Release；九品牌真实录入未继续。执行及回退边界见 `docs/grouped-mini-program-test-deployment-2026-11-10.md`，等待用户验收。
+
+2026-11-10 小程序按品牌统一管理已本地完成：同一表单维护微信/支付宝，发布时独立勾选和保留时间，旧目标ID与快照兼容。品牌保存原子校验全体成员revision，复用现有平台表，无迁移/新权限。511前端、PG与双MySQL、13项唯一浏览器（含2项本机真实页面）、Docker/静态/契约/构建通过；本轮不部署、推送或合并。线上仅在用户纠正前添加开电微信一条，其余16平台暂停；详情见 `docs/grouped-mini-program-targets-2026-11-10.md`。上一批正式上线已完成，当前正式0ef3e0d/mysql57_0016、TEST80c322d/mysql57_0016，以下准备记录为历史阶段。
+
 2026-11-10 用户已验收最新TEST，累计增量上线准备进入八项CI与master无漂移核查；正式目标mysql57_0012→0016、五张新表最小权限。仅推送准备分支，不合并/部署或连接真实数据库；完整范围、升级和回退清单及同SHA证据入口见 `docs/production-preparation-2026-11-10.md`。
 
 2026-11-10 本地移除反馈新建/编辑/详情及桌面和手机筛选的模块入口，所属系统全宽；旧URL模块条件不再生效。普通编辑保留旧模块，仅换系统时清空，后端及历史数据不变。509单测、8浏览器、类型/构建/预算PASS；未部署、推送、合并或操作数据库，详情和首轮定位修正见 `docs/feedback-module-removal-2026-11-10.md`。

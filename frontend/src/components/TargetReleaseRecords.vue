@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onScopeDispose, ref } from 'vue'
-import { targetRecords, targetRecordOptions, batchKindLabel, type TargetRecord } from '@/api/targetReleases'
+import { targetRecords, targetRecordOptions, batchKindLabel, platformLabel, type TargetRecord } from '@/api/targetReleases'
 import { formatLocalDateTime } from '@/utils/dates'
 import { usePermission } from '@/composables/usePermission'
 import ReleaseVersionDrawer from '@/components/ReleaseVersionDrawer.vue'
@@ -39,7 +39,7 @@ onScopeDispose(() => { sequence++ })
     <div v-else v-loading="loading">
       <article v-for="record in rows" :key="record.id" class="record">
         <strong>{{ record.name }} · {{ record.version_no }}</strong>
-        <p>{{ record.version_name }} · {{ batchKindLabel[record.batch_kind] }} #{{ record.batch_id }}</p>
+        <p>{{ platformLabel[record.platform] }} · {{ record.version_name }} · {{ batchKindLabel[record.batch_kind] }} #{{ record.batch_id }}</p>
         <p>实际上线：{{ formatLocalDateTime(record.completed_at) }} · 登记人：{{ record.operator_name }}</p>
         <small>登记于 {{ formatLocalDateTime(record.recorded_at) }} · 目标编码 {{ record.code }}<template v-if="record.app_id"> · AppID {{ record.app_id }}</template></small>
         <p v-if="record.notes">{{ record.notes }}</p><p v-if="record.evidence">凭证：{{ record.evidence }}</p>

@@ -9,7 +9,7 @@ export type ReleaseBatches = S['ReleaseBatchesOut']
 export type TargetRecord = S['TargetReleaseRecordOut']
 export const batchKindLabel = { INITIAL: '首次发布', SUPPLEMENT: '补发', REPUBLISH: '重新发布' }
 export const batchStatusLabel = { PLANNED: '未开始', IN_PROGRESS: '进行中', COMPLETED: '已完成', CANCELED: '已取消' }
-export const platformLabel = { PC_WEB: 'PC Web', WECHAT_MINI_PROGRAM: '微信小程序' }
+export const platformLabel = { PC_WEB: 'PC Web', WECHAT_MINI_PROGRAM: '微信小程序', ALIPAY_MINI_PROGRAM: '支付宝小程序' }
 const options = { skipConflictAlert: true }
 export const listTargets = (systemId: number) => api.get<ReleaseTarget[]>(`/systems/${systemId}/release-targets`).then(r => r.data)
 export const createTarget = (systemId: number, payload: S['ReleaseTargetCreate']) => api.post<ReleaseTarget>(`/systems/${systemId}/release-targets`, payload, options).then(r => r.data)

@@ -10,6 +10,19 @@ from app.schemas.target_release import (
 )
 
 
+@pytest.mark.parametrize("platform", ["PC_WEB", "WECHAT_MINI_PROGRAM", "ALIPAY_MINI_PROGRAM"])
+def test_supported_target_platforms(platform):
+    assert ReleaseTargetCreate(code="A", name="目标", platform=platform).platform == platform
+    assert ReleaseTargetUpdate(revision=1, platform=platform).platform == platform
+
+
+def test_unknown_platform_is_rejected():
+    with pytest.raises(ValidationError):
+        ReleaseTargetCreate(code="A", name="目标", platform="UNKNOWN")
+    with pytest.raises(ValidationError):
+        ReleaseTargetUpdate(revision=1, platform="UNKNOWN")
+
+
 @pytest.mark.parametrize(
     "bad",
     [

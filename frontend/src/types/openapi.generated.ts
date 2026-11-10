@@ -3244,7 +3244,7 @@ export interface components {
              * 平台快照
              * @enum {string}
              */
-            platform: "PC_WEB" | "WECHAT_MINI_PROGRAM";
+            platform: "PC_WEB" | "WECHAT_MINI_PROGRAM" | "ALIPAY_MINI_PROGRAM";
             /** AppID 快照 */
             app_id: string | null;
             /** 访问地址快照 */
@@ -3387,7 +3387,7 @@ export interface components {
              * 平台类型
              * @enum {string}
              */
-            platform: "PC_WEB" | "WECHAT_MINI_PROGRAM";
+            platform: "PC_WEB" | "WECHAT_MINI_PROGRAM" | "ALIPAY_MINI_PROGRAM";
             /** 小程序 AppID */
             app_id?: string | null;
             /** 访问地址 */
@@ -3422,7 +3422,7 @@ export interface components {
              * 平台类型
              * @enum {string}
              */
-            platform: "PC_WEB" | "WECHAT_MINI_PROGRAM";
+            platform: "PC_WEB" | "WECHAT_MINI_PROGRAM" | "ALIPAY_MINI_PROGRAM";
             /** 小程序 AppID */
             app_id: string | null;
             /** 访问地址 */
@@ -3451,7 +3451,7 @@ export interface components {
             /** 目标名称 */
             name?: string | null;
             /** 平台类型 */
-            platform?: ("PC_WEB" | "WECHAT_MINI_PROGRAM") | null;
+            platform?: ("PC_WEB" | "WECHAT_MINI_PROGRAM" | "ALIPAY_MINI_PROGRAM") | null;
             /** 小程序 AppID */
             app_id?: string | null;
             /** 访问地址 */
@@ -3813,7 +3813,7 @@ export interface components {
              * 平台快照
              * @enum {string}
              */
-            platform: "PC_WEB" | "WECHAT_MINI_PROGRAM";
+            platform: "PC_WEB" | "WECHAT_MINI_PROGRAM" | "ALIPAY_MINI_PROGRAM";
             /** AppID 快照 */
             app_id: string | null;
             /** 访问地址快照 */

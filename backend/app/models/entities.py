@@ -689,7 +689,8 @@ class ReleaseTarget(Base, AuditMixin):
     __table_args__ = (
         UniqueConstraint("system_id", "code", name="uq_release_target_system_code"),
         CheckConstraint(
-            "platform IN ('PC_WEB','WECHAT_MINI_PROGRAM')", name="release_target_platform"
+            "platform IN ('PC_WEB','WECHAT_MINI_PROGRAM','ALIPAY_MINI_PROGRAM')",
+            name="release_target_platform",
         ),
     )
 
@@ -749,7 +750,8 @@ class ReleaseBatchTarget(Base, AuditMixin):
     __table_args__ = (
         UniqueConstraint("batch_id", "target_id", name="uq_release_batch_target"),
         CheckConstraint(
-            "platform IN ('PC_WEB','WECHAT_MINI_PROGRAM')", name="release_batch_target_platform"
+            "platform IN ('PC_WEB','WECHAT_MINI_PROGRAM','ALIPAY_MINI_PROGRAM')",
+            name="release_batch_target_platform",
         ),
         CheckConstraint(
             "(completed_at IS NULL AND recorded_at IS NULL AND completed_by IS NULL) OR "

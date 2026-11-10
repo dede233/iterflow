@@ -24,7 +24,10 @@ onScopeDispose(() => { sequence++ })
 watch(() => props.systemId, () => { editor.value = false; void load() }, { immediate: true })
 function edit(item: ReleaseTarget | null) {
   current.value = item; error.value = ''
-  Object.assign(targetForm.value, item ?? { code: '', name: '', platform: 'WECHAT_MINI_PROGRAM', app_id: '', url: '', enabled: true })
+  targetForm.value = {
+    code: item?.code ?? '', name: item?.name ?? '', platform: item?.platform ?? 'WECHAT_MINI_PROGRAM',
+    app_id: item?.app_id ?? '', url: item?.url ?? '', enabled: item?.enabled ?? true,
+  }
   editor.value = true
 }
 async function save() {
@@ -32,7 +35,7 @@ async function save() {
   if (!targetForm.value.code.trim() || !targetForm.value.name.trim()) { error.value = '请填写目标名称和编码'; return }
   busy.value = true; error.value = ''
   try {
-    const values = { ...targetForm.value, code: targetForm.value.code.trim(), name: targetForm.value.name.trim(), app_id: targetForm.value.app_id?.trim() || null, url: targetForm.value.url?.trim() || null }
+    const values = { ...targetForm.value, code: targetForm.value.code.trim(), name: targetForm.value.name.trim(), app_id: targetForm.value.platform === 'PC_WEB' ? null : targetForm.value.app_id?.trim() || null, url: targetForm.value.platform === 'PC_WEB' ? targetForm.value.url?.trim() || null : null }
     if (current.value) await updateTarget(current.value.id, { ...values, revision: current.value.revision })
     else await createTarget(props.systemId, values)
     editor.value = false; ElMessage.success('发布目标已保存'); await load()
@@ -57,8 +60,8 @@ async function save() {
         <el-form-item label="目标名称" required><el-input v-model="targetForm.name" maxlength="100" placeholder="如：品牌 A 小程序" /></el-form-item>
         <el-form-item label="目标编码" required><el-input v-model="targetForm.code" maxlength="64" placeholder="如 MINI_A" /></el-form-item>
         <el-form-item label="平台"><el-select v-model="targetForm.platform"><el-option v-for="(label, key) in platformLabel" :key="key" :value="key" :label="label" /></el-select></el-form-item>
-        <el-form-item label="AppID（选填）"><el-input v-model="targetForm.app_id" maxlength="64" /></el-form-item>
-        <el-form-item label="访问地址（选填）"><el-input v-model="targetForm.url" maxlength="500" placeholder="https://" /></el-form-item>
+        <el-form-item v-if="targetForm.platform !== 'PC_WEB'" label="AppID（选填）"><el-input v-model="targetForm.app_id" maxlength="64" /></el-form-item>
+        <el-form-item v-else label="访问地址（选填）"><el-input v-model="targetForm.url" maxlength="500" placeholder="https://" /></el-form-item>
         <el-form-item label="状态"><el-switch v-model="targetForm.enabled" active-text="启用" inactive-text="停用" /></el-form-item>
         <el-alert v-if="error" :title="error" type="error" :closable="false" />
       </el-form>

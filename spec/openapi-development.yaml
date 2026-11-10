@@ -8818,6 +8818,7 @@ components:
           enum:
           - PC_WEB
           - WECHAT_MINI_PROGRAM
+          - ALIPAY_MINI_PROGRAM
           title: 平台快照
         app_id:
           anyOf:
@@ -9117,6 +9118,7 @@ components:
           enum:
           - PC_WEB
           - WECHAT_MINI_PROGRAM
+          - ALIPAY_MINI_PROGRAM
           title: 平台类型
         app_id:
           anyOf:
@@ -9168,6 +9170,7 @@ components:
           enum:
           - PC_WEB
           - WECHAT_MINI_PROGRAM
+          - ALIPAY_MINI_PROGRAM
           title: 平台类型
         app_id:
           anyOf:
@@ -9233,6 +9236,7 @@ components:
             enum:
             - PC_WEB
             - WECHAT_MINI_PROGRAM
+            - ALIPAY_MINI_PROGRAM
           - type: 'null'
           title: 平台类型
         app_id:
@@ -9884,6 +9888,7 @@ components:
           enum:
           - PC_WEB
           - WECHAT_MINI_PROGRAM
+          - ALIPAY_MINI_PROGRAM
           title: 平台快照
         app_id:
           anyOf:

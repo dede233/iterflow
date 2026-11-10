@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, PositiveInt, field_validator,
 
 from app.schemas.release import OffsetISODatetime
 
-TargetPlatform = Literal["PC_WEB", "WECHAT_MINI_PROGRAM"]
+TargetPlatform = Literal["PC_WEB", "WECHAT_MINI_PROGRAM", "ALIPAY_MINI_PROGRAM"]
 BatchKind = Literal["INITIAL", "SUPPLEMENT", "REPUBLISH"]
 BatchStatus = Literal["PLANNED", "IN_PROGRESS", "COMPLETED", "CANCELED"]
 

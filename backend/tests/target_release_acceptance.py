@@ -53,6 +53,8 @@ SCENARIOS = [
     "validation",
     "publish_gate",
     "retired",
+    "alipay",
+    "alipay_migration",
 ]
 
 
@@ -75,7 +77,13 @@ def exercise_targets(fixture, scenario, monkeypatch):
                 dict(
                     code=code,
                     name=f"小程序{code}",
-                    platform="PC_WEB" if code == "B" else "WECHAT_MINI_PROGRAM",
+                    platform=(
+                        "ALIPAY_MINI_PROGRAM"
+                        if scenario == "alipay" and code == "C"
+                        else "PC_WEB"
+                        if code == "B"
+                        else "WECHAT_MINI_PROGRAM"
+                    ),
                     app_id=f"wx{code}",
                 ),
                 201,
@@ -185,6 +193,69 @@ def exercise_targets(fixture, scenario, monkeypatch):
             }
 
     first = [targets[0]["id"], targets[1]["id"]]
+    if scenario in {"alipay", "alipay_migration"}:
+        mysql = engine.dialect.name == "mysql"
+        cfg = Config(
+            str(Path(__file__).parents[1] / ("alembic-mysql.ini" if mysql else "alembic.ini"))
+        )
+        previous = "mysql57_0015" if mysql else "0017_target_releases"
+        if scenario == "alipay_migration":
+            # Upgrade existing directory rows and actual-success snapshots without rewrites.
+            publish(first)
+            before = snapshot()
+            directory = request("GET", f"/systems/{system_id}/release-targets")
+            command.downgrade(cfg, previous)
+            for table in ("sys_release_target", "rd_release_batch_target"):
+                with pytest.raises(DBAPIError), engine.begin() as conn:
+                    conn.execute(text(f"UPDATE {table} SET platform='ALIPAY_MINI_PROGRAM'"))
+            command.upgrade(cfg, "head")
+            assert snapshot() == before
+            assert request("GET", f"/systems/{system_id}/release-targets") == directory
+        for target in (targets[0], targets[2]):
+            result = request(
+                "PATCH",
+                f"/systems/release-targets/{target['id']}",
+                dict(
+                    revision=target["revision"],
+                    platform="ALIPAY_MINI_PROGRAM",
+                    app_id="2026000000000001",
+                    url=None,
+                ),
+            )
+            assert result["platform"] == "ALIPAY_MINI_PROGRAM"
+        with pytest.raises(RuntimeError, match="Alipay target history exists"):
+            command.downgrade(cfg, previous)
+        if scenario == "alipay":
+            publish(first)
+        prior_release = snapshot()["rd_release"]
+        record([targets[2]["id"]])
+        assert counts()[0] == 1 and version()["status"] == "RELEASED"
+        assert snapshot()["rd_release"] == prior_release
+        records = request("GET", "/target-release-records")["items"]
+        alipay = [r for r in records if r["platform"] == "ALIPAY_MINI_PROGRAM"]
+        assert len(alipay) == (2 if scenario == "alipay" else 1)
+        assert all(r["app_id"] == "2026000000000001" for r in alipay)
+        # Changing the directory must not rewrite historical platform/AppID snapshots.
+        for target in (targets[0], targets[2]):
+            request(
+                "PATCH",
+                f"/systems/release-targets/{target['id']}",
+                dict(revision=2, platform="PC_WEB", app_id=None, url="https://example.org"),
+            )
+        assert request("GET", "/target-release-records")["items"] == records
+        with pytest.raises(RuntimeError, match="Alipay target history exists"):
+            command.downgrade(cfg, previous)
+        for table in ("sys_release_target", "rd_release_batch_target"):
+            with pytest.raises(DBAPIError), engine.begin() as conn:
+                conn.execute(text(f"UPDATE {table} SET platform='UNSUPPORTED'"))
+        if mysql:
+            from app.core.mysql_preflight import validate_mysql
+
+            with engine.connect() as conn:
+                assert validate_mysql(conn)["table_count"] == 35
+        else:
+            command.check(cfg)
+        return
     if scenario == "migration":
         # Only directory rows exist: refuse downgrade without dropping history.
         mysql = engine.dialect.name == "mysql"

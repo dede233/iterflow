@@ -45,3 +45,11 @@
 `unit.log`、`build.log`、`regression.log`、`layout.log`、`layout-fixed.log`、`layout-final.log`、`selector.log`、`selector-final.log`、`drawers.log` 保留全部尝试。`after/real-dialogs.json`、`after/form-layout-result.json` 及截图保存本地真实页面结果。测试截图在对应 output 目录。
 
 本地访问 `http://127.0.0.1:5173`。本次只提交前端、回归测试与记录，无迁移，无 TEST/正式连接或部署，无远端推送/合并/tag/Release。
+
+## 后续：加宽需求编辑空间
+
+用户反馈需求弹窗太窄，长内容不便查看。本地将新建需求从最大 720px、编辑需求从最大 560px 统一为 `min(1040px, calc(100vw - 32px))`；沿用全局弹窗视口约束和上一轮内容/底栏分离。不改变详情抽屉、其他类型弹窗或提交行为。
+
+49 项现有浏览器回归（创建弹窗 21、富文本 16、详情抽屉 12）及 build（含类型检查）、diff 检查通过。真实本地新建需求输入长文本但未提交，1440/768/375px 视口实际弹窗宽度分别 1040/720/343px，无页面 JS 异常。测量脚本初版读取 role=dialog 的全屏 overlay，错误报告宽度为视口宽；改为读取内部 `.el-dialog` 后通过，保留失败日志，不涉及产品修改。
+
+证据：`/Users/xiaweiyi/Developer/deliverables/iterflow/2026-11-10/requirement-dialog-width`。仅本地修改和正常登录/取消表单，未操作 TEST/正式，无推送合并。

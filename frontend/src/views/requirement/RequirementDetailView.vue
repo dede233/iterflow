@@ -325,7 +325,7 @@ onMounted(load)
     />
 
     <!-- edit dialog -->
-    <el-dialog v-model="editDialog" title="编辑需求" width="min(560px, 92vw)" destroy-on-close>
+    <el-dialog v-model="editDialog" title="编辑需求" width="min(1040px, calc(100vw - 32px))" destroy-on-close>
       <el-alert v-if="existingEditor" type="warning" :closable="false" show-icon class="presence-alert">
         <template #title>{{ existingEditor.display_name }} 正在编辑此需求</template>
         你仍可继续编辑；如数据已变化，保存时会通过 revision 冲突保护避免静默覆盖。

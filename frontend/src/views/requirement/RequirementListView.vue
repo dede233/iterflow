@@ -217,7 +217,7 @@ const queryState = useListQuery({
     />
 
     <!-- Create Dialog -->
-    <el-dialog v-model="createDialog" title="新建需求" class="create-dialog" width="min(720px, calc(100vw - 24px))" destroy-on-close :close-on-click-modal="false">
+    <el-dialog v-model="createDialog" title="新建需求" class="create-dialog" width="min(1040px, calc(100vw - 32px))" destroy-on-close :close-on-click-modal="false">
       <RequirementCreateView v-if="createDialog" embedded @cancel="createDialog = false" @created="onRequirementCreated" />
     </el-dialog>
 

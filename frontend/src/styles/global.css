@@ -283,8 +283,16 @@ code {
 }
 
 .el-input__wrapper.is-focus,
-.el-select__wrapper.is-focused {
+.el-input__wrapper:focus-within,
+.el-select__wrapper.is-focused,
+.el-select__wrapper:focus-within {
   box-shadow: 0 0 0 1px var(--if-brand-500) inset, 0 0 0 3px rgba(37, 99, 235, 0.12) !important;
+}
+
+/* Composite controls draw focus on their outer wrapper, not the inner input. */
+.el-input__wrapper:focus-within .el-input__inner:focus-visible,
+.el-select__wrapper:focus-within .el-select__input:focus-visible {
+  outline: none;
 }
 
 .el-textarea__inner {

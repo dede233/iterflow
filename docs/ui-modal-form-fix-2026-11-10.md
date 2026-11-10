@@ -59,3 +59,9 @@
 用户确认优化人员下拉框底部的无内容留白。`PeopleSelector` 仅在失败、还有下一页或空结果提示时提供 footer 插槽，正常加载完成后移除整个底栏及分隔线。`ListEntityFilterSelect` 同样仅在分页/失败时提供 footer，覆盖版本、参与人和负责人筛选的同类留白。保持搜索、选中值、分页、重试及权限规则不变。
 
 6 项相关现有浏览器回归、build（含类型检查）和 diff 检查 PASS。补充浏览器使用合成人员 GET 响应验证：全部加载后无底栏、加载更多后隐藏底栏、失败可重试、空结果提示保留，4 种状态通过；已目视复查截图。仅本机正常登录/打开/取消表单，无业务提交，未访问 TEST/正式，无部署推送合并。证据在 `/Users/xiaweiyi/Developer/deliverables/iterflow/2026-11-10/selector-footer`。
+
+## 后续：复合输入框双重焦点边框
+
+用户截图中的内层直角蓝框来自全局 `:focus-visible`，与 Element Plus 选择器外层焦点边框重复叠加。仅对已有外层焦点提示的 `.el-select__input` 和 `.el-input__inner` 移除内部 outline，并在对应 wrapper 上显式保留 `:focus-within` 蓝色边框及柔和光晕。按钮、链接等其他控件的键盘焦点样式不变。没有通过改变搜索输入实际宽度或删除选框 padding 掩盖问题。
+
+6 项相关浏览器回归、build（含类型检查）、diff 检查通过。1440/375px 本地真实页面分别验证文本输入和人员选择内部无重复 outline、外层仍有焦点色，以及取消按钮键盘焦点仍可见；截图目视通过，0 页面 JS 异常。初版检查在 CSS transition 完成前读取 box-shadow，误判仍为灰色；改为等待蓝色计算样式后通过，失败日志保留。证据在 `/Users/xiaweiyi/Developer/deliverables/iterflow/2026-11-10/control-focus`。仅正常登录、打开表单和取消，无业务提交或 TEST/正式操作，无推送部署合并。

@@ -29,6 +29,7 @@ withDefaults(defineProps<{ title?: string; description?: string; padded?: boolea
 }
 .section-card__head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
@@ -39,7 +40,9 @@ withDefaults(defineProps<{ title?: string; description?: string; padded?: boolea
   border-top-right-radius: var(--if-radius);
 }
 .section-card__heading {
+  flex: 1 1 12rem;
   min-width: 0;
+  overflow-wrap: anywhere;
 }
 .section-card__title {
   margin: 0;
@@ -55,9 +58,12 @@ withDefaults(defineProps<{ title?: string; description?: string; padded?: boolea
 }
 .section-card__actions {
   display: flex;
+  align-items: center;
   flex-wrap: wrap;
   gap: 8px;
-  flex-shrink: 0;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
 }
 .section-card__actions :deep(.el-button + .el-button) {
   margin-left: 0;
@@ -69,6 +75,7 @@ withDefaults(defineProps<{ title?: string; description?: string; padded?: boolea
   padding: 0;
 }
 @media (max-width: 767px) {
+  .section-card__actions :deep(.el-button) { min-height: 44px; }
   .section-card__head {
     padding: 12px var(--if-space-4);
   }

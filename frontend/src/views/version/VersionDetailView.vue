@@ -419,7 +419,7 @@ onMounted(load)
       <SectionCard v-if="canViewRequirements" title="需求清单" :description="`可见需求 ${stats?.total ?? 0} 项`" class="section">
         <template #actions>
           <BatchActionsDialog v-if="!frozen" kind="requirements" scope="version-list" :version-id="item.id" :version-revision="item.revision" :rows="filteredRequirements" @updated="load" />
-          <el-button v-if="canManageReqs" size="small" type="primary" @click="addDialog = true">
+          <el-button v-if="canManageReqs" type="primary" @click="addDialog = true">
             添加需求
           </el-button>
         </template>
@@ -626,10 +626,13 @@ onMounted(load)
 .scope-tip { color: var(--if-text-2); font-size: 13px; }
 .worklist-summary { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
 .worklist-summary :deep(.el-button + .el-button) { margin-left: 0; }
-.worklist-filters { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) auto; gap: 12px; align-items: center; }
+.worklist-filters { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) auto; gap: 12px; align-items: end; }
 .worklist-filters :deep(.el-form-item) { min-width: 0; margin-bottom: 0; }
 .worklist-filters :deep(.el-select) { width: 100%; }
-@media (max-width: 767px) { .worklist-filters { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 767px) {
+  .worklist-filters { grid-template-columns: minmax(0, 1fr); }
+  .worklist-filters :deep(.el-input__wrapper), .worklist-filters :deep(.el-select__wrapper), .worklist-filters > .el-button { min-height: 44px; }
+}
 
 .back-link { color: var(--if-brand-500); align-self: center; }
 .multiline { white-space: pre-wrap; overflow-wrap: anywhere; }

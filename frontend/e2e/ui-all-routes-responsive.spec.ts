@@ -137,6 +137,24 @@ test('all 19 authenticated screens render at every release viewport', async ({ p
       await expect(page).toHaveURL(new RegExp(`#${path.split('?')[0].replaceAll('/', '\\/')}(?:\\?|$)`))
       const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth)
       expect(scrollWidth, `${path} at ${width}px`).toBeLessThanOrEqual(width + 1)
+      // Visibility/overflow alone missed unequal buttons and vertically shifted actions.
+      const actionLayoutProblems = await page.evaluate(() => {
+        const problems: string[] = []
+        for (const group of document.querySelectorAll('.page-header__actions, .section-card__actions, .editor-actions, .form-actions, .filter-actions')) {
+          const bounds = group.getBoundingClientRect()
+          if (!bounds.width || !bounds.height) continue
+          const controls = [...group.children].filter(e => e.matches('button, a, .unread-count')).map(e => ({ text: e.textContent?.trim(), r: e.getBoundingClientRect() })).filter(e => e.r.width && e.r.height)
+          for (const { text, r } of controls) if (r.left < bounds.left - 1 || r.right > bounds.right + 1) problems.push(`${text}: exceeds action group`)
+          for (let i = 0; i < controls.length; i++) for (let j = i + 1; j < controls.length; j++) {
+            const a = controls[i]!, b = controls[j]!
+            const sameRow = Math.min(a.r.bottom, b.r.bottom) - Math.max(a.r.top, b.r.top) > 1
+            if (sameRow && Math.abs(a.r.top + a.r.height / 2 - b.r.top - b.r.height / 2) > 1) problems.push(`${a.text}/${b.text}: center misalignment`)
+            if (sameRow && Math.min(a.r.right, b.r.right) - Math.max(a.r.left, b.r.left) > 1) problems.push(`${a.text}/${b.text}: overlapping controls`)
+          }
+        }
+        return problems
+      })
+      expect(actionLayoutProblems, `${path} actions at ${width}px`).toEqual([])
       if (width === 1280 && path === '/feedbacks') {
         const sidebar = page.locator('.side-nav')
         await expect(sidebar.getByRole('link', { name: '首页' })).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')

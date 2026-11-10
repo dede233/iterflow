@@ -101,10 +101,11 @@ onScopeDispose(() => { sequence++ })
 h2 { font-size: 20px; margin: 8px 0 20px; }
 h3 { font-size: 14px; margin: 20px 0 8px; }
 .summary-content { white-space: pre-wrap; line-height: 1.7; }
-.summary-detail-link { display: inline-block; padding: 10px 12px; margin-left: 12px; color: var(--if-brand-500); }
+.summary-detail-link { display: inline-flex; align-items: center; justify-content: center; min-height: 32px; padding: 0 12px; color: var(--if-brand-500); }
 .summary-detail-link:focus-visible { outline: 2px solid var(--if-brand-500); outline-offset: 2px; }
 li { margin: 8px 0; }
 @media (max-width: 767px) {
+  .summary-detail-link { min-height: 44px; }
   :global(.requirement-summary-overlay .el-overlay-dialog) { padding: 0; }
   :global(.requirement-summary-dialog.is-fullscreen) {
     width: 100vw !important;

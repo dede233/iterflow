@@ -384,6 +384,7 @@ code {
   border-top: 1px solid var(--if-border);
   background: #f8fafc;
   display: flex;
+  align-items: center;
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
@@ -416,6 +417,7 @@ code {
   padding: 14px 20px;
   background: #f8fafc;
   display: flex;
+  align-items: center;
   justify-content: flex-end;
   gap: 8px;
 }
@@ -469,11 +471,14 @@ code {
   background: var(--if-bg-surface);
   padding-bottom: 12px;
   display: flex;
+  align-items: center;
   justify-content: flex-end;
   gap: 10px;
   padding-top: 18px;
   border-top: 1px solid var(--if-border);
 }
+
+.editor-actions .el-button + .el-button { margin-left: 0; }
 
 /* Responsive rules */
 @media (max-width: 1199px) {
@@ -516,6 +521,7 @@ code {
   .el-dialog__footer .el-button {
     flex: 1 1 0;
     min-width: 0;
+    min-height: 44px;
   }
   .filter-panel {
     padding: 12px;

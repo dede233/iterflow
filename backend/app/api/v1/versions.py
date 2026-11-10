@@ -13,6 +13,7 @@ from app.models.entities import User, Version
 from app.models.enums import VersionStatus
 from app.repositories.user_repository import UserRepository
 from app.repositories.version_repository import VersionRepository
+from app.schemas.audit import EntityActivityOut
 from app.schemas.entity_actions import BatchActionResponse
 from app.schemas.release import PublishCheckResult, PublishResult
 from app.schemas.version import (
@@ -29,6 +30,7 @@ from app.schemas.version import (
     VersionStatusChange,
     VersionUpdate,
 )
+from app.services.entity_activity_service import EntityActivityService
 from app.services.publish_check_service import PublishCheckService
 from app.services.version_requirement_workflow_service import VersionRequirementWorkflowService
 from app.services.version_service import VersionService
@@ -71,6 +73,7 @@ def _scoped_version_or_404(db: Session, user: User, version_id: int) -> Version:
 def list_versions(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    system_id: int | None = Query(None, ge=1),
     keyword: str | None = Query(None, max_length=200),
     status: VersionStatus | None = Query(None),
     planned_release_from: date | None = Query(None),
@@ -96,6 +99,7 @@ def list_versions(
         scope,
         page,
         page_size,
+        system_id=system_id,
         keyword=keyword,
         status=status,
         planned_release_from=planned_release_from,
@@ -315,3 +319,16 @@ def publish_version(
 ):
     _scoped_version_or_404(db, user, version_id)
     return VersionService(db).publish(version_id, payload, user.id)
+
+
+@router.get(
+    "/{version_id}/activities",
+    response_model=list[EntityActivityOut],
+    responses=api_error_responses(404),
+)
+def list_version_activities(
+    version_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("rd.version.view")),
+):
+    return EntityActivityService(db).recent("version", version_id, user)

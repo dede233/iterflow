@@ -6,6 +6,7 @@ from threading import Barrier, Event
 
 from sqlalchemy import delete, event, func, select
 from sqlalchemy.orm import Session
+from system_binding_fixture import create_test_system
 
 from app.core.security import create_access_token
 from app.models.entities import (
@@ -67,6 +68,7 @@ SCENARIOS = [
 
 def exercise_version_submit(fixture, scenario, monkeypatch):
     client, engine, admin_id, admin_headers = fixture
+    system_id = create_test_system(engine)
     with Session(engine, expire_on_commit=False) as db:
         actor = User(
             username="version-submit-developer",
@@ -87,12 +89,15 @@ def exercise_version_submit(fixture, scenario, monkeypatch):
         for permission in db.scalars(select(Permission).where(Permission.code.in_(required))):
             db.add(RolePermission(role_id=role.id, permission_id=permission.id))
         db.add(UserRole(user_id=actor.id, role_id=role.id))
-        version = Version(version_no="SUBMIT-ONE", name="集中提验版本", created_by=actor.id)
+        version = Version(
+            system_id=system_id, version_no="SUBMIT-ONE", name="集中提验版本", created_by=actor.id
+        )
         db.add(version)
         db.flush()
         requirements = []
         for number in range(2):
             item = Requirement(
+                system_id=system_id,
                 requirement_no=f"SUBMIT-{number}",
                 title=f"集中提验{number}",
                 description="隔离验收的完整需求",
@@ -184,7 +189,9 @@ def exercise_version_submit(fixture, scenario, monkeypatch):
                 select(VersionRequirement).where(VersionRequirement.requirement_id == rid)
             ).active = False
             db.flush()
-            destination = Version(version_no="SUBMIT-OTHER", name="另一版本", created_by=actor.id)
+            destination = Version(
+                system_id=system_id, version_no="SUBMIT-OTHER", name="另一版本", created_by=actor.id
+            )
             db.add(destination)
             db.flush()
             db.add(

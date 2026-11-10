@@ -69,7 +69,7 @@ def test_reopen_rejects_online_and_released_version(req_api):
     row.status = RequirementStatus.ONLINE
     db.commit()
     assert client.post(path, headers=headers["boss"], json=payload).status_code == 409
-    Version.__table__.create(db.get_bind())
+    Version.__table__.create(db.get_bind(), checkfirst=True)
     version = Version(
         id=99, version_no="V-RELEASED", name="已发布版本", status=VersionStatus.RELEASED
     )

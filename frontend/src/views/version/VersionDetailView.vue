@@ -1,4 +1,9 @@
 <script setup lang="ts">
+import PublishedTargetSelect from '@/components/PublishedTargetSelect.vue'
+import VersionReleaseBatches from "@/components/VersionReleaseBatches.vue"
+import BusinessSystemAttribution from '@/components/BusinessSystemAttribution.vue'
+import RecentEntityActivity from '@/components/RecentEntityActivity.vue'
+import BusinessSystemSelect from '@/components/BusinessSystemSelect.vue'
 import BatchActionsDialog from '@/components/BatchActionsDialog.vue'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
@@ -124,6 +129,7 @@ function openRelease(releaseId: number): void {
   else { activeReleaseId.value = releaseId; releaseDrawer.value = true }
 }
 const loading = ref(false)
+const activityRefresh = ref(0)
 const failed = ref(false)
 
 const canEdit = computed(() => can('rd.version.edit'))
@@ -134,10 +140,10 @@ const canViewReleases = computed(() => can('rd.release.view'))
 const canPublish = computed(
   () => can('rd.version.publish') && !!item.value && !['RELEASED', 'CANCELED'].includes(item.value.status),
 )
-const frozen = computed(() => (item.value ? versionRequirementSetFrozen(item.value.status) : true))
+const frozen = computed(() => (item.value ? (item.value.release_frozen || versionRequirementSetFrozen(item.value.status)) : true))
 const canManageReqs = computed(() => canEdit.value && canViewRequirements.value && !frozen.value)
 const statusActions = computed<VersionStatusAction[]>(() =>
-  item.value ? availableVersionStatusActions(item.value.status, canChangeStatus.value) : [],
+  item.value && !item.value.release_frozen ? availableVersionStatusActions(item.value.status, canChangeStatus.value) : [],
 )
 const completionPct = computed(() =>
   stats.value ? Math.round(stats.value.completion_rate * 100) : 0,
@@ -180,6 +186,8 @@ async function submitStatus(): Promise<void> {
 const publishDialog = ref(false)
 const publishSubmitting = ref(false)
 const checkLoading = ref(false)
+const publishedTargetIds = ref<number[]>([])
+const targetOptionsReady = ref(false)
 const releaseNotes = ref('')
 const checkCandidatePassed = ref(false)
 const checks = ref<PublishCheckItem[]>([])
@@ -189,7 +197,7 @@ watch(publishDialog, open => { if (!open) { checkSequence++; checks.value = []; 
 
 async function openPublish(): Promise<void> {
   if (!item.value || !canPublish.value || checkLoading.value || publishSubmitting.value) return
-  releaseNotes.value = ''
+  releaseNotes.value = ''; publishedTargetIds.value = []; targetOptionsReady.value = false
   checks.value = []
   checkCandidatePassed.value = false
   checkLoading.value = true
@@ -220,7 +228,7 @@ async function submitPublish(): Promise<void> {
   }
   publishSubmitting.value = true
   try {
-    await publishVersion(item.value.id, releaseNotes.value.trim(), item.value.revision)
+    await publishVersion(item.value.id, releaseNotes.value.trim(), item.value.revision, [...publishedTargetIds.value])
     emit('updated')
     ElMessage.success('版本已发布')
     publishDialog.value = false
@@ -235,7 +243,7 @@ async function submitPublish(): Promise<void> {
 // --- edit dialog ---
 const editDialog = ref(false)
 const editSubmitting = ref(false)
-const editForm = reactive({ name: '', planned_release_date: null as string | null, description: '' })
+const editForm = reactive({ system_id: null as number | null, name: '', planned_release_date: null as string | null, description: '' })
 
 function openEdit(): void {
   if (!item.value || !canEdit.value) return
@@ -246,6 +254,7 @@ function openEdit(): void {
 
 function fillEditForm(latest: VersionItem): void {
   Object.assign(editForm, {
+    system_id: latest.system_id,
     name: latest.name,
     planned_release_date: latest.planned_release_date ?? null,
     description: latest.description ?? '',
@@ -261,9 +270,10 @@ async function submitEdit(): Promise<void> {
   editSubmitting.value = true
   try {
     await updateVersion(item.value.id, {
+      ...(editForm.system_id !== item.value.system_id ? { system_id: editForm.system_id } : {}),
       name: editForm.name.trim(),
       planned_release_date: editForm.planned_release_date || null,
-      description: editForm.description.trim() || null,
+      ...(!item.value.release_frozen ? { description: editForm.description.trim() || null } : {}),
       revision: item.value.revision,
     })
     emit('updated')
@@ -349,6 +359,7 @@ async function removeReq(req: Requirement): Promise<void> {
 }
 
 async function load(): Promise<void> {
+  activityRefresh.value++
   loading.value = true
   failed.value = false
   try {
@@ -383,7 +394,7 @@ onMounted(load)
         <el-button v-if="embedded" link @click="emit('close')">关闭详情</el-button>
         <RouterLink v-else class="back-link" :to="backTo">返回列表</RouterLink>
         <el-button v-if="canEdit" @click="openEdit">编辑</el-button>
-        <el-button v-if="canPublish" type="primary" @click="openPublish">{{ item.status === 'READY' ? '发布' : '发布检查' }}</el-button>
+        <el-button v-if="canPublish" type="primary" @click="openPublish">{{ item.status === 'READY' ? '发布版本' : '发布检查' }}</el-button>
         <el-button
           v-for="action in statusActions"
           :key="action.target"
@@ -395,27 +406,26 @@ onMounted(load)
         </el-button>
         </template>
       </PageHeader>
+      <BusinessSystemAttribution :system-id="item.system_id" :system-name="item.system_name" />
 
-      <SectionCard title="版本概况" description="进度由关联需求自动汇总；开发和验收在需求中完成。">
-        <el-descriptions :column="isMobile ? 1 : 2">
-          <el-descriptions-item label="计划上线">{{ item.planned_release_date || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="实际上线">{{ formatLocalDateTime(item.released_at) }}</el-descriptions-item>
-          <el-descriptions-item label="说明" :span="isMobile ? 1 : 2">
-            <div class="multiline">{{ item.description || '-' }}</div>
-          </el-descriptions-item>
-        </el-descriptions>
-      </SectionCard>
+      <el-alert v-if="!item.system_id && !frozen" title="此历史版本未指定业务系统，请先补齐需求系统，再编辑版本选择同一系统。" type="warning" :closable="false" />
+      <div class="version-overview" aria-label="版本概况">
+        <dl><div><dt>计划上线</dt><dd>{{ item.planned_release_date || '未排期' }}</dd></div><div v-if="item.released_at"><dt>实际上线</dt><dd>{{ formatLocalDateTime(item.released_at) }}</dd></div></dl>
+        <p v-if="item.description" class="multiline">{{ item.description }}</p>
+      </div>
+      <VersionReleaseBatches v-if="item.status === 'RELEASED'" :version="item" @updated="load" />
 
       <!-- progress + requirements -->
       <SectionCard v-if="canViewRequirements" title="需求清单" :description="`可见需求 ${stats?.total ?? 0} 项`" class="section">
         <template #actions>
           <BatchActionsDialog v-if="!frozen" kind="requirements" scope="version-list" :version-id="item.id" :version-revision="item.revision" :rows="filteredRequirements" @updated="load" />
-          <el-button v-if="canManageReqs" size="small" type="primary" @click="addDialog = true">
+          <el-button v-if="canManageReqs" type="primary" @click="addDialog = true">
             添加需求
           </el-button>
         </template>
+        <p class="scope-tip">进度由关联需求自动汇总；开发和验收在需求中完成。</p>
         <div v-if="stats" class="progress">
-          <el-progress :percentage="completionPct" :stroke-width="14" />
+          <el-progress :percentage="completionPct" :stroke-width="6" />
           <span class="progress-text">可见需求进度 {{ stats.completed }} / {{ stats.total }}</span>
         </div>
         <p class="scope-tip">仅统计当前账号可见需求；发布准备以服务端发布检查为准。</p>
@@ -471,6 +481,9 @@ onMounted(load)
         <p v-if="frozen" class="frozen-tip">版本处于 {{ versionStatusLabel[item.status] }}，需求清单已冻结。</p>
       </SectionCard>
 
+      <VersionReleaseBatches v-if="item.status !== 'RELEASED'" :version="item" @updated="load" />
+      <RecentEntityActivity kind="version" :id="item.id" :revision="item.revision" :refresh-key="activityRefresh" />
+
       <!-- release history -->
       <SectionCard v-if="canViewReleases" title="发布历史" class="section">
         <ul v-if="releases.length" class="releases">
@@ -490,6 +503,7 @@ onMounted(load)
 
     <!-- publish dialog -->
     <el-dialog v-model="publishDialog" title="发布版本" width="min(520px, 92vw)" destroy-on-close>
+      <p>可勾选本次已经发布的小程序或 PC，也可以不选，在版本发布后补记。</p>
       <p class="publish-tip">发布后版本将进入「已发布」，其已完成需求与关联反馈会自动置为「已上线」。此操作不可撤销。</p>
       <div v-loading="checkLoading" class="checks">
         <div class="checks-title">发布前检查</div>
@@ -509,8 +523,9 @@ onMounted(load)
         </ul>
       </div>
       <el-form label-position="top">
+        <el-form-item label="已发布目标（选填，可多选）"><PublishedTargetSelect v-if="item" v-model="publishedTargetIds" :version-id="item.id" :system-id="item.system_id" :active="publishDialog" :disabled="publishSubmitting" @ready="targetOptionsReady = $event" /></el-form-item>
         <el-form-item label="发布说明" required>
-          <el-input v-model="releaseNotes" type="textarea" :rows="3" />
+          <el-input v-model="releaseNotes" type="textarea" :rows="3" aria-label="发布说明" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -518,7 +533,7 @@ onMounted(load)
         <el-button
           type="success"
           :loading="publishSubmitting"
-          :disabled="checkLoading || !checkCandidatePassed"
+          :disabled="checkLoading || !checkCandidatePassed || (publishedTargetIds.length > 0 && !targetOptionsReady)"
           @click="submitPublish"
         >
           确认发布
@@ -561,6 +576,7 @@ onMounted(load)
         你仍可继续编辑；如数据已变化，保存时会通过 revision 冲突保护避免静默覆盖。
       </el-alert>
       <el-form label-position="top" @submit.prevent="submitEdit">
+        <el-form-item label="业务系统"><BusinessSystemSelect v-model="editForm.system_id" :current-name="item?.system_name" :clearable="false" :disabled="frozen" /></el-form-item>
         <el-form-item label="版本名称">
           <el-input v-model="editForm.name" maxlength="100" show-word-limit />
         </el-form-item>
@@ -568,7 +584,7 @@ onMounted(load)
           <el-date-picker v-model="editForm.planned_release_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
         </el-form-item>
         <el-form-item label="说明">
-          <el-input v-model="editForm.description" type="textarea" :rows="4" />
+          <el-input v-model="editForm.description" :disabled="!!item?.release_frozen" type="textarea" :rows="4" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -579,14 +595,14 @@ onMounted(load)
 
     <!-- add requirement dialog -->
     <el-dialog v-model="addDialog" title="批量添加需求" width="min(780px, 94vw)" destroy-on-close append-to-body :close-on-click-modal="false">
-      <BulkRequirementPicker v-if="addDialog && item" :version-id="item.id" :revision="item.revision" @updated="onBulkAdded" @cancel="addDialog = false" />
+      <BulkRequirementPicker v-if="addDialog && item" :version-id="item.id" :revision="item.revision" :system-id="item.system_id" @updated="onBulkAdded" @cancel="addDialog = false" />
     </el-dialog>
 
     <!-- move requirement dialog -->
     <el-dialog v-model="moveDialog" title="迁移需求到其他版本" width="min(480px, 92vw)" destroy-on-close>
       <el-form label-position="top">
         <el-form-item label="目标版本" required>
-          <ScopedObjectSelector v-model="moveTarget.target_version_id" kind="version" :allowed="can('rd.version.view')" :active="moveDialog" :disabled="moveSubmitting" :exclude-id="id" />
+          <ScopedObjectSelector v-model="moveTarget.target_version_id" kind="version" :allowed="can('rd.version.view')" :active="moveDialog" :disabled="moveSubmitting" :exclude-id="id" :system-id="moveTarget.requirement?.system_id" />
         </el-form-item>
         <el-form-item label="迁移原因" required>
           <el-input v-model="moveTarget.reason" type="textarea" :rows="3" />
@@ -601,13 +617,22 @@ onMounted(load)
 </template>
 
 <style scoped>
+.version-overview { margin-bottom: 20px; padding: 12px 0 16px; border-bottom: 1px solid var(--if-border); }
+.version-overview dl { display: flex; flex-wrap: wrap; gap: 12px 32px; margin: 0; font-size: 13px; }
+.version-overview dl > div { display: flex; flex-wrap: wrap; gap: 8px; }
+.version-overview dt { color: var(--if-text-tertiary); }
+.version-overview dd { margin: 0; }
+.version-overview p { margin: 12px 0 0; line-height: 1.7; }
 .scope-tip { color: var(--if-text-2); font-size: 13px; }
 .worklist-summary { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
 .worklist-summary :deep(.el-button + .el-button) { margin-left: 0; }
-.worklist-filters { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) auto; gap: 12px; align-items: center; }
+.worklist-filters { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) auto; gap: 12px; align-items: end; }
 .worklist-filters :deep(.el-form-item) { min-width: 0; margin-bottom: 0; }
 .worklist-filters :deep(.el-select) { width: 100%; }
-@media (max-width: 767px) { .worklist-filters { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 767px) {
+  .worklist-filters { grid-template-columns: minmax(0, 1fr); }
+  .worklist-filters :deep(.el-input__wrapper), .worklist-filters :deep(.el-select__wrapper), .worklist-filters > .el-button { min-height: 44px; }
+}
 
 .back-link { color: var(--if-brand-500); align-self: center; }
 .multiline { white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -616,7 +641,7 @@ onMounted(load)
 .progress { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
 .progress .el-progress { flex: 1; }
 .progress-text { color: var(--if-text-2); font-size: 13px; white-space: nowrap; }
-.frozen-tip { margin: 14px 0 0; padding: 10px 12px; border-radius: var(--if-radius-sm); background: var(--if-warning-bg); color: var(--if-warning-fg); font-size: 12px; }
+.frozen-tip { margin: 14px 0 0; padding: 10px 12px; border-radius: var(--if-radius-sm); background: var(--if-bg-subtle); color: var(--if-text-secondary); font-size: 12px; }
 .req-cards { display: grid; gap: 8px; }
 .req-card { min-width: 0; padding: 12px; border: 1px solid var(--if-border); border-radius: var(--if-radius-sm); }
 .req-card-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }

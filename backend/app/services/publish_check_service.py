@@ -7,6 +7,7 @@ from app.models.enums import DataScope, RequirementStatus, VersionStatus
 from app.repositories.requirement_repository import RequirementRepository
 from app.repositories.user_repository import UserRepository
 from app.repositories.version_repository import VersionRepository
+from app.services.system_binding_service import SystemBindingService
 
 # Requirement statuses that block a publish (anything that is not DONE).
 _PUBLISHABLE_REQUIREMENT_STATE = RequirementStatus.DONE
@@ -82,6 +83,26 @@ class PublishCheckService:
                 "blocking_requirements": [
                     {"id": r.id, "requirement_no": r.requirement_no, "status": str(r.status)}
                     for r in visible_blocking
+                ],
+            }
+        )
+
+        mismatched = [r for r in active if SystemBindingService.mismatch(version, r)]
+        visible = self._visible_blockers(mismatched, viewer_id)
+        checks.append(
+            {
+                "type": "SYSTEM_BINDING_CHECK",
+                "passed": version.system_id is not None and not mismatched,
+                "message": (
+                    "版本尚未指定业务系统，请先编辑版本补齐"  # noqa: RUF001
+                    if version.system_id is None
+                    else "存在业务系统未补齐或与版本不一致的需求，请核对需求清单"  # noqa: RUF001
+                    if mismatched
+                    else "版本与需求的业务系统一致"
+                ),
+                "blocking_requirements": [
+                    {"id": r.id, "requirement_no": r.requirement_no, "status": str(r.status)}
+                    for r in visible
                 ],
             }
         )

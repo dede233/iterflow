@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import StatusTag from '@/components/StatusTag.vue'
@@ -9,7 +9,9 @@ import { VERSION_STATUSES, versionStatusLabel } from '@/constants/version'
 import { auditActionLabel, auditEntityLabel } from '@/utils/auditLabels'
 import type { DashboardActivityEntityType, DashboardOverview } from '@/types/dashboard'
 
-const props = defineProps<{ overview: DashboardOverview }>()
+const props = defineProps<{ overview: DashboardOverview; viewerId?: number }>()
+const expandedActivity = ref(false)
+const visibleActivities = computed(() => expandedActivity.value ? props.overview.activities : props.overview.activities.slice(0, 5))
 
 const scopeLabel = computed(() => (props.overview.data_scope === 'ALL' ? '全部数据' : '我的数据'))
 const activityRoutes: Record<DashboardActivityEntityType, string> = {
@@ -82,6 +84,11 @@ function formatDateTime(value: string): string {
       <template #actions><span class="scope-chip">{{ scopeLabel }}</span></template>
     </PageHeader>
 
+    <nav v-if="overview.requirements && viewerId" class="work-shortcuts" aria-label="我的协作入口">
+      <router-link :to="`/requirements?status=DRAFT&participant_id=${viewerId}&participant_role=CONFIRM`"><span>内容确认</span><strong>查看待我确认的需求 <span aria-hidden="true">→</span></strong></router-link>
+      <router-link :to="`/requirements?status=CONFIRMED&participant_id=${viewerId}&participant_role=DEVELOP`"><span>开发准备</span><strong>查看待我开发的需求 <span aria-hidden="true">→</span></strong></router-link>
+      <router-link :to="`/requirements?status=TESTING&participant_id=${viewerId}&participant_role=ACCEPT`"><span>交付验收</span><strong>查看待我验收的需求 <span aria-hidden="true">→</span></strong></router-link>
+    </nav>
     <EmptyState
       v-if="allSectionsUnavailable"
       description="当前账号没有可展示的业务概览数据"
@@ -91,7 +98,6 @@ function formatDateTime(value: string): string {
       <el-row class="metric-grid" :gutter="16">
         <el-col v-for="card in metricCards" :key="card.key" :xs="12" :sm="12" :lg="6">
           <el-card class="metric-card" :class="`metric-card--${card.key}`" shadow="never">
-            <div class="metric-index">{{ String(metricCards.indexOf(card) + 1).padStart(2, '0') }} / {{ String(metricCards.length).padStart(2, '0') }}</div>
             <div class="metric-label">{{ card.label }}</div>
             <div class="metric-value">{{ card.value }}</div>
             <div class="metric-note">{{ card.note }}</div>
@@ -100,46 +106,6 @@ function formatDateTime(value: string): string {
       </el-row>
 
       <el-row class="section-grid" :gutter="16">
-        <el-col v-if="overview.feedback" :xs="24" :lg="12">
-          <el-card class="section-card" shadow="never">
-            <template #header><strong>反馈状态</strong></template>
-            <div class="status-grid">
-              <div v-for="status in FEEDBACK_STATUSES" :key="status.value" class="status-item">
-                <span>{{ status.label }}</span>
-                <strong>{{ overview.feedback.by_status[status.value] ?? 0 }}</strong>
-              </div>
-            </div>
-          </el-card>
-        </el-col>
-
-        <el-col v-if="overview.requirements" :xs="24" :lg="12">
-          <el-card class="section-card" shadow="never">
-            <template #header><strong>需求状态</strong></template>
-            <div class="status-grid">
-              <div
-                v-for="status in REQUIREMENT_STATUSES"
-                :key="status.value"
-                class="status-item"
-              >
-                <span>{{ status.label }}</span>
-                <strong>{{ overview.requirements.by_status[status.value] ?? 0 }}</strong>
-              </div>
-            </div>
-          </el-card>
-        </el-col>
-
-        <el-col v-if="overview.versions" :xs="24" :lg="12">
-          <el-card class="section-card" shadow="never">
-            <template #header><strong>版本状态</strong></template>
-            <div class="status-grid">
-              <div v-for="status in VERSION_STATUSES" :key="status.value" class="status-item">
-                <span>{{ status.label }}</span>
-                <strong>{{ overview.versions.by_status[status.value] ?? 0 }}</strong>
-              </div>
-            </div>
-          </el-card>
-        </el-col>
-
         <el-col v-if="overview.versions" :xs="24" :lg="12">
           <el-card class="section-card recent-card" shadow="never">
             <template #header><strong>近期活跃版本</strong></template>
@@ -194,6 +160,50 @@ function formatDateTime(value: string): string {
           </el-card>
         </el-col>
       </el-row>
+      <details class="dashboard-distribution"><summary>查看各阶段数量</summary>
+      <el-row class="section-grid" :gutter="16">
+        <el-col v-if="overview.feedback" :xs="24" :lg="12">
+          <el-card class="section-card" shadow="never">
+            <template #header><strong>反馈状态</strong></template>
+            <div class="status-grid">
+              <div v-for="status in FEEDBACK_STATUSES" :key="status.value" class="status-item">
+                <span>{{ status.label }}</span>
+                <strong>{{ overview.feedback.by_status[status.value] ?? 0 }}</strong>
+              </div>
+            </div>
+          </el-card>
+        </el-col>
+
+        <el-col v-if="overview.requirements" :xs="24" :lg="12">
+          <el-card class="section-card" shadow="never">
+            <template #header><strong>需求状态</strong></template>
+            <div class="status-grid">
+              <div
+                v-for="status in REQUIREMENT_STATUSES"
+                :key="status.value"
+                class="status-item"
+              >
+                <span>{{ status.label }}</span>
+                <strong>{{ overview.requirements.by_status[status.value] ?? 0 }}</strong>
+              </div>
+            </div>
+          </el-card>
+        </el-col>
+
+        <el-col v-if="overview.versions" :xs="24" :lg="12">
+          <el-card class="section-card" shadow="never">
+            <template #header><strong>版本状态</strong></template>
+            <div class="status-grid">
+              <div v-for="status in VERSION_STATUSES" :key="status.value" class="status-item">
+                <span>{{ status.label }}</span>
+                <strong>{{ overview.versions.by_status[status.value] ?? 0 }}</strong>
+              </div>
+            </div>
+          </el-card>
+        </el-col>
+
+      </el-row>
+      </details>
     </template>
 
     <el-card class="section-card activity-card" shadow="never">
@@ -201,7 +211,7 @@ function formatDateTime(value: string): string {
       <EmptyState v-if="overview.activities.length === 0" description="暂无最近活动" compact />
       <div v-else class="recent-list">
         <router-link
-          v-for="(activity, index) in overview.activities"
+          v-for="(activity, index) in visibleActivities"
           :key="index"
           :to="`${activityRoutes[activity.entity_type]}/${activity.entity_id}`"
           class="recent-row activity-row"
@@ -213,16 +223,27 @@ function formatDateTime(value: string): string {
           <time class="recent-meta" :datetime="activity.created_at">{{ formatDateTime(activity.created_at) }}</time>
         </router-link>
       </div>
+      <button v-if="overview.activities.length > 5" class="activity-toggle" :aria-expanded="expandedActivity" @click="expandedActivity = !expandedActivity">{{ expandedActivity ? '收起活动' : `展开最近 ${overview.activities.length} 条活动` }}</button>
     </el-card>
   </div>
 </template>
 
 <style scoped>
+.work-shortcuts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 0 0 24px; }
+.work-shortcuts a { display: grid; gap: 8px; padding: 18px; border: 1px solid var(--if-brand-100); border-radius: 8px; background: var(--if-brand-50); }
+.work-shortcuts a > span { font-size: 12px; color: var(--if-text-tertiary); }
+.work-shortcuts strong { display: flex; justify-content: space-between; gap: 8px; color: var(--if-brand-700); font-size: 14px; }
+.work-shortcuts a:hover { border-color: var(--if-brand-400); }
+.dashboard-distribution { margin-top: 16px; }
+.dashboard-distribution > summary { cursor: pointer; padding: 12px 0; color: var(--if-text-secondary); font-size: 13px; }
+.activity-toggle { margin-top: 12px; padding: 8px 0; min-height: 44px; border: 0; background: transparent; color: var(--if-brand-600); font: inherit; font-size: 13px; cursor: pointer; }
+@media (max-width: 767px) { .work-shortcuts { grid-template-columns: 1fr; gap: 8px; } .work-shortcuts a { padding: 12px 16px; } }
+
 .scope-chip { display: inline-flex; align-items: center; min-height: 30px; padding: 0 12px; border: 1px solid var(--if-brand-100); border-radius: 999px; background: var(--if-brand-50); color: var(--if-brand-700); font-size: 12px; font-weight: 700; }
 .metric-grid, .section-grid { row-gap: var(--if-space-4); }
 .metric-grid { margin-bottom: var(--if-space-6); }
 .metric-card, .section-card { height: 100%; }
-.metric-card { position: relative; overflow: hidden; min-height: 162px; background: linear-gradient(145deg, #fff 62%, #f9fbff); }
+.metric-card { position: relative; overflow: hidden; min-height: 126px; background: var(--if-bg-surface); }
 .metric-card::before { position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--if-brand-500); content: ''; }
 .metric-card--feedback::before { background: #eaa344; }
 .metric-card--versions::before { background: #7c6ee7; }
@@ -250,6 +271,6 @@ a.recent-row:hover .recent-title { color: var(--if-brand-600); }
 .activity-row { text-decoration: none; border-radius: var(--if-radius-sm); padding: 12px 8px; }
 .activity-row:hover, .activity-row:focus-visible { background: var(--if-bg-subtle); }
 .activity-row time { flex-shrink: 0; }
-@media (max-width: 767px) { .status-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .metric-card { min-height: 140px; } }
+@media (max-width: 767px) { .status-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .metric-card { min-height: 126px; } }
 @media (max-width: 767px) { .activity-row { flex-direction: column; align-items: flex-start; gap: 6px; } }
 </style>

@@ -6,12 +6,14 @@ from threading import Barrier
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
+from system_binding_fixture import create_test_system
 
 from app.models.entities import Release, Requirement, Version, VersionRequirement
 
 
 def exercise_version_progress(fixture, scenario):
     client, engine, uid, headers = fixture
+    system_id = create_test_system(engine)
 
     def create_requirement(title):
         response = client.post(
@@ -20,6 +22,7 @@ def exercise_version_progress(fixture, scenario):
             json={
                 "title": title,
                 "requirement_type": "FEATURE",
+                "system_id": system_id,
                 "description": "正常接口验收内容",
                 "participants": [
                     {"role": role, "user_id": uid} for role in ("CONFIRM", "DEVELOP", "ACCEPT")
@@ -34,6 +37,7 @@ def exercise_version_progress(fixture, scenario):
         "/api/v1/versions",
         headers=headers,
         json={
+            "system_id": system_id,
             "version_no": "PROGRESS-REAL",
             "name": "自动汇总版本",
             "requirement_id": requirement["id"],

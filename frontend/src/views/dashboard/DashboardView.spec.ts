@@ -1,4 +1,5 @@
 import { createSSRApp, defineComponent, h } from 'vue'
+import { createPinia } from 'pinia'
 import { renderToString } from '@vue/server-renderer'
 import { describe, expect, it, vi } from 'vitest'
 import dashboardSource from '@/views/dashboard/DashboardView.vue?raw'
@@ -21,6 +22,7 @@ describe('dashboard view', () => {
 
   it('shows an explicit loading state before the API resolves', async () => {
     const app = createSSRApp(DashboardView)
+    app.use(createPinia())
     app.component(
       'el-skeleton',
       defineComponent({

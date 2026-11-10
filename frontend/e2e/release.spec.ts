@@ -77,6 +77,7 @@ test('Phase 7 real restricted users: presence, conflict, publish, notification a
   const adminToken = (await adminLogin.json()).access_token as string
   const permissions: { id: number; code: string; deprecated: boolean }[] = await api(request, adminToken, 'GET', '/roles/permissions')
   const suffix = randomUUID().slice(0, 8)
+  const system = await api(request, adminToken, 'POST', '/systems', { code: `P7_${suffix}`, name: `主链系统 ${suffix}` })
   async function user(name: string, scope: 'SELF' | 'ALL', codes: string[]) {
     const role = await api(request, adminToken, 'POST', '/roles', {
       code: `P7_${name}_${suffix}`, name: `P7 ${name}`, data_scope: scope,
@@ -84,7 +85,7 @@ test('Phase 7 real restricted users: presence, conflict, publish, notification a
     })
     const password = randomUUID()
     const username = `p7-${name}-${suffix}`
-    const created = await api(request, adminToken, 'POST', '/users', { username, display_name: `P7 ${name}`, password, role_ids: [role.id] })
+    const created = await api(request, adminToken, 'POST', '/users', { username, display_name: `P7 ${name} ${suffix}`, password, role_ids: [role.id] })
     const pair = await request.post('/api/v1/auth/login', { data: { username, password } })
     expect(pair.status()).toBe(200)
     const changed = await api(request, (await pair.json()).access_token, 'POST', '/auth/change-password', {
@@ -111,8 +112,8 @@ test('Phase 7 real restricted users: presence, conflict, publish, notification a
     await submit.goto('/#/feedbacks/new')
     await submit.locator('.el-form-item').filter({ hasText: '标题' }).locator('input').fill(title)
     await submit.locator('.el-form-item').filter({ hasText: '详细描述' }).locator('textarea').fill('Real isolated PostgreSQL browser acceptance')
-    await submit.locator('.el-form-item').filter({ hasText: '反馈接收人' }).getByRole('combobox').fill('P7 A')
-    await submit.getByRole('option', { name: 'P7 A', exact: true }).click()
+    await submit.locator('.el-form-item').filter({ hasText: '反馈接收人' }).getByRole('combobox').fill(`P7 A ${suffix}`)
+    await submit.getByRole('option', { name: `P7 A ${suffix}`, exact: true }).click()
     await submit.keyboard.press('Escape')
     const created = submit.waitForResponse(r => r.url().endsWith('/api/v1/feedbacks') && r.request().method() === 'POST')
     await submit.getByRole('button', { name: '提交', exact: true }).click()
@@ -133,7 +134,7 @@ test('Phase 7 real restricted users: presence, conflict, publish, notification a
     expect(initialRequirement.revision).toBe(requirement.revision)
     // Assignment is API setup; the subsequent title/priority editing and statuses are real UI.
     const people = await api(request, a.token, 'PUT', `/requirements/${requirement.id}/participants`, { revision: requirement.revision, participants: [{ user_id: b.id, role: 'CONFIRM' }, { user_id: a.id, role: 'DEVELOP' }, { user_id: b.id, role: 'DEVELOP' }, { user_id: b.id, role: 'ACCEPT' }] })
-    const assigned = await api(request, a.token, 'PATCH', `/requirements/${requirement.id}`, { priority: 'P1', revision: people.revision })
+    const assigned = await api(request, a.token, 'PATCH', `/requirements/${requirement.id}`, { system_id: system.id, priority: 'P1', revision: people.revision })
     // A same-hash navigation does not remount the detail view. Reload after API setup
     // and verify both editors have actually fetched the assigned revision.
     const loadedA = pageA.waitForResponse(r => r.url().endsWith(`/requirements/${requirement.id}`) && r.request().method() === 'GET').then(r => r.json())
@@ -163,7 +164,7 @@ test('Phase 7 real restricted users: presence, conflict, publish, notification a
     expect((await beat).status()).toBe(200)
     await pageB.getByRole('button', { name: '编辑', exact: true }).click()
     const editB = pageB.getByRole('dialog', { name: '编辑需求' })
-    await expect(editB.getByText('P7 A 正在编辑此需求')).toBeVisible()
+    await expect(editB.getByText(`P7 A ${suffix} 正在编辑此需求`)).toBeVisible()
     await expect(editB.getByRole('button', { name: '保存' })).toBeEnabled()
     const titleInput = (page: Page) => page.getByRole('dialog', { name: '编辑需求' }).getByRole('textbox', { name: '标题', exact: true })
     await titleInput(pageA).fill(`${title} saved A`)
@@ -220,7 +221,7 @@ test('Phase 7 real restricted users: presence, conflict, publish, notification a
     await expect(versionForm).toHaveCount(0)
     await expect(pageA.getByRole('button', { name: '创建版本', exact: true })).toHaveCount(0)
     expect((await api(request, a.token, 'GET', `/requirements/${requirement.id}`)).current_version_id).toBe(version.id)
-    expect((await api(request, a.token, 'GET', '/releases')).total).toBe(0)
+    expect((await api(request, a.token, 'GET', `/releases?version_id=${version.id}`)).total).toBe(0)
     await pageA.goto(`/#/versions/${version.id}`)
     await pageB.reload()
     await pageB.getByRole('button', { name: '展开需求进度', exact: true }).click()
@@ -241,10 +242,10 @@ test('Phase 7 real restricted users: presence, conflict, publish, notification a
     for (const label of ['开始开发', '提测', '待发布', '退回测试']) {
       await expect(pageA.getByRole('button', { name: label, exact: true })).toHaveCount(0)
     }
-    await pageA.getByRole('button', { name: '发布', exact: true }).click()
+    await pageA.getByRole('button', { name: '发布版本', exact: true }).click()
     const publishDialog = pageA.getByRole('dialog', { name: '发布版本' })
     await expect(publishDialog.getByRole('button', { name: '确认发布' })).toBeEnabled()
-    await publishDialog.locator('textarea').fill('Phase 7 real browser release')
+    await publishDialog.locator('.el-form-item').filter({ hasText: '发布说明' }).locator('textarea').fill('Phase 7 real browser release')
     const current = await api(request, a.token, 'GET', `/requirements/${requirement.id}`)
     // A real concurrent business change invalidates an already displayed successful publish check.
     let reopened = await api(request, a.token, 'PATCH', `/requirements/${requirement.id}/status`, { status: 'DEVELOPING', revision: current.revision, reason: 'Phase 7 concurrent publish check' })
@@ -258,8 +259,8 @@ test('Phase 7 real restricted users: presence, conflict, publish, notification a
     await expect(publishDialog).toBeVisible()
     for (const next of ['TESTING', 'DONE']) reopened = await api(request, b.token, 'PATCH', `/requirements/${requirement.id}/status`, { status: next, revision: reopened.revision })
     await pageA.reload()
-    await pageA.getByRole('button', { name: '发布', exact: true }).click()
-    await publishDialog.locator('textarea').fill('Phase 7 real browser release')
+    await pageA.getByRole('button', { name: '发布版本', exact: true }).click()
+    await publishDialog.locator('.el-form-item').filter({ hasText: '发布说明' }).locator('textarea').fill('Phase 7 real browser release')
     await expect(publishDialog.getByRole('button', { name: '确认发布' })).toBeEnabled()
     const published = pageA.waitForResponse(r => r.url().endsWith(`/versions/${version.id}/publish`) && r.request().method() === 'POST')
     await publishDialog.getByRole('button', { name: '确认发布' }).click()
@@ -289,10 +290,10 @@ test('Phase 7 real restricted users: presence, conflict, publish, notification a
     const selfA = await user('SelfA', 'SELF', selfCodes)
     const selfB = await user('SelfB', 'SELF', selfCodes)
     const prefix = `V18 scoped ${suffix}`
-    const own = await api(request, adminToken, 'POST', '/requirements', { title: `${prefix} owner A`, requirement_type: 'FEATURE', priority: 'P0', description: 'Participant scope', participants: [{ user_id: selfA.id, role: 'DEVELOP' }] })
-    const createdBy = await api(request, selfA.token, 'POST', '/requirements', { title: `${prefix} creator A`, requirement_type: 'FEATURE', priority: 'P1', description: 'Creator scope' })
-    const hidden = await api(request, adminToken, 'POST', '/requirements', { title: `${prefix} private B`, requirement_type: 'FEATURE', priority: 'P2', description: 'Out of scope', participants: [{ user_id: selfB.id, role: 'DEVELOP' }] })
-    let scopedVersion = await api(request, adminToken, 'POST', '/versions', { version_no: `V18-${suffix}`, name: prefix, owner_id: selfA.id })
+    const own = await api(request, adminToken, 'POST', '/requirements', { title: `${prefix} owner A`, system_id: system.id, requirement_type: 'FEATURE', priority: 'P0', description: 'Participant scope', participants: [{ user_id: selfA.id, role: 'DEVELOP' }] })
+    const createdBy = await api(request, selfA.token, 'POST', '/requirements', { title: `${prefix} creator A`, system_id: system.id, requirement_type: 'FEATURE', priority: 'P1', description: 'Creator scope' })
+    const hidden = await api(request, adminToken, 'POST', '/requirements', { title: `${prefix} private B`, system_id: system.id, requirement_type: 'FEATURE', priority: 'P2', description: 'Out of scope', participants: [{ user_id: selfB.id, role: 'DEVELOP' }] })
+    let scopedVersion = await api(request, adminToken, 'POST', '/versions', { version_no: `V18-${suffix}`, name: prefix, system_id: system.id, owner_id: selfA.id })
     for (const target of [own, createdBy, hidden]) scopedVersion = await api(request, adminToken, 'POST', `/versions/${scopedVersion.id}/requirements`, { requirement_id: target.id, revision: target.revision, version_revision: scopedVersion.revision })
     const denied = await request.get(`/api/v1/requirements/${hidden.id}`, { headers: { Authorization: `Bearer ${selfA.token}` } })
     expect(denied.status()).toBe(404)
@@ -348,5 +349,109 @@ test('Phase 7 real restricted users: presence, conflict, publish, notification a
     expect(errors).toEqual([])
   } finally {
     await Promise.all(contexts.map(context => context.close()))
+  }
+})
+
+test('real product announcement images and cross-session reading', async ({ browser, request }) => {
+  const username = process.env.INIT_ADMIN_USERNAME, password = process.env.ITERFLOW_BROWSER_NEW_PASSWORD
+  if (!username || !password) throw new Error('Isolated browser credentials required')
+  const logged = await request.post('/api/v1/auth/login', { data: { username, password } })
+  expect(logged.ok()).toBeTruthy()
+  const pair = await logged.json(), token = pair.access_token
+  const title = `产品更新验收-${randomUUID().slice(0,8)}`
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } })
+  const page = await context.newPage()
+  await page.addInitScript(value => { localStorage.setItem('iterflow.access_token', value.access_token); localStorage.setItem('iterflow.refresh_token', value.refresh_token) }, pair)
+  await page.goto('/#/announcements')
+  await page.getByRole('button', { name: '新增公告', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: '新增更新公告', exact: true })
+  await dialog.getByRole('textbox', { name: '公告标题', exact: true }).fill(title)
+  await dialog.getByRole('textbox', { name: '版本标识', exact: true }).fill('隔离验收版本')
+  await dialog.locator('[contenteditable=true]').fill('新增公告支持截图及账号已读同步。')
+  await dialog.getByText('重要更新：涉及流程变化或需要用户配合，登录后弹出提醒', { exact:true }).click()
+  await expect(dialog.getByRole('checkbox')).toBeChecked()
+  await dialog.locator('input[type=file]').setInputFiles({ name:'screenshot.png', mimeType:'image/png', buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j9eQAAAAASUVORK5CYII=', 'base64') })
+  await dialog.getByRole('button', { name:'保存草稿', exact:true }).click()
+  await expect(dialog).toBeHidden()
+  await expect(page.getByRole('button', { name:'查看大图', exact:true })).toBeVisible()
+  await page.getByRole('button', { name:'发布公告', exact:true }).click()
+  await page.getByRole('button', { name:'确认发布', exact:true }).click()
+  await expect(page.getByRole('dialog', {name:'发布更新公告',exact:true})).toBeHidden()
+  const noticeUrl=page.url()
+  const roles=await api(request,token,'GET','/roles')
+  const member=roles.find((r:any)=>r.code==='MEMBER')
+  const readerName='notice-reader-'+randomUUID().slice(0,8), initial='Test-'+randomUUID(), changed='Next-'+randomUUID()
+  await api(request,token,'POST','/users',{username:readerName,display_name:'公告跨设备验收',password:initial,role_ids:[member.id]})
+  const first=await request.post('/api/v1/auth/login',{data:{username:readerName,password:initial}})
+  const readerToken=(await first.json()).access_token
+  await api(request,readerToken,'POST','/auth/change-password',{current_password:initial,new_password:changed})
+  const loginReader=async()=>{const result=await request.post('/api/v1/auth/login',{data:{username:readerName,password:changed}});expect(result.ok()).toBeTruthy();return await result.json()}
+  const readerContext=await browser.newContext({viewport:{width:375,height:812}}), reader=await readerContext.newPage()
+  await reader.addInitScript(value=>{localStorage.setItem('iterflow.access_token',value.access_token);localStorage.setItem('iterflow.refresh_token',value.refresh_token)},await loginReader())
+  await reader.goto('/#/notifications')
+  await expect(reader.getByRole('dialog',{name:'重要更新公告',exact:true})).toBeVisible()
+  await reader.getByRole('button',{name:'我已知晓',exact:true}).click()
+  await expect(reader.getByRole('dialog',{name:'重要更新公告',exact:true})).toBeHidden()
+  const anotherContext=await browser.newContext(), another=await anotherContext.newPage()
+  await another.addInitScript(value=>{localStorage.setItem('iterflow.access_token',value.access_token);localStorage.setItem('iterflow.refresh_token',value.refresh_token)},await loginReader())
+  await another.goto('/#/notifications')
+  await expect(another.getByRole('heading',{name:'通知中心',exact:true})).toBeVisible()
+  await expect(another.getByRole('dialog',{name:'重要更新公告',exact:true})).toHaveCount(0)
+  await reader.goto(noticeUrl)
+  await expect(reader.getByRole('heading',{name:title,exact:true})).toBeVisible()
+  await reader.getByRole('button',{name:'查看大图',exact:true}).click()
+  await expect(reader.getByRole('dialog',{name:'公告图片大图',exact:true})).toBeVisible()
+  await reader.getByRole('button',{name:'关闭',exact:true}).click()
+  await expect(reader.getByRole('dialog',{name:'公告图片大图',exact:true})).toBeHidden()
+  expect(await reader.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(375)
+  await reader.screenshot({path:'test-results/announcement-real-mobile.png',fullPage:true})
+  await page.screenshot({path:'test-results/announcement-real-desktop.png',fullPage:true})
+  await context.close();await readerContext.close();await anotherContext.close()
+})
+
+test('Real target publishing: optional coverage and later multiple target records', async ({ page, request }) => {
+  test.setTimeout(180_000)
+  const username = process.env.INIT_ADMIN_USERNAME!
+  const password = process.env.ITERFLOW_BROWSER_NEW_PASSWORD!
+  const loginResult = await request.post('/api/v1/auth/login', { data: { username, password } })
+  expect(loginResult.status()).toBe(200)
+  const token = (await loginResult.json()).access_token as string
+  const me = await api(request, token, 'GET', '/auth/me')
+  await login(page, username, password)
+  for (const width of [1440, 375]) {
+    await page.setViewportSize({ width, height: 1000 })
+    const suffix = randomUUID().slice(0, 8)
+    const system = await api(request, token, 'POST', '/systems', { code: `MT_${suffix}`, name: `多目标主链 ${suffix}` })
+    const targetName = (code: string) => code === 'B' ? '真实 PC B' : `真实小程序 ${code}`
+    for (const code of ['A', 'B', 'C']) await api(request, token, 'POST', `/systems/${system.id}/release-targets`, { code, name: targetName(code), platform: code === 'B' ? 'PC_WEB' : 'WECHAT_MINI_PROGRAM', app_id: code === 'B' ? null : `wx${suffix}${code}` })
+    let req = await api(request, token, 'POST', '/requirements', { title: `多小程序需求 ${suffix}`, description: '仅用于本地合成流程验收', requirement_type: 'FEATURE', system_id: system.id, participants: ['CONFIRM', 'DEVELOP', 'ACCEPT'].map(role => ({ role, user_id: me.id })) })
+    await api(request, token, 'POST', `/requirements/${req.id}/workflow`, { revision: req.revision, action: 'CONFIRM' })
+    req = await api(request, token, 'GET', `/requirements/${req.id}`)
+    for (const next of ['DEVELOPING', 'TESTING', 'DONE']) req = await api(request, token, 'PATCH', `/requirements/${req.id}/status`, { status: next, revision: req.revision })
+    const version = await api(request, token, 'POST', '/versions', { version_no: `MT-${suffix}`, name: `多目标版本 ${suffix}`, system_id: system.id, requirement_id: req.id, requirement_revision: req.revision })
+    await page.goto(`/#/versions/${version.id}`)
+    await page.getByRole('button', { name: '发布版本', exact: true }).click()
+    const publish = page.getByRole('dialog', { name: '发布版本', exact: true })
+    const selectOnPublish = width === 1440
+    if (selectOnPublish) await publish.locator('.el-checkbox').filter({ hasText: targetName('A') }).click()
+    await publish.getByRole('textbox', { name: '发布说明', exact: true }).fill(selectOnPublish ? '先记 A，其他目标稍后补记' : '正常发布，所有目标稍后补记')
+    await publish.getByRole('button', { name: '确认发布', exact: true }).click(); await expect(publish).toBeHidden()
+    const released = await api(request, token, 'GET', `/releases?version_id=${version.id}`)
+    expect(released.total).toBe(1)
+    const current = await api(request, token, 'GET', `/requirements/${req.id}`)
+    expect(current.status).toBe('ONLINE')
+    const panel = page.locator('#release-target-batches')
+    if (selectOnPublish) await expect(panel).toContainText('已记录 1 个小程序 / PC 目标')
+    expect((await api(request, token, 'GET', `/target-release-records?version_id=${version.id}`)).total).toBe(selectOnPublish ? 1 : 0)
+    await panel.getByRole('button', { name: '补记已发布目标', exact: true }).click()
+    const record = page.getByRole('dialog', { name: '补记已发布目标', exact: true })
+    if (selectOnPublish) await expect(record.getByRole('checkbox', { name: /真实小程序 A/ })).toBeDisabled()
+    for (const code of selectOnPublish ? ['B', 'C'] : ['A', 'B', 'C']) await record.locator('.el-checkbox').filter({ hasText: targetName(code) }).click()
+    await record.getByRole('button', { name: '保存已发布目标', exact: true }).click(); await expect(record).toBeHidden()
+    await expect(panel).toContainText('已记录 3 个小程序 / PC 目标')
+    expect((await api(request, token, 'GET', `/releases?version_id=${version.id}`)).items).toEqual(released.items)
+    expect((await api(request, token, 'GET', `/target-release-records?version_id=${version.id}`)).total).toBe(3)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true)
+    await page.screenshot({ path: test.info().outputPath(`real-supplement-${width}.png`), fullPage: true })
   }
 })

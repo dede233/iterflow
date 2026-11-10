@@ -188,6 +188,7 @@ const queryState = useListQuery({
 .filters :deep(.el-select), .filters :deep(.el-input-number), .filters :deep(.el-date-editor) { width: 100%; }
 .time-filter { grid-column: span 3; }
 .filter-actions { display: flex; gap: 8px; padding-bottom: 12px; }
+.filter-actions .el-button + .el-button { margin-left: 0; }
 .audit-table { cursor: pointer; }
 .cards { display: grid; gap: 10px; padding: var(--if-space-4); }
 .audit-card { display: grid; gap: 8px; width: 100%; min-width: 0; padding: 14px; background: var(--if-bg-surface); border: 1px solid var(--if-border); border-radius: var(--if-radius); color: var(--if-text-1); font: inherit; text-align: left; cursor: pointer; }

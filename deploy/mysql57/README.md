@@ -1,4 +1,12 @@
+# 当前上线准备 · 2026-11-10
+
+当前候选目标`mysql57_0016`、35张表和110个触发器，TEST已部署并由用户验收。正式最近验证`5401215/mysql57_0012`，本轮仅准备，未切环境。已有正式库须连续0012→0016、补五张新表最小DML并做真实备份隔离演练；完整[升级和回退清单](../../docs/production-preparation-2026-11-10.md)。下列按日期记录保留历史事实，空库初始化流程不能用于已有数据库。
+
+2026-11-09 多目标发布开发目标追加 `mysql57_0015`：35 张表、110 个触发器，三张新增表须配套最小 DML 授权；只在新建隔离库验证，尚未部署。升级和拒绝有损降级边界见 [实施记录](../../docs/multi-target-release-2026-11-09.md)。下段为上一候选的历史事实。
+
 # 迭程 IterFlow：MySQL 5.7 空库部署包
+
+2026-11-09 当前开发包目标为 `mysql57_0014`，32 张表（30 张业务表、迁移元数据及键登记表）、97 个完整性触发器。新增单系统版本绑定、独立更新公告与账号已读；详情归属及最近十条操作不加迁移。TEST 已验收，正式最近已验证为 `5401215` / `mysql57_0012`。当前仅做上线准备，不切环境；已有库不得执行下述空库 seed，`0012 → 0013 → 0014`、运行账号两张公告表最小 DML 及回退边界见 [本批上线准备](../../docs/production-preparation-2026-11-09.md)。下段 2026-11-05 为历史阶段记录。
 
 2026-11-05 当前开发包目标为 mysql57_0012，保留 91 个完整性触发器及通知 worker。确认人、验收人均支持多人且任意有效人员确认即可；取消逐人开发完成门禁，历史数据保留。0012 增加富文本格式与软删除元数据并移除确认人单人约束，无新增表或 permission。正式最近已验证为 mysql57_0011，本轮只做上线准备，不执行正式升级。已有库不能按下面空库初始化流程运行 seed；迁移、兼容与回退见 [当前上线准备](../../docs/production-preparation-2026-11-05.md)。以下按日期保留历史事实。
 
@@ -15,7 +23,7 @@ API 仍为 1.8.1 开发基线，本适配分支不是新的正式 tag/Release。
 
 包含 API、Web、Redis 与 MySQL 5.7.44 客户端镜像；Compose 不启动数据库服务器。
 数据库必须由管理员单独提供。API 使用低权限账号，迁移/seed 使用另一个受限账号。
-MySQL 双指针改为关系事实派生：API 字段不变，数据库生成列唯一键 + 外键 + 91 个写保护
+MySQL 双指针改为关系事实派生：API 字段不变，数据库生成列唯一键 + 外键 + 110 个写保护
 触发器保证基数、布尔/枚举及禁用检查绕过；历史关系保留。PostgreSQL 原迁移与路径保留。
 
 ## 部署前必须确认
@@ -27,7 +35,7 @@ MySQL 双指针改为关系事实派生：API 字段不变，数据库生成列�
 - 迁移账号具有目标库 CREATE/ALTER/INDEX/REFERENCES/TRIGGER/CREATE ROUTINE/EXECUTE、DML、
   读 schema 元数据权限；binary logging 开启时由 DBA 确认创建 trigger/function 的能力，
   本路径预检要求 log_bin_trust_function_creators=ON。不要自行授予运行账号 SUPER。
-- 推荐运行账号只拥有 `runtime-grants.sql` 的 28 业务表 DML、Alembic 与键登记表 SELECT，
+- 推荐运行账号只拥有 `runtime-grants.sql` 的 30 业务表 DML、Alembic 与键登记表 SELECT，
   没有 DDL/TRIGGER/GRANT/管理权限或其他继承授权。用户已明确接受此次使用现有高权限
   iterflow 账号的例外；它可删除数据库保护对象，不属于最小权限验证通过。
 - 保留触发器 DEFINER 账号及必要权限，不能在迁移后删除该账号。
@@ -76,7 +84,7 @@ curl --fail http://127.0.0.1:8080/
 先执行正式迁移，然后 seed；不使用 create_all、stamp head 或 PG 历史迁移。
 MySQL DDL 不原子：失败即停，保留现场；不要 stamp/盲目续跑。由 DBA 确认仅针对自己的空库
 清理失败初始化后重建。seed 只创建基础角色、权限和新管理员，首次登录必须改密。
-迁移后必须检查 mysql57_0012、91 个 trigger、键登记函数及完整唯一约束；runtime readiness
+迁移后必须检查 mysql57_0015、110 个 trigger、键登记函数及完整唯一约束；runtime readiness
 只用低权限检查。长键保持原 500 字符/2000 字节范围，分成 512 字节二进制段，以
 UNIQUE(parent_id,segment) 确定路径，再以文件 leaf_id UNIQUE 保证完整键唯一；无哈希/前缀误判。
 登记节点不可修改或删除，文件删除后可复用路径；节点积累需要计入存储容量。
@@ -140,3 +148,6 @@ Apple Silicon 测试使用独立 QEMU x86_64 VM；旧 ARM VM + amd64 用户态�
 失败，不能宣称该环境稳定。正式远程版本/配置仍须核实并执行部署前门禁，不能据本包宣称已上线。
 
 全员开发完成门禁见 `docs/development-completion.md`。既有人员不自动确认；每条有效需求至少一名开发人员且全部本人确认后才可完成及发布。2026-10-11 已构建并验证源 `2b37509` 的 amd64 包，实际服务器从 mysql57_0002 追加升级至 mysql57_0005；完整证据与保留数据、双份备份边界见线上升级记录。
+
+
+升级包含新增表时，必须同步 `runtime-grants.sql` 中对应表级授权（替换为目标数据库及既有运行账号），再以运行账号执行就绪检查。`mysql57_0014` 的 `sys_announcement`、`sys_announcement_read` 和 `mysql57_0015` 的 `sys_release_target`、`rd_release_batch`、`rd_release_batch_target` 共五表均需 SELECT/INSERT/UPDATE/DELETE；`mysql57_0016` 只扩展支付宝平台约束，不新增权限；不得授予整库、DDL 或 GRANT 权限。迁移账号的 preflight 通过不代表运行账号可访问新表。

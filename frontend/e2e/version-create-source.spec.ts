@@ -1,10 +1,11 @@
+import { mockReadPanels } from './collaboration-fixture'
 import { expect, test, type Page } from '@playwright/test'
 
 const stamp = '2026-11-04T00:00:00Z'
 type Options = { status?: string; linked?: boolean; permissions?: string[]; failSequence?: ('duplicate' | 'revision' | 'unavailable')[] }
 async function fixture(page: Page, options: Options = {}) {
-  const requirement = { id: 7, requirement_no: 'REQ-CREATE-VERSION', title: '从需求创建独立版本', requirement_type: 'FEATURE', source: 'DIRECT', priority: 'P2', status: options.status || 'DONE', owner_id: null, current_version_id: options.linked ? 9 : null, description: '已完成验收的需求说明', description_format: 'PLAIN', acceptance_criteria: '保留需求上下文', revision: 4, created_at: stamp, updated_at: stamp, updated_by: 1 }
-  const version = { id: 9, version_no: 'V2', name: requirement.title, status: 'PLANNING', owner_id: null, planned_release_date: null, released_at: null, description: null as string | null, revision: 2, created_at: stamp, updated_at: stamp, updated_by: 1 }
+  const requirement = { id: 7, system_id: 1, system_name: '系统甲', requirement_no: 'REQ-CREATE-VERSION', title: '从需求创建独立版本', requirement_type: 'FEATURE', source: 'DIRECT', priority: 'P2', status: options.status || 'DONE', owner_id: null, current_version_id: options.linked ? 9 : null, description: '已完成验收的需求说明', description_format: 'PLAIN', acceptance_criteria: '保留需求上下文', revision: 4, created_at: stamp, updated_at: stamp, updated_by: 1 }
+  const version = { id: 9, system_id: 1, system_name: '系统甲', version_no: 'V2', name: requirement.title, status: 'PLANNING', owner_id: null, planned_release_date: null, released_at: null, description: null as string | null, revision: 2, created_at: stamp, updated_at: stamp, updated_by: 1 }
   const writes: Record<string, any>[] = [], unexpected: string[] = [], errors: string[] = []
   let latestRequirementRevision = 4
   let requirementReads = 0
@@ -36,6 +37,7 @@ async function fixture(page: Page, options: Options = {}) {
       return json(requirement)
     }
     const responses: Record<string, unknown> = {
+      '/api/v1/systems/options': [{ id: 1, name: '系统甲' }],
       '/api/v1/auth/me': { id: 1, username: 'source-local', display_name: '本地合成用户', status: 'ACTIVE', revision: 1, must_change_password: false, data_scope: 'ALL', role_ids: [], permission_codes: options.permissions || ['*'] },
       '/api/v1/me/mail-preferences': { revision: 1, mode: 'TASKS', email: null, pending_email: null, verified: false, smtp_enabled: false, notice_acknowledged: true },
       '/api/v1/notifications/unread-count': { unread_count: 0 }, '/api/v1/systems': { systems: [], modules: [] },
@@ -49,6 +51,7 @@ async function fixture(page: Page, options: Options = {}) {
       '/api/v1/releases': { items: [], total: 0, page: 1, page_size: 20 },
     }
     if (method === 'GET' && path in responses) return json(responses[path])
+    if (await mockReadPanels(route)) return
     unexpected.push(`${method} ${path}`)
     return json({ message: 'Unexpected synthetic request' }, 500)
   })
@@ -90,7 +93,7 @@ for (const width of [375, 1440]) {
     await expect(detail.getByRole('button', { name: '创建版本', exact: true })).toHaveCount(0)
     await expect(detail.getByRole('link', { name: 'V2 · 自定义版本名称', exact: true })).toBeVisible()
     expect(audit.writes).toHaveLength(3)
-    expect(audit.writes[2]).toMatchObject({ version_no: 'V2', name: '自定义版本名称', description: '保留的版本说明', requirement_id: 7, requirement_revision: 5 })
+    expect(audit.writes[2]).toMatchObject({ system_id: 1, version_no: 'V2', name: '自定义版本名称', description: '保留的版本说明', requirement_id: 7, requirement_revision: 5 })
     await expect(page).toHaveURL(/#\/requirements\?keyword=source&status=DONE$/)
     await detail.getByRole('link', { name: 'V2 · 自定义版本名称', exact: true }).click()
     await expect(page.getByRole('heading', { name: '自定义版本名称', exact: true })).toBeVisible()
@@ -107,6 +110,8 @@ for (const width of [375, 1440]) {
     const dialog = page.getByRole('dialog', { name: '新建版本', exact: true })
     await expect(dialog.getByRole('textbox', { name: /版本名称/ })).toHaveValue('')
     await dialog.getByRole('textbox', { name: /版本名称/ }).fill('普通版本创建')
+    await dialog.locator('.el-form-item').filter({ hasText: '业务系统' }).locator('.el-select').click()
+    await page.getByRole('option', { name: '系统甲', exact: true }).click()
     await dialog.getByRole('textbox', { name: /版本号/ }).fill('V1')
     await dialog.getByRole('button', { name: '创建', exact: true }).click()
     await expect(dialog.getByText(/版本号「V1」已存在/)).toBeVisible()

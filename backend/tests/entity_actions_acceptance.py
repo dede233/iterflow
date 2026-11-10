@@ -5,6 +5,7 @@ from threading import Barrier
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
+from system_binding_fixture import create_test_system
 
 from app.core.exceptions import AppError
 from app.models.entities import (
@@ -25,6 +26,7 @@ from app.services.version_service import VersionService
 
 def exercise_actions(fixture, scenario, monkeypatch):
     client, engine, uid, headers = fixture
+    system_id = create_test_system(engine)
     response = client.post(
         "/api/v1/requirements",
         headers=headers,
@@ -32,6 +34,7 @@ def exercise_actions(fixture, scenario, monkeypatch):
             "title": "隔离删除测试",
             "description": "需求范围",
             "requirement_type": "FEATURE",
+            "system_id": system_id,
             "participants": [{"user_id": uid, "role": "CONFIRM"}],
         },
     )
@@ -99,7 +102,12 @@ def exercise_actions(fixture, scenario, monkeypatch):
         response = client.post(
             "/api/v1/versions",
             headers=headers,
-            json={"version_no": "V-ISSUE4-RACE", "name": "隔离版本", "owner_id": uid},
+            json={
+                "system_id": system_id,
+                "version_no": "V-ISSUE4-RACE",
+                "name": "隔离版本",
+                "owner_id": uid,
+            },
         )
         assert response.status_code == 200, response.text
         version = response.json()

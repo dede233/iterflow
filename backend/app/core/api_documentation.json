@@ -37,6 +37,10 @@
     },
     {
       "name": "File"
+    },
+    {
+      "name": "announcements",
+      "description": "迭程产品更新公告、草稿管理与账号已读记录"
     }
   ],
   "schemas": {
@@ -53,6 +57,143 @@
         "version_revision": {
           "title": "版本修订号",
           "description": "目标版本的乐观锁修订号；版本内容变更时用于并发校验。"
+        }
+      }
+    },
+    "AnnouncementCreate": {
+      "title": "AnnouncementCreate",
+      "properties": {
+        "title": {
+          "title": "公告标题"
+        },
+        "version_label": {
+          "title": "版本标识"
+        },
+        "release_date": {
+          "title": "上线日期"
+        },
+        "content": {
+          "title": "公告正文"
+        },
+        "important": {
+          "title": "重要更新"
+        },
+        "image_uploads": {
+          "title": "待上传图片",
+          "additionalProperties": {}
+        }
+      }
+    },
+    "AnnouncementNotice": {
+      "title": "AnnouncementNotice",
+      "properties": {
+        "unread_count": {
+          "title": "未读数量"
+        },
+        "latest": {
+          "title": "最新未读公告",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "important": {
+          "title": "重要更新",
+          "anyOf": [
+            {},
+            {}
+          ]
+        }
+      }
+    },
+    "AnnouncementOut": {
+      "title": "AnnouncementOut",
+      "properties": {
+        "id": {
+          "title": "公告标识"
+        },
+        "title": {
+          "title": "公告标题"
+        },
+        "version_label": {
+          "title": "版本标识"
+        },
+        "release_date": {
+          "title": "上线日期"
+        },
+        "content": {
+          "title": "公告正文"
+        },
+        "important": {
+          "title": "重要更新"
+        },
+        "revision": {
+          "title": "修订号"
+        },
+        "published_at": {
+          "title": "发布时间",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "read_at": {
+          "title": "当前账号阅读时间",
+          "anyOf": [
+            {},
+            {}
+          ]
+        }
+      }
+    },
+    "AnnouncementPage": {
+      "title": "AnnouncementPage",
+      "properties": {
+        "items": {
+          "title": "公告列表",
+          "items": {}
+        },
+        "page": {
+          "title": "页码"
+        },
+        "page_size": {
+          "title": "每页条数"
+        },
+        "total": {
+          "title": "总数"
+        },
+        "unread_count": {
+          "title": "未读数量"
+        },
+        "can_manage": {
+          "title": "是否可管理公告"
+        }
+      }
+    },
+    "AnnouncementUpdate": {
+      "title": "AnnouncementUpdate",
+      "properties": {
+        "title": {
+          "title": "公告标题"
+        },
+        "version_label": {
+          "title": "版本标识"
+        },
+        "release_date": {
+          "title": "上线日期"
+        },
+        "content": {
+          "title": "公告正文"
+        },
+        "important": {
+          "title": "重要更新"
+        },
+        "image_uploads": {
+          "title": "待上传图片",
+          "additionalProperties": {}
+        },
+        "revision": {
+          "title": "修订号"
         }
       }
     },
@@ -445,6 +586,17 @@
         }
       }
     },
+    "BusinessSystemOption": {
+      "title": "BusinessSystemOption",
+      "properties": {
+        "id": {
+          "title": "系统 ID"
+        },
+        "name": {
+          "title": "系统名称"
+        }
+      }
+    },
     "BusinessSystemOut": {
       "title": "BusinessSystemOut",
       "properties": {
@@ -830,6 +982,28 @@
         },
         "email": {
           "title": "邮箱"
+        }
+      }
+    },
+    "EntityActivityOut": {
+      "title": "EntityActivityOut",
+      "description": "Minimal activity information for an authorized business detail view.",
+      "properties": {
+        "id": {
+          "title": "操作记录 ID"
+        },
+        "action": {
+          "title": "操作类型"
+        },
+        "operator": {
+          "title": "操作人",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "created_at": {
+          "title": "操作时间"
         }
       }
     },
@@ -1763,6 +1937,34 @@
         "revision": {
           "title": "修订号",
           "description": "对象的乐观锁修订号；写入时提交最后读取的修订号。"
+        },
+        "target_ids": {
+          "title": "本次已发布目标 ID",
+          "items": {}
+        },
+        "initial_batch_id": {
+          "title": "首次批次 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "batch_revision": {
+          "title": "批次修订号",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "legacy_single": {
+          "title": "明确传统单次发布"
+        },
+        "legacy_reason": {
+          "title": "传统发布原因",
+          "anyOf": [
+            {},
+            {}
+          ]
         }
       }
     },
@@ -1783,6 +1985,294 @@
       "properties": {
         "refresh_token": {
           "title": "刷新令牌"
+        }
+      }
+    },
+    "ReleaseBatchAdjust": {
+      "title": "ReleaseBatchAdjust",
+      "properties": {
+        "version_revision": {
+          "title": "版本修订号"
+        },
+        "revision": {
+          "title": "批次修订号"
+        },
+        "target_ids": {
+          "title": "调整后目标 ID",
+          "items": {}
+        },
+        "reason": {
+          "title": "调整原因"
+        }
+      }
+    },
+    "ReleaseBatchCancel": {
+      "title": "ReleaseBatchCancel",
+      "properties": {
+        "version_revision": {
+          "title": "版本修订号"
+        },
+        "revision": {
+          "title": "批次修订号"
+        },
+        "reason": {
+          "title": "取消原因"
+        }
+      }
+    },
+    "ReleaseBatchCreate": {
+      "title": "ReleaseBatchCreate",
+      "properties": {
+        "version_revision": {
+          "title": "版本修订号"
+        },
+        "kind": {
+          "title": "批次类型"
+        },
+        "system_id": {
+          "title": "历史版本补发业务系统 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "target_ids": {
+          "title": "计划目标 ID",
+          "items": {}
+        },
+        "release_notes": {
+          "title": "发布说明"
+        },
+        "reason": {
+          "title": "重新发布原因",
+          "anyOf": [
+            {},
+            {}
+          ]
+        }
+      }
+    },
+    "ReleaseBatchOut": {
+      "title": "ReleaseBatchOut",
+      "properties": {
+        "id": {
+          "title": "批次 ID"
+        },
+        "version_id": {
+          "title": "版本 ID"
+        },
+        "system_id": {
+          "title": "业务系统 ID"
+        },
+        "kind": {
+          "title": "批次类型"
+        },
+        "status": {
+          "title": "批次状态"
+        },
+        "release_notes": {
+          "title": "发布说明"
+        },
+        "reason": {
+          "title": "重新发布原因",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "release_id": {
+          "title": "原整体发布记录 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "revision": {
+          "title": "批次修订号"
+        },
+        "version_revision": {
+          "title": "版本修订号"
+        },
+        "created_at": {
+          "title": "计划创建时间"
+        },
+        "updated_at": {
+          "title": "最近登记时间"
+        },
+        "total": {
+          "title": "当前计划目标数"
+        },
+        "completed": {
+          "title": "已完成目标数"
+        },
+        "targets": {
+          "title": "计划及实际目标记录",
+          "items": {}
+        }
+      }
+    },
+    "ReleaseBatchTargetOut": {
+      "title": "ReleaseBatchTargetOut",
+      "properties": {
+        "id": {
+          "title": "批次目标 ID"
+        },
+        "target_id": {
+          "title": "发布目标 ID"
+        },
+        "name": {
+          "title": "计划目标名称快照"
+        },
+        "code": {
+          "title": "计划目标编码快照"
+        },
+        "platform": {
+          "title": "平台快照"
+        },
+        "app_id": {
+          "title": "AppID 快照",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "url": {
+          "title": "访问地址快照",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "active": {
+          "title": "仍在计划中"
+        },
+        "removed_reason": {
+          "title": "移除原因",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "completed_at": {
+          "title": "实际上线时间",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "recorded_at": {
+          "title": "系统登记时间",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "completed_by": {
+          "title": "实际登记人 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "operator_name": {
+          "title": "登记人名称快照",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "notes": {
+          "title": "目标发布说明",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "evidence": {
+          "title": "凭证说明或链接",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "revision": {
+          "title": "目标修订号"
+        }
+      }
+    },
+    "ReleaseBatchesOut": {
+      "title": "ReleaseBatchesOut",
+      "properties": {
+        "version_id": {
+          "title": "版本 ID"
+        },
+        "version_revision": {
+          "title": "版本修订号"
+        },
+        "system_id": {
+          "title": "有效发布系统 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "release_frozen": {
+          "title": "首次发布内容已冻结"
+        },
+        "legacy_unrecorded": {
+          "title": "原整体发布未记录目标"
+        },
+        "coverage_count": {
+          "title": "累计实际覆盖目标数"
+        },
+        "items": {
+          "title": "发布批次",
+          "items": {}
+        },
+        "page": {
+          "title": "页码"
+        },
+        "page_size": {
+          "title": "每页数量"
+        },
+        "total": {
+          "title": "批次总数"
+        }
+      }
+    },
+    "ReleaseCoverageCreate": {
+      "title": "ReleaseCoverageCreate",
+      "properties": {
+        "version_revision": {
+          "title": "版本修订号"
+        },
+        "system_id": {
+          "title": "历史版本目标所属业务系统 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "target_ids": {
+          "title": "已发布目标 ID",
+          "items": {}
+        },
+        "released_at": {
+          "title": "实际上线时间"
+        },
+        "notes": {
+          "title": "发布说明",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "evidence": {
+          "title": "凭证说明或链接",
+          "anyOf": [
+            {},
+            {}
+          ]
         }
       }
     },
@@ -1849,6 +2339,170 @@
     "ReleaseResult": {
       "title": "ReleaseResult"
     },
+    "ReleaseTargetComplete": {
+      "title": "ReleaseTargetComplete",
+      "properties": {
+        "version_revision": {
+          "title": "版本修订号"
+        },
+        "batch_revision": {
+          "title": "批次修订号"
+        },
+        "revision": {
+          "title": "目标修订号"
+        },
+        "released_at": {
+          "title": "实际上线时间"
+        },
+        "notes": {
+          "title": "目标发布说明",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "evidence": {
+          "title": "凭证说明或链接",
+          "anyOf": [
+            {},
+            {}
+          ]
+        }
+      }
+    },
+    "ReleaseTargetCreate": {
+      "title": "ReleaseTargetCreate",
+      "properties": {
+        "code": {
+          "title": "目标编码"
+        },
+        "name": {
+          "title": "目标名称"
+        },
+        "platform": {
+          "title": "平台类型"
+        },
+        "app_id": {
+          "title": "小程序 AppID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "url": {
+          "title": "访问地址",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "enabled": {
+          "title": "是否启用"
+        }
+      }
+    },
+    "ReleaseTargetOut": {
+      "title": "ReleaseTargetOut",
+      "properties": {
+        "covered": {
+          "title": "版本已覆盖该目标"
+        },
+        "pending": {
+          "title": "版本已有未完成目标计划"
+        },
+        "id": {
+          "title": "目标 ID"
+        },
+        "system_id": {
+          "title": "业务系统 ID"
+        },
+        "code": {
+          "title": "目标编码"
+        },
+        "name": {
+          "title": "目标名称"
+        },
+        "platform": {
+          "title": "平台类型"
+        },
+        "app_id": {
+          "title": "小程序 AppID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "url": {
+          "title": "访问地址",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "enabled": {
+          "title": "是否启用"
+        },
+        "revision": {
+          "title": "修订号"
+        },
+        "created_at": {
+          "title": "创建时间"
+        },
+        "updated_at": {
+          "title": "更新时间"
+        }
+      }
+    },
+    "ReleaseTargetUpdate": {
+      "title": "ReleaseTargetUpdate",
+      "properties": {
+        "revision": {
+          "title": "修订号"
+        },
+        "code": {
+          "title": "目标编码",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "name": {
+          "title": "目标名称",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "platform": {
+          "title": "平台类型",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "app_id": {
+          "title": "小程序 AppID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "url": {
+          "title": "访问地址",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "enabled": {
+          "title": "是否启用",
+          "anyOf": [
+            {},
+            {}
+          ]
+        }
+      }
+    },
     "RemoveRequirementRequest": {
       "title": "RemoveRequirementRequest",
       "properties": {
@@ -1862,27 +2516,6 @@
         },
         "reason": {
           "title": "操作原因",
-          "anyOf": [
-            {},
-            {}
-          ]
-        }
-      }
-    },
-    "VersionRequirementSubmitAcceptance": {
-      "title": "VersionRequirementSubmitAcceptance",
-      "properties": {
-        "version_revision": {
-          "title": "版本修订号"
-        },
-        "items": {
-          "title": "需求清单",
-          "description": "需求ID不可重复；每项携带检查时的需求revision。",
-          "items": {}
-        },
-        "reason": {
-          "title": "提交说明",
-          "description": "提供时trim后至少2字符；待开发直接提验或管理员代操作必填。",
           "anyOf": [
             {},
             {}
@@ -1985,6 +2618,16 @@
     "RequirementOut": {
       "title": "RequirementOut",
       "properties": {
+        "release_frozen": {
+          "title": "首次发布内容已冻结"
+        },
+        "system_name": {
+          "title": "所属业务系统名称",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
         "current_handlers": {
           "title": "当前待处理人",
           "items": {}
@@ -2233,6 +2876,14 @@
         }
       }
     },
+    "RevisionPayload": {
+      "title": "RevisionPayload",
+      "properties": {
+        "revision": {
+          "title": "修订号"
+        }
+      }
+    },
     "RoleCreate": {
       "title": "RoleCreate",
       "properties": {
@@ -2345,6 +2996,142 @@
     },
     "StorageDriver": {
       "title": "StorageDriver"
+    },
+    "TargetReleaseOption": {
+      "title": "TargetReleaseOption",
+      "properties": {
+        "id": {
+          "title": "发布目标 ID"
+        },
+        "label": {
+          "title": "目标显示名称"
+        }
+      }
+    },
+    "TargetReleasePage": {
+      "title": "TargetReleasePage",
+      "properties": {
+        "items": {
+          "title": "实际发布记录",
+          "items": {}
+        },
+        "page": {
+          "title": "页码"
+        },
+        "page_size": {
+          "title": "每页数量"
+        },
+        "total": {
+          "title": "总记录数"
+        }
+      }
+    },
+    "TargetReleaseRecordOut": {
+      "title": "TargetReleaseRecordOut",
+      "properties": {
+        "id": {
+          "title": "批次目标 ID"
+        },
+        "target_id": {
+          "title": "发布目标 ID"
+        },
+        "name": {
+          "title": "计划目标名称快照"
+        },
+        "code": {
+          "title": "计划目标编码快照"
+        },
+        "platform": {
+          "title": "平台快照"
+        },
+        "app_id": {
+          "title": "AppID 快照",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "url": {
+          "title": "访问地址快照",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "active": {
+          "title": "仍在计划中"
+        },
+        "removed_reason": {
+          "title": "移除原因",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "completed_at": {
+          "title": "实际上线时间",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "recorded_at": {
+          "title": "系统登记时间",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "completed_by": {
+          "title": "实际登记人 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "operator_name": {
+          "title": "登记人名称快照",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "notes": {
+          "title": "目标发布说明",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "evidence": {
+          "title": "凭证说明或链接",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "revision": {
+          "title": "目标修订号"
+        },
+        "version_id": {
+          "title": "版本 ID"
+        },
+        "version_no": {
+          "title": "版本号"
+        },
+        "version_name": {
+          "title": "版本名称"
+        },
+        "system_id": {
+          "title": "业务系统 ID"
+        },
+        "batch_id": {
+          "title": "批次 ID"
+        },
+        "batch_kind": {
+          "title": "批次类型"
+        }
+      }
     },
     "TokenPair": {
       "title": "TokenPair",
@@ -2540,6 +3327,9 @@
     "VersionCreate": {
       "title": "VersionCreate",
       "properties": {
+        "system_id": {
+          "title": "所属业务系统 ID"
+        },
         "version_no": {
           "title": "版本号"
         },
@@ -2589,6 +3379,23 @@
       "title": "VersionOut",
       "description": "status为关联需求自动汇总的只读有效进度，详情、列表筛选、统计和所有写响应保持一致。真实RELEASED/CANCELED终态保留，历史非终态存储不覆盖派生结果；读取不写库。无需求为PLANNING；全DONE且确认有效为READY；全TESTING/DONE未就绪为TESTING；已开始工作但混合其他阶段为DEVELOPING，其余PLANNING。暂停和取消需求仍参与清单并阻止发布。",
       "properties": {
+        "release_frozen": {
+          "title": "首次发布内容已冻结"
+        },
+        "system_id": {
+          "title": "所属业务系统 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "system_name": {
+          "title": "所属业务系统名称",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
         "id": {
           "title": "版本 ID"
         },
@@ -2666,6 +3473,27 @@
         }
       }
     },
+    "VersionRequirementSubmitAcceptance": {
+      "title": "VersionRequirementSubmitAcceptance",
+      "properties": {
+        "version_revision": {
+          "title": "版本修订号"
+        },
+        "items": {
+          "title": "需求清单",
+          "description": "需求ID不可重复；每项携带检查时的需求revision。",
+          "items": {}
+        },
+        "reason": {
+          "title": "提交说明",
+          "description": "提供时trim后至少2字符；待开发直接提验或管理员代操作必填。",
+          "anyOf": [
+            {},
+            {}
+          ]
+        }
+      }
+    },
     "VersionRequirementsOut": {
       "title": "VersionRequirementsOut",
       "properties": {
@@ -2725,6 +3553,13 @@
     "VersionUpdate": {
       "title": "VersionUpdate",
       "properties": {
+        "system_id": {
+          "title": "所属业务系统 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
         "name": {
           "title": "版本名称",
           "anyOf": [
@@ -2869,6 +3704,110 @@
         "description": "需要 rd.version.view。仅返回当前 Version DataScope 内版本实际引用的负责人，保留已停用账号并标注；不要求用户管理或版本编辑权限，不返回用户名、邮箱或角色。 keyword trim 后按可见标签做大小写不敏感的字面部分匹配；分页稳定且 total 去重。selected_id 与搜索及权限范围使用 AND 组合，不存在或不可见时返回空列表。"
       }
     },
+    "/systems/{system_id}/release-targets": {
+      "get": {
+        "tags": [
+          "TargetRelease"
+        ],
+        "summary": "查看系统发布目标",
+        "description": "沿用系统管理权限及 ALL 范围，包含停用目标；无删除和改属接口。"
+      },
+      "post": {
+        "tags": [
+          "TargetRelease"
+        ],
+        "summary": "新增系统发布目标",
+        "description": ""
+      }
+    },
+    "/systems/release-targets/{target_id}": {
+      "patch": {
+        "tags": [
+          "TargetRelease"
+        ],
+        "summary": "编辑或停用发布目标",
+        "description": ""
+      }
+    },
+    "/versions/{version_id}/release-targets": {
+      "get": {
+        "tags": [
+          "TargetRelease"
+        ],
+        "summary": "选择同系统发布目标",
+        "description": "按版本查看/发布或发布记录查看权限及版本 DataScope 返回同系统启用目标；历史无归属版本补发可显式选择系统。"
+      }
+    },
+    "/versions/{version_id}/release-batches": {
+      "get": {
+        "tags": [
+          "TargetRelease"
+        ],
+        "summary": "查看发布批次和累计覆盖",
+        "description": ""
+      },
+      "post": {
+        "tags": [
+          "TargetRelease"
+        ],
+        "summary": "创建首次、补发或重新发布批次",
+        "description": "旧计划写接口已停用，返回409并提示改用正常版本发布或已发布目标补记；已有记录保留只读。"
+      }
+    },
+    "/versions/{version_id}/release-coverage": {
+      "post": {
+        "tags": [
+          "TargetRelease"
+        ],
+        "summary": "补记已发布目标",
+        "description": "仅为已发布版本补记实际发布覆盖范围。原子记录同系统多个启用目标及时间、操作人和快照；版本 revision CAS；不改变原 Release、版本/需求上线状态或重复通知。已覆盖目标不可重复登记。"
+      }
+    },
+    "/versions/{version_id}/release-batches/{batch_id}/targets": {
+      "patch": {
+        "tags": [
+          "TargetRelease"
+        ],
+        "summary": "带原因调整未完成发布目标",
+        "description": "旧计划写接口已停用，返回409并提示改用正常版本发布或已发布目标补记；已有记录保留只读。"
+      }
+    },
+    "/versions/{version_id}/release-batches/{batch_id}/cancel": {
+      "post": {
+        "tags": [
+          "TargetRelease"
+        ],
+        "summary": "取消尚未完成的发布计划",
+        "description": "旧计划写接口已停用，返回409并提示改用正常版本发布或已发布目标补记；已有记录保留只读。"
+      }
+    },
+    "/versions/{version_id}/release-batches/{batch_id}/targets/{batch_target_id}/complete": {
+      "post": {
+        "tags": [
+          "TargetRelease"
+        ],
+        "summary": "登记一个目标实际发布成功",
+        "description": "旧计划写接口已停用，返回409并提示改用正常版本发布或已发布目标补记；已有记录保留只读。"
+      }
+    },
+    "/target-release-records": {
+      "get": {
+        "tags": [
+          "TargetRelease"
+        ],
+        "summary": "查询目标实际发布记录",
+        "description": "沿用发布记录查看权限及版本 DataScope；包括首次尚未整体完成的真实成功、补发和重新发布。"
+      }
+    },
+    "/target-release-records/options": {
+      "get": {
+        "tags": [
+          "TargetRelease"
+        ],
+        "summary": "选择可见发布记录目标",
+        "description": "仅返回当前范围内存在实际成功记录的目标，不泄露范围外目标名称。"
+      }
+    },
     "/requirements/{requirement_id}/workflow": {
       "get": {
         "tags": [
@@ -2985,6 +3924,66 @@
         ],
         "summary": "查看接口文档",
         "description": "仅允许启用的系统角色 SUPER_ADMIN 或 DEVELOPMENT_LEAD 读取当前 OpenAPI 文档。权限、账号停用和首次改密限制由后端实时执行；响应禁止缓存。"
+      }
+    },
+    "/announcements": {
+      "get": {
+        "tags": [
+          "announcements"
+        ],
+        "summary": "更新公告列表"
+      },
+      "post": {
+        "tags": [
+          "announcements"
+        ],
+        "summary": "创建公告草稿（超级管理员）"
+      }
+    },
+    "/announcements/notice": {
+      "get": {
+        "tags": [
+          "announcements"
+        ],
+        "summary": "当前账号未读公告提示"
+      }
+    },
+    "/announcements/{announcement_id}": {
+      "get": {
+        "tags": [
+          "announcements"
+        ],
+        "summary": "读取公告详情"
+      },
+      "patch": {
+        "tags": [
+          "announcements"
+        ],
+        "summary": "修正公告（不重置已读）"
+      }
+    },
+    "/announcements/{announcement_id}/publish": {
+      "post": {
+        "tags": [
+          "announcements"
+        ],
+        "summary": "发布公告（部署验收后手动执行）"
+      }
+    },
+    "/announcements/{announcement_id}/read": {
+      "post": {
+        "tags": [
+          "announcements"
+        ],
+        "summary": "当前账号标记已读"
+      }
+    },
+    "/announcements/{announcement_id}/images/{file_id}": {
+      "get": {
+        "tags": [
+          "announcements"
+        ],
+        "summary": "读取有权限的公告图片"
       }
     },
     "/audits": {
@@ -3107,6 +4106,15 @@
         "description": "CREATE_NEW 仅需要 rd.feedback.convert。LINK_EXISTING 还需要 rd.requirement.view，且目标需求必须在当前 Requirement DataScope 内。操作与关系及审计写入同一事务。"
       }
     },
+    "/feedbacks/{feedback_id}/activities": {
+      "get": {
+        "tags": [
+          "feedbacks"
+        ],
+        "summary": "查看反馈最近操作记录",
+        "description": "需要反馈查看权限及对象数据范围。按操作时间和ID倒序返回最多10条，不截断历史存储，不返回审计原始内容或请求信息。"
+      }
+    },
     "/requirements": {
       "get": {
         "tags": [
@@ -3178,6 +4186,15 @@
         ],
         "summary": "变更需求状态",
         "description": "六阶段流转：开发参与人提交验收，可指定多名验收人，其中任意一名有效验收人确认即可进入 DONE，其他验收人无需重复确认；不再要求每名开发人员单独确认。记录实际操作人，并通过 revision CAS 防止重复流转。人员资格、内容确认、原因、审计及事务回滚统一校验。ONLINE 仅由成功发布产生。"
+      }
+    },
+    "/requirements/{requirement_id}/activities": {
+      "get": {
+        "tags": [
+          "requirements"
+        ],
+        "summary": "查看需求最近操作记录",
+        "description": "需要需求查看权限及对象数据范围。按操作时间和ID倒序返回最多10条，不截断历史存储，不返回审计原始内容或请求信息。"
       }
     },
     "/versions": {
@@ -3287,7 +4304,16 @@
           "Version"
         ],
         "summary": "发布版本",
-        "description": "需要 rd.version.publish 及数据范围。在版本到需求的既有锁序内重新计算有效READY，校验至少一条有效需求且全部DONE和内容确认资格，并保留revision及非终态CAS。无需先手动推进版本阶段。Release(SUCCESS)、Version、Requirement/Feedback ONLINE、通知事件和审计原子提交；异常回滚，重复发布 409。"
+        "description": "通过原有发布检查后原子生成唯一 Release 并同步需求/反馈上线及通知。target_ids 可选，仅记录实际已发布的小程序/PC，不要求全部目录目标完成，也不要求传统发布原因。旧未完成计划只保留历史，不阻塞发布。"
+      }
+    },
+    "/versions/{version_id}/activities": {
+      "get": {
+        "tags": [
+          "versions"
+        ],
+        "summary": "查看版本最近操作记录",
+        "description": "需要版本查看权限及对象数据范围。按操作时间和ID倒序返回最多10条，不截断历史存储，不返回审计原始内容或请求信息。"
       }
     },
     "/releases": {
@@ -3403,6 +4429,15 @@
           "mail"
         ],
         "summary": "retry_mail_delivery"
+      }
+    },
+    "/systems/options": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "业务系统选择项",
+        "description": "需求或版本查看、创建、编辑权限可读取启用系统的最小选择项，不返回管理元数据。"
       }
     },
     "/systems": {

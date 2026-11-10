@@ -83,6 +83,7 @@ class AuditRepository:
         # per-user ownership, so SELF never grants their audit history.
         if all_scope:
             for entity_type in (
+                "ANNOUNCEMENT",
                 "ROLE",
                 "SYSTEM",
                 "DICTIONARY",
@@ -140,6 +141,19 @@ class AuditRepository:
                 .limit(limit)
             ).all()
         )
+
+    def list_for_entity(self, entity_type: str, entity_id: int):
+        """Read ten records after the service authorizes the current object."""
+        return self.db.execute(
+            select(OperationLog, User)
+            .outerjoin(User, User.id == OperationLog.operator_id)
+            .where(
+                OperationLog.entity_type == entity_type,
+                OperationLog.entity_id == entity_id,
+            )
+            .order_by(OperationLog.created_at.desc(), OperationLog.id.desc())
+            .limit(10)
+        ).all()
 
     def list_scoped(
         self,

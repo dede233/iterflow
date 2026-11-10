@@ -1,3 +1,4 @@
+import { mockReadPanels } from './collaboration-fixture'
 import { expect, test, type Page } from '@playwright/test'
 
 type Options = { status: string; readonly?: boolean; deferredPublish?: boolean }
@@ -37,6 +38,7 @@ async function fixture(page: Page, options: Options) {
       '/api/v1/releases': { items: [], total: 0, page: 1, page_size: 20 },
     }
     if (method === 'GET' && path in responses) return json(responses[path])
+    if (await mockReadPanels(route)) return
     unexpected.push(`${method} ${path}`)
     return json({ message: 'Unexpected synthetic request' }, 500)
   })
@@ -62,7 +64,7 @@ for (const width of [375, 1440]) {
       await expect(memberActions.getByText('移出', { exact: true })).toBeVisible()
       await expect(page.locator('.frozen-tip')).toHaveCount(0)
       expect(audit.writes).toEqual([])
-      await header.getByRole('button', { name: status === 'READY' ? '发布' : '发布检查', exact: true }).click()
+      await header.getByRole('button', { name: status === 'READY' ? '发布版本' : '发布检查', exact: true }).click()
       const dialog = page.getByRole('dialog', { name: '发布版本', exact: true })
       await expect(dialog.getByText('当前需求内容需要重新确认', { exact: true })).toBeVisible()
       await dialog.getByRole('textbox', { name: /发布说明/ }).fill('检查阻塞时不能发布')
@@ -82,7 +84,7 @@ for (const width of [375, 1440]) {
       const audit = await fixture(page, { status })
       await page.goto('/#/versions/1')
       await expect(page.getByRole('heading', { name: '需求自动汇总版本', exact: true })).toBeVisible()
-      for (const label of ['发布', '发布检查', '取消版本', '添加需求']) await expect(page.getByRole('button', { name: label, exact: true })).toHaveCount(0)
+      for (const label of ['发布版本', '发布检查', '取消版本', '添加需求']) await expect(page.getByRole('button', { name: label, exact: true })).toHaveCount(0)
       for (const label of ['迁移', '移出']) await expect(page.getByText(label, { exact: true })).toHaveCount(0)
       await expect(page.locator('.frozen-tip')).toContainText('需求清单已冻结')
       expect(audit.writes).toEqual([])
@@ -107,7 +109,7 @@ for (const width of [375, 1440]) {
     await page.setViewportSize({ width, height: 900 })
     const audit = await fixture(page, { status: 'READY', deferredPublish: true })
     await page.goto('/#/versions/1')
-    await page.getByRole('button', { name: '发布', exact: true }).click()
+    await page.getByRole('button', { name: '发布版本', exact: true }).click()
     const dialog = page.getByRole('dialog', { name: '发布版本', exact: true })
     const submit = dialog.getByRole('button', { name: '确认发布', exact: true })
     await dialog.getByRole('textbox', { name: /发布说明/ }).fill('本次验收通过后发布')
@@ -124,7 +126,7 @@ for (const width of [375, 1440]) {
     expect(publishes).toHaveLength(1)
     expect(publishes[0].body).toMatchObject({ revision: 8, release_notes: '本次验收通过后发布' })
     expect(audit.writes.some(write => write.path.endsWith('/status'))).toBe(false)
-    await expect(page.getByRole('button', { name: '发布', exact: true })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: '发布版本', exact: true })).toHaveCount(0)
     clean(audit)
   })
 }

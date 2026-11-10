@@ -17,6 +17,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    func,
     select,
     text,
 )
@@ -243,6 +244,9 @@ class Requirement(Base, AuditMixin):
         index=True,
     )
     system_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("sys_business_system.id"))
+    system_name = column_property(
+        select(BusinessSystem.name).where(BusinessSystem.id == system_id).scalar_subquery()
+    )
     module_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("sys_business_module.id"))
     owner_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("sys_user.id"), index=True)
     if not MYSQL:
@@ -390,6 +394,15 @@ class CollaborationEvent(Base):
 
 
 class Version(Base, AuditMixin):
+    release_frozen: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=text("false")
+    )
+    system_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("sys_business_system.id"), index=True
+    )
+    system_name = column_property(
+        select(BusinessSystem.name).where(BusinessSystem.id == system_id).scalar_subquery()
+    )
     __tablename__ = "rd_version"
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     version_no: Mapped[str] = mapped_column(identifier_type(32), unique=True, index=True)
@@ -639,3 +652,122 @@ if MYSQL:
         .correlate_except(RequirementFeedback)
         .scalar_subquery()
     )
+
+
+class Announcement(Base, AuditMixin):
+    __tablename__ = "sys_announcement"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    title: Mapped[str] = mapped_column(String(200))
+    version_label: Mapped[str] = mapped_column(String(100))
+    release_date: Mapped[date] = mapped_column(Date)
+    content: Mapped[str] = mapped_column(Text)
+    important: Mapped[bool] = mapped_column(Boolean, default=False)
+    published_at: Mapped[datetime | None] = mapped_column(timestamp_type(), index=True)
+
+
+class AnnouncementRead(Base):
+    __tablename__ = "sys_announcement_read"
+    announcement_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("sys_announcement.id"), primary_key=True
+    )
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("sys_user.id"), primary_key=True)
+    read_at: Mapped[datetime] = mapped_column(timestamp_type(), default=utcnow)
+
+
+class ReleaseTarget(Base, AuditMixin):
+    __tablename__ = "sys_release_target"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    system_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("sys_business_system.id"), index=True
+    )
+    code: Mapped[str] = mapped_column(identifier_type(64))
+    name: Mapped[str] = mapped_column(String(100))
+    platform: Mapped[str] = mapped_column(String(32))
+    app_id: Mapped[str | None] = mapped_column(String(64))
+    url: Mapped[str | None] = mapped_column(String(500))
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    __table_args__ = (
+        UniqueConstraint("system_id", "code", name="uq_release_target_system_code"),
+        CheckConstraint(
+            "platform IN ('PC_WEB','WECHAT_MINI_PROGRAM','ALIPAY_MINI_PROGRAM')",
+            name="release_target_platform",
+        ),
+    )
+
+
+class ReleaseBatch(Base, AuditMixin):
+    __tablename__ = "rd_release_batch"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    version_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("rd_version.id"), index=True)
+    system_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("sys_business_system.id"))
+    kind: Mapped[str] = mapped_column(String(16))
+    status: Mapped[str] = mapped_column(String(16), default="PLANNED")
+    release_notes: Mapped[str] = mapped_column(Text)
+    reason: Mapped[str | None] = mapped_column(String(500))
+    if MYSQL:
+        initial_version_id: Mapped[int | None] = mapped_column(
+            BigInteger,
+            Computed(
+                "IF(kind = 'INITIAL' AND status <> 'CANCELED', version_id, NULL)", persisted=True
+            ),
+        )
+    __table_args__ = (
+        CheckConstraint("kind IN ('INITIAL','SUPPLEMENT','REPUBLISH')", name="release_batch_kind"),
+        CheckConstraint(
+            "status IN ('PLANNED','IN_PROGRESS','COMPLETED','CANCELED')",
+            name="release_batch_status",
+        ),
+        Index(
+            "uq_release_batch_initial",
+            "initial_version_id" if MYSQL else "version_id",
+            unique=True,
+            sqlite_where=text("kind = 'INITIAL' AND status <> 'CANCELED'"),
+            postgresql_where=text("kind = 'INITIAL' AND status <> 'CANCELED'"),
+        ),
+    )
+
+
+class ReleaseBatchTarget(Base, AuditMixin):
+    __tablename__ = "rd_release_batch_target"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    batch_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("rd_release_batch.id"), index=True)
+    target_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("sys_release_target.id"), index=True
+    )
+    name: Mapped[str] = mapped_column(String(100))
+    code: Mapped[str] = mapped_column(identifier_type(64))
+    platform: Mapped[str] = mapped_column(String(32))
+    app_id: Mapped[str | None] = mapped_column(String(64))
+    url: Mapped[str | None] = mapped_column(String(500))
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    removed_reason: Mapped[str | None] = mapped_column(String(500))
+    completed_at: Mapped[datetime | None] = mapped_column(timestamp_type())
+    recorded_at: Mapped[datetime | None] = mapped_column(timestamp_type())
+    completed_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("sys_user.id"))
+    operator_name: Mapped[str | None] = mapped_column(String(100))
+    notes: Mapped[str | None] = mapped_column(Text)
+    evidence: Mapped[str | None] = mapped_column(String(1000))
+    __table_args__ = (
+        UniqueConstraint("batch_id", "target_id", name="uq_release_batch_target"),
+        CheckConstraint(
+            "platform IN ('PC_WEB','WECHAT_MINI_PROGRAM','ALIPAY_MINI_PROGRAM')",
+            name="release_batch_target_platform",
+        ),
+        CheckConstraint(
+            "(completed_at IS NULL AND recorded_at IS NULL AND completed_by IS NULL) OR "
+            "(completed_at IS NOT NULL AND recorded_at IS NOT NULL AND completed_by IS NOT NULL)",
+            name="release_target_completion",
+        ),
+    )
+
+
+# Derived from the active parent, including the MySQL relation-based pointer.
+Requirement.release_frozen = column_property(
+    func.coalesce(
+        select(Version.release_frozen)
+        .where(Version.id == Requirement.current_version_id)
+        .correlate_except(Version)
+        .scalar_subquery(),
+        False,
+    )
+)

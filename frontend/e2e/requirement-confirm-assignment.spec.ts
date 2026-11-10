@@ -1,3 +1,4 @@
+import { mockReadPanels } from './collaboration-fixture'
 import { expect, test } from '@playwright/test'
 
 for (const width of [375, 1440]) {
@@ -49,6 +50,7 @@ for (const width of [375, 1440]) {
         '/api/v1/collaboration/people': { items: [{ id: 1, display_name: '测试确认人' }], total: 1, page: 1, page_size: 20 },
       }
       if (!(path in responses) || method !== 'GET') {
+        if (await mockReadPanels(route)) return
         unexpected.push(`${method} ${path}`)
         return route.fulfill({ status: 500, json: { message: 'Unexpected request' } })
       }
@@ -57,7 +59,7 @@ for (const width of [375, 1440]) {
     await page.goto('/#/requirements')
     await page.getByText(item.title, { exact: true }).click()
     await page.getByRole('button', { name: '展开需求进度', exact: true }).click()
-    await expect(page.getByText('请先在待确认卡片设置有效的需求确认人，再确认当前内容。')).toBeVisible()
+    await expect(page.getByText('请先在待确认环节设置有效的需求确认人，再确认当前内容。')).toBeVisible()
     await expect(page.getByRole('button', { name: '确认当前内容', exact: true })).toHaveCount(0)
     await page.screenshot({ path: testInfo.outputPath(`missing-confirmer-${width}.png`), fullPage: true })
     await page.getByRole('button', { name: '设置确认人', exact: true }).click()
@@ -98,7 +100,9 @@ for (const width of [375, 1440]) {
     await expect(assignment).toBeHidden()
     await expect(page.locator('.el-dialog:visible')).toHaveCount(0)
     await expect(page.getByRole('list', { name: '需求阶段' }).locator('li').nth(1)).toContainText('当前阶段')
-    await expect(page.getByRole('list', { name: '需求阶段' }).locator('li').nth(0)).toContainText('当前内容已确认')
+    await page.getByRole('list', { name: '需求阶段' }).locator('li').nth(0).getByRole('button').click()
+    await expect(page.locator('.step-detail')).toContainText('当前内容已确认')
+    await page.getByRole('list', { name: '需求阶段' }).locator('li').nth(1).getByRole('button').click()
     await expect(page.getByRole('button', { name: '选择 / 调整人员', exact: true })).toBeVisible()
     await expect(page.getByRole('button', { name: '开始开发', exact: true })).toHaveCount(width === 1440 ? 1 : 0)
     expect(writes).toHaveLength(width === 1440 ? 3 : 2)

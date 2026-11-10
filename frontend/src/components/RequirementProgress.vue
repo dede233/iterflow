@@ -9,6 +9,7 @@ import type { Requirement } from '@/types/domain'
 import RequirementPeopleDialog from './RequirementPeopleDialog.vue'
 import RichTextContent from './RichTextContent.vue'
 import SectionCard from './ui/SectionCard.vue'
+import StatusTag from './StatusTag.vue'
 const props = defineProps<{ item: Requirement; readonly?: boolean }>()
 const emit = defineEmits<{ updated: []; status: [action: ReqStatusAction] }>()
 const auth = useAuthStore()
@@ -26,6 +27,7 @@ const reasonError = ref(false)
 const submitError = ref('')
 const pending = ref<WorkflowAction['action'] | null>(null)
 const steps = ['DRAFT', 'CONFIRMED', 'DEVELOPING', 'TESTING', 'DONE', 'ONLINE']
+const selectedStep = ref('DRAFT')
 const roles = ['CONFIRM', 'DEVELOP', 'DEVELOP', 'ACCEPT', '', '']
 const designLabels = { NOT_REQUIRED: '不需要设计', PENDING: '未开始', IN_PROGRESS: '进行中', DONE: '已完成' }
 const actionLabels: Record<string, string> = { REOPEN: '重新打开需求', CONFIRM: '确认当前内容', REQUEST_CHANGES: '要求补充说明', DESIGN_PENDING: '启用 / 重新打开设计', DESIGN_START: '开始设计', DESIGN_DONE: '完成设计', DESIGN_CANCEL: '取消设计要求', LEGACY_MIGRATION: '历史数据迁入（未补造确认）' }
@@ -46,9 +48,10 @@ async function load() {
 watch(() => [props.item.id, props.item.revision, identity.value], load, { immediate: true, flush: 'sync' })
 onScopeDispose(() => { sequence++ })
 const current = computed(() => steps.indexOf(props.item.status === 'PAUSED' ? flow.value?.paused_from || '' : props.item.status))
-const canAct = computed(() => !props.readonly && auth.hasPermission('rd.requirement.status') && !['ONLINE', 'CANCELED'].includes(props.item.status))
-const canReopen = computed(() => !props.readonly && auth.hasPermission('rd.requirement.status') && props.item.status === 'CANCELED')
-const canEditPeople = computed(() => !props.readonly && auth.hasPermission('rd.requirement.edit') && auth.hasPermission('rd.requirement.view') && !['ONLINE', 'CANCELED'].includes(props.item.status))
+watch([current, () => props.item.id, identity], () => { selectedStep.value = steps[Math.max(0, current.value)]! }, { immediate: true })
+const canAct = computed(() => !props.readonly && !props.item.release_frozen && auth.hasPermission('rd.requirement.status') && !['ONLINE', 'CANCELED'].includes(props.item.status))
+const canReopen = computed(() => !props.readonly && !props.item.release_frozen && auth.hasPermission('rd.requirement.status') && props.item.status === 'CANCELED')
+const canEditPeople = computed(() => !props.readonly && !props.item.release_frozen && auth.hasPermission('rd.requirement.edit') && auth.hasPermission('rd.requirement.view') && !['ONLINE', 'CANCELED'].includes(props.item.status))
 watch(canEditPeople, allowed => { if (!allowed) { peopleEditor.value = null; assignAfterConfirm.value = null } }, { flush: 'sync' })
 watch(() => [props.item.status, props.item.revision, assignAfterConfirm.value, workflowDialogClosed.value], () => {
   if (!workflowDialogClosed.value || assignAfterConfirm.value === null || props.item.revision <= assignAfterConfirm.value) return
@@ -158,7 +161,7 @@ function recordLabel(action: string) { return actionLabels[action] || requiremen
   <SectionCard class="requirement-progress" :padded="false">
     <button class="progress-toggle" type="button" :aria-expanded="expanded" :aria-controls="bodyId" :aria-label="expanded ? '收起需求进度' : '展开需求进度'" @click="expanded = !expanded">
       <span class="progress-title">需求进度</span>
-      <span class="progress-status">{{ requirementStatusLabel[item.status] }}</span>
+      <StatusTag class="progress-status" :status="item.status" :label="requirementStatusLabel[item.status]" />
       <span class="progress-summary" :title="summaryDetail">{{ summaryDetail }}</span>
       <span v-if="flow?.needs_confirmation" class="progress-notice">内容待确认</span>
       <span class="progress-toggle-label">{{ expanded ? '收起' : '展开' }}<span class="progress-chevron" :class="{ expanded }" aria-hidden="true">⌄</span></span>
@@ -186,21 +189,29 @@ function recordLabel(action: string) { return actionLabels[action] || requiremen
     <p v-if="failed">进度加载失败 <el-button link @click="load">重试</el-button></p>
     <template v-else-if="flow">
       <el-alert v-if="item.status === 'PAUSED' || item.status === 'CANCELED'" :title="`${requirementStatusLabel[item.status]}${flow.paused_from ? ' · 暂停前：' + requirementStatusLabel[flow.paused_from] : ''}`" type="warning" :closable="false" />
-      <el-alert v-if="flow.needs_confirmation" :title="!hasRole('CONFIRM') ? (canEditPeople ? '请先在待确认卡片设置有效的需求确认人，再确认当前内容。' : '尚未设置有效的需求确认人，请联系有人员编辑权限的成员完成设置。') : '当前内容待确认；修改范围或验收标准后，需要重新确认才能继续流转。'" type="warning" :closable="false" />
+      <el-alert v-if="flow.needs_confirmation" :title="!hasRole('CONFIRM') ? (canEditPeople ? '请先在待确认环节设置有效的需求确认人，再确认当前内容。' : '尚未设置有效的需求确认人，请联系有人员编辑权限的成员完成设置。') : '当前内容待确认；修改范围或验收标准后，需要重新确认才能继续流转。'" type="warning" :closable="false" />
       <p v-if="flow.legacy_completed">历史完成记录：保留原发布资格，不补造人员确认。</p>
       <ol class="progress-steps" aria-label="需求阶段">
         <li v-for="(step, index) in steps" :key="step" :class="{ current: current === index, completed: current > index }" :aria-current="current === index ? 'step' : undefined">
-          <span class="step-dot" aria-hidden="true">{{ current > index ? '✓' : current === index ? '●' : index + 1 }}</span>
-          <div><strong>{{ requirementStatusLabel[step] }}</strong><small>{{ current === index ? (item.status === 'PAUSED' ? '暂停于此' : '当前阶段') : current > index ? '已流转' : '尚未到达' }}</small>
+          <button class="step-select" type="button" :aria-pressed="selectedStep === step" :aria-controls="`${bodyId}-stage`" @click="selectedStep = step">
+            <span class="step-dot" aria-hidden="true">{{ current > index ? '✓' : index + 1 }}</span>
+            <span><strong>{{ requirementStatusLabel[step] }}</strong><small>{{ current === index ? (item.status === 'PAUSED' ? '暂停于此' : '当前阶段') : current > index ? '已流转' : '尚未到达' }}</small></span>
+          </button>
+        </li>
+      </ol>
+      <div :id="`${bodyId}-stage`" class="step-detail" aria-live="polite">
+        <template v-for="(step, index) in steps" :key="step">
+          <div v-if="selectedStep === step">
+            <h3>{{ requirementStatusLabel[step] }} · 环节信息</h3>
             <template v-if="step === 'CONFIRMED'">
               <p>开发：{{ names('DEVELOP') }}</p>
-              <p>设计：{{ names('DESIGN') }}</p>
+              <p>设计：{{ hasRole('DESIGN') ? names('DESIGN') : flow.design_status === 'NOT_REQUIRED' ? '不需要设计' : names('DESIGN') }}</p>
               <p>验收：{{ names('ACCEPT') }}</p>
             </template>
             <p v-else-if="roles[index]">{{ step === 'DRAFT' ? '确认：' : step === 'TESTING' ? '验收：' : '开发：' }}{{ names(roles[index]!) }}</p>
             <p v-if="step === 'DRAFT'">{{ flow.needs_confirmation ? '等待确认当前内容' : flow.records.some(r => r.action === 'CONFIRM' || r.action === 'STATUS_CONFIRMED') ? '当前内容已确认' : '历史阶段兼容，未补造确认' }}</p>
             <small v-if="step === 'TESTING'">任意一名验收人通过即可</small>
-            <p v-if="step === 'DEVELOPING'">设计：{{ designLabels[flow.design_status] }} · {{ names('DESIGN') }}</p>
+            <p v-if="step === 'DEVELOPING'">设计：{{ designLabels[flow.design_status] }}<template v-if="flow.design_status !== 'NOT_REQUIRED'"> · {{ names('DESIGN') }}</template></p>
             <p v-if="step === 'DONE'">{{ item.current_version_id ? `所属版本 #${item.current_version_id}` : '尚未关联版本，无法发布' }}</p>
             <p v-if="step === 'ONLINE'">{{ item.status === 'ONLINE' ? '版本已实际发布' : '等待版本实际发布' }}</p>
             <el-button v-if="canEditPeople && step === 'DRAFT'" class="step-people-button" size="small" @click="editPeople(step)">{{ hasRole('CONFIRM') ? '调整确认人' : '设置确认人' }}</el-button>
@@ -208,8 +219,8 @@ function recordLabel(action: string) { return actionLabels[action] || requiremen
             <small v-if="step === 'CONFIRMED' && current === 0">{{ canEditPeople ? '需求确认后将弹窗安排人员' : '需求确认后，由有编辑权限的成员安排人员' }}</small>
             <el-button v-if="canEditPeople && step === 'TESTING' && current >= 3" class="step-people-button" size="small" @click="editPeople(step)">调整验收人</el-button>
           </div>
-        </li>
-      </ol>
+        </template>
+      </div>
       <details class="progress-history"><summary>查看流转与确认记录（最近 {{ flow.records.length }} 条）</summary>
         <p v-if="!flow.records.length">尚无确认或流转记录。</p>
         <article v-for="record in flow.records" :key="record.id"><strong>{{ recordLabel(record.action) }}</strong> · {{ record.actor_id ? `${record.detail.actor_name || '实际操作人'} #${record.actor_id}` : '历史迁移' }} · {{ formatLocalDateTime(record.created_at) }}<p v-if="record.detail.reason">{{ record.detail.reason }}</p><details v-if="record.detail.description"><summary>当时确认的内容</summary><RichTextContent :requirement-id="item.id" :content="typeof record.detail.description === 'string' ? record.detail.description : ''" :format="record.detail.description_format === 'HTML' ? 'HTML' : 'PLAIN'" /><p class="multiline">{{ record.detail.acceptance_criteria }}</p></details></article>
@@ -229,25 +240,29 @@ function recordLabel(action: string) { return actionLabels[action] || requiremen
 .progress-blocker { flex-basis: 100%; margin: 0; color: var(--el-color-warning-dark-2); font-size: 13px; line-height: 1.7; }
 .step-people-button { margin-top: 8px; max-width: 100%; min-height: 32px; padding-inline: 8px; white-space: nowrap; }
 .progress-toggle { width: 100%; min-height: 56px; display: flex; align-items: center; gap: 12px; padding: 12px var(--if-space-5); border: 0; border-radius: var(--if-radius); background: transparent; color: var(--if-text-primary); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
-.progress-toggle:hover { background: var(--if-bg-muted); }
+.progress-toggle:hover { background: var(--if-bg-subtle); }
 .progress-toggle:focus-visible { outline: 2px solid var(--el-color-primary); outline-offset: 2px; }
 .progress-title { flex-shrink: 0; font-size: 14px; font-weight: 600; }
-.progress-status { flex-shrink: 0; padding: 3px 8px; border-radius: 4px; background: var(--el-color-primary-light-9); color: var(--el-color-primary); font-size: 12px; }
+.progress-status { flex-shrink: 0; }
 .progress-summary { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--if-text-3); }
 .progress-notice { flex-shrink: 0; color: var(--el-color-warning-dark-2); font-size: 12px; }
 .progress-toggle-label { flex-shrink: 0; display: flex; align-items: center; gap: 6px; margin-left: auto; color: var(--el-color-primary); }
 .progress-chevron { display: inline-block; font-size: 18px; line-height: 1; }.progress-chevron.expanded { transform: rotate(180deg); }
 .progress-body { container: requirement-progress / inline-size; border-top: 1px solid var(--if-border); padding: var(--if-space-4) var(--if-space-5); }
-.progress-steps { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; list-style: none; padding: 16px 0; margin: 0; }
-.progress-steps li { min-width: 0; padding: 12px; border: 1px solid var(--if-border); border-radius: 8px; font-size: 12px; }
-.progress-steps li.current { border-color: var(--el-color-primary); background: var(--el-color-primary-light-9); }
-.step-dot { width: 24px; height: 24px; margin-bottom: 8px; border-radius: 50%; display: grid; place-items: center; background: var(--if-bg-muted, #eee); }
-.current .step-dot { background: var(--el-color-primary); color: white; }.completed .step-dot { background: var(--el-color-success-light-8); color: var(--el-color-success-dark-2); }
+.progress-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; list-style: none; padding: 0; margin: 0 0 12px; }
+.progress-steps li { min-width: 0; font-size: 12px; }
+.step-select { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 60px; padding: 8px; border: 1px solid transparent; border-radius: 6px; background: transparent; font: inherit; color: var(--if-text-secondary); text-align: left; cursor: pointer; }
+.step-select:hover { background: var(--if-bg-subtle); }
+.step-select[aria-pressed="true"] { border-color: var(--if-brand-200); background: var(--if-brand-50); color: var(--if-text-primary); }
+.step-dot { width: 24px; height: 24px; flex-shrink: 0; border-radius: 50%; display: grid; place-items: center; background: var(--if-bg-subtle); color: var(--if-text-secondary); }
+.current .step-dot { background: var(--if-brand-500); color: white; }.completed .step-dot { background: var(--if-success-bg); color: var(--if-success-fg); }
+.step-detail { background: var(--if-bg-subtle); border-radius: 6px; padding: 12px 16px; }
+.step-detail h3 { font-size: 13px; margin: 0 0 8px; }
+.step-detail p { display: inline-block; margin: 4px 20px 4px 0; font-size: 13px; }
+.step-detail .step-people-button { display: flex; }
+
 small { display: block; margin-top: 4px; color: var(--if-text-3); }p { margin: 8px 0; overflow-wrap: anywhere; }.progress-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 0 var(--if-space-5) var(--if-space-4); }.progress-more summary { padding: 8px; color: var(--el-color-primary); }.progress-secondary { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }.progress-more[open] { flex-basis: 100%; }.progress-actions .el-button { margin: 0; }.progress-history { margin-top: 20px; }.progress-history article { border-top: 1px solid var(--if-border, #eee); padding: 12px 0; }.multiline { white-space: pre-wrap; }summary { cursor: pointer; }
-/* Keep each card at least 144px wide, including inside a desktop detail drawer. */
-@container requirement-progress (min-width: 300px) { .progress-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@container requirement-progress (min-width: 456px) { .progress-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-@container requirement-progress (min-width: 924px) { .progress-steps { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+@container requirement-progress (min-width: 700px) { .progress-steps { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
 @media (max-width: 767px) {
   .progress-toggle { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; gap: 8px; padding: 12px var(--if-space-4); }
   .progress-toggle-label { grid-column: 4; grid-row: 1; min-height: 24px; }

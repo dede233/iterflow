@@ -7,6 +7,7 @@ import pytest
 from sqlalchemy import delete, select, text
 from sqlalchemy.engine import Connection
 from sqlalchemy.orm import Session
+from system_binding_fixture import historical_version
 
 from alembic import command
 from app.cli.seed import seed_database
@@ -17,7 +18,6 @@ from app.models.entities import (
     RolePermission,
     User,
     UserRole,
-    Version,
 )
 
 TARGETS = {"DEVELOPER", "PRODUCT_MANAGER", "DEVELOPMENT_LEAD"}
@@ -38,6 +38,7 @@ def exercise_upgrade(engine, cfg, monkeypatch, case):
     old = "mysql57_0005" if mysql else "0007_development_completion"
     new = "mysql57_0006" if mysql else "0008_version_role_permissions"
     command.upgrade(cfg, old)
+    Version = historical_version(engine)
     with Session(engine) as db:
         seed_database(db, username="migration-admin", password="Initial-migration-test!")
         roles = {r.code: r for r in db.scalars(select(Role))}

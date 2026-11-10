@@ -1,3 +1,4 @@
+import { mockReadPanels } from './collaboration-fixture'
 import { expect, test, type Page } from '@playwright/test'
 
 async function setup(page: Page, pendingOnly = false) {
@@ -20,6 +21,7 @@ async function setup(page: Page, pendingOnly = false) {
       preferences = { ...preferences, revision: preferences.revision + 1, email: null, pending_email: null, verified: false }
       return route.fulfill({ json: preferences })
     }
+    if (await mockReadPanels(route)) return
     throw new Error(`Unexpected request ${route.request().method()} ${path}`)
   })
   return { writes, change: () => { preferences = { ...preferences, revision: 6, email: 'changed@example.test' } }, read: () => preferences }

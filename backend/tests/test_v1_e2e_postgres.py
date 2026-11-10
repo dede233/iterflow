@@ -15,6 +15,7 @@ from sqlalchemy import create_engine, func, select, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.engine.url import make_url
 from sqlalchemy.orm import Session
+from system_binding_fixture import create_test_system
 
 from alembic import command
 from app.core.database import get_db
@@ -143,12 +144,14 @@ def test_full_v1_business_lifecycle_over_http_and_postgresql(
 ) -> None:
     client = postgres_http_client
     engine, user_id, headers = postgres_e2e_engine
+    system_id = create_test_system(engine)
 
     feedback_response = client.post(
         "/api/v1/feedbacks",
         headers=headers,
         json={
             "title": "Phase 8.2 real HTTP feedback",
+            "system_id": system_id,
             "feedback_type": "NEW_FEATURE",
             "recipient_ids": [user_id],
             "urgency": "NORMAL",
@@ -186,7 +189,11 @@ def test_full_v1_business_lifecycle_over_http_and_postgresql(
     version_response = client.post(
         "/api/v1/versions",
         headers=headers,
-        json={"version_no": f"8.2-{uuid4().hex[:8]}", "name": "Phase 8.2 acceptance"},
+        json={
+            "system_id": system_id,
+            "version_no": f"8.2-{uuid4().hex[:8]}",
+            "name": "Phase 8.2 acceptance",
+        },
     )
     assert version_response.status_code == 200, version_response.text
     version = version_response.json()
@@ -353,7 +360,9 @@ def test_concurrent_publish_has_one_http_winner_and_no_duplicate_side_effects(
     postgres_e2e_engine: tuple[Engine, int, dict[str, str]],
 ) -> None:
     engine, user_id, headers = postgres_e2e_engine
+    system_id = create_test_system(engine)
     version = Version(
+        system_id=system_id,
         version_no=f"RACE-{uuid4().hex[:8]}",
         name="Concurrent publish acceptance",
         status=VersionStatus.READY,
@@ -361,6 +370,7 @@ def test_concurrent_publish_has_one_http_winner_and_no_duplicate_side_effects(
         updated_by=user_id,
     )
     requirement = Requirement(
+        system_id=system_id,
         legacy_completed=True,
         requirement_no=f"REQ-{uuid4().hex[:8]}",
         title="Concurrent publish requirement",

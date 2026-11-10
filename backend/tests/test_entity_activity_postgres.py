@@ -1,0 +1,6 @@
+from entity_activity_acceptance import exercise_entity_activity
+from seeded_postgres_fixture import collaboration_pg as collaboration_pg
+
+
+def test_entity_activity_postgres(collaboration_pg):
+    exercise_entity_activity(collaboration_pg)

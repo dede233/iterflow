@@ -23,6 +23,15 @@ class AuditOut(BaseModel):
     created_at: datetime
 
 
+class EntityActivityOut(BaseModel):
+    """Minimal activity information for an authorized business detail view."""
+
+    id: int
+    action: str
+    operator: AuditOperatorOut | None
+    created_at: datetime
+
+
 class AuditPage(BaseModel):
     items: list[AuditOut]
     page: int

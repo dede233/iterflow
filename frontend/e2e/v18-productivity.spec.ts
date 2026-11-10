@@ -2,8 +2,8 @@ import { mockCollaboration } from './collaboration-fixture'
 import { expect, test, type Page } from '@playwright/test'
 const widths = [375, 390, 768, 1280, 1440]
 const permissions = ['rd.feedback.view', 'rd.feedback.convert', 'rd.feedback.edit', 'rd.requirement.view', 'rd.version.view', 'rd.version.edit', 'rd.version.publish', 'rd.release.view', 'sys.audit.view']
-const requirement = (id: number, status = 'CONFIRMED', priority = 'P0') => ({ id, requirement_no: `REQ-${id}`, title: id === 7 ? '可见需求 · 长标题验收'.repeat(4) : `需求 ${id}`, status, priority, source: 'DIRECT', requirement_type: 'FEATURE', description: '可见内容', current_version_id: 1, owner_id: 1, revision: 13, created_at: '2026-10-01T00:00:00Z' })
-const version = (id: number) => ({ id, version_no: `V1.8-${id}`, name: `可见版本 ${id}`, status: id === 2 ? 'READY' : 'PLANNING', revision: 3, description: null, owner_id: 1 })
+const requirement = (id: number, status = 'CONFIRMED', priority = 'P0') => ({ id, system_id: 1, system_name: '系统甲', requirement_no: `REQ-${id}`, title: id === 7 ? '可见需求 · 长标题验收'.repeat(4) : `需求 ${id}`, status, priority, source: 'DIRECT', requirement_type: 'FEATURE', description: '可见内容', current_version_id: 1, owner_id: 1, revision: 13, created_at: '2026-10-01T00:00:00Z' })
+const version = (id: number) => ({ id, system_id: 1, system_name: '系统甲', version_no: `V1.8-${id}`, name: `可见版本 ${id}`, status: id === 2 ? 'READY' : 'PLANNING', revision: 3, description: null, owner_id: 1 })
 const feedback = { id: 1, feedback_no: 'FB-1', title: '链路反馈', status: 'ACCEPTED', feedback_type: 'OTHER', urgency: 'NORMAL', main_requirement_id: 7, duplicate_of_id: null, description: '测试反馈', revision: 4, submitter_id: 1 }
 const release = { id: 9, version_id: 1, result: 'SUCCESS', release_notes: '只读发布记录', rollback_notes: null, released_at: '2026-10-01T00:00:00Z', created_at: '2026-10-01T00:00:00Z', revision: 1 }
 async function fixture(page: Page, readRequirement = true, unlinked = false) {
@@ -49,7 +49,7 @@ for (const width of widths) {
   test(`V1.8 safe main chain and return context ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1000 }); const state = await fixture(page)
     await page.goto('/#/feedbacks?page=2&status=ACCEPTED')
-    if (width < 768) await page.getByRole('button', { name: /FB-1 已受理 链路反馈/ }).click()
+    if (width < 768) await page.getByRole('button', { name: /链路反馈.*FB-1.*已受理/ }).click()
     else await page.getByText('查看', { exact: true }).click()
     await expect(page.getByRole('heading', { name: '链路反馈' })).toBeVisible()
     await page.getByRole('link', { name: /^REQ-7 ·/ }).click()
@@ -103,7 +103,7 @@ for (const width of widths) {
   })
   test(`V1.8 publish permission is not target read permission ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1000 }); const state = await fixture(page, false)
-    await page.goto('/#/versions/2?return_to=%2F%2Fevil.test'); await page.getByRole('button', { name: '发布', exact: true }).click()
+    await page.goto('/#/versions/2?return_to=%2F%2Fevil.test'); await page.getByRole('button', { name: '发布版本', exact: true }).click()
     const dialog = page.getByRole('dialog', { name: '发布版本', exact: true }); await expect(dialog).toContainText('仍有未完成需求'); await expect(dialog).toContainText('REQ-99（开发中）')
     await expect(dialog).toContainText('无法查看详情'); await expect(dialog.getByRole('link', { name: '查看需求' })).toHaveCount(0)
     await expect(dialog.getByRole('button', { name: '确认发布' })).toBeDisabled()
@@ -149,7 +149,7 @@ test('V1.8 Feedback LINK_EXISTING and duplicate selectors keep parent CAS', asyn
 
 test('V1.8 readable domain but inaccessible blocker retains safe summary without link', async ({ page }) => {
   const state = await fixture(page)
-  await page.goto('/#/versions/2'); await page.getByRole('button', { name: '发布', exact: true }).click()
+  await page.goto('/#/versions/2'); await page.getByRole('button', { name: '发布版本', exact: true }).click()
   const dialog = page.getByRole('dialog', { name: '发布版本' })
   await expect(dialog).toContainText('REQ-99（开发中）'); await expect(dialog).toContainText('无法查看详情')
   await expect.poll(() => state.requests.filter(r => r.path === '/requirements/99').length).toBe(1)

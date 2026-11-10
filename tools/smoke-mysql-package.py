@@ -107,7 +107,7 @@ def sql(statement, parameters=()):
         return cursor.fetchall()
 
 
-def restore_package(stage, dump, files, headers, requirement_id, file_id):
+def restore_package(stage, dump, files, headers, requirement_id, file_id, system_id):
     """Restore only into another newly created local test DB and new volumes."""
     restored = db_name + "_restore"
     restore_project = project + "-restore"
@@ -234,6 +234,7 @@ def restore_package(stage, dump, files, headers, requirement_id, file_id):
             assert (
                 requirement["status"] == "ONLINE"
                 and requirement["current_version_id"] is not None
+                and requirement["system_id"] == system_id
             )
             uploaded = client.post(
                 "/api/v1/files",
@@ -263,7 +264,7 @@ def restore_package(stage, dump, files, headers, requirement_id, file_id):
                 "SELECT COUNT(*) FROM information_schema.triggers WHERE trigger_schema=%s",
                 (restored,),
             )[0][0]
-            == 91
+            == 110
         )
         dc("stop", "api", "notification-worker")
         post_dump = dc(
@@ -271,7 +272,8 @@ def restore_package(stage, dump, files, headers, requirement_id, file_id):
         ).stdout
         return {
             "package_isolated_restore": True,
-            "restored_guard_triggers": 91,
+            "restored_guard_triggers": 110,
+            "restored_business_system_binding": True,
             "restored_function_runtime_upload": True,
             "package_post_restore_backup_sha256": hashlib.sha256(post_dump).hexdigest(),
         }
@@ -498,6 +500,13 @@ try:
                 ah = change_password(
                     sign_in(admin_name, admin_password), admin_password
                 )
+                system = request(
+                    "POST",
+                    "/systems",
+                    ah,
+                    expected=201,
+                    json={"code": "PKG-" + suffix, "name": "包验收业务系统"},
+                ).json()
                 permissions = request("GET", "/roles/permissions", ah).json()
                 developer_role = next(
                     role
@@ -534,6 +543,7 @@ try:
                     h,
                     json={
                         "title": "中文包主链",
+                        "system_id": system["id"],
                         "recipient_ids": [user["id"]],
                         "feedback_type": "NEW_FEATURE",
                         "urgency": "NORMAL",
@@ -559,6 +569,7 @@ try:
                         "description": "发布验证",
                     },
                 ).json()
+                assert r["system_id"] == system["id"]
                 old_revision = r["revision"]
                 r = request(
                     "PATCH",
@@ -581,8 +592,13 @@ try:
                     "POST",
                     "/versions",
                     h,
-                    json={"version_no": "PKG-" + suffix, "name": "包版本"},
+                    json={
+                        "version_no": "PKG-" + suffix,
+                        "name": "包版本",
+                        "system_id": system["id"],
+                    },
                 ).json()
+                assert v["system_id"] == r["system_id"]
                 v = request(
                     "POST",
                     f"/versions/{v['id']}/requirements",
@@ -753,7 +769,7 @@ try:
                 wait_proxy(client, h)
                 dc("stop", "web", "api", "notification-worker")
                 restored_proof = restore_package(
-                    stage, dump, files, h, r["id"], file["id"]
+                    stage, dump, files, h, r["id"], file["id"], system["id"]
                 )
                 dc(
                     "up",

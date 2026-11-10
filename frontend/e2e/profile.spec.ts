@@ -1,4 +1,4 @@
-import { mockCollaboration } from './collaboration-fixture'
+import { mockCollaboration, mockReadPanels } from './collaboration-fixture'
 import { expect, test } from '@playwright/test'
 
 const member = {
@@ -22,6 +22,7 @@ test.beforeEach(async ({ page }) => {
       sessionStorage.setItem('profile-test-initialized', '1')
     }
   })
+  await page.route('**/api/v1/announcements/notice', async route => { await mockReadPanels(route) })
   await page.route('**/api/v1/me/mail-preferences', async route => { await mockCollaboration(route) })
   await page.route('**/api/v1/notifications/unread-count', (route) => route.fulfill({ status: 200, json: { unread_count: 0 } }))
   await page.route('**/api/v1/auth/me', (route) => route.fulfill({ status: 200, json: member }))
@@ -31,6 +32,13 @@ test.beforeEach(async ({ page }) => {
 test('profile remains usable at all five release viewports', async ({ page }) => {
   const browserErrors: string[] = []
   page.on('pageerror', (error) => browserErrors.push(error.message))
+  await page.route('**/api/v1/dashboard/overview', (route) => route.fulfill({ status: 200, json: {
+    data_scope: 'SELF', activities: [],
+    feedback: { pending_count: 0, total_count: 0, by_status: {} },
+    requirements: { active_count: 0, total_count: 0, by_status: {} },
+    versions: { active_count: 0, total_count: 0, by_status: {}, recent_active_versions: [] },
+    releases: null,
+  } }))
   for (const width of [375, 390, 768, 1280, 1440]) {
     await page.setViewportSize({ width, height: 900 })
     await page.goto('/#/profile')
@@ -58,15 +66,37 @@ test('profile remains usable at all five release viewports', async ({ page }) =>
     expect(geometry.cardRight).toBeLessThanOrEqual(width + 1)
     if (width < 768) {
       const nav = page.getByRole('navigation', { name: '主导航' })
-      for (const label of ['首页', '反馈', '需求', '版本', '消息', '我的']) {
-        await expect(nav.getByRole('link', { name: label })).toBeVisible()
+      const destinations = [['反馈', '/feedbacks'], ['需求', '/requirements'], ['版本', '/versions'], ['消息', '/notifications'], ['我的', '/profile']] as const
+      await expect(nav.getByRole('link')).toHaveCount(destinations.length)
+      for (const [label, path] of destinations) {
+        const link = nav.getByRole('link', { name: label, exact: true })
+        await expect(link).toBeVisible()
+        await expect(link).toHaveAttribute('href', `#${path}`)
       }
       const links = await nav.getByRole('link').all()
       const bounds = await Promise.all(links.map((link) => link.boundingBox()))
+      for (const bound of bounds) {
+        expect(bound).not.toBeNull()
+        expect(bound!.width).toBeGreaterThanOrEqual(44)
+        expect(bound!.height).toBeGreaterThanOrEqual(44)
+        expect(bound!.x).toBeGreaterThanOrEqual(0)
+        expect(bound!.x + bound!.width).toBeLessThanOrEqual(width + 1)
+      }
       for (let index = 1; index < bounds.length; index += 1) {
         expect(bounds[index]!.x).toBeGreaterThanOrEqual(bounds[index - 1]!.x + bounds[index - 1]!.width - 1)
       }
       expect(geometry.buttonBottom).toBeLessThan(geometry.navTop)
+      const home = page.locator('.mobile-header').getByRole('link', { name: '返回首页', exact: true })
+      await expect(home).toBeVisible()
+      await expect(home).toHaveAttribute('href', '#/')
+      const overview = page.waitForResponse(response => response.url().endsWith('/api/v1/dashboard/overview'))
+      await home.click()
+      expect((await overview).status()).toBe(200)
+      await expect(page).toHaveURL(/\/#\/$/)
+      await expect(page.getByRole('heading', { name: '首页 / 系统概览', exact: true })).toBeVisible()
+      await nav.getByRole('link', { name: '我的', exact: true }).click()
+      await expect(page).toHaveURL(/\/#\/profile$/)
+      await expect(page.getByRole('heading', { name: '个人中心', exact: true })).toBeVisible()
     }
   }
   expect(browserErrors).toEqual([])

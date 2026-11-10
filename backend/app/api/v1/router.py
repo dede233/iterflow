@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.api.v1 import (
+    announcements,
     audits,
     auth,
     collaboration,
@@ -16,6 +17,7 @@ from app.api.v1 import (
     requirements,
     roles,
     systems,
+    target_releases,
     users,
     versions,
 )
@@ -24,10 +26,12 @@ api_router = APIRouter()
 for module in (
     # Static filter paths must precede /requirements/{requirement_id}/participants.
     filter_options,
+    target_releases,
     collaboration,
     auth,
     dashboard,
     docs,
+    announcements,
     audits,
     feedbacks,
     requirements,

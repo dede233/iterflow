@@ -10,6 +10,7 @@ from app.repositories.user_repository import UserRepository
 from app.schemas.workflow import DesignStatus, WorkflowAction, WorkflowOut, WorkflowRecord
 from app.services.collaboration_service import CollaborationService
 from app.services.revision_conflict import revision_conflict_data
+from app.services.system_binding_service import SystemBindingService
 
 
 class WorkflowService:
@@ -19,11 +20,18 @@ class WorkflowService:
 
     def lock(self, item: Requirement):
         version_id = item.current_version_id
+        frozen = False
         if version_id is not None:
-            self.db.execute(select(Version.id).where(Version.id == version_id).with_for_update())
+            frozen = bool(
+                self.db.scalar(
+                    select(Version.release_frozen).where(Version.id == version_id).with_for_update()
+                )
+            )
         self.db.refresh(item, with_for_update=True)
         if item.current_version_id != version_id:
             raise ConflictError("需求版本归属已改变, 请刷新后重试")
+        if frozen:
+            raise AppError(40986, "首次发布已开始, 需求内容、人员与进度已冻结", 409)
 
     def people(self, item: Requirement, role: str | None = None):
         query = (
@@ -140,6 +148,10 @@ class WorkflowService:
             raise ConflictError("需求已修改, 请刷新后重试", revision_conflict_data(item))
         if item.status not in {"CONFIRMED", "DEVELOPING"}:
             raise AppError(40971, "仅待开发或开发中的需求可提交验收", 409)
+        version = self.db.get(Version, item.current_version_id, populate_existing=True)
+        if version is None:
+            raise AppError(40975, "需求未关联版本", 409)
+        SystemBindingService(self.db).ensure_match(version, item)
         shortcut = item.status == "CONFIRMED"
         if shortcut and (not reason or len(reason.strip()) < 2):
             raise AppError(42261, "待开发直接提交验收须填写原因(至少 2 个字符)", 422)

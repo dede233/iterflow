@@ -14,6 +14,7 @@ from app.core.database import get_db
 from app.core.security import create_access_token
 from app.main import app
 from app.models.entities import (
+    BusinessSystem,
     CollaborationEvent,
     Feedback,
     FeedbackRecipient,
@@ -21,6 +22,9 @@ from app.models.entities import (
     OperationLog,
     Permission,
     Release,
+    ReleaseBatch,
+    ReleaseBatchTarget,
+    ReleaseTarget,
     Requirement,
     RequirementFeedback,
     RequirementParticipant,
@@ -61,6 +65,7 @@ def pub_api(tmp_path: Path) -> Iterator[Fixture]:
         f"sqlite:///{tmp_path / 'pub.db'}", connect_args={"check_same_thread": False}
     )
     for table in (
+        BusinessSystem.__table__,
         User.__table__,
         Role.__table__,
         Permission.__table__,
@@ -74,6 +79,9 @@ def pub_api(tmp_path: Path) -> Iterator[Fixture]:
         RequirementStep.__table__,
         RequirementParticipant.__table__,
         Version.__table__,
+        ReleaseTarget.__table__,
+        ReleaseBatch.__table__,
+        ReleaseBatchTarget.__table__,
         VersionRequirement.__table__,
         RequirementFeedback.__table__,
         Release.__table__,
@@ -160,7 +168,11 @@ def _seed_ready_version(
     version_status: VersionStatus = VersionStatus.READY,
 ) -> dict[str, int]:
     """A version (default READY) with one requirement and a linked feedback."""
+    if session.get(BusinessSystem, 1) is None:
+        session.add(BusinessSystem(id=1, code="PUBLISH", name="发布测试系统"))
+        session.flush()
     version = Version(
+        system_id=1,
         version_no="V1.0.0",
         name="首个版本",
         status=version_status,
@@ -168,6 +180,7 @@ def _seed_ready_version(
         updated_by=boss_id,
     )
     requirement = Requirement(
+        system_id=1,
         legacy_completed=True,
         requirement_no="REQ-1",
         title="需求",
@@ -369,6 +382,7 @@ def test_publish_check_passes_when_ready_and_all_done(pub_api):
         "VERSION_STATUS_CHECK": True,
         "REQUIREMENT_STATUS_CHECK": True,
         "PERMISSION_CHECK": True,
+        "SYSTEM_BINDING_CHECK": True,
     }
 
 

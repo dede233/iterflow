@@ -52,7 +52,7 @@ function update(value: number | undefined | null | '') {
     @update:model-value="update"
   >
     <el-option v-for="option in options" :key="option.id" :value="option.id" :label="option.label" />
-    <template #footer>
+    <template v-if="search.state.error || search.state.total > 20" #footer>
       <div v-if="search.state.error" class="filter-options-message" role="alert">加载失败，请重试。<el-button link @click="search.retry">重试</el-button></div>
       <div v-else-if="search.state.total > 20" class="filter-options-pages">
         <el-button link :disabled="search.state.loading || search.state.page <= 1" @mousedown.prevent @click="search.paginate(search.state.page - 1)">上一页</el-button>

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import BusinessSystemAttribution from '@/components/BusinessSystemAttribution.vue'
+import RecentEntityActivity from '@/components/RecentEntityActivity.vue'
 import { defineAsyncComponent } from 'vue'
 import DeleteEntityButton from '@/components/DeleteEntityButton.vue'
 import { plainTextToHtml, richTextPlainText } from '@/utils/richText'
@@ -55,7 +57,6 @@ import {
 } from '@/constants/feedback'
 import type {
   AttachmentItem,
-  BusinessModuleItem,
   BusinessSystemItem,
   CommentItem,
   Feedback,
@@ -79,11 +80,11 @@ const conflict = useRevisionConflict()
 
 const item = ref<Feedback | null>(null)
 const loading = ref(false)
+const activityRefresh = ref(0)
 const failed = ref(false)
 const attachments = ref<AttachmentItem[]>([])
 const comments = ref<CommentItem[]>([])
 const systems = ref<BusinessSystemItem[]>([])
-const modules = ref<BusinessModuleItem[]>([])
 const canReadSystems = computed(() => can(['sys.system.view', 'sys.system.manage']))
 const canEdit = computed(() => can('rd.feedback.edit') && item.value?.status !== 'ONLINE')
 const collaboration = ref<FeedbackCollaboration | null>(null)
@@ -252,13 +253,9 @@ const editForm = reactive({
   feedback_type: '' as FeedbackUpdatePayload['feedback_type'],
   urgency: '' as FeedbackUpdatePayload['urgency'],
   system_id: null as number | null,
-  module_id: null as number | null,
   description: '',
   reproduce_steps: '',
 })
-const editModuleOptions = computed(() =>
-  editForm.system_id ? modules.value.filter((m) => m.system_id === editForm.system_id) : [],
-)
 
 function openEdit(): void {
   if (!item.value || !canEdit.value) return
@@ -273,7 +270,6 @@ function fillEditForm(latest: Feedback): void {
     feedback_type: latest.feedback_type,
     urgency: latest.urgency,
     system_id: latest.system_id ?? null,
-    module_id: latest.module_id ?? null,
     description: latest.description,
     reproduce_steps: latest.reproduce_steps ?? '',
   })
@@ -283,10 +279,6 @@ watch(editDialog, (open) => {
   if (!open) void stopPresence()
 })
 
-function onEditSystemChange(): void {
-  editForm.module_id = null
-}
-
 async function submitEdit(): Promise<void> {
   if (!item.value) return
   editSubmitting.value = true
@@ -295,8 +287,9 @@ async function submitEdit(): Promise<void> {
       title: editForm.title.trim(),
       feedback_type: editForm.feedback_type,
       urgency: editForm.urgency,
-      system_id: editForm.system_id ?? null,
-      module_id: editForm.module_id ?? null,
+      // Preserve historical modules on ordinary edits; clear only when changing system.
+      ...(editForm.system_id !== (item.value.system_id ?? null)
+        ? { system_id: editForm.system_id, module_id: null } : {}),
       description: editForm.description.trim(),
       reproduce_steps: editForm.reproduce_steps.trim() || null,
       revision: item.value.revision,
@@ -340,12 +333,14 @@ async function submitComment(): Promise<void> {
     await createFeedbackComment(feedbackId, commentText.value.trim())
     commentText.value = ''
     comments.value = await listFeedbackComments(feedbackId)
+    activityRefresh.value++
   } finally {
     commentSubmitting.value = false
   }
 }
 
 async function load(): Promise<void> {
+  activityRefresh.value++
   loading.value = true
   failed.value = false
   try {
@@ -371,7 +366,6 @@ onMounted(async () => {
     try {
       const data = await listSystems()
       systems.value = data.systems
-      modules.value = data.modules
     } catch {
       // Optional display enrichment.
     }
@@ -405,6 +399,7 @@ onMounted(async () => {
         </el-button>
         </template>
       </PageHeader>
+      <BusinessSystemAttribution :system-id="item.system_id" :system-name="item.system_name" />
       <p v-if="item.status === 'NEW' && canEdit && collaboration && !canAccept" role="status">请联系指定接收人受理此反馈；如需调整接收人，可在“接收与处理”中设置。</p>
       <CollaborationPeople v-if="can('rd.feedback.view')" kind="feedback" :id="item.id" :revision="item.revision" :editable="canEdit" @loaded="collaboration = $event" @updated="load" />
 
@@ -417,8 +412,6 @@ onMounted(async () => {
           <el-descriptions-item label="紧急程度">
             {{ feedbackUrgencyLabel[item.urgency] ?? item.urgency }}
           </el-descriptions-item>
-          <el-descriptions-item label="所属系统">{{ item.system_name || (item.system_id == null ? '-' : '未知系统') }}</el-descriptions-item>
-          <el-descriptions-item label="所属模块">{{ item.module_name || (item.module_id == null ? '-' : '未知模块') }}</el-descriptions-item>
           <el-descriptions-item label="详细描述" :span="isMobile ? 1 : 2">
             <div class="multiline">{{ item.description }}</div>
           </el-descriptions-item>
@@ -443,6 +436,8 @@ onMounted(async () => {
         </dl>
       </SectionCard>
       </div>
+
+      <RecentEntityActivity kind="feedback" :id="item.id" :revision="item.revision" :refresh-key="activityRefresh" />
 
       <!-- attachments -->
       <SectionCard title="附件" class="section">
@@ -553,14 +548,8 @@ onMounted(async () => {
               clearable
               placeholder="可选"
               style="width: 100%"
-              @change="onEditSystemChange"
             >
               <el-option v-for="s in systems" :key="s.id" :label="s.name" :value="s.id" />
-            </el-select>
-          </el-form-item>
-          <el-form-item v-if="editForm.system_id" label="所属模块">
-            <el-select v-model="editForm.module_id" clearable placeholder="可选" style="width: 100%">
-              <el-option v-for="m in editModuleOptions" :key="m.id" :label="m.name" :value="m.id" />
             </el-select>
           </el-form-item>
         </template>

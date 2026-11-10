@@ -14,10 +14,14 @@ from app.core.database import get_db
 from app.core.security import create_access_token
 from app.main import app
 from app.models.entities import (
+    BusinessSystem,
     CollaborationEvent,
     Feedback,
     OperationLog,
     Permission,
+    ReleaseBatch,
+    ReleaseBatchTarget,
+    ReleaseTarget,
     Requirement,
     RequirementFeedback,
     RequirementParticipant,
@@ -54,6 +58,7 @@ def ver_api(tmp_path: Path) -> Iterator[Fixture]:
         f"sqlite:///{tmp_path / 'ver-api.db'}", connect_args={"check_same_thread": False}
     )
     for table in (
+        BusinessSystem.__table__,
         User.__table__,
         Role.__table__,
         Permission.__table__,
@@ -67,6 +72,9 @@ def ver_api(tmp_path: Path) -> Iterator[Fixture]:
         RequirementStep.__table__,
         RequirementParticipant.__table__,
         Version.__table__,
+        ReleaseTarget.__table__,
+        ReleaseBatch.__table__,
+        ReleaseBatchTarget.__table__,
         VersionRequirement.__table__,
     ):
         table.create(engine)
@@ -83,6 +91,8 @@ def ver_api(tmp_path: Path) -> Iterator[Fixture]:
         listeners.append((model, assign_id))
 
     with Session(engine, expire_on_commit=False) as session:
+        session.add(BusinessSystem(id=1, code="VERSIONS", name="版本测试系统"))
+        session.commit()
         role_all = Role(code="ALLROLE", name="全域", data_scope=DataScope.ALL)
         role_self = Role(code="SELFROLE", name="本人", data_scope=DataScope.SELF)
         version_editor_role = Role(
@@ -156,7 +166,7 @@ def ver_api(tmp_path: Path) -> Iterator[Fixture]:
 
 
 def _version(client, headers, **overrides) -> dict:
-    body = {"version_no": overrides.pop("version_no", "V1.0.0"), "name": "首个版本"}
+    body = {"system_id": 1, "version_no": overrides.pop("version_no", "V1.0.0"), "name": "首个版本"}
     body.update(overrides)
     r = client.post("/api/v1/versions", headers=headers, json=body)
     assert r.status_code == 200, r.text
@@ -164,7 +174,12 @@ def _version(client, headers, **overrides) -> dict:
 
 
 def _requirement(client, headers, **overrides) -> dict:
-    body = {"title": "需求", "requirement_type": "FEATURE", "description": "描述内容"}
+    body = {
+        "system_id": 1,
+        "title": "需求",
+        "requirement_type": "FEATURE",
+        "description": "描述内容",
+    }
     body.update(overrides)
     r = client.post("/api/v1/requirements", headers=headers, json=body)
     assert r.status_code == 200, r.text
@@ -889,6 +904,7 @@ def test_requirement_create_with_version_succeeds_for_all_three_permissions(ver_
         headers=creator,
         json={
             "title": "授权关联版本",
+            "system_id": 1,
             "requirement_type": "FEATURE",
             "description": "三个权限均具备",
             "version_id": version["id"],

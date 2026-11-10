@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import BusinessSystemAttribution from '@/components/BusinessSystemAttribution.vue'
+import RecentEntityActivity from '@/components/RecentEntityActivity.vue'
+import BusinessSystemSelect from '@/components/BusinessSystemSelect.vue'
 import RequirementProgress from '@/components/RequirementProgress.vue'
 import { computed, defineAsyncComponent, onMounted, reactive, ref, watch } from 'vue'
 import RequirementNumber from '@/components/RequirementNumber.vue'
@@ -25,7 +28,6 @@ import { loadRequirementFeedbackSection } from '@/security/detailAuthorization'
 import StatusTag from '@/components/StatusTag.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import SectionCard from '@/components/ui/SectionCard.vue'
-import EmptyState from '@/components/ui/EmptyState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
 import RevisionConflictDialog from '@/components/RevisionConflictDialog.vue'
 import { useResponsive } from '@/composables/useResponsive'
@@ -68,8 +70,9 @@ async function showConflict(error: unknown, revision: number, onReload?: (latest
 const item = ref<Requirement | null>(null)
 const feedbacks = ref<LinkedFeedback[]>([])
 const loading = ref(false)
+const activityRefresh = ref(0)
 const failed = ref(false)
-const canEdit = computed(() => can('rd.requirement.edit') && item.value?.status !== 'ONLINE')
+const canEdit = computed(() => !item.value?.release_frozen && can('rd.requirement.edit') && item.value?.status !== 'ONLINE')
 const canViewFeedbacks = computed(() => can('rd.feedback.view'))
 const canCreateVersion = computed(() => !!item.value && !item.value.current_version_id && !['ONLINE', 'CANCELED'].includes(item.value.status) && ['rd.version.create', 'rd.version.edit', 'rd.version.view', 'rd.requirement.view'].every(permission => can(permission)))
 const createVersionDialog = ref(false)
@@ -141,7 +144,7 @@ async function submitStatus(): Promise<void> {
 // --- edit dialog ---
 const editDialog = ref(false)
 const editSubmitting = ref(false)
-const editForm = reactive({
+const editForm = reactive({ system_id: null as number | null,
   title: '',
   requirement_type: '',
   priority: 'P2' as RequirementPriority,
@@ -162,6 +165,7 @@ function fillEditForm(latest: Requirement): void {
   const editorHtml = format === 'HTML' ? latest.description : plainTextToHtml(latest.description)
   originalDescription = { text: latest.description, format, editorHtml }
   Object.assign(editForm, {
+    system_id: latest.system_id,
     title: latest.title,
     requirement_type: latest.requirement_type,
     priority: latest.priority,
@@ -184,6 +188,7 @@ async function submitEdit(): Promise<void> {
   try {
     const descriptionUnchanged = editForm.description === originalDescription.editorHtml
     await updateRequirement(item.value.id, {
+      ...(editForm.system_id !== item.value.system_id ? { system_id: editForm.system_id, module_id: null } : {}),
       title: editForm.title.trim(),
       requirement_type: editForm.requirement_type,
       priority: editForm.priority,
@@ -204,6 +209,7 @@ async function submitEdit(): Promise<void> {
 }
 
 async function load(): Promise<void> {
+  activityRefresh.value++
   loading.value = true
   failed.value = false
   try {
@@ -244,25 +250,19 @@ onMounted(load)
 
         </template>
       </PageHeader>
+      <el-alert v-if="item.release_frozen && item.status !== 'ONLINE'" title="首次目标发布已开始，需求内容、人员及进度已冻结。" type="warning" :closable="false" />
+      <BusinessSystemAttribution :system-id="item.system_id" :system-name="item.system_name" />
 
       <RequirementProgress :item="item" @updated="load" @status="openStatusDialog" />
       <div class="detail-grid">
-      <SectionCard title="需求详情" description="范围与验收标准" class="detail-main">
-        <el-descriptions :column="isMobile ? 1 : 2">
-          <el-descriptions-item label="类型">
-            {{ requirementTypeLabel[item.requirement_type] ?? item.requirement_type }}
-          </el-descriptions-item>
-          <el-descriptions-item label="优先级">{{ item.priority }}</el-descriptions-item>
-          <el-descriptions-item label="需求描述" :span="isMobile ? 1 : 2">
-            <RichTextContent :requirement-id="item.id" :content="item.description" :format="item.description_format" />
-          </el-descriptions-item>
-          <el-descriptions-item label="验收标准" :span="isMobile ? 1 : 2">
-            <div class="multiline">{{ item.acceptance_criteria || '-' }}</div>
-          </el-descriptions-item>
-        </el-descriptions>
+      <SectionCard title="需求详情" class="detail-main">
+        <div class="requirement-content"><h3>需求描述</h3><RichTextContent :requirement-id="item.id" :content="item.description" :format="item.description_format" /></div>
+        <div class="requirement-content"><h3>验收标准</h3><div class="multiline">{{ item.acceptance_criteria || '暂未填写验收标准' }}</div></div>
       </SectionCard>
-      <SectionCard title="流转信息" description="来源与版本归属" class="detail-side">
+      <SectionCard title="需求属性" class="detail-side">
         <dl class="side-fields">
+          <div><dt>类型</dt><dd>{{ requirementTypeLabel[item.requirement_type] ?? item.requirement_type }}</dd></div>
+          <div><dt>优先级</dt><dd>{{ item.priority }}</dd></div>
           <div><dt>来源</dt><dd>{{ item.source === 'FEEDBACK' ? '反馈转化' : '直接创建' }}</dd></div>
           <div><dt>当前版本</dt><dd><ScopedRelationLink kind="version" :id="item.current_version_id" :return-to="backTo" :parent-identity="String(item.id)" /></dd></div>
           <div><dt>更新时间</dt><dd>{{ formatLocalDateTime(item.updated_at) }}</dd></div>
@@ -270,8 +270,11 @@ onMounted(load)
       </SectionCard>
       </div>
 
+      <RecentEntityActivity kind="requirement" :id="item.id" :revision="item.revision" :refresh-key="activityRefresh" />
+
       <!-- source feedbacks -->
-      <SectionCard v-if="canViewFeedbacks" title="来源反馈" class="section">
+      <template v-if="canViewFeedbacks">
+      <SectionCard v-if="feedbacks.length" title="来源反馈" class="section">
         <ul v-if="feedbacks.length" class="links">
           <li v-for="f in feedbacks" :key="f.feedback_id">
             <el-link type="primary" @click="router.push(related('/feedbacks/' + f.feedback_id))">
@@ -280,12 +283,14 @@ onMounted(load)
             <el-tag v-if="f.is_primary" size="small" type="success" effect="light">主</el-tag>
           </li>
         </ul>
-        <EmptyState v-else description="暂无可见来源反馈" compact />
+
       </SectionCard>
+      <p v-else class="empty-relation">暂无可见来源反馈</p>
+      </template>
     </template>
 
-    <el-dialog v-model="createVersionDialog" title="创建版本并关联需求" width="min(720px, calc(100vw - 24px))" append-to-body destroy-on-close :close-on-click-modal="false" :show-close="!creatingVersion" :close-on-press-escape="!creatingVersion">
-      <VersionCreateView v-if="createVersionDialog && item" embedded :requirement="{ id: item.id, revision: item.revision, title: item.title }" :requirement-refreshing="refreshingVersionRequirement" @cancel="createVersionDialog = false" @created="onVersionCreated" @refresh-requirement="refreshVersionRequirement" @saving="creatingVersion = $event" />
+    <el-dialog v-model="createVersionDialog" title="创建版本并关联需求" class="create-dialog" width="min(720px, calc(100vw - 24px))" append-to-body destroy-on-close :close-on-click-modal="false" :show-close="!creatingVersion" :close-on-press-escape="!creatingVersion">
+      <VersionCreateView v-if="createVersionDialog && item" embedded :requirement="{ id: item.id, revision: item.revision, title: item.title, system_id: item.system_id, system_name: item.system_name }" :requirement-refreshing="refreshingVersionRequirement" @cancel="createVersionDialog = false" @created="onVersionCreated" @refresh-requirement="refreshVersionRequirement" @saving="creatingVersion = $event" />
     </el-dialog>
 
     <!-- status dialog -->
@@ -320,12 +325,13 @@ onMounted(load)
     />
 
     <!-- edit dialog -->
-    <el-dialog v-model="editDialog" title="编辑需求" width="min(560px, 92vw)" destroy-on-close>
+    <el-dialog v-model="editDialog" title="编辑需求" width="min(1040px, calc(100vw - 32px))" destroy-on-close>
       <el-alert v-if="existingEditor" type="warning" :closable="false" show-icon class="presence-alert">
         <template #title>{{ existingEditor.display_name }} 正在编辑此需求</template>
         你仍可继续编辑；如数据已变化，保存时会通过 revision 冲突保护避免静默覆盖。
       </el-alert>
       <el-form label-position="top" @submit.prevent="submitEdit">
+        <el-form-item label="业务系统"><BusinessSystemSelect v-model="editForm.system_id" :current-name="item?.system_name" /></el-form-item>
         <el-form-item label="需求类型">
           <el-select v-model="editForm.requirement_type" style="width: 100%">
             <el-option v-for="t in REQUIREMENT_TYPES" :key="t.value" :label="t.label" :value="t.value" />
@@ -355,6 +361,10 @@ onMounted(load)
 </template>
 
 <style scoped>
+.requirement-content { font-size: 15px; line-height: 1.8; overflow-wrap: anywhere; }
+.requirement-content + .requirement-content { margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--if-border); }
+.requirement-content h3 { font-size: 13px; font-weight: 500; color: var(--if-text-secondary); margin: 0 0 12px; }
+.empty-relation { margin: 16px 0; color: var(--if-text-tertiary); font-size: 13px; }
 .back-link { color: var(--if-brand-500); align-self: center; }
 .detail-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(250px, 300px); align-items: start; gap: var(--if-space-4); }
 .detail-main, .detail-side { min-width: 0; }

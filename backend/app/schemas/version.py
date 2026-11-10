@@ -2,7 +2,7 @@ from datetime import date, datetime
 from typing import Self
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, PositiveInt, model_validator
 
 from app.models.enums import ManualVersionStatus, VersionStatus
 from app.schemas.common import PageResult
@@ -11,6 +11,7 @@ from app.schemas.requirement import RequirementOut
 
 
 class VersionCreate(BaseModel):
+    system_id: int = Field(ge=1)
     version_no: str = Field(min_length=1, max_length=32)
     name: str = Field(min_length=1, max_length=100)
     owner_id: int | None = None
@@ -40,6 +41,7 @@ class VersionCreate(BaseModel):
 
 
 class VersionUpdate(BaseModel):
+    system_id: int | None = Field(default=None, ge=1)
     name: str | None = Field(default=None, max_length=100)
     owner_id: int | None = None
     planned_release_date: date | None = None
@@ -48,6 +50,8 @@ class VersionUpdate(BaseModel):
 
     @model_validator(mode="after")
     def reject_null_name(self) -> Self:
+        if "system_id" in self.model_fields_set and self.system_id is None:
+            raise ValueError("system_id cannot be null")
         if "name" in self.model_fields_set and self.name is None:
             raise ValueError("name cannot be null")
         return self
@@ -89,9 +93,35 @@ class PublishVersionRequest(BaseModel):
     released_at: datetime
     release_notes: str = Field(min_length=1)
     revision: int = Field(ge=1)
+    target_ids: list[PositiveInt] = Field(
+        default_factory=list, max_length=50, title="本次已发布目标 ID"
+    )
+    initial_batch_id: int | None = Field(default=None, ge=1, title="首次批次 ID")
+    batch_revision: int | None = Field(default=None, ge=1, title="批次修订号")
+    legacy_single: bool = Field(default=False, title="明确传统单次发布")
+    legacy_reason: str | None = Field(
+        default=None, min_length=2, max_length=500, title="传统发布原因"
+    )
+
+    @model_validator(mode="after")
+    def batch_or_legacy(self) -> Self:
+        if len(self.target_ids) != len(set(self.target_ids)):
+            raise ValueError("发布目标不能重复")
+        if (self.initial_batch_id is None) != (self.batch_revision is None):
+            raise ValueError("首次批次和批次 revision 必须成对提供")
+        if self.legacy_single and self.initial_batch_id is not None:
+            raise ValueError("目标批次和传统发布不能同时选择")
+        if self.legacy_reason is not None:
+            self.legacy_reason = self.legacy_reason.strip()
+            if len(self.legacy_reason) < 2 or "\x00" in self.legacy_reason:
+                raise ValueError("请填写有效的传统发布原因")
+        return self
 
 
 class VersionOut(BaseModel):
+    release_frozen: bool = Field(default=False, title="首次发布内容已冻结")
+    system_id: int | None
+    system_name: str | None = None
     model_config = ConfigDict(from_attributes=True)
     id: int
     version_no: str

@@ -31,6 +31,8 @@ const mocks = vi.hoisted(() => ({
   warningMessage: vi.fn(),
 }))
 
+vi.mock('@/components/PublishedTargetSelect.vue', () => ({ default: { template: '<div />' } }))
+vi.mock('@/components/VersionReleaseBatches.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('vue-router', () => ({
   useRoute: () => ({ params: { id: '7' } }),
   useRouter: () => ({ push: mocks.routerPush, replace: vi.fn(), back: vi.fn() }),
@@ -52,6 +54,7 @@ vi.mock('@/api/versions', () => ({
   removeVersionRequirement: vi.fn(),
   updateVersion: mocks.updateVersion,
 }))
+vi.mock('@/api/entityActivities', () => ({ listEntityActivities: vi.fn().mockResolvedValue([]) }))
 vi.mock('@/api/releases', () => ({ listReleases: mocks.listReleases }))
 vi.mock('@/api/systems', () => ({ listSystems: mocks.listSystems }))
 vi.mock('@/api/requirements', () => ({
@@ -141,6 +144,7 @@ const feedback: Feedback = {
 
 const elementStub = { template: '<div><slot /><slot name="footer" /></div>' }
 const stubs = {
+  BusinessSystemSelect: true,
   RequirementCollaboratorsPanel: true,
   'el-alert': { template: '<div class="alert"><slot name="title" /><slot /></div>' },
   'el-button': {
@@ -226,7 +230,7 @@ beforeEach(() => {
 describe('detail views enforce permission-aware loading in mounted components', () => {
   it('preserves historical feedback results without including them in ordinary edits', async () => {
     permissionSet('rd.feedback.view', 'rd.feedback.edit')
-    mocks.getFeedback.mockResolvedValue({ ...feedback, expected_result: '原期望内容', actual_result: '原实际内容' })
+    mocks.getFeedback.mockResolvedValue({ ...feedback, expected_result: '原期望内容', actual_result: '原实际内容', system_id: 1, module_id: 2 })
     mocks.updateFeedback.mockResolvedValue(feedback)
     const wrapper = mount(FeedbackDetailView, { global: { stubs, directives: { loading: {} } } })
     await flushPromises()
@@ -242,6 +246,8 @@ describe('detail views enforce permission-aware loading in mounted components', 
     const payload = mocks.updateFeedback.mock.calls.at(-1)![1]
     expect(payload).not.toHaveProperty('expected_result')
     expect(payload).not.toHaveProperty('actual_result')
+    expect(payload).not.toHaveProperty('system_id')
+    expect(payload).not.toHaveProperty('module_id')
     wrapper.unmount()
   })
   it('shows feedback reference names without directory permissions in full and embedded detail', async () => {
@@ -260,7 +266,7 @@ describe('detail views enforce permission-aware loading in mounted components', 
       await flushPromises()
       expect(wrapper.text()).toContain('提交人张三 <img src=x>')
       expect(wrapper.text()).toContain('中文历史系统')
-      expect(wrapper.text()).toContain('中文历史模块')
+      expect(wrapper.text()).not.toContain('中文历史模块')
       expect(wrapper.text()).not.toContain('#13')
       expect(wrapper.find('img[src="x"]').exists()).toBe(false)
       expect(mocks.listSystems).not.toHaveBeenCalled()
@@ -444,8 +450,8 @@ describe('detail views enforce permission-aware loading in mounted components', 
     await flushPromises()
     await wrapper.findAll('button').find((button) => button.text() === '编辑')!.trigger('click')
     await flushPromises()
-    expect(wrapper.find('.alert').text()).toContain('测试用户B 正在编辑')
-    expect(wrapper.find('.alert').text()).toContain('仍可继续编辑')
+    expect(wrapper.findAll('.alert').some(alert => alert.text().includes('测试用户B 正在编辑'))).toBe(true)
+    expect(wrapper.findAll('.alert').some(alert => alert.text().includes('仍可继续编辑'))).toBe(true)
     const saveButton = wrapper.findAll('button').find((button) => button.text() === '保存')
     expect(saveButton?.attributes('disabled')).toBeUndefined()
     wrapper.unmount()
@@ -521,9 +527,9 @@ it('publish check close/reopen invalidates old success and finally; server check
   const wrapper = mount(VersionDetailView, { global: { stubs, directives: { loading: {} } } })
   await flushPromises()
   const button = (text: string) => wrapper.findAll('button').find(node => node.text() === text)!
-  await button('发布').trigger('click')
+  await button('发布版本').trigger('click')
   await button('取消').trigger('click')
-  await button('发布').trigger('click')
+  await button('发布版本').trigger('click')
   oldFinish({ passed: true, checks: [{ type: 'OLD', passed: true, message: 'stale allowed' }] })
   await flushPromises()
   expect(wrapper.text()).not.toContain('stale allowed')

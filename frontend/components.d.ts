@@ -11,11 +11,14 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    AnnouncementNotice: typeof import('./src/components/AnnouncementNotice.vue')['default']
     ApiSchemaView: typeof import('./src/components/ApiSchemaView.vue')['default']
     AppIcon: typeof import('./src/components/ui/AppIcon.vue')['default']
     AuthShell: typeof import('./src/components/ui/AuthShell.vue')['default']
     BatchActionsDialog: typeof import('./src/components/BatchActionsDialog.vue')['default']
     BulkRequirementPicker: typeof import('./src/components/BulkRequirementPicker.vue')['default']
+    BusinessSystemAttribution: typeof import('./src/components/BusinessSystemAttribution.vue')['default']
+    BusinessSystemSelect: typeof import('./src/components/BusinessSystemSelect.vue')['default']
     CollaborationPeople: typeof import('./src/components/CollaborationPeople.vue')['default']
     DashboardOverviewContent: typeof import('./src/components/DashboardOverviewContent.vue')['default']
     DeleteEntityButton: typeof import('./src/components/DeleteEntityButton.vue')['default']
@@ -45,6 +48,7 @@ declare module 'vue' {
     ElPagination: typeof import('element-plus/es')['ElPagination']
     ElProgress: typeof import('element-plus/es')['ElProgress']
     ElRadio: typeof import('element-plus/es')['ElRadio']
+    ElRadioButton: typeof import('element-plus/es')['ElRadioButton']
     ElRadioGroup: typeof import('element-plus/es')['ElRadioGroup']
     ElRow: typeof import('element-plus/es')['ElRow']
     ElSelect: typeof import('element-plus/es')['ElSelect']
@@ -66,6 +70,9 @@ declare module 'vue' {
     PageHeader: typeof import('./src/components/ui/PageHeader.vue')['default']
     PeopleSelector: typeof import('./src/components/PeopleSelector.vue')['default']
     PermissionAssignmentDrawer: typeof import('./src/components/PermissionAssignmentDrawer.vue')['default']
+    PublishedTargetSelect: typeof import('./src/components/PublishedTargetSelect.vue')['default']
+    RecentEntityActivity: typeof import('./src/components/RecentEntityActivity.vue')['default']
+    ReleaseTargetManager: typeof import('./src/components/ReleaseTargetManager.vue')['default']
     ReleaseVersionDrawer: typeof import('./src/components/ReleaseVersionDrawer.vue')['default']
     RequirementImage: typeof import('./src/components/RequirementImage.vue')['default']
     RequirementNumber: typeof import('./src/components/RequirementNumber.vue')['default']
@@ -82,7 +89,9 @@ declare module 'vue' {
     ScopedRelationLink: typeof import('./src/components/ScopedRelationLink.vue')['default']
     SectionCard: typeof import('./src/components/ui/SectionCard.vue')['default']
     StatusTag: typeof import('./src/components/StatusTag.vue')['default']
+    TargetReleaseRecords: typeof import('./src/components/TargetReleaseRecords.vue')['default']
     UserRoleAssignmentDrawer: typeof import('./src/components/UserRoleAssignmentDrawer.vue')['default']
+    VersionReleaseBatches: typeof import('./src/components/VersionReleaseBatches.vue')['default']
   }
   export interface GlobalDirectives {
     vLoading: typeof import('element-plus/es')['ElLoadingDirective']

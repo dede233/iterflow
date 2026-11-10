@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import BusinessSystemAttribution from './BusinessSystemAttribution.vue'
+import RecentEntityActivity from './RecentEntityActivity.vue'
 import RequirementNumber from '@/components/RequirementNumber.vue'
 import RichTextContent from './RichTextContent.vue'
 import { computed, onScopeDispose, ref, watch } from 'vue'
@@ -63,6 +65,7 @@ onScopeDispose(() => { sequence++ })
     </div>
     <article v-else-if="item" class="requirement-summary">
       <RequirementNumber :number="item.requirement_no" />
+      <BusinessSystemAttribution :system-id="item.system_id" :system-name="item.system_name" />
       <h2>{{ item.title }}</h2>
       <el-descriptions :column="isMobile ? 1 : 2">
         <el-descriptions-item label="状态">{{ requirementStatusLabel[item.status] }}</el-descriptions-item>
@@ -74,6 +77,7 @@ onScopeDispose(() => { sequence++ })
       <RichTextContent :requirement-id="item.id" :content="item.description" :format="item.description_format" />
       <h3>验收标准</h3>
       <p class="summary-content">{{ item.acceptance_criteria || '尚未填写' }}</p>
+      <RecentEntityActivity kind="requirement" :id="item.id" :revision="item.revision" />
       <template v-if="auth.hasPermission('rd.feedback.view')">
         <h3>来源反馈</h3>
         <p v-if="feedbacksFailed">来源反馈暂时无法加载。</p>
@@ -97,10 +101,11 @@ onScopeDispose(() => { sequence++ })
 h2 { font-size: 20px; margin: 8px 0 20px; }
 h3 { font-size: 14px; margin: 20px 0 8px; }
 .summary-content { white-space: pre-wrap; line-height: 1.7; }
-.summary-detail-link { display: inline-block; padding: 10px 12px; margin-left: 12px; color: var(--if-brand-500); }
+.summary-detail-link { display: inline-flex; align-items: center; justify-content: center; min-height: 32px; padding: 0 12px; color: var(--if-brand-500); }
 .summary-detail-link:focus-visible { outline: 2px solid var(--if-brand-500); outline-offset: 2px; }
 li { margin: 8px 0; }
 @media (max-width: 767px) {
+  .summary-detail-link { min-height: 44px; }
   :global(.requirement-summary-overlay .el-overlay-dialog) { padding: 0; }
   :global(.requirement-summary-dialog.is-fullscreen) {
     width: 100vw !important;

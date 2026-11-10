@@ -6,7 +6,7 @@ import { rememberImage, forgetImage, pendingImage } from '@/utils/requirementIma
 import StarterKit from '@tiptap/starter-kit'
 import { richTextPlainText, safeRichTextLink, sanitizeRichText } from '@/utils/richText'
 
-const props = withDefaults(defineProps<{ modelValue: string; requirementId?: number; disabled?: boolean; label?: string }>(), { disabled: false, label: '需求描述' })
+const props = withDefaults(defineProps<{ modelValue: string; requirementId?: number; announcementId?: number; disabled?: boolean; label?: string }>(), { disabled: false, label: '需求描述' })
 const emit = defineEmits<{ 'update:modelValue': [value: string]; blur: [] }>()
 const linkOpen = ref(false)
 const linkUrl = ref('')
@@ -17,6 +17,7 @@ const picker = ref<HTMLInputElement>()
 const imageError = ref('')
 const owned = new Set<string>()
 provide('editorRequirementId', () => props.requirementId)
+provide('editorAnnouncementId', () => props.announcementId)
 onBeforeUnmount(() => owned.forEach(forgetImage))
 const picture = Node.create({
   name: 'requirementImage', group: 'block', atom: true,
@@ -38,7 +39,7 @@ function insertImages(files: File[]) {
     if (node.type.name === 'requirementImage') { count++; bytes += pendingImage(node.attrs.fileId)?.size || 0 }
   })
   if (count + files.length > 12 || bytes > 8 * 1024 * 1024) {
-    imageError.value = '每条需求最多 12 张图片，本次新增图片合计限 8 MiB'
+    imageError.value = '每篇内容最多 12 张图片，本次新增图片合计限 8 MiB'
     return
   }
   const nodes = files.map(file => {
@@ -134,12 +135,13 @@ function removeLink() {
 <template>
   <div class="rich-text-editor" :class="{ disabled }">
     <div class="editor-toolbar" role="group" :aria-label="`${label}格式`">
-      <button type="button" :disabled="disabled" :aria-pressed="editor?.isActive('paragraph') || false" @mousedown.prevent @click="command('paragraph')">正文</button>
-      <button type="button" :disabled="disabled" :aria-pressed="editor?.isActive('heading') || false" @mousedown.prevent @click="command('heading')">标题</button>
+      <select aria-label="段落样式" :disabled="disabled" :value="editor?.isActive('heading') ? 'heading' : 'paragraph'" @change="command(($event.target as HTMLSelectElement).value as Command)"><option value="paragraph">正文</option><option value="heading">标题</option></select>
+      <span class="toolbar-divider" aria-hidden="true" />
       <button type="button" aria-label="加粗" :disabled="disabled" :aria-pressed="editor?.isActive('bold') || false" @mousedown.prevent @click="command('bold')"><strong>加粗</strong></button>
       <button type="button" aria-label="斜体" :disabled="disabled" :aria-pressed="editor?.isActive('italic') || false" @mousedown.prevent @click="command('italic')"><em>斜体</em></button>
       <button type="button" :disabled="disabled" :aria-pressed="editor?.isActive('bulletList') || false" @mousedown.prevent @click="command('bulletList')">无序列表</button>
       <button type="button" :disabled="disabled" :aria-pressed="editor?.isActive('orderedList') || false" @mousedown.prevent @click="command('orderedList')">有序列表</button>
+      <span class="toolbar-divider" aria-hidden="true" />
       <button type="button" :disabled="disabled" @mousedown.prevent @click="picker?.click()">插入图片</button>
       <input ref="picker" type="file" hidden multiple accept="image/png,image/jpeg,image/webp" @change="choosePictures">
       <button type="button" :disabled="disabled" :aria-expanded="linkOpen" @mousedown.prevent @click="openLink">链接</button>
@@ -160,9 +162,12 @@ function removeLink() {
   </div>
 </template>
 <style scoped>
+.editor-toolbar select { min-height: 32px; max-width: 100%; padding: 4px 8px; color: var(--if-text-primary); background: var(--if-bg-surface); border: 1px solid var(--if-border); border-radius: 4px; font: inherit; font-size: 13px; }
+.toolbar-divider { width: 1px; height: 20px; background: var(--if-border); align-self: center; margin: 0 4px; }
+@media (max-width: 767px) { .editor-toolbar select { min-height: 44px; } }
 .rich-text-editor { width: 100%; min-width: 0; border: 1px solid var(--el-border-color); border-radius: var(--el-border-radius-base); overflow: hidden; }
 .rich-text-editor:focus-within { border-color: var(--el-color-primary); }
-.editor-toolbar { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px; border-bottom: 1px solid var(--el-border-color); background: var(--if-bg-muted); }
+.editor-toolbar { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px; border-bottom: 1px solid var(--el-border-color); background: var(--if-bg-subtle); }
 button { min-height: 32px; border: 1px solid transparent; border-radius: 4px; padding: 4px 8px; background: transparent; color: var(--el-text-color-primary); cursor: pointer; font: inherit; font-size: 12px; }
 button:hover:not(:disabled), button[aria-pressed="true"] { color: var(--el-color-primary); background: var(--el-color-primary-light-9); }
 button:focus-visible { outline: 2px solid var(--el-color-primary); outline-offset: -2px; }
@@ -175,7 +180,7 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .rich-text-editor :deep(.tiptap a) { color: var(--el-color-primary); text-decoration: underline; }
 .rich-text-editor :deep(.tiptap pre) { white-space: pre-wrap; }
 .editor-hint { margin: 0; padding: 6px 12px; color: var(--el-text-color-secondary); font-size: 12px; }
-.link-editor { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px; background: var(--if-bg-muted); font-size: 12px; }
+.link-editor { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px; background: var(--if-bg-subtle); font-size: 12px; }
 .link-editor input { flex: 1; min-width: 140px; max-width: 100%; min-height: 32px; border: 1px solid var(--el-border-color); border-radius: 4px; padding: 4px 8px; }
 .link-editor p { flex-basis: 100%; margin: 0; color: var(--el-color-danger); }
 .disabled { background: var(--el-fill-color-light); }

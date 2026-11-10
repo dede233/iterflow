@@ -8,7 +8,7 @@ import { useScopedSearch, type SelectionOption } from '@/composables/useScopedSe
 import { feedbackStatusLabel } from '@/constants/feedback'
 import { requirementStatusLabel } from '@/constants/requirement'
 import { versionStatusLabel } from '@/constants/version'
-const props = defineProps<{ kind: 'feedback' | 'requirement' | 'version'; allowed: boolean; active: boolean; disabled?: boolean; excludeId?: number }>()
+const props = defineProps<{ kind: 'feedback' | 'requirement' | 'version'; allowed: boolean; active: boolean; disabled?: boolean; excludeId?: number; systemId?: number | null }>()
 const model = defineModel<number | null>({ default: null })
 const auth = useAuthStore()
 const readable = computed(() => props.allowed && auth.hasPermission(`rd.${props.kind}.view`))
@@ -16,9 +16,9 @@ const names = { feedback: '反馈', requirement: '需求', version: '版本' }
 const labels = { feedback: feedbackStatusLabel, requirement: requirementStatusLabel, version: versionStatusLabel }
 const selected = ref<SelectionOption | null>(null)
 const search = useScopedSearch(
-  () => [readable.value && props.active && !props.disabled, `${auth.user?.id}:${auth.accessToken}:${auth.permissionCodes.join(',')}:${props.kind}`] as const,
+  () => [readable.value && props.active && !props.disabled, `${auth.user?.id}:${auth.accessToken}:${auth.permissionCodes.join(',')}:${props.kind}:${props.systemId}`] as const,
   async (keyword, page) => {
-    const params = { keyword: keyword || undefined, page, page_size: 20 }
+    const params = { system_id: props.systemId || undefined, keyword: keyword || undefined, page, page_size: 20 }
     const result = props.kind === 'feedback' ? await listFeedbacks(params) : props.kind === 'requirement' ? await listRequirements(params) : await listVersions(params)
     return { total: result.total, items: result.items.filter(item => item.id !== props.excludeId).map(item => ({ id: item.id, code: 'version_no' in item ? item.version_no : 'requirement_no' in item ? item.requirement_no : item.feedback_no, title: 'name' in item ? item.name : item.title, status: item.status })) }
   },

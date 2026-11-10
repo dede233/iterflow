@@ -1,6 +1,6 @@
 /* IterFlow design tokens V2 — Modern SaaS Design System */
 /* Provides unified tokens for colors, typography, elevations, surface layers, and Element Plus mappings. */
-:root {
+html:root {
   --if-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
   --if-font-mono: "JetBrains Mono", "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
 
@@ -40,7 +40,7 @@
   /* Backwards-compatibility aliases */
   --if-text-1: var(--if-text-primary);
   --if-text-2: var(--if-text-secondary);
-  --if-text-3: var(--if-text-quaternary);
+  --if-text-3: var(--if-text-tertiary);
 
   /* Surfaces & Backgrounds */
   --if-bg-page: #f8fafc;
@@ -93,14 +93,14 @@
   --if-space-12: 48px;
 
   /* Layout Dimensions */
-  --if-sidebar-width: 240px;
+  --if-sidebar-width: 224px;
   --if-sidebar-collapsed-width: 68px;
   --if-header-height: 56px;
   --if-bottom-nav-height: 56px;
 
   /* Element Plus Theme Bridge */
   --el-color-primary: var(--if-brand-500);
-  --el-color-primary-light-3: var(--if-brand-300);
+  --el-color-primary-light-3: var(--if-brand-600);
   --el-color-primary-light-5: var(--if-brand-200);
   --el-color-primary-light-7: var(--if-brand-100);
   --el-color-primary-light-8: #e6f0ff;
@@ -178,8 +178,8 @@ code {
 
 .page-title {
   margin: 0;
-  font-size: 20px;
-  font-weight: 700;
+  font-size: 24px;
+  font-weight: 650;
   line-height: 1.35;
   letter-spacing: -0.015em;
   color: var(--if-text-primary);
@@ -220,29 +220,12 @@ code {
   transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.el-button--primary {
-  background-color: var(--if-brand-500);
-  border-color: var(--if-brand-500);
-  box-shadow: 0 1px 2px 0 rgba(37, 99, 235, 0.2);
-}
-
-.el-button--primary:hover,
-.el-button--primary:focus {
-  background-color: var(--if-brand-600);
-  border-color: var(--if-brand-600);
-}
-
-.el-button--primary:active {
-  background-color: var(--if-brand-700);
-  border-color: var(--if-brand-700);
-}
-
 /* Cards */
 .el-card {
   border-radius: var(--if-radius) !important;
   border: 1px solid var(--if-border) !important;
   background-color: var(--if-bg-surface) !important;
-  box-shadow: var(--if-shadow-xs) !important;
+  box-shadow: none !important;
   transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
@@ -300,8 +283,16 @@ code {
 }
 
 .el-input__wrapper.is-focus,
-.el-select__wrapper.is-focused {
+.el-input__wrapper:focus-within,
+.el-select__wrapper.is-focused,
+.el-select__wrapper:focus-within {
   box-shadow: 0 0 0 1px var(--if-brand-500) inset, 0 0 0 3px rgba(37, 99, 235, 0.12) !important;
+}
+
+/* Composite controls draw focus on their outer wrapper, not the inner input. */
+.el-input__wrapper:focus-within .el-input__inner:focus-visible,
+.el-select__wrapper:focus-within .el-select__input:focus-visible {
+  outline: none;
 }
 
 .el-textarea__inner {
@@ -393,6 +384,7 @@ code {
   border-top: 1px solid var(--if-border);
   background: #f8fafc;
   display: flex;
+  align-items: center;
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
@@ -425,6 +417,7 @@ code {
   padding: 14px 20px;
   background: #f8fafc;
   display: flex;
+  align-items: center;
   justify-content: flex-end;
   gap: 8px;
 }
@@ -472,12 +465,20 @@ code {
 }
 
 .editor-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 8;
+  background: var(--if-bg-surface);
+  padding-bottom: 12px;
   display: flex;
+  align-items: center;
   justify-content: flex-end;
   gap: 10px;
   padding-top: 18px;
   border-top: 1px solid var(--if-border);
 }
+
+.editor-actions .el-button + .el-button { margin-left: 0; }
 
 /* Responsive rules */
 @media (max-width: 1199px) {
@@ -520,6 +521,7 @@ code {
   .el-dialog__footer .el-button {
     flex: 1 1 0;
     min-width: 0;
+    min-height: 44px;
   }
   .filter-panel {
     padding: 12px;
@@ -541,4 +543,26 @@ code {
     flex: 1;
     margin: 0;
   }
+}
+
+/* Motion is optional; focus and state changes remain visible. */
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; } }
+
+/* Embedded create forms own one scroll region; actions never overlay fields. */
+.create-dialog > .el-dialog__header { flex-shrink: 0; }
+.create-dialog > .el-dialog__body { display: flex; overflow: hidden; padding: 0; }
+.create-dialog .embedded-form,
+.create-dialog .embedded-form > .section-card,
+.create-dialog .embedded-form .section-card__body,
+.create-dialog .embedded-form .section-card__body > .el-form {
+  display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; min-width: 0;
+}
+.create-dialog .embedded-form .section-card__body { padding: 0; }
+.create-dialog .create-form-fields { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 20px; scroll-padding-block: 20px; }
+.create-dialog .embedded-form .editor-actions,
+.create-dialog .embedded-form .form-actions { position: static; flex: 0 0 auto; margin: 0; padding: 14px 20px; border-top: 1px solid var(--if-border); }
+@media (max-width: 767px) {
+  .create-dialog .create-form-fields { padding: 16px; scroll-padding-block: 16px; }
+  .create-dialog .embedded-form .editor-actions,
+  .create-dialog .embedded-form .form-actions { padding: 12px 16px; }
 }

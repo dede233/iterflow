@@ -12,6 +12,7 @@ from app.models.entities import Feedback, User
 from app.models.enums import FeedbackStatus, FeedbackType, FeedbackUrgency
 from app.repositories.feedback_repository import FeedbackRepository
 from app.repositories.user_repository import UserRepository
+from app.schemas.audit import EntityActivityOut
 from app.schemas.comment import CommentCreate, CommentOut
 from app.schemas.entity_actions import (
     BatchActionResponse,
@@ -31,6 +32,7 @@ from app.schemas.file import AttachmentOut
 from app.schemas.requirement import RequirementOut
 from app.services.comment_service import CommentService
 from app.services.entity_actions_service import EntityActionsService
+from app.services.entity_activity_service import EntityActivityService
 from app.services.feedback_service import FeedbackService
 from app.services.file_service import MAX_UPLOAD_SIZE, FileService, validate_upload
 
@@ -300,3 +302,16 @@ def convert_feedback(
     return FeedbackService(db).convert(
         feedback_id, payload, user.id, viewer_scope=scope, viewer_id=user.id
     )
+
+
+@router.get(
+    "/{feedback_id}/activities",
+    response_model=list[EntityActivityOut],
+    responses=api_error_responses(404),
+)
+def list_feedback_activities(
+    feedback_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("rd.feedback.view")),
+):
+    return EntityActivityService(db).recent("feedback", feedback_id, user)

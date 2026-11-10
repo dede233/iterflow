@@ -3,7 +3,7 @@ import { detailTarget, listTarget, parseListQuery, sanitizeInternalReturnTarget 
 
 describe('applied list query contract', () => {
   it.each([
-    ['/feedbacks', { status: 'NEW', urgency: 'URGENT', system_id: '003', module_id: '4' }, { status: 'NEW', urgency: 'URGENT', system_id: '3', module_id: '4' }],
+    ['/feedbacks', { status: 'NEW', urgency: 'URGENT', system_id: '003', module_id: '4' }, { status: 'NEW', urgency: 'URGENT', system_id: '3' }],
     ['/requirements', { priority: 'P1', source: 'DIRECT', participant_id: 7 }, { priority: 'P1', source: 'DIRECT', participant_id: '7' }],
     ['/versions', { status: 'READY', planned_release_from: '2026-10-01', planned_release_to: '2026-10-03' }, { status: 'READY', planned_release_from: '2026-10-01', planned_release_to: '2026-10-03' }],
     ['/releases', { version_id: '8', date_from: '2026-10-01', date_to: '2026-10-03' }, { version_id: '8', date_from: '2026-10-01', date_to: '2026-10-03' }],
@@ -14,6 +14,7 @@ describe('applied list query contract', () => {
     expect(result).toMatchObject(expected)
     expect(result.page).toBe('2')
     expect(result.unknown).toBeUndefined()
+    expect(result.module_id).toBeUndefined()
     expect(result.return_to).toBeUndefined()
     expect(sanitizeInternalReturnTarget(listTarget(path, result))).toBe(listTarget(path, result))
   })

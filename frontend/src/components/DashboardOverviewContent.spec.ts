@@ -1,5 +1,6 @@
 import { createSSRApp, defineComponent, h } from 'vue'
 import { renderToString } from '@vue/server-renderer'
+import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import DashboardOverviewContent from '@/components/DashboardOverviewContent.vue'
 import type { DashboardOverview } from '@/types/dashboard'
@@ -62,8 +63,8 @@ function completeOverview(): DashboardOverview {
   }
 }
 
-async function renderOverview(overview: DashboardOverview): Promise<string> {
-  const app = createSSRApp(DashboardOverviewContent, { overview })
+async function renderOverview(overview: DashboardOverview, viewerId?: number): Promise<string> {
+  const app = createSSRApp(DashboardOverviewContent, { overview, viewerId })
   for (const name of ['el-row', 'el-col', 'el-card', 'el-tag', 'el-empty']) {
     app.component(name, PassThrough)
   }
@@ -156,4 +157,28 @@ describe('dashboard overview content', () => {
     expect(html).toContain('未知操作（FUTURE_ACTION）')
     expect(html).toContain('href="/requirements/102"')
   })
+})
+
+it('personal shortcuts carry only the current user and disappear without requirement access', async () => {
+  const data = completeOverview()
+  const html = await renderOverview(data, 43)
+  const node = document.createElement('div'); node.innerHTML = html
+  const links = [...node.querySelectorAll('.work-shortcuts a')]
+  expect(links).toHaveLength(3)
+  expect(links.map(link => new URL(link.getAttribute('href')!, 'http://localhost').searchParams.get('participant_id'))).toEqual(['43', '43', '43'])
+  expect(links.map(link => new URL(link.getAttribute('href')!, 'http://localhost').searchParams.get('participant_role'))).toEqual(['CONFIRM', 'DEVELOP', 'ACCEPT'])
+  data.requirements = null
+  expect(await renderOverview(data, 43)).not.toContain('class="work-shortcuts"')
+})
+it('folds the activity display without losing older records', async () => {
+  const overview = completeOverview()
+  overview.activities = Array.from({ length: 7 }, (_, i) => ({ entity_type: 'REQUIREMENT', entity_id: i + 1, action: 'CREATE', created_at: '2026-11-10T01:00:00Z' }))
+  const wrapper = mount(DashboardOverviewContent, { props: { overview }, global: { stubs: { 'el-row': PassThrough, 'el-col': PassThrough, 'el-card': PassThrough, 'el-empty': true, RouterLink: RouterLinkStub } } })
+  expect(wrapper.findAll('.activity-row')).toHaveLength(5)
+  await wrapper.find('.activity-toggle').trigger('click')
+  expect(wrapper.findAll('.activity-row')).toHaveLength(7)
+  await wrapper.find('.activity-toggle').trigger('click')
+  expect(wrapper.findAll('.activity-row')).toHaveLength(5)
+  expect(overview.activities).toHaveLength(7)
+  wrapper.unmount()
 })

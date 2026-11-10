@@ -91,11 +91,12 @@ export const checkVersionPublish = (id: number) =>
 
 // Publish is the single release entry point (VersionService.publish). It flips
 // the READY version to RELEASED and syncs requirement/feedback online status.
-export const publishVersion = (id: number, releaseNotes: string, revision: number) =>
+export const publishVersion = (id: number, releaseNotes: string, revision: number, targetIds: number[] = []) =>
   api
     .post<PublishResult>(`/versions/${id}/publish`, {
       released_at: new Date().toISOString(),
       release_notes: releaseNotes,
+      target_ids: targetIds,
       revision,
     }, { skipRevisionConflictAlert: true })
     .then((r) => r.data)

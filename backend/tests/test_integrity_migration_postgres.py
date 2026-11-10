@@ -10,6 +10,7 @@ from sqlalchemy import MetaData, Table, create_engine, func, select, text
 from sqlalchemy.engine import URL, make_url
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, registry
+from system_binding_fixture import historical_version
 
 from alembic import command
 from app.core.config import get_settings
@@ -68,8 +69,9 @@ def migration_schema() -> Iterator[tuple[object, URL, str]]:
     try:
         command.upgrade(_alembic_config(), "0003_role_system_flag")
         # Map the historical schema, not today's evolved application models.
-        global Requirement, Feedback
+        global Requirement, Feedback, Version
         historical = registry()
+        Version = historical_version(engine, historical)
         metadata = MetaData()
         Requirement = type("HistoricalRequirement", (), {})
         Feedback = type("HistoricalFeedback", (), {})

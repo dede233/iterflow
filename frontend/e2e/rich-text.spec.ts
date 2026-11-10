@@ -1,3 +1,4 @@
+import { mockReadPanels } from './collaboration-fixture'
 import { expect, test, type Page } from '@playwright/test'
 
 async function setup(page: Page, description = '<img src=x onerror="window.richAttack=1">旧文本', format = 'PLAIN', confirmed = false) {
@@ -35,6 +36,7 @@ async function setup(page: Page, description = '<img src=x onerror="window.richA
       '/api/v1/releases': { items: [], total: 0, page: 1, page_size: 20 },
     }
     if (method === 'GET' && path in responses) return json(responses[path])
+    if (await mockReadPanels(route)) return
     unexpected.push(`${method} ${path}`)
     return route.fulfill({ status: 500, json: { message: 'Unexpected synthetic request' } })
   })
@@ -131,7 +133,7 @@ for (const width of [375, 1440]) {
     await expect(editor).toHaveText(audit.requirement.description)
     expect(await editor.locator('img').count()).toBe(0)
     await editor.fill('转换需求标题'); await editor.press('ControlOrMeta+A')
-    await dialog.getByRole('button', { name: '标题', exact: true }).click()
+    await dialog.getByRole('combobox', { name: '段落样式', exact: true }).selectOption('heading')
     await expect(editor.locator('h2')).toHaveText('转换需求标题')
     await noOverflow(page, width)
     await dialog.getByRole('button', { name: '确定', exact: true }).click()

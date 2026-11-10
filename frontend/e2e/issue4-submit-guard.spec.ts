@@ -1,3 +1,4 @@
+import { mockReadPanels } from './collaboration-fixture'
 import { expect, test, type Page } from '@playwright/test'
 
 async function setup(page: Page, convert: boolean) {
@@ -29,7 +30,11 @@ async function setup(page: Page, convert: boolean) {
       '/api/v1/requirements/11/participants': { revision: 1, participants: [{ role: 'CONFIRM', user_id: 1, display_name: '测试成员', active: true }] },
       '/api/v1/requirements/11/feedbacks': [],
     }
-    if (method !== 'GET' || !(path in responses)) { unexpected.push(`${method} ${path}`); return route.fulfill({ status: 500, json: { message: 'Unexpected request' } }) }
+    if (method !== 'GET' || !(path in responses)) {
+      if (await mockReadPanels(route)) return
+      unexpected.push(`${method} ${path}`)
+      return route.fulfill({ status: 500, json: { message: 'Unexpected request' } })
+    }
     return route.fulfill({ json: responses[path] })
   })
   await page.goto(convert ? '/#/feedbacks/1' : '/#/requirements/new')

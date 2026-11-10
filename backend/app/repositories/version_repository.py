@@ -46,6 +46,7 @@ class VersionRepository(BaseRepository[Version]):
         page: int = 1,
         page_size: int = 20,
         *,
+        system_id: int | None = None,
         keyword: str | None = None,
         status: VersionStatus | None = None,
         planned_release_from: date | None = None,
@@ -55,6 +56,8 @@ class VersionRepository(BaseRepository[Version]):
         criteria: list[ColumnElement[bool]] = []
         if data_scope is not DataScope.ALL:
             criteria.append(self.self_criterion(user_id))
+        if system_id is not None:
+            criteria.append(Version.system_id == system_id)
         if keyword and keyword.strip():
             literal = keyword.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
             pattern = f"%{literal}%"

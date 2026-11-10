@@ -39,9 +39,9 @@ async function renderNav(permissionCodes: string[], unreadCount = 0): Promise<st
 }
 
 describe('mobile navigation', () => {
-  it('keeps five existing links and adds My for an authorized user', async () => {
+  it('keeps five business and personal links; home lives in the mobile header', async () => {
     const html = await renderNav(['dashboard.view', 'rd.feedback.view', 'rd.requirement.view', 'rd.version.view'])
-    for (const path of ['/', '/feedbacks', '/requirements', '/versions', '/notifications', '/profile']) {
+    for (const path of ['/feedbacks', '/requirements', '/versions', '/notifications', '/profile']) {
       expect(html).toContain(`href="${path}"`)
     }
     expect(html).toContain('我的')

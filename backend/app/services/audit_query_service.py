@@ -15,6 +15,7 @@ class AuditQueryService:
     """Authorize and expose existing audit records without mutating them."""
 
     ENTITY_VIEW_PERMISSIONS: ClassVar[dict[str, str]] = {
+        "ANNOUNCEMENT": "sys.audit.view",
         "FEEDBACK": "rd.feedback.view",
         "REQUIREMENT": "rd.requirement.view",
         "VERSION": "rd.version.view",
@@ -38,20 +39,16 @@ class AuditQueryService:
     def _visible_entity_types(self, user: User) -> tuple[set[str], DataScope]:
         permission_codes = self.user_repo.permission_codes(user.id)
         data_scope = self.user_repo.data_scope(user.id)
-        if "*" in permission_codes:
-            return set(self.ENTITY_VIEW_PERMISSIONS), data_scope
-        return (
-            {
-                entity_type
-                for entity_type, required_permission in self.ENTITY_VIEW_PERMISSIONS.items()
-                if required_permission in permission_codes
-                or (
-                    entity_type in self.SYSTEM_ENTITY_TYPES
-                    and "sys.system.manage" in permission_codes
-                )
-            },
-            data_scope,
-        )
+        visible = {
+            entity_type
+            for entity_type, required_permission in self.ENTITY_VIEW_PERMISSIONS.items()
+            if "*" in permission_codes
+            or required_permission in permission_codes
+            or (entity_type in self.SYSTEM_ENTITY_TYPES and "sys.system.manage" in permission_codes)
+        }
+        if not self.user_repo.can_manage_announcements(user.id):
+            visible.discard("ANNOUNCEMENT")
+        return visible, data_scope
 
     def _validate_entity_filter(self, entity_type: str | None, visible_types: set[str]) -> None:
         if entity_type is None:

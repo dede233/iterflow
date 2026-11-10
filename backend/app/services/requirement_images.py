@@ -23,10 +23,12 @@ def bind_images(
     description: str,
     description_format: str,
     uploads: dict[str, str],
+    *,
+    entity_type: str = IMAGE_ENTITY,
 ) -> str:
     refs = set(IMAGE_REFERENCE.findall(description)) if description_format == "HTML" else set()
     if len(refs) > 12 or {key for key in refs if key.startswith("local-")} != set(uploads):
-        raise AppError(42265, "需求最多支持 12 张图片。请重新选择未成功载入的图片", 422)
+        raise AppError(42265, "内容最多支持 12 张图片。请重新选择未成功载入的图片", 422)
     if not refs:
         return description
     repository = FileRepository(db)
@@ -34,8 +36,8 @@ def bind_images(
     total = 0
     for key in sorted(refs):
         if key not in uploads:
-            if not repository.get_attached_to_entity(int(key), IMAGE_ENTITY, requirement_id):
-                raise AppError(42265, "图片不属于此需求。请重新插入", 422)
+            if not repository.get_attached_to_entity(int(key), entity_type, requirement_id):
+                raise AppError(42265, "图片不属于此内容。请重新插入", 422)
             continue
         header, _, encoded = uploads[key].partition(",")
         mime = header.removeprefix("data:").removesuffix(";base64")
@@ -54,7 +56,7 @@ def bind_images(
             content, f"图片.{EXTENSIONS[mime]}", mime, actor_id
         )
         db.add(
-            AttachmentRelation(entity_type=IMAGE_ENTITY, entity_id=requirement_id, file_id=item.id)
+            AttachmentRelation(entity_type=entity_type, entity_id=requirement_id, file_id=item.id)
         )
         resolved[key] = str(item.id)
     return IMAGE_REFERENCE.sub(

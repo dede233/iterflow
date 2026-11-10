@@ -6,6 +6,7 @@ from uuid import uuid4
 import pytest
 from sqlalchemy import event, func, select
 from sqlalchemy.orm import Session
+from system_binding_fixture import create_test_system
 from test_v1_e2e_postgres import postgres_e2e_engine as postgres_e2e_engine
 from test_v1_e2e_postgres import postgres_http_client as postgres_http_client
 
@@ -35,8 +36,10 @@ from app.models.enums import (
 
 
 def ready_chain(engine, user_id):
+    system_id = create_test_system(engine)
     with Session(engine) as db:
         version = Version(
+            system_id=system_id,
             version_no=f"P7-{uuid4().hex[:24]}",
             name="Atomic acceptance",
             status=VersionStatus.READY,
@@ -45,6 +48,7 @@ def ready_chain(engine, user_id):
         db.add(version)
         db.flush()
         requirement = Requirement(
+            system_id=system_id,
             legacy_completed=True,
             requirement_no=f"P7-{uuid4().hex[:24]}",
             title="Atomic requirement",

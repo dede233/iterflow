@@ -24,7 +24,7 @@ beforeEach(() => {
   mocks.feedback.mockImplementation(id => Promise.resolve({ id, title: '待处理反馈', feedback_no: `FB-${id}`, status: 'NEW', revision: 7 }))
   mocks.collaboration.mockResolvedValue({ revision: 7, recipients: [{ id: 1, display_name: '接收人' }] })
   mocks.batch.mockResolvedValue({ results: [{ id: 1, success: true, status_code: 200, code: 0, message: '已完成', revision: 8 }] })
-  mocks.version.mockResolvedValue({ id: 9, revision: 12, status: 'DEVELOPING' })
+  mocks.version.mockResolvedValue({ id: 9, system_id: 1, revision: 12, status: 'DEVELOPING' })
   mocks.submitVersion.mockResolvedValue({ results: [{ id: 1, success: true, status_code: 200, code: 0, message: '已提交验收', revision: 8 }] })
 })
 function panel(props: { kind?: 'requirements' | 'feedbacks'; rows?: Row[]; scope?: 'current-page' | 'version-list'; versionId?: number; versionRevision?: number } = {}) {
@@ -226,7 +226,7 @@ it.each(contextChanges)('discards a pending preflight when $label', async ({ pro
 
 function versionPanel(states = ['CONFIRMED']) {
   useAuthStore().user!.permission_codes.push('rd.version.view')
-  mocks.requirement.mockImplementation(id => Promise.resolve({ id, title: `版本需求${id}`, requirement_no: `REQ-${id}`, status: states[id - 1], revision: 7, current_version_id: 9 }))
+  mocks.requirement.mockImplementation(id => Promise.resolve({ id, title: `版本需求${id}`, requirement_no: `REQ-${id}`, status: states[id - 1], revision: 7, system_id: 1, current_version_id: 9 }))
   mocks.workflow.mockResolvedValue({ revision: 7, needs_confirmation: false, design_status: 'NOT_REQUIRED' })
   mocks.people.mockResolvedValue({ revision: 7, participants: [
     { user_id: 1, role: 'DEVELOP', active: true }, { user_id: 3, role: 'ACCEPT', active: true },
@@ -308,10 +308,10 @@ it('opens a scoped people editor and rechecks every selected record after saving
   expect(editor.props()).toMatchObject({ id: 1, roles: ['DEVELOP', 'ACCEPT'], title: '设置开发与验收人员' })
   expect(button(wrapper, '返回调整').attributes('disabled')).toBeDefined()
   expect(button(wrapper, '取消').attributes('disabled')).toBeDefined()
-  mocks.requirement.mockImplementation(id => Promise.resolve({ id, title: `最新需求${id}`, status: id === 1 ? 'CONFIRMED' : 'DEVELOPING', revision: 8, current_version_id: 9 }))
+  mocks.requirement.mockImplementation(id => Promise.resolve({ id, title: `最新需求${id}`, status: id === 1 ? 'CONFIRMED' : 'DEVELOPING', revision: 8, system_id: 1, current_version_id: 9 }))
   mocks.workflow.mockResolvedValue({ revision: 8, needs_confirmation: false, design_status: 'NOT_REQUIRED' })
   mocks.people.mockResolvedValue({ revision: 8, participants: [{ user_id: 1, role: 'DEVELOP', active: true }, { user_id: 3, role: 'ACCEPT', active: true }] })
-  mocks.version.mockResolvedValue({ id: 9, revision: 13, status: 'DEVELOPING' })
+  mocks.version.mockResolvedValue({ id: 9, system_id: 1, revision: 13, status: 'DEVELOPING' })
   editor.vm.$emit('updated'); editor.vm.$emit('close'); await flushPromises()
   expect(wrapper.find('[data-people-editor]').exists()).toBe(false)
   expect(mocks.version).toHaveBeenCalledTimes(2)
@@ -357,7 +357,7 @@ it('discards late version inspection when the version changes and preserves subm
   mocks.version.mockReturnValueOnce(new Promise(resolve => { resolveVersion = resolve }))
   await prepare(wrapper, [1], 'SUBMIT_ACCEPTANCE')
   await wrapper.setProps({ versionId: 10 })
-  resolveVersion({ id: 9, revision: 12, status: 'PLANNING' }); await flushPromises()
+  resolveVersion({ id: 9, system_id: 1, revision: 12, status: 'PLANNING' }); await flushPromises()
   expect(mocks.requirement).not.toHaveBeenCalled()
   expect(wrapper.find('[aria-label="操作前检查"]').exists()).toBe(false); wrapper.unmount()
 
@@ -379,7 +379,7 @@ it('discards late version inspection when the version changes and preserves subm
 })
 
 it.each(['RELEASED', 'CANCELED'])('blocks submissions to a %s version before requirement inspection', async status => {
-  const wrapper = versionPanel(); mocks.version.mockResolvedValue({ id: 9, revision: 12, status })
+  const wrapper = versionPanel(); mocks.version.mockResolvedValue({ id: 9, system_id: 1, revision: 12, status })
   await prepare(wrapper, [1], 'SUBMIT_ACCEPTANCE')
   expect(wrapper.text()).toContain('当前版本已发布或已取消')
   expect(mocks.requirement).not.toHaveBeenCalled(); expect(mocks.submitVersion).not.toHaveBeenCalled(); wrapper.unmount()

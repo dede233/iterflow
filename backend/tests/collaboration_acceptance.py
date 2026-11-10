@@ -7,6 +7,7 @@ from uuid import uuid4
 from multiple_acceptance_migration import exercise_migration
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
+from system_binding_fixture import create_test_system
 
 from app.models.entities import (
     CollaborationEvent,
@@ -27,6 +28,7 @@ class RedactedHeaders(dict):
 
 def setup_team(fixture, multiple_acceptance=False):
     client, engine, admin_id, admin = fixture
+    system_id = create_test_system(engine)
     roles = {r["code"]: r["id"] for r in client.get("/api/v1/roles", headers=admin).json()}
     people, headers = {}, {}
     for name in ("dev1", "dev2", "accept", "other"):
@@ -65,6 +67,7 @@ def setup_team(fixture, multiple_acceptance=False):
             "title": "合并后跨数据库协作验收",
             "description": "验收范围",
             "requirement_type": "FEATURE",
+            "system_id": system_id,
             "participants": payload,
         },
     )
@@ -76,6 +79,7 @@ def exercise_workflow(fixture, scenario, monkeypatch):
     client, engine, _, admin = fixture
     multiple_acceptance = scenario in {"acceptance_multiple", "acceptance_race"}
     people, headers, req, payload = setup_team(fixture, multiple_acceptance)
+    system_id = req["system_id"]
     if scenario == "acceptance_migration":
         exercise_migration(engine, req["id"], people["other"])
         return
@@ -151,6 +155,7 @@ def exercise_workflow(fixture, scenario, monkeypatch):
                 json={
                     "title": "第二条批量需求",
                     "requirement_type": "FEATURE",
+                    "system_id": system_id,
                     "description": "原子批量",
                 },
             )
@@ -159,7 +164,11 @@ def exercise_workflow(fixture, scenario, monkeypatch):
             client.post(
                 "/api/v1/versions",
                 headers=admin,
-                json={"version_no": "BULK-" + uuid4().hex[:8], "name": "双数据库批量验证"},
+                json={
+                    "system_id": system_id,
+                    "version_no": "BULK-" + uuid4().hex[:8],
+                    "name": "双数据库批量验证",
+                },
             )
         )
         body = {

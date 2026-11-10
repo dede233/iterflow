@@ -34,3 +34,12 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON `iterflow`.`rd_requirement_step` TO 'ite
 GRANT SELECT, INSERT, UPDATE, DELETE ON `iterflow`.`sys_collaboration_event` TO 'iterflow_runtime'@'APP_HOST';
 GRANT SELECT, INSERT, UPDATE, DELETE ON `iterflow`.`sys_mail_preference` TO 'iterflow_runtime'@'APP_HOST';
 GRANT SELECT, INSERT, UPDATE, DELETE ON `iterflow`.`sys_notification_delivery` TO 'iterflow_runtime'@'APP_HOST';
+
+-- Update announcements and account-wide read acknowledgements (mysql57_0014).
+GRANT SELECT, INSERT, UPDATE, DELETE ON `iterflow`.`sys_announcement` TO 'iterflow_runtime'@'APP_HOST';
+GRANT SELECT, INSERT, UPDATE, DELETE ON `iterflow`.`sys_announcement_read` TO 'iterflow_runtime'@'APP_HOST';
+
+-- Multi-target release directory, plans and actual records (mysql57_0015).
+GRANT SELECT, INSERT, UPDATE, DELETE ON `iterflow`.`sys_release_target` TO 'iterflow_runtime'@'APP_HOST';
+GRANT SELECT, INSERT, UPDATE, DELETE ON `iterflow`.`rd_release_batch` TO 'iterflow_runtime'@'APP_HOST';
+GRANT SELECT, INSERT, UPDATE, DELETE ON `iterflow`.`rd_release_batch_target` TO 'iterflow_runtime'@'APP_HOST';

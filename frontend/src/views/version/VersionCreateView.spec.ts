@@ -15,8 +15,9 @@ beforeEach(() => {
   useAuthStore().user = { id: 1, permission_codes: ['*'] } as any
   mocks.create.mockResolvedValue({ id: 9 })
 })
-function panel(requirement?: { id: number; revision: number; title: string }) {
-  return mount(VersionCreateView, { props: { embedded: true, requirement }, global: { stubs: {
+function panel(requirement?: { id: number; revision: number; title: string; system_id?: number | null }) {
+  return mount(VersionCreateView, { props: { embedded: true, requirement: requirement ? { system_id: 1, ...requirement } : undefined }, global: { stubs: {
+    BusinessSystemSelect: { props: ['modelValue'], template: '<select :value="modelValue" @change="$emit(\'update:modelValue\', Number($event.target.value))"><option value="">选择</option><option value="1">系统甲</option></select>' },
     SectionCard: { template: '<section><slot/></section>' },
     'el-form': { template: '<form><slot/></form>' },
     'el-form-item': { props: ['label', 'error'], template: '<label>{{ label }}<slot/><span v-if="error" role="alert">{{ error }}</span></label>' },
@@ -28,12 +29,14 @@ function panel(requirement?: { id: number; revision: number; title: string }) {
 
 it('keeps regular version creation independent of requirements', async () => {
   const wrapper = panel()
+  await wrapper.get('select').setValue('1')
+  await wrapper.get('select').setValue('1')
   const inputs = wrapper.findAll('input')
   expect(inputs[1].element.value).toBe('')
   await inputs[0].setValue(' V1 ')
   await inputs[1].setValue(' 常规版本 ')
   await wrapper.get('form').trigger('submit'); await flushPromises()
-  expect(mocks.create).toHaveBeenCalledExactlyOnceWith({ version_no: 'V1', name: '常规版本', planned_release_date: null, description: null })
+  expect(mocks.create).toHaveBeenCalledExactlyOnceWith({ system_id: 1, version_no: 'V1', name: '常规版本', planned_release_date: null, description: null })
   expect(wrapper.emitted('created')).toEqual([[9]])
   wrapper.unmount()
 })
@@ -43,7 +46,7 @@ it('defaults the version name from its source requirement and submits one atomic
   expect(wrapper.findAll('input')[1].element.value).toBe('来源需求')
   await wrapper.findAll('input')[0].setValue('V2')
   await wrapper.get('form').trigger('submit'); await flushPromises()
-  expect(mocks.create).toHaveBeenCalledExactlyOnceWith({ version_no: 'V2', name: '来源需求', planned_release_date: null, description: null, requirement_id: 7, requirement_revision: 4 })
+  expect(mocks.create).toHaveBeenCalledExactlyOnceWith({ system_id: 1, version_no: 'V2', name: '来源需求', planned_release_date: null, description: null, requirement_id: 7, requirement_revision: 4 })
   expect(wrapper.emitted('created')).toEqual([[9]])
   wrapper.unmount()
 })
@@ -51,6 +54,7 @@ it('defaults the version name from its source requirement and submits one atomic
 it('shows duplicate number errors inline, preserves all input and allows correction', async () => {
   mocks.create.mockRejectedValueOnce({ response: { status: 409, data: { code: 40934, message: '版本号「V1」已存在，请更换版本号', data: { field: 'version_no', reason: 'duplicate' } } } })
   const wrapper = panel()
+  await wrapper.get('select').setValue('1')
   await wrapper.findAll('input')[0].setValue('V1')
   await wrapper.findAll('input')[1].setValue('保留名称')
   await wrapper.get('textarea').setValue('保留说明')
@@ -90,7 +94,7 @@ it('preserves form input on requirement conflict and requires explicit submissio
   expect(wrapper.get('[role="alert"]').text()).toContain('请先刷新需求')
   await wrapper.findAll('button').find(button => button.text() === '刷新需求')!.trigger('click')
   expect(wrapper.emitted('refreshRequirement')).toEqual([[]])
-  await wrapper.setProps({ requirement: { id: 7, revision: 5, title: '更新后的需求标题' } })
+  await wrapper.setProps({ requirement: { id: 7, revision: 5, system_id: 1, title: '更新后的需求标题' } })
   expect(mocks.create).toHaveBeenCalledTimes(1)
   expect(wrapper.findAll('input')[1].element.value).toBe('人工修改名称')
   await wrapper.get('form').trigger('submit'); await flushPromises()

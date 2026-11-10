@@ -45,6 +45,7 @@ class RequirementRepository(BaseRepository[Requirement]):
         page: int = 1,
         page_size: int = 20,
         *,
+        system_id: int | None = None,
         keyword: str | None = None,
         status: RequirementStatus | None = None,
         priority: Priority | None = None,
@@ -57,6 +58,8 @@ class RequirementRepository(BaseRepository[Requirement]):
         criteria: list[ColumnElement[bool]] = [Requirement.deleted_at.is_(None)]
         if data_scope is not DataScope.ALL:
             criteria.append(self.self_criterion(user_id))
+        if system_id is not None:
+            criteria.append(Requirement.system_id == system_id)
         if keyword and keyword.strip():
             literal = keyword.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
             pattern = f"%{literal}%"

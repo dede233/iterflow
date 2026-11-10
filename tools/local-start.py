@@ -20,9 +20,12 @@ from http.client import HTTPException
 from pathlib import Path
 from urllib.request import urlopen
 
+from alembic.config import Config
+from alembic.script import ScriptDirectory
 from dotenv import dotenv_values
 from redis import Redis
 from sqlalchemy import create_engine, text
+from sqlalchemy.engine import make_url
 
 ROOT = Path(__file__).resolve().parents[1]
 STORAGE_ROOT = ROOT / "data/uploads"
@@ -41,6 +44,13 @@ def backend_environment() -> dict[str, str]:
         if not values.get(key):
             raise SystemExit(f"Missing {key} in {SOURCE_ENV}")
 
+    url = make_url(values["DATABASE_URL"])
+    if not url.drivername.startswith("postgresql") or url.host not in {
+        "127.0.0.1",
+        "localhost",
+        "::1",
+    }:
+        raise SystemExit("Local startup requires a loopback PostgreSQL URL")
     env = os.environ.copy()
     env["DATABASE_URL"] = values["DATABASE_URL"]
     env["JWT_SECRET"] = hmac.new(
@@ -55,13 +65,24 @@ def backend_environment() -> dict[str, str]:
     env["ENABLE_API_DOCS"] = "true"
     env["STORAGE_DRIVER"] = "local"
     env["LOCAL_STORAGE_PATH"] = str(STORAGE_ROOT)
+    env["SMTP_ENABLED"] = "false"
     env["BUILD_SHA"] = BUILD_SHA
     return env
 
 
+def required_revision() -> str:
+    config = Config(str(ROOT / "backend/alembic.ini"))
+    config.set_main_option("script_location", str(ROOT / "backend/alembic"))
+    heads = ScriptDirectory.from_config(config).get_heads()
+    if len(heads) != 1:
+        raise SystemExit("Local startup requires exactly one PostgreSQL migration head")
+    return heads[0]
+
+
 def check_dependencies(env: dict[str, str]) -> None:
     engine = create_engine(
-        env["DATABASE_URL"], connect_args={"options": env["PGOPTIONS"]}
+        env["DATABASE_URL"],
+        connect_args={"options": env["PGOPTIONS"], "connect_timeout": 3},
     )
     try:
         with engine.connect() as connection:
@@ -71,8 +92,12 @@ def check_dependencies(env: dict[str, str]) -> None:
             revision = connection.scalar(
                 text("SELECT version_num FROM alembic_version")
             )
-            if revision != "0004_integrity":
-                raise SystemExit(f"Refusing to run against revision {revision}")
+            expected = required_revision()
+            if revision != expected:
+                raise SystemExit(
+                    f"Local schema is {revision}; current code requires {expected}. "
+                    "Back up and explicitly upgrade this local schema before starting."
+                )
     finally:
         engine.dispose()
     redis = Redis.from_url(REDIS_URL, socket_connect_timeout=2)

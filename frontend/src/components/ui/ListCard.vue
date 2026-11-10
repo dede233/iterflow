@@ -6,11 +6,11 @@ defineEmits<{ open: [] }>()
 
 <template>
   <button type="button" class="list-card" @click="$emit('open')">
+    <div class="list-card__title">{{ title }}</div>
     <div class="list-card__top">
       <span v-if="code" class="mono list-card__code">{{ code }}</span>
       <slot name="status" />
     </div>
-    <div class="list-card__title">{{ title }}</div>
     <div v-if="$slots.default" class="list-card__meta"><slot /></div>
   </button>
 </template>
@@ -28,7 +28,7 @@ defineEmits<{ open: [] }>()
   text-align: left;
   cursor: pointer;
   transition: all 0.15s ease;
-  box-shadow: var(--if-shadow-xs);
+  box-shadow: none;
 }
 .list-card:hover,
 .list-card:focus-visible {
@@ -44,16 +44,19 @@ defineEmits<{ open: [] }>()
   justify-content: space-between;
   gap: 8px;
   min-height: 22px;
+  margin-top: 8px;
+  flex-wrap: wrap;
 }
 .list-card__code {
   font-family: var(--if-font-mono);
-  font-size: 11.5px;
+  font-size: 12px;
+  white-space: nowrap;
   color: var(--if-text-tertiary);
   font-weight: 500;
 }
 .list-card__title {
-  margin: 6px 0 0;
-  font-size: 14px;
+  margin: 0;
+  font-size: 15px;
   font-weight: 600;
   line-height: 1.45;
   color: var(--if-text-primary);

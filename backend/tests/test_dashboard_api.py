@@ -13,12 +13,16 @@ from app.core.database import get_db
 from app.core.security import create_access_token
 from app.main import app
 from app.models.entities import (
+    BusinessSystem,
     CollaborationEvent,
     Feedback,
     FeedbackRecipient,
     OperationLog,
     Permission,
     Release,
+    ReleaseBatch,
+    ReleaseBatchTarget,
+    ReleaseTarget,
     Requirement,
     RequirementParticipant,
     RequirementStep,
@@ -49,6 +53,7 @@ def dashboard_api(tmp_path: Path) -> Iterator[DashboardFixture]:
         connect_args={"check_same_thread": False},
     )
     for table in (
+        BusinessSystem.__table__,
         User.__table__,
         Role.__table__,
         Permission.__table__,
@@ -61,6 +66,9 @@ def dashboard_api(tmp_path: Path) -> Iterator[DashboardFixture]:
         RequirementStep.__table__,
         RequirementParticipant.__table__,
         Version.__table__,
+        ReleaseTarget.__table__,
+        ReleaseBatch.__table__,
+        ReleaseBatchTarget.__table__,
         VersionRequirement.__table__,
         Release.__table__,
         OperationLog.__table__,

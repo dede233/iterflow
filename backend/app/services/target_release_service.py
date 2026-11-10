@@ -24,6 +24,8 @@ from app.services.audit_service import AuditService
 from app.services.revision_conflict import revision_conflict_data
 from app.services.system_binding_service import SystemBindingService
 
+MINI_PROGRAM_SUFFIXES = {"WECHAT_MINI_PROGRAM": "_WX", "ALIPAY_MINI_PROGRAM": "_ALIPAY"}
+
 
 def transactional(method):
     @wraps(method)
@@ -38,7 +40,7 @@ def transactional(method):
 
 
 class TargetReleaseService:
-    """All target writes serialize on version, then batch, target and requirement rows."""
+    """Catalog writes lock system then targets; coverage locks version, batch, targets."""
 
     def __init__(self, db: Session):
         self.db = db
@@ -91,6 +93,12 @@ class TargetReleaseService:
     @transactional
     def update_target(self, ident, payload, actor_id):
         self.manager(actor_id)
+        original = self.db.get(ReleaseTarget, ident)
+        if original is None:
+            raise NotFoundError("发布目标不存在")
+        self.db.scalar(
+            select(BusinessSystem).where(BusinessSystem.id == original.system_id).with_for_update()
+        )
         item = self.db.scalar(
             select(ReleaseTarget)
             .where(ReleaseTarget.id == ident)
@@ -99,6 +107,8 @@ class TargetReleaseService:
         )
         if item is None:
             raise NotFoundError("发布目标不存在")
+        if len(self.mini_program_members(item)) > 1:
+            raise AppError(40982, "该目标属于多平台小程序, 请刷新后在品牌表单中统一编辑", 409)
         self.check_revision(item, payload.revision)
         values = payload.model_dump(exclude_unset=True, exclude={"revision"})
         try:
@@ -112,6 +122,110 @@ class TargetReleaseService:
         self.db.commit()
         self.db.refresh(item)
         return item
+
+    def mini_program_members(self, item):
+        suffix = MINI_PROGRAM_SUFFIXES.get(item.platform)
+        if not suffix or not item.code.endswith(suffix) or len(item.code) == len(suffix):
+            return [item]
+        prefix = item.code[: -len(suffix)]
+        candidates = self.db.scalars(
+            select(ReleaseTarget)
+            .where(
+                ReleaseTarget.system_id == item.system_id,
+                ReleaseTarget.code.in_([prefix + s for s in MINI_PROGRAM_SUFFIXES.values()]),
+            )
+            .order_by(ReleaseTarget.id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        return [
+            row
+            for row in candidates
+            if row.name == item.name
+            and row.platform in MINI_PROGRAM_SUFFIXES
+            and row.code == prefix + MINI_PROGRAM_SUFFIXES[row.platform]
+        ]
+
+    @transactional
+    def save_mini_program(self, system_id, payload, actor_id, target_id=None):
+        self.manager(actor_id)
+        if target_id is not None:
+            original = self.db.get(ReleaseTarget, target_id)
+            if original is None:
+                raise NotFoundError("发布目标不存在")
+            system_id = original.system_id
+        self.db.scalar(
+            select(BusinessSystem).where(BusinessSystem.id == system_id).with_for_update()
+        )
+        SystemBindingService(self.db).validate_catalog(system_id)
+        members = []
+        if target_id is not None:
+            original = self.db.scalar(
+                select(ReleaseTarget)
+                .where(ReleaseTarget.id == target_id)
+                .with_for_update()
+                .execution_options(populate_existing=True)
+            )
+            if original.platform not in MINI_PROGRAM_SUFFIXES:
+                raise AppError(40982, "PC Web 目标不能转换为小程序品牌", 409)
+            members = self.mini_program_members(original)
+            expected = {item.id: item.revision for item in payload.members}
+            if expected.keys() != {row.id for row in members}:
+                raise ConflictError("小程序平台配置已变化, 请刷新后重新编辑")
+            for row in members:
+                self.check_revision(row, expected[row.id])
+        configured = {item.platform: item for item in payload.platforms}
+        if any(row.platform not in configured for row in members):
+            raise AppError(40982, "已配置平台不能删除, 请保留该平台并设为停用", 409)
+        codes = [payload.code + suffix for suffix in MINI_PROGRAM_SUFFIXES.values()]
+        existing_ids = {row.id for row in members}
+        collisions = self.db.scalars(
+            select(ReleaseTarget.id).where(
+                ReleaseTarget.system_id == system_id,
+                ReleaseTarget.code.in_(codes),
+                ReleaseTarget.id.not_in(existing_ids),
+            )
+        ).all()
+        if collisions:
+            raise AppError(40981, "该业务系统内的小程序品牌编码或平台编码已存在", 409)
+        by_platform = {row.platform: row for row in members}
+        saved = []
+        for platform, config in configured.items():
+            row = by_platform.get(platform)
+            if config.enabled and not config.app_id and (row is None or row.app_id):
+                raise AppError(40982, "启用小程序平台前请填写对应 AppID", 409)
+            values = dict(
+                code=payload.code + MINI_PROGRAM_SUFFIXES[platform],
+                name=payload.name,
+                platform=platform,
+                app_id=config.app_id or None,
+                url=None,
+                enabled=config.enabled,
+            )
+            if row is None:
+                row = ReleaseTarget(
+                    system_id=system_id, created_by=actor_id, updated_by=actor_id, **values
+                )
+                self.db.add(row)
+            else:
+                self.cas(row, row.revision, values, actor_id)
+            saved.append(row)
+        try:
+            self.db.flush()
+        except IntegrityError:
+            raise AppError(40981, "该业务系统内的小程序品牌编码或平台编码已存在", 409) from None
+        AuditService(self.db).log(
+            "SYSTEM",
+            system_id,
+            "RELEASE_TARGET_BUNDLE_UPDATE"
+            if target_id is not None
+            else "RELEASE_TARGET_BUNDLE_CREATE",
+            after={"name": payload.name, "code": payload.code, "target_ids": [r.id for r in saved]},
+        )
+        self.db.commit()
+        for row in saved:
+            self.db.refresh(row)
+        return saved
 
     def version(self, ident: int, actor_id: int, *, write=False) -> Version:
         users = UserRepository(self.db)
@@ -513,7 +627,9 @@ class TargetReleaseService:
 
     def record_options(self, actor_id):
         rows = self.db.execute(
-            select(ReleaseTarget.id, ReleaseTarget.name, BusinessSystem.name)
+            select(
+                ReleaseTarget.id, ReleaseTarget.name, BusinessSystem.name, ReleaseTarget.platform
+            )
             .join(BusinessSystem, BusinessSystem.id == ReleaseTarget.system_id)
             .join(ReleaseBatchTarget, ReleaseBatchTarget.target_id == ReleaseTarget.id)
             .join(ReleaseBatch, ReleaseBatch.id == ReleaseBatchTarget.batch_id)
@@ -522,4 +638,12 @@ class TargetReleaseService:
             .distinct()
             .order_by(ReleaseTarget.id)
         ).all()
-        return [dict(id=ident, label=system + " / " + name) for ident, name, system in rows]
+        labels = {
+            "PC_WEB": "PC Web",
+            "WECHAT_MINI_PROGRAM": "微信小程序",
+            "ALIPAY_MINI_PROGRAM": "支付宝小程序",
+        }
+        return [
+            dict(id=ident, label=system + " / " + name + " · " + labels[platform])
+            for ident, name, system, platform in rows
+        ]

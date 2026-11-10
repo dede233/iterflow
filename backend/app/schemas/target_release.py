@@ -85,6 +85,45 @@ class ReleaseTargetOut(BaseModel):
     updated_at: datetime = Field(title="更新时间")
 
 
+class MiniProgramPlatformInput(TargetRequest):
+    platform: Literal["WECHAT_MINI_PROGRAM", "ALIPAY_MINI_PROGRAM"] = Field(title="小程序平台")
+    app_id: str | None = Field(default=None, max_length=64, title="小程序 AppID")
+    enabled: bool = Field(default=True, title="是否启用该平台")
+
+
+class TargetMemberRevision(TargetRequest):
+    id: int = Field(ge=1, title="平台目标 ID")
+    revision: int = Field(ge=1, title="平台修订号")
+
+
+class MiniProgramTargetCreate(TargetRequest):
+    code: str = Field(min_length=1, max_length=57, title="品牌目标编码")
+    name: str = Field(min_length=1, max_length=100, title="小程序品牌名称")
+    platforms: list[MiniProgramPlatformInput] = Field(
+        min_length=1, max_length=2, title="微信及支付宝配置"
+    )
+
+    @field_validator("platforms")
+    @classmethod
+    def unique_platforms(cls, value):
+        if len({item.platform for item in value}) != len(value):
+            raise ValueError("同一品牌下每个平台只能配置一次")
+        return value
+
+
+class MiniProgramTargetUpdate(MiniProgramTargetCreate):
+    members: list[TargetMemberRevision] = Field(
+        min_length=1, max_length=2, title="编辑时的完整平台成员与修订号"
+    )
+
+    @field_validator("members")
+    @classmethod
+    def unique_members(cls, value):
+        if len({item.id for item in value}) != len(value):
+            raise ValueError("平台目标不能重复")
+        return value
+
+
 class ReleaseBatchCreate(TargetRequest):
     version_revision: int = Field(ge=1, title="版本修订号")
     kind: BatchKind = Field(title="批次类型")

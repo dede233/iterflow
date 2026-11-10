@@ -28,6 +28,18 @@ async function fixture(page: Page) {
       const target = targets.find(t => t.id === Number(path.split('/').pop()))!
       Object.assign(target, body, { revision: target.revision + 1 }); return reply(target)
     }
+    if (path === '/api/v1/systems/1/mini-program-targets' && method === 'POST') {
+      const body = route.request().postDataJSON(); writes.push(body)
+      const saved = body.platforms.map((p: any, i: number) => ({ ...targets[0], ...p, id: targets.length + i + 1, code: body.code + (p.platform === 'WECHAT_MINI_PROGRAM' ? '_WX' : '_ALIPAY'), name: body.name, url: null, revision: 1 }))
+      targets.push(...saved); return reply(saved, 201)
+    }
+    if (path.startsWith('/api/v1/systems/mini-program-targets/') && method === 'PATCH') {
+      const body = route.request().postDataJSON(); writes.push(body)
+      const saved = body.platforms.map((p: any) => {
+        const target = targets.find(t => body.members.some((m: any) => m.id === t.id) && t.platform === p.platform)!
+        Object.assign(target, p, { name: body.name, code: body.code + (p.platform === 'WECHAT_MINI_PROGRAM' ? '_WX' : '_ALIPAY'), revision: target.revision + 1 }); return target
+      }); return reply(saved)
+    }
     if (path === '/api/v1/versions/1') return reply(version)
     if (path === '/api/v1/versions/1/requirements') return reply({ version_id: 1, items: [], stats: { total: 0, completed: 0, completion_rate: 0, by_status: {} } })
     if (path === '/api/v1/releases') return reply({ items: releases, total: releases.length, page: 1, page_size: 20 })
@@ -56,9 +68,9 @@ async function fixture(page: Page) {
   return { version, targets, batches, releases, errors, unexpected, writes }
 }
 
-for (const width of [1440, 375]) {
+for (const width of [1440, 375, 812]) {
   for (const chooseOnPublish of [true, false]) test(`coverage is optional, later multi-select at ${width}px / selected=${chooseOnPublish}`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 1000 })
+    await page.setViewportSize({ width, height: width === 812 ? 375 : width === 375 ? 812 : 1000 })
     const data = await fixture(page)
     data.targets[1].platform = 'PC_WEB'; data.targets[1].name = 'PC 门户 B'
     data.targets[0].platform = 'ALIPAY_MINI_PROGRAM'; data.targets[0].app_id = '2026000000000001'
@@ -88,7 +100,7 @@ for (const width of [1440, 375]) {
     }
     await page.screenshot({ path: test.info().outputPath(`select-${width}-${chooseOnPublish}.png`), fullPage: true, animations: 'disabled' })
     await record.getByRole('button', { name: '保存已发布目标', exact: true }).click(); await expect(record).toBeHidden()
-    await expect(panel).toContainText('已记录 3 个小程序 / PC 目标')
+    await expect(panel).toContainText('已记录 3 个平台 / PC 站点')
     expect(JSON.stringify(data.releases)).toBe(original)
     expect(data.writes).toHaveLength(2)
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true)
@@ -99,7 +111,7 @@ for (const width of [1440, 375]) {
     expect(data.errors).toEqual([]); expect(data.unexpected).toEqual([])
   })
   test(`system release-target directory at ${width}px`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 1000 })
+    await page.setViewportSize({ width, height: width === 812 ? 375 : width === 375 ? 812 : 1000 })
     const data = await fixture(page)
     await page.goto('/#/admin/systems')
     await page.getByRole('button', { name: '发布目标', exact: true }).click()
@@ -107,36 +119,64 @@ for (const width of [1440, 375]) {
     const dialog = page.getByRole('dialog', { name: '新增发布目标', exact: true })
     await dialog.getByRole('textbox', { name: '目标名称' }).fill('小程序 D')
     await dialog.getByRole('textbox', { name: '目标编码' }).fill('D')
-    const appId = dialog.getByRole('textbox', { name: 'AppID（选填）', exact: true })
+    const wxId = dialog.getByRole('textbox', { name: '微信小程序 AppID', exact: true })
+    const aliId = dialog.getByRole('textbox', { name: '支付宝小程序 AppID', exact: true })
     const url = dialog.getByRole('textbox', { name: '访问地址（选填）', exact: true })
-    await expect(appId).toBeVisible(); await expect(url).toHaveCount(0)
-    await appId.fill('wx-draft')
-    await dialog.locator('.el-select__wrapper').click()
-    await page.getByRole('option', { name: 'PC Web', exact: true }).click()
-    await expect(appId).toHaveCount(0); await expect(url).toBeVisible()
+    await expect(wxId).toBeVisible(); await expect(aliId).toBeDisabled(); await expect(url).toHaveCount(0)
+    await wxId.fill('wx-draft')
+    await dialog.getByText('支付宝小程序', { exact: true }).click()
+    await aliId.fill('2026000000000001')
+    await dialog.getByText('PC Web', { exact: true }).click()
+    await expect(wxId).toHaveCount(0); await expect(url).toBeVisible()
     await url.fill('https://example.org')
-    await dialog.locator('.el-select__wrapper').click()
-    await page.getByRole('option', { name: '支付宝小程序', exact: true }).click()
-    await expect(url).toHaveCount(0); await expect(appId).toBeVisible()
-    await appId.fill('2026000000000001')
-    await page.screenshot({ path: test.info().outputPath(`alipay-form-${width}.png`), fullPage: true, animations: 'disabled' })
-    await dialog.getByRole('button', { name: '保存目标', exact: true }).click()
-    await expect(dialog).toBeHidden(); expect(data.targets).toHaveLength(4)
-    expect(data.writes[0]).toMatchObject({ platform: 'ALIPAY_MINI_PROGRAM', app_id: '2026000000000001', url: null })
-    await expect(page.getByRole('dialog', { name: '管理发布目标', exact: true })).toContainText('小程序 D')
-    await page.getByRole('button', { name: '编辑发布目标 小程序 D', exact: true }).click()
-    const edit = page.getByRole('dialog', { name: '编辑发布目标', exact: true })
-    await expect(edit.getByRole('textbox', { name: 'AppID（选填）', exact: true })).toHaveValue('2026000000000001')
-    await expect(edit.getByRole('textbox', { name: '访问地址（选填）', exact: true })).toHaveCount(0)
-    await edit.locator('.el-select__wrapper').click()
-    await page.getByRole('option', { name: 'PC Web', exact: true }).click()
-    await edit.getByRole('textbox', { name: '访问地址（选填）', exact: true }).fill('https://example.org/pc')
-    await expect(edit.getByRole('textbox', { name: 'AppID（选填）', exact: true })).toHaveCount(0)
     await page.screenshot({ path: test.info().outputPath(`pc-form-${width}.png`), fullPage: true, animations: 'disabled' })
+    await dialog.getByText('小程序', { exact: true }).click()
+    await expect(url).toHaveCount(0); await expect(wxId).toHaveValue('wx-draft'); await expect(aliId).toHaveValue('2026000000000001')
+    await page.screenshot({ path: test.info().outputPath(`brand-form-${width}.png`), fullPage: true, animations: 'disabled' })
+    await dialog.getByRole('button', { name: '保存目标', exact: true }).click()
+    await expect(dialog).toBeHidden(); expect(data.targets).toHaveLength(5)
+    expect(data.writes[0]).toEqual({ code: 'D', name: '小程序 D', platforms: [{ platform: 'WECHAT_MINI_PROGRAM', app_id: 'wx-draft', enabled: true }, { platform: 'ALIPAY_MINI_PROGRAM', app_id: '2026000000000001', enabled: true }] })
+    const manager = page.getByRole('dialog', { name: '管理发布目标', exact: true })
+    await expect(manager.locator('.target')).toHaveCount(4)
+    await expect(manager.getByRole('button', { name: '编辑发布目标 小程序 D', exact: true })).toHaveCount(1)
+    await manager.getByRole('button', { name: '编辑发布目标 小程序 D', exact: true }).click()
+    const edit = page.getByRole('dialog', { name: '编辑发布目标', exact: true })
+    await expect(edit.getByRole('textbox', { name: '微信小程序 AppID', exact: true })).toHaveValue('wx-draft')
+    await expect(edit.getByRole('textbox', { name: '支付宝小程序 AppID', exact: true })).toHaveValue('2026000000000001')
+    await expect(edit.getByRole('textbox', { name: '访问地址（选填）', exact: true })).toHaveCount(0)
+    await edit.getByText('支付宝小程序', { exact: true }).click()
     await edit.getByRole('button', { name: '保存目标', exact: true }).click()
     await expect(edit).toBeHidden()
-    expect(data.writes[1]).toEqual({ code: 'D', name: '小程序 D', enabled: true, platform: 'PC_WEB', app_id: null, url: 'https://example.org/pc', revision: 1 })
+    expect(data.writes[1]).toMatchObject({ code: 'D', name: '小程序 D', members: [{ id: 4, revision: 1 }, { id: 5, revision: 1 }], platforms: [{ platform: 'WECHAT_MINI_PROGRAM', enabled: true }, { platform: 'ALIPAY_MINI_PROGRAM', enabled: false, app_id: '2026000000000001' }] })
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true)
     expect(data.errors).toEqual([]); expect(data.unexpected).toEqual([])
   })
 }
+
+for (const width of [1440, 375]) test(`brand platforms remain independent on publication at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: width === 812 ? 375 : width === 375 ? 812 : 1000 })
+  const data = await fixture(page)
+  Object.assign(data.targets[0], { code: 'BRAND_WX', name: '品牌 A', platform: 'WECHAT_MINI_PROGRAM' })
+  Object.assign(data.targets[2], { code: 'BRAND_ALIPAY', name: '品牌 A', platform: 'ALIPAY_MINI_PROGRAM' })
+  await page.goto('/#/versions/1')
+  await page.getByRole('button', { name: '发布版本', exact: true }).click()
+  const publish = page.getByRole('dialog', { name: '发布版本', exact: true })
+  await expect(publish.getByRole('region', { name: '品牌 A发布平台', exact: true })).toHaveCount(1)
+  await publish.getByRole('region', { name: '品牌 A发布平台', exact: true }).getByText('微信小程序', { exact: true }).click()
+  await expect(publish.getByRole('checkbox', { name: '品牌 A · 支付宝小程序', exact: true })).not.toBeChecked()
+  await publish.getByRole('textbox', { name: '发布说明', exact: true }).fill('仅微信首先上线，支付宝稍后补记')
+  await publish.getByRole('button', { name: '确认发布', exact: true }).click(); await expect(publish).toBeHidden()
+  expect(data.batches[0].targets.map((t: any) => t.target_id)).toEqual([1])
+  const original = JSON.stringify(data.releases)
+  await page.getByRole('button', { name: '补记已发布目标', exact: true }).click()
+  const record = page.getByRole('dialog', { name: '补记已发布目标', exact: true })
+  await expect(record.getByRole('checkbox', { name: '品牌 A · 微信小程序（已记录）', exact: true })).toBeChecked()
+  await expect(record.getByRole('checkbox', { name: '品牌 A · 微信小程序（已记录）', exact: true })).toBeDisabled()
+  await record.getByRole('region', { name: '品牌 A发布平台', exact: true }).getByText('支付宝小程序', { exact: true }).click()
+  await page.screenshot({ path: test.info().outputPath(`brand-platforms-${width}.png`), fullPage: true, animations: 'disabled' })
+  await record.getByRole('button', { name: '保存已发布目标', exact: true }).click(); await expect(record).toBeHidden()
+  expect(data.batches[1].targets.map((t: any) => t.target_id)).toEqual([3])
+  expect(JSON.stringify(data.releases)).toBe(original)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true)
+  expect(data.errors).toEqual([]); expect(data.unexpected).toEqual([])
+})

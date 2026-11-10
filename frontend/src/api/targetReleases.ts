@@ -14,6 +14,8 @@ const options = { skipConflictAlert: true }
 export const listTargets = (systemId: number) => api.get<ReleaseTarget[]>(`/systems/${systemId}/release-targets`).then(r => r.data)
 export const createTarget = (systemId: number, payload: S['ReleaseTargetCreate']) => api.post<ReleaseTarget>(`/systems/${systemId}/release-targets`, payload, options).then(r => r.data)
 export const updateTarget = (id: number, payload: S['ReleaseTargetUpdate']) => api.patch<ReleaseTarget>(`/systems/release-targets/${id}`, payload, options).then(r => r.data)
+export const createMiniProgramTarget = (systemId: number, payload: S['MiniProgramTargetCreate']) => api.post<ReleaseTarget[]>(`/systems/${systemId}/mini-program-targets`, payload, options).then(r => r.data)
+export const updateMiniProgramTarget = (id: number, payload: S['MiniProgramTargetUpdate']) => api.patch<ReleaseTarget[]>(`/systems/mini-program-targets/${id}`, payload, options).then(r => r.data)
 export const versionTargets = (id: number, system_id?: number | null) => api.get<ReleaseTarget[]>(`/versions/${id}/release-targets`, { params: { system_id } }).then(r => r.data)
 export const listBatches = (id: number, page = 1) => api.get<ReleaseBatches>(`/versions/${id}/release-batches`, { params: { page, page_size: 20 } }).then(r => r.data)
 export const targetRecords = (params: { page: number; page_size: number; target_id?: number | null; version_id?: number | null }) => api.get<S['TargetReleasePage']>('/target-release-records', { params }).then(r => r.data)

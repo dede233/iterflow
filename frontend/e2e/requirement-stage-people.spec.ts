@@ -51,12 +51,13 @@ for (const width of [320, 375, 768, 1200, 1440, 1800]) {
     await page.goto(layout === 'drawer' ? '/#/requirements' : '/#/requirements/1')
     if (layout === 'drawer') await page.getByText('在进度卡片中安排人员', { exact: true }).click()
     await page.getByRole('button', { name: '展开需求进度', exact: true }).click()
-    const card = page.getByRole('list', { name: '需求阶段' }).locator('li').nth(1)
-    await expect(card).toContainText('当前阶段')
+    const stage = page.getByRole('list', { name: '需求阶段' }).locator('li').nth(1)
+    const card = page.locator('.step-detail')
+    await expect(stage).toContainText('当前阶段')
     for (const button of await page.locator('.step-people-button').all()) {
       const geometry = await button.evaluate(element => {
         const bounds = element.getBoundingClientRect()
-        const cardBounds = element.closest('li')!.getBoundingClientRect()
+        const cardBounds = element.closest('.step-detail')!.getBoundingClientRect()
         const label = element.querySelector('span')!
         const range = document.createRange()
         range.selectNodeContents(label)
@@ -85,7 +86,7 @@ for (const width of [320, 375, 768, 1200, 1440, 1800]) {
     await expect(card).toContainText('开发：开发小林')
     await expect(card).toContainText('设计：设计小王')
     await expect(card).toContainText('验收：验收小李、验收小陈')
-    await expect(card).toContainText('当前阶段')
+    await expect(stage).toContainText('当前阶段')
     expect(writes).toEqual([{ revision: 8, participants: [
       { role: 'CONFIRM', user_id: 1 }, { role: 'DESIGN', user_id: 4 },
       { role: 'DEVELOP', user_id: 2 }, { role: 'ACCEPT', user_id: 3 }, { role: 'ACCEPT', user_id: 5 },

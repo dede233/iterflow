@@ -28,7 +28,6 @@ import { loadRequirementFeedbackSection } from '@/security/detailAuthorization'
 import StatusTag from '@/components/StatusTag.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import SectionCard from '@/components/ui/SectionCard.vue'
-import EmptyState from '@/components/ui/EmptyState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
 import RevisionConflictDialog from '@/components/RevisionConflictDialog.vue'
 import { useResponsive } from '@/composables/useResponsive'
@@ -256,22 +255,14 @@ onMounted(load)
 
       <RequirementProgress :item="item" @updated="load" @status="openStatusDialog" />
       <div class="detail-grid">
-      <SectionCard title="需求详情" description="范围与验收标准" class="detail-main">
-        <el-descriptions :column="isMobile ? 1 : 2">
-          <el-descriptions-item label="类型">
-            {{ requirementTypeLabel[item.requirement_type] ?? item.requirement_type }}
-          </el-descriptions-item>
-          <el-descriptions-item label="优先级">{{ item.priority }}</el-descriptions-item>
-          <el-descriptions-item label="需求描述" :span="isMobile ? 1 : 2">
-            <RichTextContent :requirement-id="item.id" :content="item.description" :format="item.description_format" />
-          </el-descriptions-item>
-          <el-descriptions-item label="验收标准" :span="isMobile ? 1 : 2">
-            <div class="multiline">{{ item.acceptance_criteria || '-' }}</div>
-          </el-descriptions-item>
-        </el-descriptions>
+      <SectionCard title="需求详情" class="detail-main">
+        <div class="requirement-content"><h3>需求描述</h3><RichTextContent :requirement-id="item.id" :content="item.description" :format="item.description_format" /></div>
+        <div class="requirement-content"><h3>验收标准</h3><div class="multiline">{{ item.acceptance_criteria || '暂未填写验收标准' }}</div></div>
       </SectionCard>
-      <SectionCard title="流转信息" description="来源与版本归属" class="detail-side">
+      <SectionCard title="需求属性" class="detail-side">
         <dl class="side-fields">
+          <div><dt>类型</dt><dd>{{ requirementTypeLabel[item.requirement_type] ?? item.requirement_type }}</dd></div>
+          <div><dt>优先级</dt><dd>{{ item.priority }}</dd></div>
           <div><dt>来源</dt><dd>{{ item.source === 'FEEDBACK' ? '反馈转化' : '直接创建' }}</dd></div>
           <div><dt>当前版本</dt><dd><ScopedRelationLink kind="version" :id="item.current_version_id" :return-to="backTo" :parent-identity="String(item.id)" /></dd></div>
           <div><dt>更新时间</dt><dd>{{ formatLocalDateTime(item.updated_at) }}</dd></div>
@@ -282,7 +273,8 @@ onMounted(load)
       <RecentEntityActivity kind="requirement" :id="item.id" :revision="item.revision" :refresh-key="activityRefresh" />
 
       <!-- source feedbacks -->
-      <SectionCard v-if="canViewFeedbacks" title="来源反馈" class="section">
+      <template v-if="canViewFeedbacks">
+      <SectionCard v-if="feedbacks.length" title="来源反馈" class="section">
         <ul v-if="feedbacks.length" class="links">
           <li v-for="f in feedbacks" :key="f.feedback_id">
             <el-link type="primary" @click="router.push(related('/feedbacks/' + f.feedback_id))">
@@ -291,8 +283,10 @@ onMounted(load)
             <el-tag v-if="f.is_primary" size="small" type="success" effect="light">主</el-tag>
           </li>
         </ul>
-        <EmptyState v-else description="暂无可见来源反馈" compact />
+
       </SectionCard>
+      <p v-else class="empty-relation">暂无可见来源反馈</p>
+      </template>
     </template>
 
     <el-dialog v-model="createVersionDialog" title="创建版本并关联需求" width="min(720px, calc(100vw - 24px))" append-to-body destroy-on-close :close-on-click-modal="false" :show-close="!creatingVersion" :close-on-press-escape="!creatingVersion">
@@ -367,6 +361,10 @@ onMounted(load)
 </template>
 
 <style scoped>
+.requirement-content { font-size: 15px; line-height: 1.8; overflow-wrap: anywhere; }
+.requirement-content + .requirement-content { margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--if-border); }
+.requirement-content h3 { font-size: 13px; font-weight: 500; color: var(--if-text-secondary); margin: 0 0 12px; }
+.empty-relation { margin: 16px 0; color: var(--if-text-tertiary); font-size: 13px; }
 .back-link { color: var(--if-brand-500); align-self: center; }
 .detail-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(250px, 300px); align-items: start; gap: var(--if-space-4); }
 .detail-main, .detail-side { min-width: 0; }

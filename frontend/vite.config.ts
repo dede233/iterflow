@@ -9,7 +9,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'ITERFLOW_')
   return {
     define: versionDefine,
-    plugins: [vue(), Components({ resolvers: [ElementPlusResolver()] })],
+    plugins: [vue(), Components({ resolvers: [ElementPlusResolver({ importStyle: false })] })],
     resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
     server: { proxy: { '/api': env.ITERFLOW_API_PROXY_TARGET || 'http://localhost:8000' } },
   }

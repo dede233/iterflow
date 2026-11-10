@@ -39,7 +39,11 @@ async function fixture(page: Page, domain: 'requirements' | 'versions', restrict
 }
 
 async function form(page: Page, width: number) {
-  if (width >= 768) return page.locator('.list-filters')
+  if (width >= 768) {
+    const more = page.getByRole('button', { name: /^更多筛选/ })
+    if (await more.count()) await more.click()
+    return page.locator('.list-filters')
+  }
   await page.getByRole('button', { name: '筛选', exact: true }).click()
   return page.locator('.el-drawer:visible')
 }
@@ -139,3 +143,25 @@ for (const width of [375, 1440]) {
     expect(state.unexpected).toEqual([])
   })
 }
+
+test('applied requirement filters remain independent from unsaved edits', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 })
+  const state = await fixture(page, 'requirements')
+  await page.goto('/#/requirements?page=3&keyword=已查询&priority=P2&participant_id=41')
+  const toggle = page.getByRole('button', { name: '收起筛选 (2)', exact: true })
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+  const panel = page.locator('.list-filters')
+  await panel.getByPlaceholder('编号 / 标题').fill('未提交的修改')
+  const tags = page.locator('[aria-label="已应用筛选"]')
+  await expect(tags).toContainText('关键词：已查询')
+  await expect(tags).not.toContainText('未提交的修改')
+  await tags.locator('.el-tag').filter({ hasText: '优先级：P2' }).locator('.el-tag__close').click()
+  await expect.poll(() => state.lists.at(-1)).toEqual({ page: '1', page_size: '20', keyword: '已查询', participant_id: '41' })
+  await expect(panel.getByPlaceholder('编号 / 标题')).toHaveValue('已查询')
+  const fold = page.getByRole('button', { name: '收起筛选 (1)', exact: true })
+  await fold.focus(); await page.keyboard.press('Enter')
+  await expect(field(panel, '参与人')).toBeHidden()
+  await page.getByRole('button', { name: '更多筛选 (1)', exact: true }).press('Enter')
+  await expect(field(panel, '参与人')).toBeVisible()
+  expect(state.unexpected).toEqual([])
+})

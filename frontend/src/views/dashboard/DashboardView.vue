@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useAuthStore } from '@/stores/auth'
 import { getDashboardOverview } from '@/api/dashboard'
 import DashboardOverviewContent from '@/components/DashboardOverviewContent.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import type { DashboardOverview } from '@/types/dashboard'
 
+const auth = useAuthStore()
 const loading = ref(true)
 const overview = ref<DashboardOverview | null>(null)
 const failed = ref(false)
@@ -34,6 +36,6 @@ onMounted(() => { void loadOverview() })
       <PageHeader title="首页 / 系统概览" description="当前可访问范围内的反馈、需求、版本与发布情况。" eyebrow="工作台" />
       <ErrorState title="系统概览加载失败" description="请检查网络后重试。" retry-label="重新加载" @retry="loadOverview" />
     </template>
-    <DashboardOverviewContent v-else-if="overview" :overview="overview" />
+    <DashboardOverviewContent v-else-if="overview" :overview="overview" :viewer-id="auth.user?.id" />
   </div>
 </template>

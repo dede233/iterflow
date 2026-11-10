@@ -101,16 +101,19 @@ onMounted(async () => {
 <template>
   <section :class="props.embedded ? 'embedded-form' : 'page'">
     <PageHeader v-if="!props.embedded" title="提交反馈" description="说明你遇到的问题或希望改进的体验，便于团队跟进。" eyebrow="反馈中心 / 新建" />
-    <SectionCard :title="props.embedded ? undefined : '反馈内容'" :description="props.embedded ? undefined : '先填写基本信息，再补充细节与附件。'" class="form-card">
+    <SectionCard :title="props.embedded ? undefined : '反馈内容'" :description="props.embedded ? undefined : '描述遇到的问题，再选择归属和接收人。'" class="form-card">
       <el-form label-position="top" @submit.prevent="submit">
+        <el-form-item label="标题" required class="span-2">
+          <el-input v-model="form.title" maxlength="200" show-word-limit />
+        </el-form-item>
+        <el-form-item label="详细描述" required>
+          <el-input v-model="form.description" type="textarea" :rows="6" />
+        </el-form-item>
         <div class="form-grid">
         <el-form-item label="反馈类型" required>
           <el-select v-model="form.feedback_type" style="width: 100%">
             <el-option v-for="t in FEEDBACK_TYPES" :key="t.value" :label="t.label" :value="t.value" />
           </el-select>
-        </el-form-item>
-        <el-form-item label="标题" required class="span-2">
-          <el-input v-model="form.title" maxlength="200" show-word-limit />
         </el-form-item>
         <el-form-item label="紧急程度">
           <el-radio-group v-model="form.urgency">
@@ -138,11 +141,8 @@ onMounted(async () => {
           </el-form-item>
         </template>
         </div>
-        <h2 class="form-subtitle">详细说明</h2>
+        <h2 class="form-subtitle">接收人与补充信息</h2>
         <el-form-item label="反馈接收人" required><PeopleSelector v-model="recipientIds" kind="feedback" multiple /></el-form-item>
-        <el-form-item label="详细描述" required>
-          <el-input v-model="form.description" type="textarea" :rows="6" />
-        </el-form-item>
         <el-form-item label="复现步骤">
           <el-input v-model="form.reproduce_steps" type="textarea" :rows="3" />
         </el-form-item>
@@ -173,7 +173,7 @@ onMounted(async () => {
 .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 24px; }
 .span-2 { grid-column: 1 / -1; }
 .form-subtitle { margin: 4px 0 18px; padding-top: 20px; border-top: 1px solid var(--if-border); font-size: 14px; font-weight: 700; }
-.actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 16px; border-top: 1px solid var(--if-border); }
+.actions { position: sticky; bottom: 0; z-index: 8; background: var(--if-bg-surface); padding-bottom: 12px; display: flex; justify-content: flex-end; gap: 8px; padding-top: 16px; border-top: 1px solid var(--if-border); }
 .upload-tip { color: var(--if-text-3); font-size: 12px; line-height: 1.5; }
 .embedded-form { min-width: 0; }
 .embedded-form :deep(.section-card) { border: 0; box-shadow: none; }

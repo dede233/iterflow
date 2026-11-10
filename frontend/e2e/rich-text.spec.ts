@@ -133,7 +133,7 @@ for (const width of [375, 1440]) {
     await expect(editor).toHaveText(audit.requirement.description)
     expect(await editor.locator('img').count()).toBe(0)
     await editor.fill('转换需求标题'); await editor.press('ControlOrMeta+A')
-    await dialog.getByRole('button', { name: '标题', exact: true }).click()
+    await dialog.getByRole('combobox', { name: '段落样式', exact: true }).selectOption('heading')
     await expect(editor.locator('h2')).toHaveText('转换需求标题')
     await noOverflow(page, width)
     await dialog.getByRole('button', { name: '确定', exact: true }).click()

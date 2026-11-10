@@ -18,6 +18,7 @@ const loading = ref(false), failed = ref(false), dialog = ref(false), busy = ref
 const page = ref(1), error = ref('')
 const form = reactive({ system_id: null as number | null, target_ids: [] as number[], released_at: '', notes: '', evidence: '' })
 let sequence = 0
+const coveredTargets = computed(() => [...new Map((state.value?.items ?? []).flatMap(batch => batch.targets).filter(target => target.completed_at).map(target => [target.target_id, target])).values()])
 const writable = computed(() => !props.readonly && can('rd.version.publish') && props.version.status === 'RELEASED')
 async function load() {
   const seq = ++sequence; loading.value = true; failed.value = false
@@ -57,6 +58,10 @@ async function submit() {
     <div v-else v-loading="loading">
       <p v-if="!state?.coverage_count && !loading" class="muted">尚未记录发布目标。可在发布版本时勾选，或发布后补记，不推断历史发布范围。</p>
       <p v-if="version.status !== 'RELEASED'" class="muted">通过版本发布检查后正常发布，无需先创建目标计划。</p>
+      <div v-if="coveredTargets.length" class="coverage-targets" aria-label="本页已发布目标">
+        <span v-for="target in coveredTargets" :key="target.target_id" class="coverage-target"><span class="platform-label">{{ platformLabel[target.platform] }}</span><strong>{{ target.name }}</strong></span>
+      </div>
+      <p v-if="state && state.total > 20" class="muted">以下展示本页登记的目标，可翻页查看其他发布记录。</p>
       <details v-for="batch in state?.items" :key="batch.id" class="batch">
         <summary>{{ formatLocalDateTime(batch.created_at) }} · {{ batch.targets.filter(t => t.completed_at).length }} 个已发布目标 · {{ batch.targets.filter(t => t.completed_at).map(t => t.name).join('、') }}<span v-if="batch.status !== 'COMPLETED'">（旧计划历史）</span></summary>
         <div v-for="target in batch.targets" :key="target.id" class="target-row">
@@ -82,6 +87,9 @@ async function submit() {
   </SectionCard>
 </template>
 <style scoped>
+.coverage-targets { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.coverage-target { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--if-success-border); border-radius: 6px; background: var(--if-success-bg); font-size: 13px; overflow-wrap: anywhere; max-width: 100%; }
+.platform-label { font-size: 11px; color: var(--if-success-fg); }
 .batch { margin-top:12px; padding:12px; border:1px solid var(--if-border); border-radius:var(--if-radius-sm); }
 .muted { color:var(--if-text-3); font-size:13px; line-height:1.6; }
 .notes { margin:0; white-space:pre-wrap; overflow-wrap:anywhere; }

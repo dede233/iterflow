@@ -21,7 +21,7 @@ withDefaults(defineProps<{ title?: string; description?: string; padded?: boolea
   background-color: var(--if-bg-surface);
   border: 1px solid var(--if-border);
   border-radius: var(--if-radius);
-  box-shadow: var(--if-shadow-xs);
+  box-shadow: none;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 .section-card + .section-card {
@@ -43,7 +43,7 @@ withDefaults(defineProps<{ title?: string; description?: string; padded?: boolea
 }
 .section-card__title {
   margin: 0;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--if-text-primary);
   letter-spacing: -0.01em;

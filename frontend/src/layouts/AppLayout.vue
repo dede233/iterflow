@@ -128,8 +128,9 @@ async function logout(): Promise<void> {
     </aside>
 
     <header class="mobile-header mobile-only">
-      <span class="brand-mark">迭</span>
-      <span class="brand-text"><strong>迭程</strong> IterFlow</span>
+      <router-link class="mobile-brand" :to="auth.hasPermission('dashboard.view') ? '/' : '/profile'" :aria-label="auth.hasPermission('dashboard.view') ? '返回首页' : '个人中心'">
+        <span class="brand-mark">迭</span><span class="brand-text"><strong>迭程</strong> IterFlow</span>
+      </router-link>
       <router-link to="/announcements" style="margin-left:auto;font-size:13px">更新公告<span v-if="announcements.unreadCount" aria-label="有未读更新公告"> ·</span></router-link>
     </header>
 
@@ -150,6 +151,7 @@ async function logout(): Promise<void> {
 </template>
 
 <style scoped>
+.mobile-brand { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; min-width: 0; }
 .announcement-dot { width:8px;height:8px;border-radius:50%;background:#ef4444;flex-shrink:0; }
 .shell {
   min-height: 100vh;

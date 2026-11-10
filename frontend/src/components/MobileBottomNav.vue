@@ -7,7 +7,6 @@ import { useNotificationsStore } from '@/stores/notifications'
 const auth = useAuthStore()
 const notifications = useNotificationsStore()
 const items = computed(() => [
-  { to: '/', label: '首页', icon: 'home', permission: 'dashboard.view' },
   { to: '/feedbacks', label: '反馈', icon: 'feedback', permission: 'rd.feedback.view' },
   { to: '/requirements', label: '需求', icon: 'requirement', permission: 'rd.requirement.view' },
   { to: '/versions', label: '版本', icon: 'version', permission: 'rd.version.view' },

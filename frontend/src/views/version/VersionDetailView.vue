@@ -409,19 +409,11 @@ onMounted(load)
       <BusinessSystemAttribution :system-id="item.system_id" :system-name="item.system_name" />
 
       <el-alert v-if="!item.system_id && !frozen" title="此历史版本未指定业务系统，请先补齐需求系统，再编辑版本选择同一系统。" type="warning" :closable="false" />
-      <SectionCard title="版本概况" description="进度由关联需求自动汇总；开发和验收在需求中完成。">
-        <el-descriptions :column="isMobile ? 1 : 2">
-          <el-descriptions-item label="计划上线">{{ item.planned_release_date || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="实际上线">{{ formatLocalDateTime(item.released_at) }}</el-descriptions-item>
-          <el-descriptions-item label="说明" :span="isMobile ? 1 : 2">
-            <div class="multiline">{{ item.description || '-' }}</div>
-          </el-descriptions-item>
-        </el-descriptions>
-      </SectionCard>
-
-      <VersionReleaseBatches :version="item" @updated="load" />
-
-      <RecentEntityActivity kind="version" :id="item.id" :revision="item.revision" :refresh-key="activityRefresh" />
+      <div class="version-overview" aria-label="版本概况">
+        <dl><div><dt>计划上线</dt><dd>{{ item.planned_release_date || '未排期' }}</dd></div><div v-if="item.released_at"><dt>实际上线</dt><dd>{{ formatLocalDateTime(item.released_at) }}</dd></div></dl>
+        <p v-if="item.description" class="multiline">{{ item.description }}</p>
+      </div>
+      <VersionReleaseBatches v-if="item.status === 'RELEASED'" :version="item" @updated="load" />
 
       <!-- progress + requirements -->
       <SectionCard v-if="canViewRequirements" title="需求清单" :description="`可见需求 ${stats?.total ?? 0} 项`" class="section">
@@ -431,8 +423,9 @@ onMounted(load)
             添加需求
           </el-button>
         </template>
+        <p class="scope-tip">进度由关联需求自动汇总；开发和验收在需求中完成。</p>
         <div v-if="stats" class="progress">
-          <el-progress :percentage="completionPct" :stroke-width="14" />
+          <el-progress :percentage="completionPct" :stroke-width="6" />
           <span class="progress-text">可见需求进度 {{ stats.completed }} / {{ stats.total }}</span>
         </div>
         <p class="scope-tip">仅统计当前账号可见需求；发布准备以服务端发布检查为准。</p>
@@ -487,6 +480,9 @@ onMounted(load)
         <EmptyState v-else description="暂无可见需求" compact />
         <p v-if="frozen" class="frozen-tip">版本处于 {{ versionStatusLabel[item.status] }}，需求清单已冻结。</p>
       </SectionCard>
+
+      <VersionReleaseBatches v-if="item.status !== 'RELEASED'" :version="item" @updated="load" />
+      <RecentEntityActivity kind="version" :id="item.id" :revision="item.revision" :refresh-key="activityRefresh" />
 
       <!-- release history -->
       <SectionCard v-if="canViewReleases" title="发布历史" class="section">
@@ -621,6 +617,12 @@ onMounted(load)
 </template>
 
 <style scoped>
+.version-overview { margin-bottom: 20px; padding: 12px 0 16px; border-bottom: 1px solid var(--if-border); }
+.version-overview dl { display: flex; flex-wrap: wrap; gap: 12px 32px; margin: 0; font-size: 13px; }
+.version-overview dl > div { display: flex; flex-wrap: wrap; gap: 8px; }
+.version-overview dt { color: var(--if-text-tertiary); }
+.version-overview dd { margin: 0; }
+.version-overview p { margin: 12px 0 0; line-height: 1.7; }
 .scope-tip { color: var(--if-text-2); font-size: 13px; }
 .worklist-summary { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
 .worklist-summary :deep(.el-button + .el-button) { margin-left: 0; }
@@ -636,7 +638,7 @@ onMounted(load)
 .progress { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
 .progress .el-progress { flex: 1; }
 .progress-text { color: var(--if-text-2); font-size: 13px; white-space: nowrap; }
-.frozen-tip { margin: 14px 0 0; padding: 10px 12px; border-radius: var(--if-radius-sm); background: var(--if-warning-bg); color: var(--if-warning-fg); font-size: 12px; }
+.frozen-tip { margin: 14px 0 0; padding: 10px 12px; border-radius: var(--if-radius-sm); background: var(--if-bg-subtle); color: var(--if-text-secondary); font-size: 12px; }
 .req-cards { display: grid; gap: 8px; }
 .req-card { min-width: 0; padding: 12px; border: 1px solid var(--if-border); border-radius: var(--if-radius-sm); }
 .req-card-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }

@@ -49,7 +49,7 @@ for (const width of widths) {
   test(`V1.8 safe main chain and return context ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1000 }); const state = await fixture(page)
     await page.goto('/#/feedbacks?page=2&status=ACCEPTED')
-    if (width < 768) await page.getByRole('button', { name: /FB-1 已受理 链路反馈/ }).click()
+    if (width < 768) await page.getByRole('button', { name: /链路反馈.*FB-1.*已受理/ }).click()
     else await page.getByText('查看', { exact: true }).click()
     await expect(page.getByRole('heading', { name: '链路反馈' })).toBeVisible()
     await page.getByRole('link', { name: /^REQ-7 ·/ }).click()

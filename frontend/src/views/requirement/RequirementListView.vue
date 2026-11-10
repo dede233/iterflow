@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import BusinessSystemSelect from '@/components/BusinessSystemSelect.vue'
 import BatchActionsDialog from '@/components/BatchActionsDialog.vue'
-import { onBeforeUnmount, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onBeforeUnmount, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { listRequirements } from '@/api/requirements'
 import RequirementCreateView from './RequirementCreateView.vue'
 import RequirementDetailView from './RequirementDetailView.vue'
@@ -23,6 +23,7 @@ import type { Requirement, RequirementListParams } from '@/types/domain'
 
 function handlerNames(row: Requirement) { return row.current_handlers?.map(p => p.display_name).join('、') || (['DONE', 'ONLINE', 'CANCELED'].includes(row.status) ? '—' : '待分配') }
 const router = useRouter()
+const route = useRoute()
 const { isMobile } = useResponsive()
 const { can } = usePermission()
 
@@ -35,6 +36,15 @@ const filterDrawer = ref(false)
 const detailDrawer = ref(false)
 const activeRequirementId = ref<number | null>(null)
 const filters = reactive({ system_id: null as number | null, page: 1, page_size: 20, keyword: '', status: '' as RequirementListParams['status'], priority: '' as RequirementListParams['priority'], source: '' as RequirementListParams['source'], current_version_id: null as number | null, participant_id: null as number | null, participant_role: '' as RequirementListParams['participant_role'] })
+const filterLabels: Record<string, string> = { system_id: '业务系统', keyword: '关键词', status: '状态', priority: '优先级', source: '来源', current_version_id: '版本', participant_id: '参与人', participant_role: '环节角色' }
+const activeFilters = computed(() => Object.entries(route.query).filter(([key, value]) => filterLabels[key] && typeof value === 'string' && value).map(([key, value]) => ({ key, label: `${filterLabels[key]}：${key.endsWith('_id') ? '已指定' : key === 'status' ? requirementStatusLabel[String(value)] || value : key === 'source' ? (value === 'DIRECT' ? '直接创建' : '反馈转化') : key === 'participant_role' ? ({ CONFIRM: '确认人', DESIGN: '设计人员', DEVELOP: '开发人员', ACCEPT: '验收人' } as Record<string, string>)[String(value)] || value : value}` })))
+const advancedCount = computed(() => activeFilters.value.filter(f => !['system_id', 'keyword', 'status'].includes(f.key)).length)
+function removeFilter(key: string) {
+  const query = { ...route.query }
+  query.page = '1'
+  delete query[key]
+  void router.push({ path: '/requirements', query })
+}
 let requestSequence = 0
 const positiveId = (value: number | null) => value != null && Number.isSafeInteger(value) && value >= 1 ? value : undefined
 
@@ -125,19 +135,22 @@ const queryState = useListQuery({
       </template>
     </PageHeader>
 
-    <ListFilterPanel v-model="filterDrawer" :mobile="isMobile" title="筛选需求" @search="applyFilters" @reset="resetFilters">
+    <ListFilterPanel v-model="filterDrawer" :mobile="isMobile" title="筛选需求" :advanced-count="advancedCount" @search="applyFilters" @reset="resetFilters">
       <el-form-item label="业务系统"><BusinessSystemSelect v-model="filters.system_id" /></el-form-item>
       <el-form-item label="关键词"><el-input v-model="filters.keyword" placeholder="编号 / 标题" :maxlength="200" clearable @keyup.enter="applyFilters" /></el-form-item>
       <el-form-item label="状态"><el-select v-model="filters.status" clearable placeholder="全部"><el-option v-for="s in REQUIREMENT_STATUSES" :key="s.value" :label="s.label" :value="s.value" /></el-select></el-form-item>
+      <template #advanced>
       <el-form-item label="优先级"><el-select v-model="filters.priority" clearable placeholder="全部"><el-option v-for="p in REQUIREMENT_PRIORITIES" :key="p.value" :label="p.label" :value="p.value" /></el-select></el-form-item>
       <el-form-item label="来源"><el-select v-model="filters.source" clearable placeholder="全部"><el-option label="直接创建" value="DIRECT" /><el-option label="反馈转化" value="FEEDBACK" /></el-select></el-form-item>
       <el-form-item label="版本"><ListEntityFilterSelect v-model="filters.current_version_id" kind="requirement-version" label="版本" /></el-form-item>
       <el-form-item label="参与人"><ListEntityFilterSelect v-model="filters.participant_id" kind="participant" label="参与人" /></el-form-item>
       <el-form-item label="环节角色"><el-select v-model="filters.participant_role" clearable><el-option label="确认人" value="CONFIRM" /><el-option label="设计人员" value="DESIGN" /><el-option label="开发人员" value="DEVELOP" /><el-option label="验收人" value="ACCEPT" /></el-select></el-form-item>
+      </template>
     </ListFilterPanel>
+    <div v-if="activeFilters.length" class="active-filters" aria-label="已应用筛选"><span>当前筛选</span><el-tag v-for="filter in activeFilters" :key="filter.key" closable @close="removeFilter(filter.key)">{{ filter.label }}</el-tag></div>
 
     <ErrorState v-if="failed" title="需求加载失败" description="请检查网络后重试。" retry-label="重新加载" @retry="load" />
-    <SectionCard v-else title="需求列表" :description="`共 ${total} 条需求`" :padded="false">
+    <SectionCard v-else :title="`需求列表 · ${total}`" :padded="false">
     <el-table
       v-if="!isMobile"
       v-loading="loading"
@@ -145,8 +158,7 @@ const queryState = useListQuery({
       row-key="id"
       @row-click="(row: Requirement) => openDetail(row.id)"
     >
-      <el-table-column prop="requirement_no" label="编号" width="180" />
-      <el-table-column prop="title" label="标题" min-width="240" show-overflow-tooltip />
+      <el-table-column label="需求" min-width="280"><template #default="s"><button class="record-title" @click.stop="openDetail(s.row.id)">{{ s.row.title }}</button><div class="mono record-code">{{ s.row.requirement_no }}</div></template></el-table-column>
       <el-table-column label="业务系统" min-width="130"><template #default="scope">{{ scope.row.system_name || '未指定' }}</template></el-table-column>
       <el-table-column prop="priority" label="优先级" width="90" />
       <el-table-column label="来源" width="90">
@@ -179,8 +191,9 @@ const queryState = useListQuery({
         @open="openDetail(r.id)"
       >
         <template #status>
-          <span>{{ r.system_name || '未指定系统' }}</span> <StatusTag :status="r.status" :label="requirementStatusLabel[r.status]" :type="requirementStatusTagType(r.status)" size="sm" />
+          <StatusTag :status="r.status" :label="requirementStatusLabel[r.status]" :type="requirementStatusTagType(r.status)" size="sm" />
         </template>
+          <span>{{ r.system_name || '未指定系统' }}</span>
           <span>{{ r.current_handlers?.map(p => p.display_name).join('、') || '暂无待处理人员' }}</span>
           <span>{{ r.priority }}</span>
           <span>{{ r.source === 'FEEDBACK' ? '反馈转化' : '直接创建' }}</span>
@@ -243,6 +256,10 @@ const queryState = useListQuery({
 </template>
 
 <style scoped>
+.active-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: -4px 0 16px; color: var(--if-text-secondary); font-size: 12px; }
+.record-title { display: block; border: 0; padding: 4px 0; background: transparent; color: var(--if-text-primary); font: inherit; font-size: 14px; font-weight: 600; text-align: left; cursor: pointer; overflow-wrap: anywhere; }
+.record-title:hover { color: var(--if-brand-600); }
+.record-code { margin-top: 2px; }
 .cards { display: grid; gap: 8px; padding: var(--if-space-3); }
 .pager { margin-top: var(--if-space-4); justify-content: flex-end; }
 .drawer-header-custom { display: flex; align-items: center; justify-content: space-between; width: 100%; padding-right: 28px; }

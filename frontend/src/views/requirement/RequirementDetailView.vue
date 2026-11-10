@@ -289,7 +289,7 @@ onMounted(load)
       </template>
     </template>
 
-    <el-dialog v-model="createVersionDialog" title="创建版本并关联需求" width="min(720px, calc(100vw - 24px))" append-to-body destroy-on-close :close-on-click-modal="false" :show-close="!creatingVersion" :close-on-press-escape="!creatingVersion">
+    <el-dialog v-model="createVersionDialog" title="创建版本并关联需求" class="create-dialog" width="min(720px, calc(100vw - 24px))" append-to-body destroy-on-close :close-on-click-modal="false" :show-close="!creatingVersion" :close-on-press-escape="!creatingVersion">
       <VersionCreateView v-if="createVersionDialog && item" embedded :requirement="{ id: item.id, revision: item.revision, title: item.title, system_id: item.system_id, system_name: item.system_name }" :requirement-refreshing="refreshingVersionRequirement" @cancel="createVersionDialog = false" @created="onVersionCreated" @refresh-requirement="refreshVersionRequirement" @saving="creatingVersion = $event" />
     </el-dialog>
 

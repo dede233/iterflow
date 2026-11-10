@@ -533,3 +533,22 @@ code {
 
 /* Motion is optional; focus and state changes remain visible. */
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; } }
+
+/* Embedded create forms own one scroll region; actions never overlay fields. */
+.create-dialog > .el-dialog__header { flex-shrink: 0; }
+.create-dialog > .el-dialog__body { display: flex; overflow: hidden; padding: 0; }
+.create-dialog .embedded-form,
+.create-dialog .embedded-form > .section-card,
+.create-dialog .embedded-form .section-card__body,
+.create-dialog .embedded-form .section-card__body > .el-form {
+  display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; min-width: 0;
+}
+.create-dialog .embedded-form .section-card__body { padding: 0; }
+.create-dialog .create-form-fields { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 20px; scroll-padding-block: 20px; }
+.create-dialog .embedded-form .editor-actions,
+.create-dialog .embedded-form .form-actions { position: static; flex: 0 0 auto; margin: 0; padding: 14px 20px; border-top: 1px solid var(--if-border); }
+@media (max-width: 767px) {
+  .create-dialog .create-form-fields { padding: 16px; scroll-padding-block: 16px; }
+  .create-dialog .embedded-form .editor-actions,
+  .create-dialog .embedded-form .form-actions { padding: 12px 16px; }
+}

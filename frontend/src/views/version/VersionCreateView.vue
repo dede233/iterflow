@@ -100,9 +100,11 @@ async function submit(): Promise<void> {
   <section :class="props.embedded ? 'embedded-form' : 'page'">
     <PageHeader v-if="!props.embedded" title="新建版本" description="设置版本标识与计划上线日期。" eyebrow="版本管理 / 新建" />
     <SectionCard :title="props.embedded ? undefined : '版本信息'" :description="props.embedded ? undefined : '创建后可在版本详情中管理需求清单。'" class="editor-card">
+      <el-form label-position="top" :disabled="saving || props.requirementRefreshing" @submit.prevent="submit">
+        <div class="create-form-fields">
       <p v-if="props.requirement && !props.requirement.system_id" role="alert">当前需求未指定业务系统，请先关闭窗口并编辑需求补齐。</p>
       <p v-if="props.requirement" class="requirement-context">创建后将当前需求加入新版本，之后可在版本详情查看进度并发布。</p>
-      <el-form label-position="top" :disabled="saving || props.requirementRefreshing" @submit.prevent="submit">
+
         <div class="editor-grid">
         <el-form-item label="业务系统" required><BusinessSystemSelect v-model="form.system_id" :disabled="!!props.requirement" :current-name="props.requirement?.system_name" :clearable="false" /></el-form-item>
         <el-form-item label="版本号" required :error="versionNoError">
@@ -126,6 +128,7 @@ async function submit(): Promise<void> {
         </div>
         <p v-if="submitError" class="submit-error" role="alert">{{ submitError }}</p>
         <el-button v-if="requirementConflict" :loading="props.requirementRefreshing" :disabled="saving" @click="emit('refreshRequirement')">刷新需求</el-button>
+        </div>
         <div class="editor-actions">
           <el-button :disabled="saving" @click="cancel">取消</el-button>
           <el-button type="primary" native-type="submit" :loading="saving" :disabled="!allowed || props.requirementRefreshing">{{ props.requirement ? '创建并关联' : '创建' }}</el-button>

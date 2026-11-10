@@ -103,6 +103,7 @@ onMounted(async () => {
     <PageHeader v-if="!props.embedded" title="提交反馈" description="说明你遇到的问题或希望改进的体验，便于团队跟进。" eyebrow="反馈中心 / 新建" />
     <SectionCard :title="props.embedded ? undefined : '反馈内容'" :description="props.embedded ? undefined : '描述遇到的问题，再选择归属和接收人。'" class="form-card">
       <el-form label-position="top" @submit.prevent="submit">
+        <div class="create-form-fields">
         <el-form-item label="标题" required class="span-2">
           <el-input v-model="form.title" maxlength="200" show-word-limit />
         </el-form-item>
@@ -159,6 +160,7 @@ onMounted(async () => {
             </template>
           </el-upload>
         </el-form-item>
+        </div>
         <div class="actions form-actions">
           <el-button @click="cancel">取消</el-button>
           <el-button type="primary" native-type="submit" :loading="saving">提交</el-button>

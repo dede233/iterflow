@@ -70,6 +70,7 @@ async function submit(): Promise<void> {
     <PageHeader v-if="!props.embedded" title="新建需求" description="定义要解决的问题及完成标准。" eyebrow="需求管理 / 新建" />
     <SectionCard :title="props.embedded ? undefined : '需求信息'" :description="props.embedded ? undefined : '需求也可以从反馈转化创建。'" class="editor-card">
       <el-form label-position="top" @submit.prevent="submit">
+        <div class="create-form-fields">
         <div class="editor-grid">
         <el-form-item label="标题" required class="span-2">
           <el-input v-model="form.title" maxlength="200" show-word-limit />
@@ -96,6 +97,7 @@ async function submit(): Promise<void> {
         <details class="span-2 optional-people"><summary>后续人员安排 <span>可在待开发阶段设置</span></summary><div class="editor-grid">
           <el-form-item v-for="role in deliveryRoles" :key="role" :label="roleLabels[role]"><PeopleSelector v-model="roles[role]" kind="requirement" multiple /></el-form-item>
         </div></details>
+        </div>
         </div>
         <div class="editor-actions">
           <el-button @click="cancel">取消</el-button>

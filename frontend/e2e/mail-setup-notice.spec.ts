@@ -41,10 +41,12 @@ test('notice fits five viewports, saves acknowledgement and stays hidden after r
     await page.reload()
     const dialog = page.getByRole('dialog', { name: '邮件通知已上线' })
     await expect(dialog).toBeVisible()
-    await dialog.evaluate(async el => {
-      const overlay = el.closest('.el-overlay')!
-      await Promise.all(overlay.getAnimations({ subtree: true }).map(animation => animation.finished))
-    })
+    // Resizing/reloading can cancel a CSS transition. Poll the current animations
+    // instead of awaiting a canceled Animation.finished promise, then measure layout.
+    await expect.poll(() => dialog.evaluate(el =>
+      el.closest('.el-overlay')!.getAnimations({ subtree: true })
+        .every(animation => animation.playState !== 'running' && !animation.pending),
+    )).toBe(true)
     const bounds = await dialog.boundingBox()
     expect(bounds!.x).toBeGreaterThanOrEqual(0)
     expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width)

@@ -53,3 +53,9 @@
 49 项现有浏览器回归（创建弹窗 21、富文本 16、详情抽屉 12）及 build（含类型检查）、diff 检查通过。真实本地新建需求输入长文本但未提交，1440/768/375px 视口实际弹窗宽度分别 1040/720/343px，无页面 JS 异常。测量脚本初版读取 role=dialog 的全屏 overlay，错误报告宽度为视口宽；改为读取内部 `.el-dialog` 后通过，保留失败日志，不涉及产品修改。
 
 证据：`/Users/xiaweiyi/Developer/deliverables/iterflow/2026-11-10/requirement-dialog-width`。仅本地修改和正常登录/取消表单，未操作 TEST/正式，无推送合并。
+
+## 后续：人员下拉框空底栏
+
+用户确认优化人员下拉框底部的无内容留白。`PeopleSelector` 仅在失败、还有下一页或空结果提示时提供 footer 插槽，正常加载完成后移除整个底栏及分隔线。`ListEntityFilterSelect` 同样仅在分页/失败时提供 footer，覆盖版本、参与人和负责人筛选的同类留白。保持搜索、选中值、分页、重试及权限规则不变。
+
+6 项相关现有浏览器回归、build（含类型检查）和 diff 检查 PASS。补充浏览器使用合成人员 GET 响应验证：全部加载后无底栏、加载更多后隐藏底栏、失败可重试、空结果提示保留，4 种状态通过；已目视复查截图。仅本机正常登录/打开/取消表单，无业务提交，未访问 TEST/正式，无部署推送合并。证据在 `/Users/xiaweiyi/Developer/deliverables/iterflow/2026-11-10/selector-footer`。

@@ -37,7 +37,7 @@ function available() {
 <template>
   <el-select :model-value="multiple ? modelValue : modelValue[0]" :multiple="multiple" filterable remote clearable :remote-method="search" :loading="loading" placeholder="搜索人员" style="width:100%" @visible-change="$event && search()" @update:model-value="emit('update:modelValue', multiple ? $event : ($event ? [$event] : []))">
     <el-option v-for="person in available()" :key="person.id" :label="person.display_name" :value="person.id" />
-    <template #footer>
+    <template v-if="failed || options.length < total || (!options.length && !loading)" #footer>
       <span v-if="failed">人员加载失败 <el-button link @click="search(keyword)">重试</el-button></span>
       <el-button v-else-if="options.length < total" link :disabled="loading" @click="search(keyword, true)">加载更多</el-button>
       <span v-else-if="!options.length && !loading">暂无符合权限范围的人员</span>

@@ -4,12 +4,14 @@ import PageHeader from '@/components/ui/PageHeader.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import StatusTag from '@/components/StatusTag.vue'
 import { FEEDBACK_STATUSES } from '@/constants/feedback'
-import { REQUIREMENT_STATUSES } from '@/constants/requirement'
+import { REQUIREMENT_STATUSES, requirementStatusLabel } from '@/constants/requirement'
 import { VERSION_STATUSES, versionStatusLabel } from '@/constants/version'
 import { auditActionLabel, auditEntityLabel } from '@/utils/auditLabels'
-import type { DashboardActivityEntityType, DashboardOverview } from '@/types/dashboard'
+import type { PersonalRequirementGroup } from '@/composables/usePersonalRequirements'
+import type { DashboardActivityItem, DashboardActivityEntityType, DashboardOverview } from '@/types/dashboard'
 
-const props = defineProps<{ overview: DashboardOverview; viewerId?: number }>()
+const props = defineProps<{ overview: DashboardOverview; viewerId?: number; workGroups?: PersonalRequirementGroup[] }>()
+defineEmits<{ 'retry-work': [key: string] }>()
 const expandedActivity = ref(false)
 const visibleActivities = computed(() => expandedActivity.value ? props.overview.activities : props.overview.activities.slice(0, 5))
 
@@ -65,6 +67,25 @@ const metricCards = computed(() => {
   return cards
 })
 
+function activityTitle(activity: DashboardActivityItem): string {
+  if (activity.entity_type === 'VERSION') {
+    const version = props.overview.versions?.recent_active_versions.find(item => item.id === activity.entity_id)
+    if (version) return `${version.version_no} · ${version.name}`
+    const release = props.overview.releases?.recent_releases.find(item => item.version_id === activity.entity_id)
+    if (release) return `${release.version_no} · ${release.version_name}`
+  }
+  if (activity.entity_type === 'RELEASE') {
+    const release = props.overview.releases?.recent_releases.find(item => item.id === activity.entity_id)
+    if (release) return `${release.version_no} · ${release.version_name}`
+  }
+  if (activity.entity_type === 'REQUIREMENT') {
+    const requirement = props.workGroups?.flatMap(group => group.items).find(item => item.id === activity.entity_id)
+    if (requirement) return `${requirement.requirement_no} · ${requirement.title}`
+  }
+  // The overview does not include every entity title. Do not fetch unrelated records or infer a business number.
+  return `${auditEntityLabel(activity.entity_type)} #${activity.entity_id}`
+}
+
 function formatDate(value: string | null): string {
   if (!value) return '未排期'
   return new Intl.DateTimeFormat('zh-CN', { dateStyle: 'medium' }).format(new Date(value))
@@ -80,11 +101,30 @@ function formatDateTime(value: string): string {
 
 <template>
   <div>
-    <PageHeader title="首页 / 系统概览" description="当前可访问范围内的反馈、需求、版本与发布情况。" eyebrow="工作台">
+    <PageHeader title="我的工作台" description="先处理需要你参与的事项，再查看团队进展。" eyebrow="工作台">
       <template #actions><span class="scope-chip">{{ scopeLabel }}</span></template>
     </PageHeader>
 
-    <nav v-if="overview.requirements && viewerId" class="work-shortcuts" aria-label="我的协作入口">
+    <section v-if="overview.requirements && viewerId && workGroups" class="work-queue" aria-label="我的待办">
+      <div class="work-heading"><h2>需要我处理</h2><span>按本人参与角色筛选，每类显示最多 3 项</span></div>
+      <div class="work-columns">
+        <section v-for="group in workGroups" :key="group.key" class="work-column" :aria-label="group.title">
+          <header><h3>{{ group.title }}</h3><span v-if="!group.loading && !group.failed" class="work-count">{{ group.total }}</span></header>
+          <p v-if="group.loading" class="work-message" role="status">正在加载待办…</p>
+          <div v-else-if="group.failed" class="work-message" role="alert">待办加载失败。<button class="text-action" @click="$emit('retry-work', group.key)">重新加载</button></div>
+          <p v-else-if="!group.items.length" class="work-message">暂无需要你处理的事项</p>
+          <div v-else class="work-items">
+            <router-link v-for="item in group.items" :key="item.id" :to="`/requirements/${item.id}`" class="work-item">
+              <strong>{{ item.title }}</strong>
+              <span class="work-meta"><span class="mono">{{ item.requirement_no }}</span><span>{{ requirementStatusLabel[item.status] }}</span></span>
+              <span class="work-updated">更新于 {{ formatDateTime(item.updated_at) }}</span>
+            </router-link>
+          </div>
+          <router-link class="work-all" :to="`/requirements?status=${group.status}&participant_id=${viewerId}&participant_role=${group.role}`">{{ group.linkLabel }} <span aria-hidden="true">→</span></router-link>
+        </section>
+      </div>
+    </section>
+    <nav v-else-if="overview.requirements && viewerId" class="work-shortcuts" aria-label="我的协作入口">
       <router-link :to="`/requirements?status=DRAFT&participant_id=${viewerId}&participant_role=CONFIRM`"><span>内容确认</span><strong>查看待我确认的需求 <span aria-hidden="true">→</span></strong></router-link>
       <router-link :to="`/requirements?status=CONFIRMED&participant_id=${viewerId}&participant_role=DEVELOP`"><span>开发准备</span><strong>查看待我开发的需求 <span aria-hidden="true">→</span></strong></router-link>
       <router-link :to="`/requirements?status=TESTING&participant_id=${viewerId}&participant_role=ACCEPT`"><span>交付验收</span><strong>查看待我验收的需求 <span aria-hidden="true">→</span></strong></router-link>
@@ -217,7 +257,7 @@ function formatDateTime(value: string): string {
           class="recent-row activity-row"
         >
           <div class="activity-description">
-            <span class="recent-title">{{ auditEntityLabel(activity.entity_type) }} #{{ activity.entity_id }}</span>
+            <span class="recent-title">{{ activityTitle(activity) }}</span>
             <span class="activity-action">{{ auditActionLabel(activity.action) }}</span>
           </div>
           <time class="recent-meta" :datetime="activity.created_at">{{ formatDateTime(activity.created_at) }}</time>
@@ -229,6 +269,25 @@ function formatDateTime(value: string): string {
 </template>
 
 <style scoped>
+.work-queue { margin-bottom: 24px; }
+.work-heading { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px 16px; margin-bottom: 12px; }
+.work-heading h2 { margin: 0; font-size: 16px; }
+.work-heading > span { color: var(--if-text-secondary); font-size: 13px; }
+.work-columns { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.work-column { min-width: 0; border: 1px solid var(--if-border); border-radius: var(--if-radius-md); background: var(--if-bg-surface); overflow: hidden; }
+.work-column header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--if-border); }
+.work-column h3 { margin: 0; font-size: 14px; font-weight: 650; }
+.work-count { padding: 2px 8px; border-radius: 5px; color: var(--if-brand-700); background: var(--if-brand-50); font-size: 13px; font-variant-numeric: tabular-nums; }
+.work-message { padding: 20px 16px; margin: 0; color: var(--if-text-secondary); font-size: 13px; line-height: 1.6; }
+.work-item { display: grid; gap: 5px; padding: 14px 16px; border-bottom: 1px solid var(--if-border); color: var(--if-text-primary); text-decoration: none; }
+.work-item:hover, .work-item:focus-visible { background: var(--if-bg-subtle); }
+.work-item strong { font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+.work-meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 8px; color: var(--if-text-secondary); font-size: 12px; }
+.work-updated { color: var(--if-text-secondary); font-size: 12px; }
+.work-all { display: flex; justify-content: space-between; align-items: center; min-height: 44px; padding: 10px 16px; color: var(--if-brand-600); font-size: 13px; }
+.text-action { min-height: 32px; padding: 4px 0; border: 0; background: transparent; color: var(--if-brand-600); font: inherit; cursor: pointer; }
+@media (max-width: 767px) { .work-columns { grid-template-columns: 1fr; gap: 12px; } .text-action { min-height: 44px; } }
+
 .work-shortcuts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 0 0 24px; }
 .work-shortcuts a { display: grid; gap: 8px; padding: 18px; border: 1px solid var(--if-brand-100); border-radius: 8px; background: var(--if-brand-50); }
 .work-shortcuts a > span { font-size: 12px; color: var(--if-text-tertiary); }
@@ -242,7 +301,8 @@ function formatDateTime(value: string): string {
 .scope-chip { display: inline-flex; align-items: center; min-height: 30px; padding: 0 12px; border: 1px solid var(--if-brand-100); border-radius: 999px; background: var(--if-brand-50); color: var(--if-brand-700); font-size: 12px; font-weight: 700; }
 .metric-grid, .section-grid { row-gap: var(--if-space-4); }
 .metric-grid { margin-bottom: var(--if-space-6); }
-.metric-card, .section-card { height: 100%; }
+.metric-card { height: 100%; }
+.section-grid { align-items: flex-start; }
 .metric-card { position: relative; overflow: hidden; min-height: 126px; background: var(--if-bg-surface); }
 .metric-card::before { position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--if-brand-500); content: ''; }
 .metric-card--feedback::before { background: #eaa344; }

@@ -2,6 +2,7 @@
 import ReleaseTargetManager from "@/components/ReleaseTargetManager.vue"
 import { computed, onMounted, reactive, ref } from 'vue'
 import { isAxiosError } from 'axios'
+import { onBeforeRouteLeave } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
   createSystem,
@@ -20,6 +21,11 @@ type Editor = { item: BusinessSystemItem | null }
 
 const { isMobile } = useResponsive()
 const targetSystem = ref<BusinessSystemItem | null>(null)
+const targetManager = ref<InstanceType<typeof ReleaseTargetManager>>()
+async function closeTargetManager(done: () => void): Promise<void> {
+  if (await targetManager.value?.requestClose() ?? true) done()
+}
+onBeforeRouteLeave(() => targetManager.value?.requestClose() ?? true)
 const systems = ref<BusinessSystemItem[]>([])
 const loading = ref(false)
 const failed = ref(false)
@@ -128,7 +134,7 @@ onMounted(load)
       </SectionCard>
     </template>
 
-    <el-dialog :model-value="!!targetSystem" title="管理发布目标" width="min(720px, calc(100vw - 24px))" append-to-body destroy-on-close @close="targetSystem = null"><ReleaseTargetManager v-if="targetSystem" :system-id="targetSystem.id" :system-name="targetSystem.name" /></el-dialog>
+    <el-dialog :model-value="!!targetSystem" title="管理发布目标" width="min(720px, calc(100vw - 24px))" append-to-body destroy-on-close :before-close="closeTargetManager" @close="targetSystem = null"><ReleaseTargetManager ref="targetManager" v-if="targetSystem" :system-id="targetSystem.id" :system-name="targetSystem.name" /></el-dialog>
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="min(560px, 92vw)" append-to-body destroy-on-close>
       <el-form label-position="top" @submit.prevent="save">
         <el-row :gutter="16">

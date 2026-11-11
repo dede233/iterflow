@@ -79,11 +79,11 @@ for (const width of [1280, 390]) {
           expect(requests.some(path => path.startsWith('/api/v1/releases?') && path.includes(`version_id=${id}`))).toBe(true)
         }
         if (id === 7) {
-          await drawer.getByRole(entry.path === '/versions' ? 'button' : 'link', { name: entry.path === '/versions' ? '关闭详情' : '返回列表', exact: true }).click()
+          await drawer.getByRole('button', { name: '关闭此对话框', exact: true }).click()
           await expect(drawer).not.toBeVisible()
           await expect(page).toHaveURL(new RegExp(`#${entry.path}\\?page=2&keyword=context$`))
         } else {
-          await drawer.getByRole('button', { name: '新标签/全屏直达', exact: true }).click()
+          await drawer.getByRole('button', { name: '打开完整页面', exact: true }).click()
           await expect(page).toHaveURL(new RegExp(`#${entry.path}/8\\?`))
           await expect(page.getByRole('heading', { name: `${entry.label}详情 8`, exact: true })).toBeVisible()
           await page.getByRole('link', { name: '返回列表', exact: true }).click()

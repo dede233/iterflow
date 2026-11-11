@@ -61,6 +61,7 @@ for (const width of [375, 390, 768, 1280, 1440]) {
         await selectStatus(page, form, '待开发')
       } else if (config.path === 'versions') {
         await selectStatus(page, form, '已发布')
+        if (width >= 768) await form.getByRole('button', { name: /^更多筛选/ }).click()
         await form.getByPlaceholder('开始日期').click()
         const popper = page.locator('.version-filter-date-popper:visible')
         await expect(popper).toHaveCount(1)
@@ -104,7 +105,7 @@ for (const width of [375, 390, 768, 1280, 1440]) {
         await expect(page).toHaveURL(/\/#\/releases\?version_id=42$/)
         await expect(page.getByText('版本 #42', { exact: true })).toBeVisible()
         await expect(page.getByRole('heading', { name: '发布记录详情', exact: true })).toBeVisible()
-        await page.getByRole('dialog', { name: '发布记录详情', exact: true }).getByRole('button', { name: '新标签/全屏直达', exact: true }).click()
+        await page.getByRole('dialog', { name: '发布记录详情', exact: true }).getByRole('button', { name: '打开完整页面', exact: true }).click()
         await expect(page).toHaveURL(/\/#\/releases\/77\?return_to=%2Freleases%3Fversion_id%3D42$/)
       }
       expect(state.unexpected).toEqual([])

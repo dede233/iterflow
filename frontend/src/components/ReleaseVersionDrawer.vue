@@ -15,6 +15,7 @@ const router = useRouter()
 const { isMobile } = useResponsive()
 const { can } = usePermission()
 const history = ref<Entry[]>([])
+const detailRef = ref<{ requestClose?: () => Promise<boolean> }>()
 const current = computed(() => history.value.at(-1))
 const title = computed(() => current.value?.kind === 'version' ? '版本详情' : '发布记录详情')
 const open = computed({ get: () => props.modelValue, set: value => emit('update:modelValue', value) })
@@ -25,16 +26,20 @@ watch(() => [props.modelValue, props.kind, props.id] as const, ([opened, kind, i
   history.value = opened && id != null ? [{ kind, id }] : []
 }, { immediate: true })
 
-function navigate(kind: Entry['kind'], id: number): void {
+async function canLeave(): Promise<boolean> { return await detailRef.value?.requestClose?.() ?? true }
+async function beforeClose(done: () => void): Promise<void> { if (await canLeave()) done() }
+async function close(): Promise<void> { if (await canLeave()) open.value = false }
+async function back(): Promise<void> { if (await canLeave()) history.value.pop() }
+async function navigate(kind: Entry['kind'], id: number): Promise<void> {
   const entry = { kind, id }
-  if (!allowed(entry)) return
+  if (!allowed(entry) || !await canLeave()) return
   const existing = history.value.findIndex(item => item.kind === kind && item.id === id)
   if (existing >= 0) history.value = history.value.slice(0, existing + 1)
   else history.value.push(entry)
 }
 
 async function expand(): Promise<void> {
-  if (!current.value || !visible.value) return
+  if (!current.value || !visible.value || !await canLeave()) return
   const { kind, id } = current.value
   await router.push(detailTarget(`/${kind === 'version' ? 'versions' : 'releases'}/${id}`, props.returnTo))
   open.value = false
@@ -42,24 +47,25 @@ async function expand(): Promise<void> {
 </script>
 
 <template>
-  <el-drawer v-model="open" :title="title" direction="rtl" :size="isMobile ? '100%' : 'min(960px, 94vw)'" destroy-on-close class="detail-drawer">
+  <el-drawer v-model="open" :title="title" direction="rtl" :size="isMobile ? '100%' : 'min(960px, 94vw)'" destroy-on-close :before-close="beforeClose" class="detail-drawer">
     <template #header>
       <div class="detail-header">
         <span class="detail-title">{{ title }}</span>
         <div class="detail-actions">
-          <el-button v-if="history.length > 1" size="small" @click="history.pop()">返回上个详情</el-button>
-          <el-button v-if="visible" size="small" @click="expand">新标签/全屏直达</el-button>
+          <el-button v-if="history.length > 1" size="small" @click="back">返回上个详情</el-button>
+          <el-button v-if="visible" size="small" @click="expand">打开完整页面</el-button>
         </div>
       </div>
     </template>
     <component
       :is="current?.kind === 'version' ? VersionDetail : ReleaseDetail"
+      ref="detailRef"
       v-if="open && current && visible"
       :key="`${current.kind}:${current.id}`"
       embedded
       :embedded-id="current.id"
       :return-to="returnTo"
-      @close="open = false"
+      @close="close"
       @updated="emit('updated')"
       @open-version="(id: number) => navigate('version', id)"
       @open-release="(id: number) => navigate('release', id)"

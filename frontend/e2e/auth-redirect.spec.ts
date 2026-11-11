@@ -61,6 +61,6 @@ test('login rejects an external query destination', async ({ page }) => {
   await fixture(page, false)
   await page.goto('/#/login?redirect=https%3A%2F%2Fevil.example')
   await login(page)
-  await expect(page.getByRole('heading', { name: '首页 / 系统概览', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '我的工作台', exact: true })).toBeVisible()
   expect(new URL(page.url()).hash).toBe('#/')
 })

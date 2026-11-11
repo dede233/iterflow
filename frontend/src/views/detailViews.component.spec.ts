@@ -29,11 +29,20 @@ const mocks = vi.hoisted(() => ({
   createRequirement: vi.fn(),
   createMessage: vi.fn(),
   warningMessage: vi.fn(),
+  confirmDiscard: vi.fn(),
+  coverageClose: vi.fn(),
+  routeLeave: vi.fn(),
+  routeUpdate: vi.fn(),
 }))
 
 vi.mock('@/components/PublishedTargetSelect.vue', () => ({ default: { template: '<div />' } }))
-vi.mock('@/components/VersionReleaseBatches.vue', () => ({ default: { template: '<div />' } }))
+vi.mock('@/components/VersionReleaseBatches.vue', () => ({ default: {
+  setup(_props: unknown, { expose }: { expose: (api: object) => void }) { expose({ requestClose: mocks.coverageClose }) },
+  template: '<div />',
+} }))
 vi.mock('vue-router', () => ({
+  onBeforeRouteLeave: mocks.routeLeave,
+  onBeforeRouteUpdate: mocks.routeUpdate,
   useRoute: () => ({ params: { id: '7' } }),
   useRouter: () => ({ push: mocks.routerPush, replace: vi.fn(), back: vi.fn() }),
 }))
@@ -41,7 +50,7 @@ vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ hasPermission: mocks.ca
 vi.mock('@/composables/usePermission', () => ({ usePermission: () => ({ can: mocks.can }) }))
 vi.mock('element-plus', () => ({
   ElMessage: { success: mocks.createMessage, warning: mocks.warningMessage },
-  ElMessageBox: { confirm: vi.fn() },
+  ElMessageBox: { confirm: mocks.confirmDiscard },
 }))
 vi.mock('@/api/versions', () => ({
   addVersionRequirement: vi.fn(),
@@ -55,6 +64,13 @@ vi.mock('@/api/versions', () => ({
   updateVersion: mocks.updateVersion,
 }))
 vi.mock('@/api/entityActivities', () => ({ listEntityActivities: vi.fn().mockResolvedValue([]) }))
+vi.mock('@/api/collaboration', () => ({
+  getWorkflow: vi.fn().mockResolvedValue({ revision: 1, content_revision: 1, confirmed_revision: 1, needs_confirmation: false, legacy_completed: false, design_status: 'NOT_REQUIRED', paused_from: null, records: [] }),
+  getParticipants: vi.fn().mockResolvedValue({ revision: 1, participants: [] }),
+  getFeedbackCollaboration: vi.fn().mockResolvedValue({ revision: 1, recipients: [], handler_id: null, accepted_by: null, accepted_at: null }),
+  listPeople: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, page_size: 20 }),
+  actWorkflow: vi.fn(), setParticipants: vi.fn(), setRecipients: vi.fn(), transferFeedback: vi.fn(),
+}))
 vi.mock('@/api/releases', () => ({ listReleases: mocks.listReleases }))
 vi.mock('@/api/systems', () => ({ listSystems: mocks.listSystems }))
 vi.mock('@/api/requirements', () => ({
@@ -144,6 +160,7 @@ const feedback: Feedback = {
 
 const elementStub = { template: '<div><slot /><slot name="footer" /></div>' }
 const stubs = {
+  RouterLink: { props: ['to'], template: '<a><slot /></a>' },
   BusinessSystemSelect: true,
   RequirementCollaboratorsPanel: true,
   'el-alert': { template: '<div class="alert"><slot name="title" /><slot /></div>' },
@@ -167,6 +184,7 @@ const stubs = {
   'el-descriptions': elementStub,
   'el-descriptions-item': elementStub,
   'el-drawer': elementStub,
+  'el-divider': elementStub,
   'el-empty': {
     props: { description: String },
     template: '<div class="empty">{{ description }}</div>',
@@ -225,9 +243,43 @@ beforeEach(() => {
   mocks.listFeedbackAttachments.mockResolvedValue([])
   mocks.listFeedbackComments.mockResolvedValue([])
   mocks.convertFeedback.mockResolvedValue(requirement)
+  mocks.confirmDiscard.mockReset().mockResolvedValue('confirm')
+  mocks.coverageClose.mockReset().mockResolvedValue(true)
 })
 
 describe('detail views enforce permission-aware loading in mounted components', () => {
+  it('delegates version host and route closure to the supplement guard', async () => {
+    const wrapper = mount(VersionDetailView, { props: { embedded: true, embeddedId: 7 }, global: { stubs, directives: { loading: {} } } })
+    await flushPromises()
+    mocks.coverageClose.mockResolvedValue(false)
+    expect(await wrapper.vm.requestClose()).toBe(false)
+    expect(await mocks.routeLeave.mock.calls.at(-1)![0]()).toBe(false)
+    expect(await mocks.routeUpdate.mock.calls.at(-1)![0]()).toBe(false)
+    mocks.coverageClose.mockResolvedValue(true)
+    expect(await wrapper.vm.requestClose()).toBe(true)
+    wrapper.unmount()
+  })
+  it('retains unsaved requirement edits on close cancellation and ends presence only after explicit discard', async () => {
+    permissionSet('rd.requirement.edit')
+    const wrapper = mount(RequirementDetailView, { props: { embedded: true, embeddedId: 9 }, global: { stubs, directives: { loading: {} } } })
+    await flushPromises()
+    expect(wrapper.text()).not.toContain('返回列表')
+    await wrapper.findAll('button').find(button => button.text() === '编辑')!.trigger('click')
+    await flushPromises()
+    const input = wrapper.findAllComponents({ name: 'ElInput' }).find(entry => entry.props('modelValue') === '需求标题')!
+    input.vm.$emit('update:modelValue', '未保存的标题')
+    await flushPromises()
+    mocks.confirmDiscard.mockRejectedValueOnce('cancel')
+    const view = wrapper.vm as unknown as { requestClose: () => Promise<boolean> }
+    expect(await view.requestClose()).toBe(false)
+    expect(input.props('modelValue')).toBe('未保存的标题')
+    expect(mocks.endEditing).not.toHaveBeenCalled()
+    expect(mocks.updateRequirement).not.toHaveBeenCalled()
+    expect(await view.requestClose()).toBe(true)
+    await flushPromises()
+    expect(mocks.endEditing).toHaveBeenCalledOnce()
+    wrapper.unmount()
+  })
   it('preserves historical feedback results without including them in ordinary edits', async () => {
     permissionSet('rd.feedback.view', 'rd.feedback.edit')
     mocks.getFeedback.mockResolvedValue({ ...feedback, expected_result: '原期望内容', actual_result: '原实际内容', system_id: 1, module_id: 2 })

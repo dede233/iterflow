@@ -12,7 +12,7 @@ defineEmits<{ search: []; reset: [] }>()
     <slot />
     <el-form-item v-if="$slots.advanced"><el-button :aria-expanded="advanced" @click="advanced = !advanced">{{ advanced ? '收起筛选' : '更多筛选' }}{{ advancedCount ? ` (${advancedCount})` : '' }}</el-button></el-form-item>
     <div v-if="$slots.advanced" v-show="advanced" class="advanced-filters"><slot name="advanced" /></div>
-    <el-form-item><el-button type="primary" @click="$emit('search')">查询</el-button><el-button @click="$emit('reset')">重置</el-button></el-form-item>
+    <el-form-item><el-button @click="$emit('search')">查询</el-button><el-button @click="$emit('reset')">重置</el-button></el-form-item>
   </el-form>
   <el-drawer v-else v-model="open" :title="title" direction="rtl" size="min(420px, 100%)" destroy-on-close>
     <el-form class="mobile-list-filters" label-position="top" @submit.prevent><slot /><slot name="advanced" /></el-form>

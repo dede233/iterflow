@@ -182,3 +182,33 @@ it('folds the activity display without losing older records', async () => {
   expect(overview.activities).toHaveLength(7)
   wrapper.unmount()
 })
+
+it('renders bounded personal items with separate loading, failure, and count states', async () => {
+  const { PERSONAL_REQUIREMENT_GROUPS } = await import('@/composables/usePersonalRequirements')
+  const data = completeOverview()
+  const groups = PERSONAL_REQUIREMENT_GROUPS.map(group => ({ ...group, items: [], total: 0, loading: false, failed: false }))
+  const item = { id: 901, title: '核对发票', requirement_no: 'REQ-20261111-0901', status: 'DRAFT', updated_at: '2026-11-11T10:00:00Z' }
+  const wrapper = mount(DashboardOverviewContent, { props: { overview: data, viewerId: 43, workGroups: [{ ...groups[0]!, items: [item] as never[], total: 6 }, { ...groups[1]!, loading: true }, { ...groups[2]!, failed: true }] }, global: { stubs: { 'el-row': PassThrough, 'el-col': PassThrough, 'el-card': PassThrough, 'el-empty': true, RouterLink: RouterLinkStub } } })
+  expect(wrapper.get('[aria-label="我的待办"]').text()).toContain('核对发票')
+  expect(wrapper.findAll('.work-count').map(node => node.text())).toEqual(['6'])
+  expect(wrapper.get('.work-item').attributes('href')).toBe('/requirements/901')
+  expect(wrapper.get('[role="status"]').text()).toContain('正在加载待办')
+  expect(wrapper.get('[role="alert"]').text()).toContain('待办加载失败')
+  await wrapper.get('.text-action').trigger('click')
+  expect(wrapper.emitted('retry-work')).toEqual([['accept']])
+  await wrapper.setProps({ overview: { ...data, requirements: null } })
+  expect(wrapper.find('[aria-label="我的待办"]').exists()).toBe(false)
+  wrapper.unmount()
+})
+
+it('uses already authorized overview titles in activity links while unknown objects keep a clear fallback', async () => {
+  const data = completeOverview()
+  data.activities = [
+    { entity_type: 'VERSION', entity_id: 12, action: 'UPDATE', created_at: '2026-11-11T10:00:00Z' },
+    { entity_type: 'RELEASE', entity_id: 21, action: 'RELEASE_CREATE', created_at: '2026-11-11T10:00:00Z' },
+    { entity_type: 'REQUIREMENT', entity_id: 99, action: 'CREATE', created_at: '2026-11-11T10:00:00Z' },
+  ]
+  const wrapper = mount(DashboardOverviewContent, { props: { overview: data }, global: { stubs: { 'el-row': PassThrough, 'el-col': PassThrough, 'el-card': PassThrough, 'el-empty': true, RouterLink: RouterLinkStub } } })
+  expect(wrapper.findAll('.activity-description .recent-title').map(node => node.text())).toEqual(['V2.1.0 · 协作增强', 'V2.0.0 · 权限基线', '需求 #99'])
+  wrapper.unmount()
+})

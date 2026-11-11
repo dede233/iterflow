@@ -1,5 +1,7 @@
 # DEVELOPMENT.md
 
+2026-11-12 本地 UI 阅读与工作台优化完成：版本清单/品牌覆盖矩阵、需求容器布局与全屏编辑/未保存保护、反馈和版本筛选、本人待办及手机细节。76文件552单测、类型/构建/契约/预算通过；1440px/375px纯内存合成浏览器验收通过。完整140项E2E仅解析未运行，真实本机账号登录未通过且未重置。未部署、推送、合并或操作TEST/正式数据库；证据及失败修正见 `docs/ui-workspace-refinement-2026-11-11.md`。
+
 2026-11-10 用户授权小程序品牌管理正式上线：重新核对master无漂移、no-ff合并同步双远端并完成master自身八项CI，再备份/真实数据隔离演练及短暂维护应用切换。冻结候选d6cfb81（与已验收TEST af3445d产品tree一致），保持mysql57_0016，无迁移/seed/GRANT或真实回库。保留TEST及全部数据、附件、账号会话、公告审计、逐服务SMTP/JWT与恢复配置；正式只读验收，不新增九品牌或自动发布公告，不创建tag/Release。此授权替代上一阶段仅准备限制。执行与最终结果入口见 `docs/grouped-mini-program-production-deployment-2026-11-10.md`。
 
 2026-11-10 用户确认小程序按品牌统一管理TEST验收通过，授权本批上线准备：推送codex/grouped-mini-program-targets候选运行同SHA八项CI、修复门禁并直接核对GitHub/Gitee master无漂移，更新升级/兼容/回退清单。仅准备，不合并master、不创建tag/Release、不切换任何环境或连接真实数据库。正式既有验证0ef3e0d/mysql57_0016，TEST af3445d/mysql57_0016；本轮不新增迁移/权限，不继续九品牌正式录入。最终结果及候选见 `docs/grouped-mini-program-production-preparation-2026-11-10.md` 指定交付目录。

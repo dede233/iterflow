@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import BusinessSystemSelect from '@/components/BusinessSystemSelect.vue'
-import { onBeforeUnmount, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { listVersions } from '@/api/versions'
 import VersionCreateView from './VersionCreateView.vue'
 import ReleaseVersionDrawer from '@/components/ReleaseVersionDrawer.vue'
 import { listTarget } from '@/utils/listQuery'
+import { versionFilterChips } from '@/utils/appliedListFilters'
 import { useListQuery } from '@/composables/useListQuery'
 import { useResponsive } from '@/composables/useResponsive'
 import { usePermission } from '@/composables/usePermission'
@@ -23,6 +24,7 @@ import { VERSION_STATUSES, versionStatusLabel, versionStatusTagType } from '@/co
 import type { VersionItem, VersionListParams } from '@/types/domain'
 
 const router = useRouter()
+const route = useRoute()
 const { isMobile } = useResponsive()
 const { can } = usePermission()
 
@@ -36,6 +38,13 @@ const detailDrawer = ref(false)
 const activeVersionId = ref<number | null>(null)
 const filters = reactive({ system_id: null as number | null, page: 1, page_size: 20, keyword: '', status: '' as VersionListParams['status'], owner_id: null as number | null })
 const dateRange = ref<[string, string] | null>(null)
+const activeFilters = computed(() => versionFilterChips(route.query))
+const advancedCount = computed(() => activeFilters.value.filter(f => ['owner_id', 'planned_release'].includes(f.key)).length)
+function removeFilter(key: string) {
+  const query: typeof route.query = { ...route.query, page: '1' }
+  for (const field of key === 'planned_release' ? ['planned_release_from', 'planned_release_to'] : [key]) delete query[field]
+  void router.push({ path: '/versions', query })
+}
 let requestSequence = 0
 const positiveId = (value: number | null) => value != null && Number.isSafeInteger(value) && value >= 1 ? value : undefined
 
@@ -124,13 +133,16 @@ const queryState = useListQuery({
       </template>
     </PageHeader>
 
-    <ListFilterPanel v-model="filterDrawer" :mobile="isMobile" title="筛选版本" @search="applyFilters" @reset="resetFilters">
+    <ListFilterPanel v-model="filterDrawer" :mobile="isMobile" title="筛选版本" :advanced-count="advancedCount" @search="applyFilters" @reset="resetFilters">
       <el-form-item label="业务系统"><BusinessSystemSelect v-model="filters.system_id" /></el-form-item>
       <el-form-item label="关键词"><el-input v-model="filters.keyword" placeholder="版本号 / 名称" :maxlength="200" clearable @keyup.enter="applyFilters" /></el-form-item>
       <el-form-item label="状态"><el-select v-model="filters.status" clearable placeholder="全部"><el-option v-for="s in VERSION_STATUSES" :key="s.value" :label="s.label" :value="s.value" /></el-select></el-form-item>
+      <template #advanced>
       <el-form-item label="计划上线日期"><el-date-picker v-model="dateRange" type="daterange" value-format="YYYY-MM-DD" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" popper-class="version-filter-date-popper" /></el-form-item>
       <el-form-item label="负责人"><ListEntityFilterSelect v-model="filters.owner_id" kind="owner" label="负责人" /></el-form-item>
+      </template>
     </ListFilterPanel>
+    <div v-if="activeFilters.length" class="active-filters" aria-label="已应用筛选"><span>当前筛选</span><el-tag v-for="filter in activeFilters" :key="filter.key" closable @close="removeFilter(filter.key)">{{ filter.label }}</el-tag></div>
 
     <ErrorState v-if="failed" title="版本加载失败" description="请检查网络后重试。" retry-label="重新加载" @retry="load" />
     <SectionCard v-else title="版本列表" :description="`共 ${total} 个版本`" :padded="false">
@@ -141,9 +153,8 @@ const queryState = useListQuery({
       row-key="id"
       @row-click="(row: VersionItem) => openDetail(row.id)"
     >
+      <el-table-column label="版本" min-width="280"><template #default="s"><button class="record-title" @click.stop="openDetail(s.row.id)">{{ s.row.name }}</button><div class="mono record-code">{{ s.row.version_no }}</div></template></el-table-column>
       <el-table-column label="业务系统" min-width="130"><template #default="scope">{{ scope.row.system_name || '未指定' }}</template></el-table-column>
-      <el-table-column prop="version_no" label="版本号" width="160" />
-      <el-table-column prop="name" label="版本名称" min-width="200" show-overflow-tooltip />
       <el-table-column label="状态" width="110">
         <template #default="s">
           <StatusTag
@@ -203,6 +214,10 @@ const queryState = useListQuery({
 </template>
 
 <style scoped>
+.active-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: -4px 0 16px; color: var(--if-text-secondary); font-size: 13px; }
+.record-title { display: block; border: 0; padding: 4px 0; background: transparent; color: var(--if-text-primary); font: inherit; font-size: 14px; font-weight: 600; text-align: left; cursor: pointer; overflow-wrap: anywhere; }
+.record-title:hover { color: var(--if-brand-600); }
+.record-code { margin-top: 2px; }
 .cards { display: grid; gap: 8px; padding: var(--if-space-3); }
 .pager { margin-top: var(--if-space-4); justify-content: flex-end; }
 @media (max-width: 767px) { .pager { justify-content: center; } }

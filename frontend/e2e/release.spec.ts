@@ -24,7 +24,7 @@ test('production Web login, first password change and feedback creation', async 
   await page.locator('input[type="password"]').nth(1).fill(newPassword)
   await page.locator('input[type="password"]').nth(2).fill(newPassword)
   await page.getByRole('button', { name: '保存新密码' }).click()
-  await expect(page.getByRole('heading', { name: '首页 / 系统概览' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '我的工作台' })).toBeVisible()
 
   await page.goto('/#/feedbacks')
   await expect(page.getByRole('heading', { name: '反馈中心' })).toBeVisible()
@@ -55,7 +55,7 @@ async function login(page: Page, username: string, password: string) {
   await page.getByPlaceholder('用户名').fill(username)
   await page.getByPlaceholder('密码').fill(password)
   await page.getByRole('button', { name: '登录', exact: true }).click()
-  await expect(page.getByRole('heading', { name: '首页 / 系统概览' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '我的工作台' })).toBeVisible()
 }
 
 async function status(page: Page, label: string, path: string) {
@@ -307,7 +307,7 @@ test('Phase 7 real restricted users: presence, conflict, publish, notification a
       await expect(worklist).toContainText(own.title)
       await expect(worklist).toContainText(createdBy.title)
       await expect(worklist).not.toContainText(hidden.title)
-      await expect(worklist).toContainText('可见需求进度 0 / 2')
+      await expect(worklist).toContainText('0 / 2 项完成')
       await selfPage.getByRole('button', { name: '添加需求', exact: true }).click()
       const select = selfPage.getByRole('dialog', { name: '批量添加需求', exact: true })
       await select.getByPlaceholder('编号 / 标题').fill(prefix)

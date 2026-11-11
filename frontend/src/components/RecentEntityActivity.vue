@@ -66,11 +66,12 @@ onScopeDispose(() => { sequence++ })
 header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; }
 .activity-summary { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 12px; font-size: 13px; min-width: 0; }
 .activity-summary > strong { font-weight: 500; }
-.activity-meta, time { font-size: 12px; color: var(--if-text-secondary); }
+.activity-meta, time { font-size: var(--if-font-caption); color: var(--if-text-secondary); }
 header > .el-button { flex-shrink: 0; white-space: nowrap; padding: 0; height: auto; min-height: 24px; }
 ol { list-style: none; padding: 0; margin: 12px 0 0; border-top: 1px solid var(--if-border); }
 li { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px 16px; padding: 12px 0; border-bottom: 1px solid var(--if-border); font-size: 13px; }
 li:last-child { padding-bottom: 0; border-bottom: 0; }
 li div { display: flex; flex-wrap: wrap; gap: 6px 12px; min-width: 0; }
 li strong { font-weight: 500; }
+@media (max-width: 767px) { header :deep(.el-button) { min-height: 44px; } }
 </style>

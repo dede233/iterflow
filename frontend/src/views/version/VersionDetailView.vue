@@ -5,9 +5,9 @@ import BusinessSystemAttribution from '@/components/BusinessSystemAttribution.vu
 import RecentEntityActivity from '@/components/RecentEntityActivity.vue'
 import BusinessSystemSelect from '@/components/BusinessSystemSelect.vue'
 import BatchActionsDialog from '@/components/BatchActionsDialog.vue'
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, useId, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { useRoute, useRouter } from 'vue-router'
+import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
 import {
   changeVersionStatus,
   checkVersionPublish,
@@ -67,6 +67,14 @@ const id = Number(props.embedded ? props.embeddedId : route.params.id)
 const { start: startPresence, stop: stopPresence, existingEditor } = useEditingPresence('VERSION', id)
 const conflict = useRevisionConflict()
 const summaryRequirementId = ref<number | null>(null)
+const coverageRef = ref<{ requestClose: () => Promise<boolean> }>()
+async function requestClose(): Promise<boolean> {
+  if (publishSubmitting.value || statusSubmitting.value || editSubmitting.value || moveSubmitting.value) return false
+  return await coverageRef.value?.requestClose() ?? true
+}
+onBeforeRouteLeave(requestClose)
+onBeforeRouteUpdate(requestClose)
+defineExpose({ requestClose })
 watch(() => [route.params.id, props.embeddedId], () => { summaryRequirementId.value = null })
 
 async function showVersionConflict(error: unknown, revision: number, onReload?: (latest: VersionItem) => void | Promise<void>): Promise<void> {
@@ -117,6 +125,9 @@ const item = ref<VersionItem | null>(null)
 const requirements = ref<Requirement[]>([])
 const stats = ref<VersionStats | null>(null)
 const worklistFilters = reactive({ keyword: '', status: '', priority: '' })
+const worklistFiltersId = useId()
+const worklistFiltersOpen = ref(false)
+const worklistFilterCount = computed(() => Object.values(worklistFilters).filter(value => value.trim()).length)
 const filteredRequirements = computed(() => filterVersionWorklist(requirements.value, worklistFilters))
 const visibleStats = computed(() => visibleWorklistStats(requirements.value))
 function resetWorklist(): void { worklistFilters.keyword = ''; worklistFilters.status = ''; worklistFilters.priority = '' }
@@ -391,8 +402,7 @@ onMounted(load)
           <StatusTag :status="item.status" :label="versionStatusLabel[item.status]" :type="versionStatusTagType(item.status)" />
         </template>
         <template #actions>
-        <el-button v-if="embedded" link @click="emit('close')">关闭详情</el-button>
-        <RouterLink v-else class="back-link" :to="backTo">返回列表</RouterLink>
+        <RouterLink v-if="!embedded" class="back-link" :to="backTo">返回列表</RouterLink>
         <el-button v-if="canEdit" @click="openEdit">编辑</el-button>
         <el-button v-if="canPublish" type="primary" @click="openPublish">{{ item.status === 'READY' ? '发布版本' : '发布检查' }}</el-button>
         <el-button
@@ -413,36 +423,37 @@ onMounted(load)
         <dl><div><dt>计划上线</dt><dd>{{ item.planned_release_date || '未排期' }}</dd></div><div v-if="item.released_at"><dt>实际上线</dt><dd>{{ formatLocalDateTime(item.released_at) }}</dd></div></dl>
         <p v-if="item.description" class="multiline">{{ item.description }}</p>
       </div>
-      <VersionReleaseBatches v-if="item.status === 'RELEASED'" :version="item" @updated="load" />
+      <VersionReleaseBatches v-if="item.status === 'RELEASED'" ref="coverageRef" :version="item" @updated="load" />
 
       <!-- progress + requirements -->
-      <SectionCard v-if="canViewRequirements" title="需求清单" :description="`可见需求 ${stats?.total ?? 0} 项`" class="section">
+      <SectionCard v-if="canViewRequirements" title="需求清单" class="section">
         <template #actions>
           <BatchActionsDialog v-if="!frozen" kind="requirements" scope="version-list" :version-id="item.id" :version-revision="item.revision" :rows="filteredRequirements" @updated="load" />
           <el-button v-if="canManageReqs" type="primary" @click="addDialog = true">
             添加需求
           </el-button>
         </template>
-        <p class="scope-tip">进度由关联需求自动汇总；开发和验收在需求中完成。</p>
-        <div v-if="stats" class="progress">
-          <el-progress :percentage="completionPct" :stroke-width="6" />
-          <span class="progress-text">可见需求进度 {{ stats.completed }} / {{ stats.total }}</span>
+        <div class="worklist-toolbar">
+          <div v-if="stats" class="worklist-progress" aria-label="可见需求进度">
+            <span><strong>{{ stats.completed }}</strong> / {{ stats.total }} 项完成</span>
+            <el-progress :percentage="completionPct" :stroke-width="4" :show-text="false" />
+            <span class="scope-tip">待处理 {{ visibleStats.pending }} 项</span>
+          </div>
+          <el-button :aria-expanded="worklistFiltersOpen" :aria-controls="worklistFiltersId" @click="worklistFiltersOpen = !worklistFiltersOpen">{{ worklistFiltersOpen ? '收起清单筛选' : '筛选清单' }}{{ worklistFilterCount ? ` (${worklistFilterCount})` : '' }}</el-button>
         </div>
-        <p class="scope-tip">仅统计当前账号可见需求；发布准备以服务端发布检查为准。</p>
         <div class="worklist-summary" aria-label="可见需求状态分布">
-          <span>可见待完成 {{ visibleStats.pending }} / {{ visibleStats.total }}</span>
-          <el-button v-for="(count, status) in visibleStats.byStatus" :key="status" size="small" :aria-pressed="worklistFilters.status === status" :type="worklistFilters.status === status ? 'primary' : 'default'" @click="worklistFilters.status = String(status)">{{ requirementStatusLabel[status] || status }} {{ count }}</el-button>
+          <el-button v-for="(count, status) in visibleStats.byStatus" :key="status" size="small" :aria-pressed="worklistFilters.status === status" :type="worklistFilters.status === status ? 'primary' : 'default'" @click="worklistFilters.status = worklistFilters.status === status ? '' : String(status)">{{ requirementStatusLabel[status] || status }} {{ count }}</el-button>
+          <span class="scope-tip">仅统计可见需求</span>
         </div>
-        <el-form class="worklist-filters" label-position="top" @submit.prevent>
+        <el-form v-show="worklistFiltersOpen" :id="worklistFiltersId" class="worklist-filters" label-position="top" @submit.prevent>
           <el-form-item label="清单关键词"><el-input v-model="worklistFilters.keyword" placeholder="筛选可见编号或标题" clearable :maxlength="200" /></el-form-item>
           <el-form-item label="清单状态"><el-select v-model="worklistFilters.status" clearable placeholder="全部可见状态"><el-option v-for="option in REQUIREMENT_STATUSES" :key="option.value" :value="option.value" :label="option.label" /></el-select></el-form-item>
           <el-form-item label="清单优先级"><el-select v-model="worklistFilters.priority" clearable placeholder="全部优先级"><el-option v-for="option in REQUIREMENT_PRIORITIES" :key="option.value" :value="option.value" :label="option.label" /></el-select></el-form-item>
           <el-button @click="resetWorklist">重置清单</el-button>
         </el-form>
-        <p class="scope-tip">当前筛选 {{ filteredRequirements.length }} / {{ visibleStats.total }} 项可见需求</p>
+        <div v-if="worklistFilterCount" class="worklist-result" role="status"><span>当前筛选 {{ filteredRequirements.length }} / {{ visibleStats.total }} 项可见需求</span><el-button link type="primary" @click="resetWorklist">清除清单筛选</el-button></div>
         <el-table v-if="!isMobile" :data="filteredRequirements" row-key="id">
-          <el-table-column prop="requirement_no" label="编号" width="170" />
-          <el-table-column prop="title" label="标题" min-width="200" show-overflow-tooltip />
+          <el-table-column label="需求" min-width="240"><template #default="s"><button class="worklist-title" @click="summaryRequirementId = s.row.id">{{ s.row.title }}</button><div class="worklist-number">{{ s.row.requirement_no }}</div></template></el-table-column>
           <el-table-column prop="priority" label="优先级" width="90" />
           <el-table-column label="状态" width="110">
             <template #default="s">
@@ -465,8 +476,8 @@ onMounted(load)
         </el-table>
         <div v-else-if="filteredRequirements.length" class="req-cards">
           <article v-for="req in filteredRequirements" :key="req.id" class="req-card">
-            <div class="req-card-top"><span class="mono">{{ req.requirement_no }}</span><StatusTag :status="req.status" :label="requirementStatusLabel[req.status]" size="sm" /></div>
-            <div class="req-card-title">{{ req.title }}</div>
+            <div class="req-card-top"><button class="worklist-title" @click="summaryRequirementId = req.id">{{ req.title }}</button><StatusTag :status="req.status" :label="requirementStatusLabel[req.status]" size="sm" /></div>
+            <div class="worklist-number">{{ req.requirement_no }}</div>
             <p>优先级 {{ req.priority }}</p>
             <div class="req-card-actions">
               <el-button link type="primary" @click="summaryRequirementId = req.id">查看</el-button>
@@ -478,10 +489,11 @@ onMounted(load)
           </article>
         </div>
         <EmptyState v-else description="暂无可见需求" compact />
+        <details class="worklist-help"><summary>进度与发布说明</summary><p>进度由关联需求自动汇总；开发和验收在需求中完成。</p><p>仅统计当前账号可见需求；发布准备以服务端发布检查为准。</p></details>
         <p v-if="frozen" class="frozen-tip">版本处于 {{ versionStatusLabel[item.status] }}，需求清单已冻结。</p>
       </SectionCard>
 
-      <VersionReleaseBatches v-if="item.status !== 'RELEASED'" :version="item" @updated="load" />
+      <VersionReleaseBatches v-if="item.status !== 'RELEASED'" ref="coverageRef" :version="item" @updated="load" />
       <RecentEntityActivity kind="version" :id="item.id" :revision="item.revision" :refresh-key="activityRefresh" />
 
       <!-- release history -->
@@ -624,23 +636,34 @@ onMounted(load)
 .version-overview dd { margin: 0; }
 .version-overview p { margin: 12px 0 0; line-height: 1.7; }
 .scope-tip { color: var(--if-text-2); font-size: 13px; }
+.worklist-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.worklist-progress { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; font-size: var(--if-font-body); }
+.worklist-progress strong { font-size: var(--if-font-section); font-variant-numeric: tabular-nums; }
+.worklist-progress .el-progress { width: 100px; }
+.worklist-result { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 12px 0; font-size: var(--if-font-caption); color: var(--if-text-secondary); }
+.worklist-title { display: block; padding: 0; border: 0; background: none; color: var(--if-text-primary); text-align: left; font: inherit; font-weight: 600; cursor: pointer; overflow-wrap: anywhere; }
+.worklist-title:hover { color: var(--if-brand-600); text-decoration: underline; text-underline-offset: 3px; }
+.worklist-number { margin-top: 4px; font-family: var(--if-font-mono); font-size: var(--if-font-caption); color: var(--if-text-tertiary); overflow-wrap: anywhere; }
+.worklist-help { margin-top: 12px; color: var(--if-text-secondary); font-size: var(--if-font-caption); }
+.worklist-help summary { cursor: pointer; padding: 6px 0; }
+.worklist-help p { margin: 6px 0; line-height: 1.6; }
 .worklist-summary { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
 .worklist-summary :deep(.el-button + .el-button) { margin-left: 0; }
-.worklist-filters { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) auto; gap: 12px; align-items: end; }
+.worklist-filters { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) auto; gap: 12px; align-items: end; padding: 12px; margin-bottom: 16px; background: var(--if-bg-page); border-radius: var(--if-radius-sm); }
 .worklist-filters :deep(.el-form-item) { min-width: 0; margin-bottom: 0; }
 .worklist-filters :deep(.el-select) { width: 100%; }
 @media (max-width: 767px) {
   .worklist-filters { grid-template-columns: minmax(0, 1fr); }
   .worklist-filters :deep(.el-input__wrapper), .worklist-filters :deep(.el-select__wrapper), .worklist-filters > .el-button { min-height: 44px; }
+  .worklist-toolbar > .el-button, .worklist-summary > .el-button, .worklist-result > .el-button, .worklist-help summary { min-height: 44px; }
+  .worklist-progress .el-progress { width: 72px; }
+  .worklist-title { min-height: 44px; }
 }
 
 .back-link { color: var(--if-brand-500); align-self: center; }
 .multiline { white-space: pre-wrap; overflow-wrap: anywhere; }
 .section { margin-top: var(--if-space-4); }
 .section :deep(.el-table) { width: 100%; }
-.progress { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-.progress .el-progress { flex: 1; }
-.progress-text { color: var(--if-text-2); font-size: 13px; white-space: nowrap; }
 .frozen-tip { margin: 14px 0 0; padding: 10px 12px; border-radius: var(--if-radius-sm); background: var(--if-bg-subtle); color: var(--if-text-secondary); font-size: 12px; }
 .req-cards { display: grid; gap: 8px; }
 .req-card { min-width: 0; padding: 12px; border: 1px solid var(--if-border); border-radius: var(--if-radius-sm); }
@@ -662,5 +685,4 @@ onMounted(load)
 .release-notes { color: var(--if-text-2); font-size: 13px; overflow-wrap: anywhere; }
 .presence-alert { min-width: 0; margin-bottom: var(--if-space-4); overflow-wrap: anywhere; }
 .presence-alert :deep(.el-alert__content), .presence-alert :deep(.el-alert__title) { min-width: 0; overflow-wrap: anywhere; }
-@media (max-width: 767px) { .progress { flex-wrap: wrap; } .progress .el-progress { min-width: 100%; } }
 </style>

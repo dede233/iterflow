@@ -68,3 +68,7 @@
 - `dashboard-desktop.png`、`version-desktop.png`、`requirement-drawer-desktop.png`、`requirement-fullscreen-final.png`、`brands-mobile-final.png` 等：真实浏览器截图，均为合成数据。
 
 本轮仅前端本地增量，旧数据、配置、权限和发布流程不变；无 API/迁移/权限新增，无推送、合并、tag/Release、TEST/正式切换或真实数据库操作。后续部署应另行冻结候选并执行对应环境流程，不能沿用本轮本地检查冒称线上验收。
+
+## 补充真实本机验收（2026-11-12）
+
+在上述 UI 开发结束后，用户另行授权重置本机 admin。经备份和隔离演练应用已有本机兼容迁移、重置密码并恢复 API 后，真实账号登录成功。补验工作台、已有版本及三个已发布目标/关联需求、375px 页面与新建需求全屏，控制台无错误，未保存新业务记录。此前“未重置/真实登录未通过”为当时结果，现已补齐此部分；完整 140 项 E2E 仍未运行。本轮恢复范围与证据见 [本机管理员恢复](local-admin-reset-2026-11-12.md)。

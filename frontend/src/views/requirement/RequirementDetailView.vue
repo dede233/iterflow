@@ -217,7 +217,7 @@ async function submitEdit(): Promise<void> {
   const firstError = editErrors.title ? 'title' : editErrors.description ? 'description' : null
   if (firstError) {
     await nextTick()
-    const field = editRoot.value?.querySelector<HTMLElement>(`[data-field="${firstError}"] input, [data-field="${firstError}"] [contenteditable="true"]`)
+    const field = editRoot.value?.querySelector<HTMLElement>(`[data-field="${firstError}"] input:not([type="file"]), [data-field="${firstError}"] [contenteditable="true"]`)
     field?.focus()
     field?.scrollIntoView?.({ block: 'nearest' })
     return

@@ -150,7 +150,7 @@ for (const width of [1280, 390]) {
       await drawer.getByRole('button', { name: '编辑', exact: true }).click()
       const editor = page.getByRole('dialog', { name: `编辑${entry.label}`, exact: true })
       const newTitle = `${entry.label}更新后的标题`
-      await editor.locator('.el-form-item').filter({ hasText: entry.editField }).locator('input').fill(newTitle)
+      await editor.locator('.el-form-item').filter({ hasText: entry.editField }).locator('input[type="text"]').fill(newTitle)
       if (entry.path === '/requirements') {
         // Editing a title must preserve the confirmed legacy PLAIN description and format.
         await expect(editor.getByRole('textbox', { name: '需求描述', exact: true })).toHaveText('需求描述 7')

@@ -112,3 +112,21 @@ for (const width of [375, 390, 768, 1280, 1440]) {
     })
   }
 }
+
+for (const config of [configs[0], configs[1]]) {
+  test(`${config.path} long applied keyword wraps on mobile`, async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 })
+    await fixture(page, config)
+    const keyword = 'A'.repeat(200)
+    await page.goto(`/#/${config.path}?keyword=${keyword}`)
+    const filters = page.locator('.active-filters')
+    await expect(filters).toContainText(keyword)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375)
+    const close = filters.locator('.el-tag__close')
+    await expect.poll(async () => (await close.boundingBox())?.width).toBeGreaterThanOrEqual(44)
+    await expect.poll(async () => (await close.boundingBox())?.height).toBeGreaterThanOrEqual(44)
+    await close.press('Enter')
+    await expect(filters).toBeHidden()
+    expect(new URL(page.url()).hash).not.toContain('keyword=')
+  })
+}

@@ -108,7 +108,7 @@ for (const width of [375, 1440]) {
     const editor = dialog.getByRole('textbox', { name: '需求描述', exact: true })
     await expect(editor).toContainText('<img src=x onerror="window.richAttack=1">第二行')
     expect(await editor.locator('img').count()).toBe(0)
-    await dialog.getByRole('textbox', { name: '标题', exact: true }).fill('仅修正旧需求标题')
+    await dialog.getByRole('textbox', { name: /^\*?标题$/, exact: true }).fill('仅修正旧需求标题')
     await dialog.getByRole('button', { name: '保存', exact: true }).click()
     await expect(dialog).toBeHidden()
     expect(audit.writes).toHaveLength(1)
@@ -149,7 +149,7 @@ for (const width of [375, 1440]) {
     await page.goto('/#/requirements/1')
     await page.getByRole('button', { name: '编辑', exact: true }).click()
     const dialog = page.getByRole('dialog', { name: '编辑需求', exact: true })
-    const title = dialog.getByRole('textbox', { name: '标题', exact: true })
+    const title = dialog.getByRole('textbox', { name: /^\*?标题$/, exact: true })
     const editor = dialog.getByRole('textbox', { name: '需求描述', exact: true })
     await title.fill('')
     await dialog.getByRole('button', { name: '保存', exact: true }).click()
@@ -254,5 +254,23 @@ for (const width of [375, 1440]) {
     await expect(viewer).toBeHidden()
     await noOverflow(page, width)
     clean(audit)
+  })
+}
+
+for (const width of [375, 1440]) {
+  test(`full screen editing fills viewport and retains content ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 812 })
+    await setup(page)
+    await page.goto('/#/requirements/1')
+    await page.getByRole('button', { name: '编辑', exact: true }).click()
+    const dialog = page.getByRole('dialog', { name: '编辑需求', exact: true })
+    const editor = dialog.getByRole('textbox', { name: '需求描述', exact: true })
+    const before = await editor.innerText()
+    await dialog.getByRole('button', { name: '全屏编辑', exact: true }).click()
+    await expect.poll(async () => (await dialog.boundingBox())?.width).toBe(width)
+    await expect.poll(async () => (await dialog.boundingBox())?.height).toBe(812)
+    await expect(editor).toHaveText(before)
+    await dialog.getByRole('button', { name: '收起编辑', exact: true }).click()
+    await expect(editor).toHaveText(before)
   })
 }

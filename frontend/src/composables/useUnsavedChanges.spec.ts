@@ -52,6 +52,15 @@ describe('unsaved form protection', () => {
     resolve('confirm')
     expect(await pending).toBe(false)
   })
+  it('does not approve a stale confirmation after the owning form has unmounted', async () => {
+    const { guard, wrapper } = setup()
+    let resolve!: (value: string) => void
+    mocks.confirm.mockImplementation(() => new Promise(done => { resolve = done }))
+    const pending = guard.requestLeave()
+    wrapper.unmount()
+    resolve('confirm')
+    expect(await pending).toBe(false)
+  })
   it('protects reload only for active dirty/busy forms and removes its listener on disposal', () => {
     const { state, wrapper } = setup()
     const unload = () => { const event = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(event); return event.defaultPrevented }

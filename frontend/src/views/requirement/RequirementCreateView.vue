@@ -66,7 +66,7 @@ async function submit(): Promise<void> {
   const firstError = errors.title ? 'title' : errors.description ? 'description' : null
   if (firstError) {
     await nextTick()
-    const field = formRoot.value?.querySelector<HTMLElement>(`[data-field="${firstError}"] input, [data-field="${firstError}"] [contenteditable="true"]`)
+    const field = formRoot.value?.querySelector<HTMLElement>(`[data-field="${firstError}"] input:not([type="file"]), [data-field="${firstError}"] [contenteditable="true"]`)
     field?.focus()
     field?.scrollIntoView?.({ block: 'nearest' })
     return

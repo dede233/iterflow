@@ -14,14 +14,15 @@ export function useUnsavedChanges(options: UnsavedChangesOptions) {
   const active = () => !disposed && (options.active?.() ?? true)
   const busy = () => options.isBusy?.() ?? false
 
-  async function requestLeave(): Promise<boolean> {
+  async function requestLeave(confirmClean = false): Promise<boolean> {
     if (!active()) return true
     if (busy()) return false
-    if (!options.isDirty()) return true
+    const dirty = options.isDirty()
+    if (!dirty && !confirmClean) return true
     if (!pending) {
-      pending = ElMessageBox.confirm('当前修改尚未保存，离开后将丢失。', '放弃未保存的修改？', {
-        confirmButtonText: '放弃修改', cancelButtonText: '继续编辑', type: 'warning',
-        distinguishCancelAndClose: true, closeOnClickModal: false,
+      pending = ElMessageBox.confirm(dirty ? '当前修改尚未保存，离开后将丢失。' : '确定关闭当前表单吗？', dirty ? '放弃未保存的修改？' : '确认关闭？', {
+        confirmButtonText: dirty ? '放弃修改' : '关闭表单', cancelButtonText: '继续编辑', type: 'warning',
+        distinguishCancelAndClose: true, closeOnClickModal: false, closeOnPressEscape: false,
       }).then(() => !disposed && !busy(), () => false).finally(() => { pending = null })
     }
     return pending

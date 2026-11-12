@@ -40,7 +40,7 @@ const draft = useUnsavedChanges({
   isDirty: () => JSON.stringify({ form, roles }) !== initialSnapshot,
   isBusy: () => saving.value,
 })
-const requestClose = draft.requestLeave
+const requestClose = () => draft.requestLeave(props.embedded)
 defineExpose({ requestClose })
 onBeforeRouteLeave(() => draft.requestLeave())
 watch(saving, value => emit('saving', value), { flush: 'sync' })

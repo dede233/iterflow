@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import BatchActionsDialog from '@/components/BatchActionsDialog.vue'
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { listFeedbacks } from '@/api/feedbacks'
 import FeedbackCreateView from './FeedbackCreateView.vue'
@@ -44,6 +44,12 @@ const loading = ref(false)
 const failed = ref(false)
 const filterDrawer = ref(false)
 const createDialog = ref(false)
+const createSaving = ref(false)
+const createFormRef = ref<InstanceType<typeof FeedbackCreateView>>()
+watch(createDialog, open => { if (!open) createSaving.value = false })
+async function beforeCreateClose(done: () => void): Promise<void> {
+  if (!createSaving.value && (await createFormRef.value?.requestClose() ?? false)) done()
+}
 const detailDrawer = ref(false)
 const activeFeedbackId = ref<number | null>(null)
 const systems = ref<BusinessSystemItem[]>([])
@@ -251,8 +257,8 @@ const queryState = useListQuery({
     />
 
     <!-- Create Dialog -->
-    <el-dialog v-model="createDialog" title="提交反馈" class="create-dialog" width="min(860px, calc(100vw - 24px))" destroy-on-close :close-on-click-modal="false">
-      <FeedbackCreateView v-if="createDialog" embedded @cancel="createDialog = false" @created="onFeedbackCreated" />
+    <el-dialog v-model="createDialog" title="提交反馈" class="create-dialog" width="min(860px, calc(100vw - 24px))" destroy-on-close :close-on-click-modal="false" :before-close="beforeCreateClose" :show-close="!createSaving" :close-on-press-escape="!createSaving">
+      <FeedbackCreateView v-if="createDialog" ref="createFormRef" embedded @cancel="createDialog = false" @created="onFeedbackCreated" @saving="createSaving = $event" />
     </el-dialog>
 
     <!-- Scheme C: Detail Drawer with full-screen expansion support -->

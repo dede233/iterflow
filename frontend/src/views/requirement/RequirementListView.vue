@@ -38,7 +38,7 @@ const createFormRef = ref<InstanceType<typeof RequirementCreateView>>()
 const detailRef = ref<InstanceType<typeof RequirementDetailView>>()
 watch(createDialog, open => { if (!open) { createSaving.value = false; createExpanded.value = false } })
 async function beforeCreateClose(done: () => void): Promise<void> {
-  if (!createSaving.value && (await createFormRef.value?.requestClose() ?? true)) done()
+  if (!createSaving.value && (await createFormRef.value?.requestClose() ?? false)) done()
 }
 async function beforeDetailClose(done: () => void): Promise<void> {
   if (await detailRef.value?.requestClose() ?? true) done()

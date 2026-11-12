@@ -19,6 +19,15 @@ function setup() {
 beforeEach(() => { mocks.confirm.mockReset() })
 afterEach(() => { wrappers.splice(0).forEach(wrapper => wrapper.unmount()) })
 describe('unsaved form protection', () => {
+  it('can require confirmation for an empty create dialog and disables accidental escape dismissal', async () => {
+    const { guard, state } = setup()
+    state.dirty = false
+    mocks.confirm.mockRejectedValue('cancel')
+    expect(await guard.requestLeave(true)).toBe(false)
+    expect(mocks.confirm).toHaveBeenCalledWith('确定关闭当前表单吗？', '确认关闭？', expect.objectContaining({ closeOnPressEscape: false }))
+    mocks.confirm.mockResolvedValue('confirm')
+    expect(await guard.requestLeave(true)).toBe(true)
+  })
   it('allows clean and inactive forms without prompting, but blocks an active submission', async () => {
     const { guard, state } = setup()
     state.dirty = false

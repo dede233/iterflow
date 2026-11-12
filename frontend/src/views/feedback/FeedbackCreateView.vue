@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { useRouter } from 'vue-router'
+import { onBeforeRouteLeave, useRouter } from 'vue-router'
+import { useUnsavedChanges } from '@/composables/useUnsavedChanges'
 import type { UploadFile, UploadUserFile } from 'element-plus'
 import { createFeedback, uploadFeedbackAttachment } from '@/api/feedbacks'
 import { listSystems } from '@/api/systems'
@@ -14,9 +15,10 @@ import type { BusinessSystemItem } from '@/types/domain'
 
 const router = useRouter()
 const props = withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
-const emit = defineEmits<{ cancel: []; created: [id: number] }>()
+const emit = defineEmits<{ cancel: []; created: [id: number]; saving: [value: boolean] }>()
 const { can } = usePermission()
 const saving = ref(false)
+const completed = ref(false)
 const systems = ref<BusinessSystemItem[]>([])
 const canReadSystems = computed(() => can(['sys.system.view', 'sys.system.manage']))
 const fileList = ref<UploadUserFile[]>([])
@@ -31,12 +33,25 @@ const form = reactive({
   reproduce_steps: '',
 })
 
-function cancel(): void {
-  if (props.embedded) emit('cancel')
+const initialSnapshot = JSON.stringify(form)
+const draft = useUnsavedChanges({
+  active: () => !completed.value,
+  isDirty: () => JSON.stringify(form) !== initialSnapshot || recipientIds.value.length > 0 || fileList.value.length > 0,
+  isBusy: () => saving.value,
+})
+const requestClose = () => draft.requestLeave(props.embedded)
+defineExpose({ requestClose })
+onBeforeRouteLeave(() => draft.requestLeave())
+watch(saving, value => emit('saving', value), { flush: 'sync' })
+
+async function cancel(): Promise<void> {
+  if (saving.value) return
+  if (props.embedded) { if (await requestClose()) emit('cancel') }
   else router.back()
 }
 
 async function submit(): Promise<void> {
+  if (saving.value) return
   if (form.title.trim().length < 2) {
     ElMessage.warning('标题至少需要 2 个字符')
     return
@@ -66,6 +81,7 @@ async function submit(): Promise<void> {
       const raw = (item as UploadFile).raw
       if (raw) await uploadFeedbackAttachment(created.id, raw as File)
     }
+    completed.value = true
     ElMessage.success('反馈已提交')
     if (props.embedded) emit('created', created.id)
     else await router.replace(`/feedbacks/${created.id}`)
@@ -90,7 +106,7 @@ onMounted(async () => {
   <section :class="props.embedded ? 'embedded-form' : 'page'">
     <PageHeader v-if="!props.embedded" title="提交反馈" description="说明你遇到的问题或希望改进的体验，便于团队跟进。" eyebrow="反馈中心 / 新建" />
     <SectionCard :title="props.embedded ? undefined : '反馈内容'" :description="props.embedded ? undefined : '描述遇到的问题，再选择归属和接收人。'" class="form-card">
-      <el-form label-position="top" @submit.prevent="submit">
+      <el-form label-position="top" :disabled="saving" @submit.prevent="submit">
         <div class="create-form-fields">
         <el-form-item label="标题" required class="span-2">
           <el-input v-model="form.title" maxlength="200" show-word-limit />

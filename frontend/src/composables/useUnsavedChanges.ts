@@ -22,7 +22,7 @@ export function useUnsavedChanges(options: UnsavedChangesOptions) {
     if (!pending) {
       pending = ElMessageBox.confirm(dirty ? '当前修改尚未保存，离开后将丢失。' : '确定关闭当前表单吗？', dirty ? '放弃未保存的修改？' : '确认关闭？', {
         confirmButtonText: dirty ? '放弃修改' : '关闭表单', cancelButtonText: '继续编辑', type: 'warning',
-        distinguishCancelAndClose: true, closeOnClickModal: false, closeOnPressEscape: false,
+        distinguishCancelAndClose: true, closeOnClickModal: false, closeOnPressEscape: false, closeOnHashChange: false,
       }).then(() => !disposed && !busy(), () => false).finally(() => { pending = null })
     }
     return pending

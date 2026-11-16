@@ -16,9 +16,9 @@
 | 新增反馈/需求关闭确认：`6823606` | Esc、叉号、取消统一确认；连续 Esc 不绕过；继续编辑保留输入和附件；提交中禁止关闭及重复提交，失败保留输入 | [开发记录](create-dialog-close-protection-2026-11-12.md)、[TEST 部署](create-close-confirmation-test-deployment-2026-11-14.md) |
 | 左侧标签筛选：`2776713` | 桌面/平板标签在控件左侧同排，按面板宽度自然换行，版本/参与人搜索提示和日期范围完整；移动抽屉保留上方标签，覆盖反馈、需求、版本与发布记录 | [开发记录](list-filter-layout-2026-11-16.md)、[TEST 部署](list-filter-test-deployment-2026-11-16.md) |
 
-对既有正式源码 `d6cfb815d7e1a240b7e2842842cc45f25348056a`，产品差异仅在 `frontend/`（源码与测试共 50 文件）；`backend/`、`spec/`、`deploy/`、`tools/`、`scripts/`、`.github/` 无差异，无依赖锁升级或数据库迁移。不新增 API、权限、角色、持久化草稿或业务状态，不改变主链、CAS、RBAC / DataScope、发布事务及历史快照。
+起始候选对既有正式源码 `d6cfb815d7e1a240b7e2842842cc45f25348056a` 的产品差异仅在 `frontend/`（源码与测试共 50 文件）；本轮 CI 后修正仍限前端。`backend/`、`spec/`、`deploy/`、`tools/`、`scripts/`、`.github/` 无差异，无依赖锁升级或数据库迁移。不新增 API、权限、角色、持久化草稿或业务状态，不改变主链、CAS、RBAC / DataScope、发布事务及历史快照。
 
-准备提交须逐路径证明产品与已验收 TEST Web 的冻结源码 `2776713` 完全一致。CI 如发现必须修复的实现或测试问题，先记录失败与根因、核对修复范围，再对新最终 HEAD 重新执行完整八项，不能复用旧 SHA 的通过结果。
+最终候选在已验收 TEST Web 的冻结源码 `2776713` 上，仅增加共享关闭保护 `closeOnHashChange: false` 一行运行修正及相应单测、E2E 更新，详见首轮失败章节。其余运行源码、入口/构建配置、包清单与依赖锁、全部非前端产品目录须逐路径证明一致；不再称最终运行产物与 TEST 完全相同。修正后对新最终 HEAD 重新执行完整八项，不能复用旧 SHA 的通过结果。
 
 ## 环境与既有证据的层级
 
@@ -29,11 +29,11 @@
 - UI 组既有补测含 136 项 Mock 浏览器、4 项真实隔离后端主链和 4 项布局回归；关闭确认既有 TEST 桌面实测与本机 375px / 提交失败 / 附件保留 Mock 证据；筛选既有最终镜像 32 项 Mock 浏览器及四列表 × 三视口 12 项布局检查。各自首次失败、修正和限制保留在对应记录，不当作本轮重跑。
 - 最新 TEST 线上仅桌面 Safari 实测，未保存业务数据；移动端证据来自本机最终镜像与 Mock API。容器、配置和入口保护结果不等于全量数据库数据/结构逐项核验；UI/终端转录摘要不冒充下载的服务器原始收据。
 
-已验收 TEST Web 镜像为 `iterflow-web:filter-layout-1116`（linux/amd64），OCI index `sha256:f20ef4c47f6373af51529b0286005b6c4805ee2b4ef16eb222c324a5b8af6705`，classic config `sha256:793a571156066b07ff9fe86b81af8885dda583dd1c52d0bdbfe4fd6e3051525a`，首页 SHA256 `e7e670e68b7455921d3150d6c35468c5b343a4ee49ac9320a55c098d5fb0e741`。原 TEST 包 SHA256 为 `544d795aef80641d3061ba33755ad72cee55adcf5a5165d462deb9a9622593b8`，其 TEST 专用控制器不得直接用于正式。后续正式包须按当时正式基线生成控制器，证明产品与冻结候选相同，禁止复制 TEST 路径、配置或数据。
+已验收 TEST Web 镜像为 `iterflow-web:filter-layout-1116`（linux/amd64），OCI index `sha256:f20ef4c47f6373af51529b0286005b6c4805ee2b4ef16eb222c324a5b8af6705`，classic config `sha256:793a571156066b07ff9fe86b81af8885dda583dd1c52d0bdbfe4fd6e3051525a`，首页 SHA256 `e7e670e68b7455921d3150d6c35468c5b343a4ee49ac9320a55c098d5fb0e741`。原 TEST 包 SHA256 为 `544d795aef80641d3061ba33755ad72cee55adcf5a5165d462deb9a9622593b8`。该镜像尚不含本轮一行关闭保护修正，不能直接作为最终候选产物；其 TEST 专用控制器不得直接用于正式。后续正式包须按当时正式基线生成控制器，证明产品与冻结候选相同，禁止复制 TEST 路径、配置或数据。
 
 ## 同 SHA 八项 CI 与最终回执
 
-当前 `.github/workflows/ci.yml` 展开为八项：`backend`、`frontend`、`docker_smoke`、`s3`、`browser_smoke`、`backup_restore`、`mysql57 (standard)`、`mysql57 (portable)`。完整候选须八项均为 `success`；不得以历史 TEST、本机局部验证、另一 SHA 或未展开矩阵的六项替代。CI 使用 GitHub 一次性 runner 上的隔离服务，本轮不启动本机重型测试、数据库或浏览器。
+当前 `.github/workflows/ci.yml` 展开为八项：`backend`、`frontend`、`docker_smoke`、`s3`、`browser_smoke`、`backup_restore`、`mysql57 (standard)`、`mysql57 (portable)`。完整候选须八项均为 `success`；不得以历史 TEST、本机局部验证、另一 SHA 或未展开矩阵的六项替代。CI 使用 GitHub 一次性 runner 上的隔离服务。首轮失败后，本机仅使用一个随机 loopback 端口的只读静态预览与单个 Playwright 进程 / 1 worker 做 Mock 定点验证，不启动数据库、容器或完整本机重型门禁。
 
 本分支不在 push 自动触发列表内。推送候选后，使用已配置 `gh workflow run ci.yml --ref codex/ui-workspace-refinement` 显式 dispatch；现有 GitHub 连接器无 dispatch 能力，协调者另经连接器复核结果。先检查同候选是否已有活动 CI，本轮最多一个完整 CI run 活动；每个 run 必须核对 `head_sha` 等于最终候选，并归档 job JSON 与原日志。失败先分类，保留首轮日志；不弱化断言、跳过失败或修改发布门禁。
 
@@ -42,6 +42,23 @@
 `/Users/xiaweiyi/Developer/deliverables/iterflow/2026-11-16/ui-production-preparation/`
 
 其中 `commands.json` 和原始命令日志记录 UTC 起止时间、退出码、Git 起止核查、源码范围与无关工作区保留；最终候选、远端分支一致性、run / job URL、八项结论及失败处理写入外部 `readiness-result.json`、`readiness-report.md`。本文不嵌入自身提交 SHA，避免为记录结果继续提交而使 CI SHA 失效。准备提交后不得仅为补记 CI 结果改变 HEAD；若 HEAD 再变，须重跑新 HEAD 的完整八项。
+
+## 首轮失败与测试修正
+
+首轮候选 `5e90ee8af20f78a1be3a64a1a4dc79ae05d6a198` 的 [CI run 43808186849](https://github.com/dede233/iterflow/actions/runs/43808186849) 为 7 项成功、仅 `browser_smoke` 失败；浏览器为 408 PASS、13 FAIL、2 SKIP。完整 REST run / job JSON、原始日志和通过 CRC 检查的日志 zip 保留于外部证据 `ci-runs/43808186849/`，不覆盖首败。
+
+- 11 项 `create-form-layout.spec.ts` 仍在点击取消后直接断言原弹窗隐藏，遗漏本批已批准的空表单关闭确认或有修改时放弃确认。补显式确认弹窗、原表单仍可见、已选人员保留及确认后关闭的断言，原有滚动、底栏、视口、控件点击和请求断言全部保留。
+- 2 项 `system-catalog.spec.ts` 在反馈独立页选择系统后直接 `page.goto` 离开未保存表单，目标系统页没有出现。两类各取一项在同一冻结静态文件上复现，失败截图和 trace 保留。改为正常取消返回并显式确认后，定点 23 项为 21 PASS、2 FAIL：确认框先可见，随即自行消失，地址已变系统页而 DOM 仍在原反馈表单。这进一步查出真实产品缺陷，不能只当旧测试预期处理。
+- 安装的 Element Plus 2.14.6 默认 `closeOnHashChange=true`，挂载时注册 `hashchange -> doClose`；这条关闭路径只隐藏确认框，没有用户 action 时不结算确认 Promise。共享 `useUnsavedChanges` 现显式设为 `false`，使哈希返回时确认继续可操作，单测补配置约束。
+- 一行修正后的首批 30 项为 28 PASS、2 FAIL：系统用例“继续编辑”后落到 `about:blank`。结合 Vue Router 4.6.4 的 position 差计算和零 delta pop 拒绝回退路径，判定旧用例直接 `page.goto` 哈希没有建立 Router 管理的历史；源码及 trace 推断依据保留，不冒充已采样 history.state。最终系统用例以两端实际可见的“反馈中心 / 反馈”RouterLink 离开，先继续编辑核对 URL / 选择保留，再放弃到反馈列表，从干净页进入系统继续全部原目录断言。
+- 为覆盖真实 hash pop，新增 1440 / 375px 两项：需求列表摘要中的“打开完整页面”建立真实 Router 历史，编辑标题后使用浏览器后退，分别检查继续编辑的 URL / 草稿保留与明确放弃后返回列表。窄批次两系统用例成功，两后退用例全部导航断言成功、只因缺失编辑提示 Mock 在末尾请求断言失败；随后精确补既有 start / heartbeat / end 三接口，仅接受 `REQUIREMENT / 1` 的完整两字段请求，其余仍拒绝。最终定点范围为 32 项（原两文件 23 项 + 新后退 2 项 + 关闭保护 7 项），实际结果见外部最终回执。原几何和请求断言保留，不用 reload、force click、删除保护或只换 push 路径掩盖 hash pop 问题。
+- 两项 SKIP 是既有 `grouped-targets-real.spec.ts` 的 1440 / 375px 专用真实隔离用例，仅接受显式 `ITERFLOW_GROUPED_REAL=1`、固定本机端口及专用合成账号；普通 CI 不启用，条件与覆盖均未修改。其 2026-11-10 历史专项两项通过见 [开发记录](grouped-mini-program-targets-2026-11-10.md) 及既有外部 `grouped-mini-program-targets/real-browser-first.log`、`local-result.json`（来源 `af3445d`），不作为本轮重跑通过。
+
+基线静态预览使用先前最终镜像提取的 141 文件，重新核对 140 个 dist 文件逐字节一致及首页 hash；产品修正后另构建到本任务外部目录，再跑定点回归。全部业务 API 使用内存 Mock，无真实后端、数据库、上传或邮件。本轮运行结果、源码/产物 hash 与临时资源清理保存在外部回执。曾误用当前 Playwright CLI 不支持的截图参数，解析时即退出，改为外部配置启用截图/trace 后复现；未将该工具调用错误计作产品测试失败。
+
+最终本机 32 项定点浏览器全部 PASS；6 项关闭保护单测、契约生成一致性、类型/生产构建与原样产物预算检查均 PASS，最大 JS 400.0 KiB。对应 `targeted-runtime-verified.json`、`commands/targeted-runtime-verified.log`、`runtime-build-inputs.json` 和 `rebuilt-runtime-manifest.json`；这组 Mock / 静态结果不替代新最终 SHA 的完整八项 CI。
+
+TEST 已验收的是原三组改动；本轮一行哈希返回修正须由本轮本机隔离回归及最终候选 CI 单独验证，结果见外部最终回执，尚未部署 TEST。本轮不部署任一环境，后续正式执行前须将这一差异纳入对应验收与产物核对，不能沿用旧 TEST 镜像代替。
 
 ## 后续正式 Web 升级清单（本轮不执行）
 

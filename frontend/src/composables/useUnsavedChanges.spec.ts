@@ -24,7 +24,7 @@ describe('unsaved form protection', () => {
     state.dirty = false
     mocks.confirm.mockRejectedValue('cancel')
     expect(await guard.requestLeave(true)).toBe(false)
-    expect(mocks.confirm).toHaveBeenCalledWith('确定关闭当前表单吗？', '确认关闭？', expect.objectContaining({ closeOnPressEscape: false }))
+    expect(mocks.confirm).toHaveBeenCalledWith('确定关闭当前表单吗？', '确认关闭？', expect.objectContaining({ closeOnPressEscape: false, closeOnHashChange: false }))
     mocks.confirm.mockResolvedValue('confirm')
     expect(await guard.requestLeave(true)).toBe(true)
   })

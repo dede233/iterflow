@@ -384,7 +384,7 @@ onMounted(async () => {
           <StatusTag :status="item.status" :label="feedbackStatusLabel[item.status]" :type="feedbackStatusTagType(item.status)" />
         </template>
         <template #actions>
-        <RouterLink class="back-link" :to="backTo" @click="props.embedded && emit('close')">返回列表</RouterLink>
+        <RouterLink v-if="!props.embedded" class="back-link" :to="backTo">返回列表</RouterLink>
         <el-button v-if="canEdit" @click="openEdit">编辑</el-button>
         <DeleteEntityButton v-if="canEdit && item.status === 'NEW' && !item.main_requirement_id" kind="feedbacks" :id="item.id" :revision="item.revision" :title="item.title" @refresh="load" @deleted="onDeleted" />
         <el-button v-if="canConvert" type="primary" @click="openConvert">转需求</el-button>

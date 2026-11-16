@@ -35,6 +35,7 @@ async function login(page: Page, feedbackOnly = false) {
       ...overview, requirements: null, versions: null, releases: null,
       activities: overview.activities.filter((item) => item.entity_type === 'FEEDBACK'),
     } : overview })
+    if (path === '/api/v1/requirements') return route.fulfill({ json: { items: [], total: 0, page: 1, page_size: 3 } })
     if (path === '/api/v1/requirements/123') return route.fulfill({ json: {
       id: 123, requirement_no: 'REQ-123', title: '活动关联需求', requirement_type: 'FEATURE',
       status: 'CONFIRMED', priority: 'P1', source: 'DIRECT', description: '需求详情仍由原有接口读取',

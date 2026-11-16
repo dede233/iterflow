@@ -85,7 +85,7 @@ const fields = computed(() => item.value ? [
 <template>
   <section v-loading="loading" class="page release-detail" aria-label="发布记录详情">
     <PageHeader title="发布记录详情" :eyebrow="item ? `Release #${item.id}` : '发布'" description="查看实际发布结果与说明。">
-      <template #actions><el-button v-if="embedded" link @click="emit('close')">关闭详情</el-button><RouterLink v-else class="back-link" :to="backTo">返回发布记录</RouterLink></template>
+      <template #actions><RouterLink v-if="!embedded" class="back-link" :to="backTo">返回发布记录</RouterLink></template>
     </PageHeader>
     <ErrorState v-if="error === 'missing'" title="发布记录不存在或不可访问" description="请返回发布记录列表。" />
     <ErrorState v-else-if="error === 'failed'" title="发布记录加载失败" description="请检查网络后重试。" retry-label="重新加载" @retry="load" />

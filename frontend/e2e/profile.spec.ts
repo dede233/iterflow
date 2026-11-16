@@ -32,6 +32,7 @@ test.beforeEach(async ({ page }) => {
 test('profile remains usable at all five release viewports', async ({ page }) => {
   const browserErrors: string[] = []
   page.on('pageerror', (error) => browserErrors.push(error.message))
+  await page.route('**/api/v1/requirements?*', (route) => route.fulfill({ status: 200, json: { items: [], total: 0, page: 1, page_size: 3 } }))
   await page.route('**/api/v1/dashboard/overview', (route) => route.fulfill({ status: 200, json: {
     data_scope: 'SELF', activities: [],
     feedback: { pending_count: 0, total_count: 0, by_status: {} },
@@ -93,7 +94,7 @@ test('profile remains usable at all five release viewports', async ({ page }) =>
       await home.click()
       expect((await overview).status()).toBe(200)
       await expect(page).toHaveURL(/\/#\/$/)
-      await expect(page.getByRole('heading', { name: '首页 / 系统概览', exact: true })).toBeVisible()
+      await expect(page.getByRole('heading', { name: '我的工作台', exact: true })).toBeVisible()
       await nav.getByRole('link', { name: '我的', exact: true }).click()
       await expect(page).toHaveURL(/\/#\/profile$/)
       await expect(page.getByRole('heading', { name: '个人中心', exact: true })).toBeVisible()

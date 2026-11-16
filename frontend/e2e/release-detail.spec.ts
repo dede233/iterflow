@@ -64,7 +64,7 @@ for (const width of [375, 390, 768, 1280, 1440]) {
       const escaping = await page.locator('.release-detail .section-card, .release-detail .release-notes, .release-detail .version-label').evaluateAll(nodes => nodes.filter(node => node.scrollWidth > node.clientWidth + 1).length)
       expect(escaping).toBe(0)
       for (const name of ['编辑', '删除', '回滚', '发布']) await expect(page.locator('.release-detail').getByRole('button', { name, exact: true })).toHaveCount(0)
-      await page.getByRole('button', { name: '关闭详情', exact: true }).click()
+      await page.getByRole('button', { name: '关闭此对话框', exact: true }).click()
       await expect(page.getByRole('dialog', { name: '发布记录详情', exact: true })).not.toBeVisible()
     })
   }

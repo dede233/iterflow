@@ -140,15 +140,14 @@ describe('read-only release detail', () => {
   })
 })
 
- it('embedded detail loads its explicit ID and emits navigation and close without changing the route', async () => {
+ it('embedded detail loads its explicit ID and delegates navigation and closing to its host', async () => {
   mocks.can.mockReturnValue(true)
   const wrapper = view({ embedded: true, embeddedId: 123, returnTo: '/releases?page=2&version_id=456' })
   await flushPromises()
   expect(mocks.getRelease).toHaveBeenCalledWith(123)
   await wrapper.get('button.version-link').trigger('click')
   expect(wrapper.emitted('open-version')).toEqual([[456]])
-  await wrapper.findAll('button').find(button => button.text() === '关闭详情')!.trigger('click')
-  expect(wrapper.emitted('close')).toEqual([[]])
+  expect(wrapper.findAll('button').some(button => button.text() === '关闭详情')).toBe(false)
   expect(wrapper.find('a').exists()).toBe(false)
   wrapper.unmount()
  })

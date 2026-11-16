@@ -48,6 +48,9 @@ for (const width of [1440, 375]) {
           modules: modules.filter((item) => item.enabled && activeSystems.some((system) => system.id === item.system_id)),
         } })
       }
+      if (pathname === '/api/v1/feedbacks' && method === 'GET') {
+        return route.fulfill({ status: 200, json: { items: [], total: 0, page: 1, page_size: 20 } })
+      }
       if (pathname === '/api/v1/systems' && method === 'POST') {
         const body = route.request().postDataJSON()
         const item: CatalogItem = {
@@ -97,6 +100,23 @@ for (const width of [1440, 375]) {
     await expect(page.locator('.el-form-item').filter({ hasText: '所属模块' })).toHaveCount(0)
     expect(modules).toHaveLength(1)
 
+    const feedbackNavigation = page.getByRole('link', { name: width < 768 ? '反馈' : '反馈中心', exact: true })
+    await feedbackNavigation.click()
+    const confirmation = page.getByRole('dialog', { name: '放弃未保存的修改？', exact: true })
+    await expect(confirmation).toBeVisible()
+    await expect(page.getByRole('heading', { name: '提交反馈', level: 1, exact: true })).toBeVisible()
+    await expect(systemSelect).toContainText('迭程')
+    await confirmation.getByRole('button', { name: '继续编辑', exact: true }).click()
+    await expect(confirmation).toBeHidden()
+    await expect(page).toHaveURL(/#\/feedbacks\/new$/)
+    await expect(systemSelect).toContainText('迭程')
+    await feedbackNavigation.click()
+    await expect(confirmation).toBeVisible()
+    await expect(page.getByRole('heading', { name: '提交反馈', level: 1, exact: true })).toBeVisible()
+    await confirmation.getByRole('button', { name: '放弃修改', exact: true }).click()
+    await expect(confirmation).toBeHidden()
+    await expect(page).toHaveURL(/#\/feedbacks$/)
+    await expect(page.getByRole('heading', { name: '反馈中心', level: 1, exact: true })).toBeVisible()
     await page.goto('/#/admin/systems')
     await page.getByRole('button', { name: '编辑系统 迭程' }).click()
     dialog = page.getByRole('dialog')

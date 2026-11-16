@@ -54,6 +54,7 @@ for (const width of [375, 1440]) {
       await page.goto('/#/versions/1')
       const header = page.locator('.page-header')
       await expect(header.getByRole('heading', { name: '需求自动汇总版本', exact: true })).toBeVisible()
+      await page.getByText('进度与发布说明', { exact: true }).click()
       await expect(page.getByText('进度由关联需求自动汇总；开发和验收在需求中完成。', { exact: true })).toBeVisible()
       for (const label of ['开始开发', '提测', '待发布', '退回测试']) await expect(header.getByRole('button', { name: label, exact: true })).toHaveCount(0)
       await expect(header.getByRole('button', { name: '取消版本', exact: true })).toBeVisible()

@@ -79,11 +79,11 @@ for (const width of [1280, 390]) {
           expect(requests.some(path => path.startsWith('/api/v1/releases?') && path.includes(`version_id=${id}`))).toBe(true)
         }
         if (id === 7) {
-          await drawer.getByRole(entry.path === '/versions' ? 'button' : 'link', { name: entry.path === '/versions' ? '关闭详情' : '返回列表', exact: true }).click()
+          await drawer.getByRole('button', { name: '关闭此对话框', exact: true }).click()
           await expect(drawer).not.toBeVisible()
           await expect(page).toHaveURL(new RegExp(`#${entry.path}\\?page=2&keyword=context$`))
         } else {
-          await drawer.getByRole('button', { name: '新标签/全屏直达', exact: true }).click()
+          await drawer.getByRole('button', { name: '打开完整页面', exact: true }).click()
           await expect(page).toHaveURL(new RegExp(`#${entry.path}/8\\?`))
           await expect(page.getByRole('heading', { name: `${entry.label}详情 8`, exact: true })).toBeVisible()
           await page.getByRole('link', { name: '返回列表', exact: true }).click()
@@ -150,7 +150,7 @@ for (const width of [1280, 390]) {
       await drawer.getByRole('button', { name: '编辑', exact: true }).click()
       const editor = page.getByRole('dialog', { name: `编辑${entry.label}`, exact: true })
       const newTitle = `${entry.label}更新后的标题`
-      await editor.locator('.el-form-item').filter({ hasText: entry.editField }).locator('input').fill(newTitle)
+      await editor.locator('.el-form-item').filter({ hasText: entry.editField }).locator('input[type="text"]').fill(newTitle)
       if (entry.path === '/requirements') {
         // Editing a title must preserve the confirmed legacy PLAIN description and format.
         await expect(editor.getByRole('textbox', { name: '需求描述', exact: true })).toHaveText('需求描述 7')

@@ -3,7 +3,7 @@ import BusinessSystemAttribution from '@/components/BusinessSystemAttribution.vu
 import RecentEntityActivity from '@/components/RecentEntityActivity.vue'
 import BusinessSystemSelect from '@/components/BusinessSystemSelect.vue'
 import RequirementProgress from '@/components/RequirementProgress.vue'
-import { computed, defineAsyncComponent, onMounted, reactive, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import RequirementNumber from '@/components/RequirementNumber.vue'
 import RichTextContent from '@/components/RichTextContent.vue'
 import DeleteEntityButton from '@/components/DeleteEntityButton.vue'
@@ -12,7 +12,8 @@ const RichTextEditor = defineAsyncComponent(() => import('@/components/RichTextE
 const VersionCreateView = defineAsyncComponent(() => import('@/views/version/VersionCreateView.vue'))
 import { ElMessage } from 'element-plus'
 import { actionErrorMessage } from '@/utils/actionError'
-import { useRoute, useRouter } from 'vue-router'
+import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
+import { useUnsavedChanges } from '@/composables/useUnsavedChanges'
 import {
   changeRequirementStatus,
   getRequirement,
@@ -144,6 +145,10 @@ async function submitStatus(): Promise<void> {
 // --- edit dialog ---
 const editDialog = ref(false)
 const editSubmitting = ref(false)
+const editExpanded = ref(false)
+const editRoot = ref<HTMLElement>()
+const editErrors = reactive({ title: '', description: '' })
+const editSnapshot = ref('')
 const editForm = reactive({ system_id: null as number | null,
   title: '',
   requirement_type: '',
@@ -152,10 +157,35 @@ const editForm = reactive({ system_id: null as number | null,
   acceptance_criteria: '',
 })
 let originalDescription = { text: '', format: 'PLAIN' as 'PLAIN' | 'HTML', editorHtml: '' }
+const editDraft = useUnsavedChanges({
+  active: () => editDialog.value,
+  isDirty: () => JSON.stringify(editForm) !== editSnapshot.value,
+  isBusy: () => editSubmitting.value,
+})
+const canLeaveDetail = () => creatingVersion.value || statusSubmitting.value ? false : editDraft.requestLeave()
+onBeforeRouteLeave(canLeaveDetail)
+onBeforeRouteUpdate(canLeaveDetail)
+async function requestClose(): Promise<boolean> {
+  if (creatingVersion.value || statusSubmitting.value || !(await editDraft.requestLeave())) return false
+  editDialog.value = false
+  return true
+}
+async function beforeEditClose(done: () => void): Promise<void> {
+  if (await requestClose()) done()
+}
+defineExpose({ requestClose })
+function editValidationMessage(field: keyof typeof editErrors): string {
+  return field === 'title'
+    ? (editForm.title.trim().length < 2 ? '标题至少需要 2 个字符' : '')
+    : (richTextPlainText(editForm.description).trim().length < 2 ? '需求描述至少需要 2 个字符' : '')
+}
+watch(() => editForm.title, () => { if (editErrors.title) editErrors.title = editValidationMessage('title') })
+watch(() => editForm.description, () => { if (editErrors.description) editErrors.description = editValidationMessage('description') })
 
 function openEdit(): void {
   if (!item.value || !canEdit.value) return
   fillEditForm(item.value)
+  editExpanded.value = false
   editDialog.value = true
   void startPresence()
 }
@@ -172,6 +202,8 @@ function fillEditForm(latest: Requirement): void {
     description: editorHtml,
     acceptance_criteria: latest.acceptance_criteria ?? '',
   })
+  editSnapshot.value = JSON.stringify(editForm)
+  editErrors.title = ''; editErrors.description = ''
 }
 
 watch(editDialog, (open) => {
@@ -180,8 +212,14 @@ watch(editDialog, (open) => {
 
 async function submitEdit(): Promise<void> {
   if (!item.value || !canEdit.value || editSubmitting.value) return
-  if (editForm.title.trim().length < 2 || richTextPlainText(editForm.description).length < 2) {
-    ElMessage.warning('请填写需求标题与描述（至少 2 个字符）')
+  editErrors.title = editValidationMessage('title')
+  editErrors.description = editValidationMessage('description')
+  const firstError = editErrors.title ? 'title' : editErrors.description ? 'description' : null
+  if (firstError) {
+    await nextTick()
+    const field = editRoot.value?.querySelector<HTMLElement>(`[data-field="${firstError}"] input:not([type="file"]), [data-field="${firstError}"] [contenteditable="true"]`)
+    field?.focus()
+    field?.scrollIntoView?.({ block: 'nearest' })
     return
   }
   editSubmitting.value = true
@@ -233,7 +271,7 @@ onMounted(load)
 </script>
 
 <template>
-  <section v-loading="loading" class="page">
+  <section v-loading="loading" class="page requirement-detail">
     <ErrorState v-if="failed" title="需求加载失败" description="请检查网络或确认需求是否仍可访问。" retry-label="重新加载" @retry="load" />
     <template v-if="item">
 
@@ -243,7 +281,7 @@ onMounted(load)
           <StatusTag :status="item.status" :label="requirementStatusLabel[item.status]" :type="requirementStatusTagType(item.status)" />
         </template>
         <template #actions>
-        <RouterLink class="back-link" :to="backTo" @click="props.embedded && emit('close')">返回列表</RouterLink>
+        <RouterLink v-if="!props.embedded" class="back-link" :to="backTo">返回列表</RouterLink>
         <el-button v-if="canEdit" @click="openEdit">编辑</el-button>
         <el-button v-if="canCreateVersion" @click="createVersionDialog = true">创建版本</el-button>
         <DeleteEntityButton v-if="canEdit && item.status === 'DRAFT' && !item.current_version_id && item.source === 'DIRECT'" kind="requirements" :id="item.id" :revision="item.revision" :title="item.title" @refresh="load" @deleted="onDeleted" />
@@ -254,7 +292,7 @@ onMounted(load)
       <BusinessSystemAttribution :system-id="item.system_id" :system-name="item.system_name" />
 
       <RequirementProgress :item="item" @updated="load" @status="openStatusDialog" />
-      <div class="detail-grid">
+      <div class="requirement-layout"><div class="detail-grid">
       <SectionCard title="需求详情" class="detail-main">
         <div class="requirement-content"><h3>需求描述</h3><RichTextContent :requirement-id="item.id" :content="item.description" :format="item.description_format" /></div>
         <div class="requirement-content"><h3>验收标准</h3><div class="multiline">{{ item.acceptance_criteria || '暂未填写验收标准' }}</div></div>
@@ -268,6 +306,7 @@ onMounted(load)
           <div><dt>更新时间</dt><dd>{{ formatLocalDateTime(item.updated_at) }}</dd></div>
         </dl>
       </SectionCard>
+      </div>
       </div>
 
       <RecentEntityActivity kind="requirement" :id="item.id" :revision="item.revision" :refresh-key="activityRefresh" />
@@ -325,35 +364,41 @@ onMounted(load)
     />
 
     <!-- edit dialog -->
-    <el-dialog v-model="editDialog" title="编辑需求" width="min(1040px, calc(100vw - 32px))" destroy-on-close>
+    <el-dialog v-model="editDialog" title="编辑需求" width="min(1040px, calc(100vw - 32px))" :fullscreen="editExpanded" destroy-on-close :before-close="beforeEditClose" :show-close="!editSubmitting" :close-on-click-modal="false" :close-on-press-escape="!editSubmitting">
+      <div ref="editRoot" :class="{ 'writing-expanded': editExpanded }">
       <el-alert v-if="existingEditor" type="warning" :closable="false" show-icon class="presence-alert">
         <template #title>{{ existingEditor.display_name }} 正在编辑此需求</template>
         你仍可继续编辑；如数据已变化，保存时会通过 revision 冲突保护避免静默覆盖。
       </el-alert>
-      <el-form label-position="top" @submit.prevent="submitEdit">
+      <el-form label-position="top" :disabled="editSubmitting" @submit.prevent="submitEdit">
+        <div class="editor-grid">
+        <el-form-item label="标题" required class="span-2" data-field="title" :error="editErrors.title">
+          <el-input v-model="editForm.title" maxlength="200" show-word-limit :aria-invalid="!!editErrors.title" />
+        </el-form-item>
+        <el-form-item label="需求描述" required class="span-2" data-field="description" :error="editErrors.description">
+          <template #label><span>需求描述</span><el-button class="expand-writing" link :disabled="editSubmitting" @click="editExpanded = !editExpanded">{{ editExpanded ? '收起编辑' : '全屏编辑' }}</el-button></template>
+          <RichTextEditor :requirement-id="item?.id" v-model="editForm.description" :disabled="editSubmitting" label="需求描述" />
+        </el-form-item>
+        <el-form-item label="验收标准" class="span-2">
+          <el-input v-model="editForm.acceptance_criteria" type="textarea" :rows="3" />
+        </el-form-item>
+        <div class="span-2 form-section-heading">归属与属性</div>
         <el-form-item label="业务系统"><BusinessSystemSelect v-model="editForm.system_id" :current-name="item?.system_name" /></el-form-item>
         <el-form-item label="需求类型">
           <el-select v-model="editForm.requirement_type" style="width: 100%">
             <el-option v-for="t in REQUIREMENT_TYPES" :key="t.value" :label="t.label" :value="t.value" />
           </el-select>
         </el-form-item>
-        <el-form-item label="标题">
-          <el-input v-model="editForm.title" maxlength="200" show-word-limit />
-        </el-form-item>
         <el-form-item label="优先级">
-          <el-select v-model="editForm.priority" style="width: 160px">
+          <el-select v-model="editForm.priority" style="width: 100%">
             <el-option v-for="p in REQUIREMENT_PRIORITIES" :key="p.value" :label="p.label" :value="p.value" />
           </el-select>
         </el-form-item>
-        <el-form-item label="需求描述">
-          <RichTextEditor :requirement-id="item?.id" v-model="editForm.description" :disabled="editSubmitting" label="需求描述" />
-        </el-form-item>
-        <el-form-item label="验收标准">
-          <el-input v-model="editForm.acceptance_criteria" type="textarea" :rows="3" />
-        </el-form-item>
+        </div>
       </el-form>
+      </div>
       <template #footer>
-        <el-button @click="editDialog = false">取消</el-button>
+        <el-button :disabled="editSubmitting" @click="requestClose">取消</el-button>
         <el-button type="primary" :loading="editSubmitting" @click="submitEdit">保存</el-button>
       </template>
     </el-dialog>
@@ -361,26 +406,36 @@ onMounted(load)
 </template>
 
 <style scoped>
-.requirement-content { font-size: 15px; line-height: 1.8; overflow-wrap: anywhere; }
+.requirement-layout { container-type: inline-size; container-name: requirement-detail; }
+.form-section-heading { margin: 4px 0 20px; padding-top: 20px; border-top: 1px solid var(--if-border); font-size: var(--if-font-body); font-weight: 600; }
+.expand-writing { margin-left: auto; }
+[data-field="description"] :deep(.el-form-item__label) { display: flex; align-items: center; width: 100%; }
+.writing-expanded { width:100%; max-width:1200px; margin-inline:auto; }
+.writing-expanded :deep(.rich-text-editor .tiptap) { min-height: min(48dvh, 480px); max-height: 64dvh; }
+.requirement-content { font-size: var(--if-font-reading); line-height: 1.8; overflow-wrap: anywhere; }
 .requirement-content + .requirement-content { margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--if-border); }
-.requirement-content h3 { font-size: 13px; font-weight: 500; color: var(--if-text-secondary); margin: 0 0 12px; }
-.empty-relation { margin: 16px 0; color: var(--if-text-tertiary); font-size: 13px; }
+.requirement-content h3 { font-size: var(--if-font-caption); font-weight: 500; color: var(--if-text-secondary); margin: 0 0 12px; }
+.empty-relation { margin: 16px 0; color: var(--if-text-tertiary); font-size: var(--if-font-caption); }
 .back-link { color: var(--if-brand-500); align-self: center; }
-.detail-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(250px, 300px); align-items: start; gap: var(--if-space-4); }
+.detail-grid { display: grid; grid-template-columns: 1fr; align-items: start; gap: var(--if-space-4); }
 .detail-main, .detail-side { min-width: 0; }
 .detail-grid > .detail-main + .detail-side { margin-top: 0; }
 .detail-main :deep(.el-descriptions__content) { overflow-wrap: anywhere; }
 .multiline { white-space: pre-wrap; overflow-wrap: anywhere; }
-.side-fields { display: grid; gap: 13px; margin: 0; }
+.side-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px 20px; margin: 0; }
 .side-fields > div { min-width: 0; padding-bottom: 12px; border-bottom: 1px solid var(--if-border); }
 .side-fields > div:last-child { border-bottom: 0; padding-bottom: 0; }
-.side-fields dt { margin-bottom: 4px; color: var(--if-text-3); font-size: 12px; }
-.side-fields dd { margin: 0; font-size: 13px; overflow-wrap: anywhere; }
+.side-fields dt { margin-bottom: 4px; color: var(--if-text-3); font-size: var(--if-font-caption); }
+.side-fields dd { margin: 0; font-size: var(--if-font-body); overflow-wrap: anywhere; }
 .section { margin-top: var(--if-space-4); }
 .links { list-style: none; margin: 0; padding: 0; }
 .links li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--if-border); }
 .links li:last-child { border-bottom: 0; }
 .presence-alert { min-width: 0; margin-bottom: var(--if-space-4); overflow-wrap: anywhere; }
 .presence-alert :deep(.el-alert__content), .presence-alert :deep(.el-alert__title) { min-width: 0; overflow-wrap: anywhere; }
-@media (max-width: 1199px) { .detail-grid { grid-template-columns: 1fr; } }
+@container requirement-detail (min-width: 900px) {
+  .detail-grid { grid-template-columns: minmax(0, 1fr) minmax(250px, 280px); }
+  .side-fields { grid-template-columns: 1fr; }
+}
+@container requirement-detail (max-width: 420px) { .side-fields { grid-template-columns: 1fr; } }
 </style>

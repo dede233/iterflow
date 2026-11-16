@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import BusinessSystemSelect from '@/components/BusinessSystemSelect.vue'
 import BatchActionsDialog from '@/components/BatchActionsDialog.vue'
-import { computed, onBeforeUnmount, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { listRequirements } from '@/api/requirements'
 import RequirementCreateView from './RequirementCreateView.vue'
@@ -32,6 +32,17 @@ const total = ref(0)
 const loading = ref(false)
 const failed = ref(false)
 const createDialog = ref(false)
+const createSaving = ref(false)
+const createExpanded = ref(false)
+const createFormRef = ref<InstanceType<typeof RequirementCreateView>>()
+const detailRef = ref<InstanceType<typeof RequirementDetailView>>()
+watch(createDialog, open => { if (!open) { createSaving.value = false; createExpanded.value = false } })
+async function beforeCreateClose(done: () => void): Promise<void> {
+  if (!createSaving.value && (await createFormRef.value?.requestClose() ?? false)) done()
+}
+async function beforeDetailClose(done: () => void): Promise<void> {
+  if (await detailRef.value?.requestClose() ?? true) done()
+}
 const filterDrawer = ref(false)
 const detailDrawer = ref(false)
 const activeRequirementId = ref<number | null>(null)
@@ -90,7 +101,8 @@ function openDetail(id: number): void {
   detailDrawer.value = true
 }
 
-function openFullScreen(id: number): void {
+async function openFullScreen(id: number): Promise<void> {
+  if (detailRef.value && !(await detailRef.value.requestClose())) return
   detailDrawer.value = false
   void router.push(queryState.detail(`/requirements/${id}`))
 }
@@ -217,8 +229,8 @@ const queryState = useListQuery({
     />
 
     <!-- Create Dialog -->
-    <el-dialog v-model="createDialog" title="新建需求" class="create-dialog" width="min(1040px, calc(100vw - 32px))" destroy-on-close :close-on-click-modal="false">
-      <RequirementCreateView v-if="createDialog" embedded @cancel="createDialog = false" @created="onRequirementCreated" />
+    <el-dialog v-model="createDialog" title="新建需求" class="create-dialog" width="min(1040px, calc(100vw - 32px))" :fullscreen="createExpanded" destroy-on-close :close-on-click-modal="false" :before-close="beforeCreateClose" :show-close="!createSaving" :close-on-press-escape="!createSaving">
+      <RequirementCreateView v-if="createDialog" ref="createFormRef" embedded @cancel="createDialog = false" @created="onRequirementCreated" @saving="createSaving = $event" @expanded="createExpanded = $event" />
     </el-dialog>
 
     <!-- Scheme C: Detail Drawer with full-screen expansion support -->
@@ -226,9 +238,10 @@ const queryState = useListQuery({
       v-model="detailDrawer"
       title="需求详情"
       direction="rtl"
-      size="min(860px, 94vw)"
+      :size="isMobile ? '100%' : 'min(960px, 94vw)'"
       destroy-on-close
       class="detail-drawer"
+      :before-close="beforeDetailClose"
     >
       <template #header>
         <div class="drawer-header-custom">
@@ -239,12 +252,13 @@ const queryState = useListQuery({
             class="expand-btn"
             @click="openFullScreen(activeRequirementId)"
           >
-            新标签/全屏直达
+            打开完整页面
           </el-button>
         </div>
       </template>
       <RequirementDetailView
         v-if="activeRequirementId && detailDrawer"
+        ref="detailRef"
         :key="activeRequirementId"
         embedded
         :embedded-id="activeRequirementId"

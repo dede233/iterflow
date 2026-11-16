@@ -7,6 +7,12 @@ async function fixture(page: Page) {
   await page.route('**/api/v1/**', async route => {
     const path = new URL(route.request().url()).pathname
     if (await mockCollaboration(route)) return
+    if (route.request().method() === 'POST' && ['/api/v1/editing/start', '/api/v1/editing/heartbeat', '/api/v1/editing/end'].includes(path)) {
+      const body = route.request().postDataJSON()
+      if (body.entity_type === 'REQUIREMENT' && body.entity_id === 1 && Object.keys(body).length === 2) {
+        return route.fulfill({ json: { existing_editor: null, ok: true } })
+      }
+    }
     const requirement = { id: 1, requirement_no: 'REQ-LAYOUT', title: '弹窗布局验收', description: '仅本地合成数据', description_format: 'PLAIN', requirement_type: 'FEATURE', priority: 'P2', source: 'DIRECT', status: 'DRAFT', system_id: 1, system_name: '系统甲', current_version_id: null, revision: 1 }
     const data: Record<string, unknown> = {
       '/api/v1/auth/me': { id: 1, username: 'layout', display_name: '布局测试', status: 'ACTIVE', revision: 1, must_change_password: false, data_scope: 'ALL', permission_codes: ['*'], role_ids: [] },
@@ -73,6 +79,13 @@ for (const [width, height] of [[320, 640], [375, 812], [768, 600], [1440, 900], 
       expect(control.y + control.height).toBeLessThanOrEqual((await footer.boundingBox())!.y + 1)
       await page.screenshot({ path: info.outputPath('form-bottom.png') })
       await footer.getByRole('button', { name: '取消', exact: true }).click()
+      if (entry.title === '新建需求' || entry.title === '提交反馈') {
+        const confirmation = page.getByRole('dialog', { name: '确认关闭？', exact: true })
+        await expect(confirmation).toBeVisible()
+        await expect(dialog).toBeVisible()
+        await confirmation.getByRole('button', { name: '关闭表单', exact: true }).click()
+        await expect(confirmation).toBeHidden()
+      }
       await expect(dialog).toBeHidden()
       expect(unexpected).toEqual([])
     })
@@ -94,6 +107,53 @@ test('scrolled requirement people selector remains clickable above the footer', 
   await expect(selector).toContainText('布局测试')
   await page.screenshot({ path: info.outputPath('selected-person.png') })
   await dialog.getByRole('button', { name: '取消', exact: true }).click()
+  const confirmation = page.getByRole('dialog', { name: '放弃未保存的修改？', exact: true })
+  await expect(confirmation).toBeVisible()
+  await expect(dialog).toBeVisible()
+  await expect(selector).toContainText('布局测试')
+  await confirmation.getByRole('button', { name: '放弃修改', exact: true }).click()
+  await expect(confirmation).toBeHidden()
   await expect(dialog).toBeHidden()
   expect(unexpected).toEqual([])
 })
+
+for (const width of [1440, 375]) {
+  test(`requirement browser back preserves edited draft until explicit discard at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    const unexpected = await fixture(page)
+    await page.goto('/#/requirements')
+    const row = width >= 768
+      ? page.locator('.el-table__body tr.el-table__row').filter({ hasText: '弹窗布局验收' })
+      : page.getByText('弹窗布局验收', { exact: true })
+    await row.click()
+    const drawer = page.getByRole('dialog', { name: '需求详情', exact: true })
+    await drawer.getByRole('button', { name: '打开完整页面', exact: true }).click()
+    await expect(page).toHaveURL(/#\/requirements\/1(?:\?|$)/)
+    await expect(page.getByRole('heading', { name: '弹窗布局验收', exact: true })).toBeVisible()
+    const detailUrl = page.url()
+    await page.getByRole('button', { name: '编辑', exact: true }).click()
+    const editor = page.getByRole('dialog', { name: '编辑需求', exact: true })
+    const title = editor.getByRole('textbox', { name: /^\*?标题$/, exact: true })
+    await title.fill('后退前未保存的需求标题')
+
+    await page.goBack()
+    const confirmation = page.getByRole('dialog', { name: '放弃未保存的修改？', exact: true })
+    await expect(confirmation).toBeVisible()
+    await expect(editor).toBeVisible()
+    await expect(title).toHaveValue('后退前未保存的需求标题')
+    await confirmation.getByRole('button', { name: '继续编辑', exact: true }).click()
+    await expect(confirmation).toBeHidden()
+    await expect(page).toHaveURL(detailUrl)
+    await expect(title).toHaveValue('后退前未保存的需求标题')
+
+    await page.goBack()
+    await expect(confirmation).toBeVisible()
+    await expect(editor).toBeVisible()
+    await confirmation.getByRole('button', { name: '放弃修改', exact: true }).click()
+    await expect(confirmation).toBeHidden()
+    await expect(editor).toBeHidden()
+    await expect(page).toHaveURL(/#\/requirements(?:\?|$)/)
+    await expect(page.getByRole('heading', { name: '需求管理', level: 1, exact: true })).toBeVisible()
+    expect(unexpected).toEqual([])
+  })
+}

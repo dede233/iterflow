@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import BatchActionsDialog from '@/components/BatchActionsDialog.vue'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { listFeedbacks } from '@/api/feedbacks'
 import FeedbackCreateView from './FeedbackCreateView.vue'
 import FeedbackDetailView from './FeedbackDetailView.vue'
@@ -16,6 +16,8 @@ import SectionCard from '@/components/ui/SectionCard.vue'
 import ListCard from '@/components/ui/ListCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
+import ListFilterPanel from '@/components/ui/ListFilterPanel.vue'
+import { feedbackFilterChips } from '@/utils/appliedListFilters'
 import {
   FEEDBACK_STATUSES,
   FEEDBACK_TYPES,
@@ -32,6 +34,7 @@ import type {
 } from '@/types/domain'
 
 const router = useRouter()
+const route = useRoute()
 const { isMobile } = useResponsive()
 const { can } = usePermission()
 
@@ -41,6 +44,12 @@ const loading = ref(false)
 const failed = ref(false)
 const filterDrawer = ref(false)
 const createDialog = ref(false)
+const createSaving = ref(false)
+const createFormRef = ref<InstanceType<typeof FeedbackCreateView>>()
+watch(createDialog, open => { if (!open) createSaving.value = false })
+async function beforeCreateClose(done: () => void): Promise<void> {
+  if (!createSaving.value && (await createFormRef.value?.requestClose() ?? false)) done()
+}
 const detailDrawer = ref(false)
 const activeFeedbackId = ref<number | null>(null)
 const systems = ref<BusinessSystemItem[]>([])
@@ -55,6 +64,14 @@ const filters = reactive({
   page: 1,
   page_size: 20,
 })
+
+const activeFilters = computed(() => feedbackFilterChips(route.query, systems.value, canReadSystems.value))
+const advancedCount = computed(() => activeFilters.value.filter(f => ['feedback_type', 'urgency'].includes(f.key)).length)
+function removeFilter(key: string) {
+  const query: typeof route.query = { ...route.query, page: '1' }
+  delete query[key]
+  void router.push({ path: '/feedbacks', query })
+}
 
 let requestSequence = 0
 let disposed = false
@@ -162,47 +179,18 @@ const queryState = useListQuery({
       </template>
     </PageHeader>
 
-    <!-- Desktop filter bar -->
-    <el-form v-if="!isMobile" class="filters filter-panel" :inline="true">
-      <el-form-item label="关键词">
-        <el-input
-          v-model="filters.keyword"
-          placeholder="编号/标题/描述"
-          clearable
-          style="width: 200px"
-          @keyup.enter="applyFilters"
-        />
+    <ListFilterPanel v-model="filterDrawer" :mobile="isMobile" title="筛选反馈" :advanced-count="advancedCount" @search="applyFilters" @reset="resetFilters">
+      <el-form-item v-if="canReadSystems" label="业务系统">
+        <el-select v-model="filters.system_id" clearable placeholder="全部系统"><el-option v-for="s in systems" :key="s.id" :label="s.name" :value="s.id" /></el-select>
       </el-form-item>
-      <el-form-item label="状态">
-        <el-select v-model="filters.status" clearable placeholder="全部" style="width: 130px">
-          <el-option v-for="s in FEEDBACK_STATUSES" :key="s.value" :label="s.label" :value="s.value" />
-        </el-select>
-      </el-form-item>
-      <el-form-item label="类型">
-        <el-select v-model="filters.feedback_type" clearable placeholder="全部" style="width: 130px">
-          <el-option v-for="t in FEEDBACK_TYPES" :key="t.value" :label="t.label" :value="t.value" />
-        </el-select>
-      </el-form-item>
-      <el-form-item label="紧急度">
-        <el-select v-model="filters.urgency" clearable placeholder="全部" style="width: 110px">
-          <el-option v-for="u in FEEDBACK_URGENCIES" :key="u.value" :label="u.label" :value="u.value" />
-        </el-select>
-      </el-form-item>
-      <el-form-item v-if="canReadSystems" label="系统">
-        <el-select
-          v-model="filters.system_id"
-          clearable
-          placeholder="全部"
-          style="width: 140px"
-        >
-          <el-option v-for="s in systems" :key="s.id" :label="s.name" :value="s.id" />
-        </el-select>
-      </el-form-item>
-      <el-form-item>
-        <el-button type="primary" @click="applyFilters">查询</el-button>
-        <el-button @click="resetFilters">重置</el-button>
-      </el-form-item>
-    </el-form>
+      <el-form-item label="关键词"><el-input v-model="filters.keyword" placeholder="编号 / 标题 / 描述" :maxlength="200" clearable @keyup.enter="applyFilters" /></el-form-item>
+      <el-form-item label="状态"><el-select v-model="filters.status" clearable placeholder="全部"><el-option v-for="s in FEEDBACK_STATUSES" :key="s.value" :label="s.label" :value="s.value" /></el-select></el-form-item>
+      <template #advanced>
+        <el-form-item label="类型"><el-select v-model="filters.feedback_type" clearable placeholder="全部"><el-option v-for="t in FEEDBACK_TYPES" :key="t.value" :label="t.label" :value="t.value" /></el-select></el-form-item>
+        <el-form-item label="紧急度"><el-select v-model="filters.urgency" clearable placeholder="全部"><el-option v-for="u in FEEDBACK_URGENCIES" :key="u.value" :label="u.label" :value="u.value" /></el-select></el-form-item>
+      </template>
+    </ListFilterPanel>
+    <div v-if="activeFilters.length" class="active-filters" aria-label="已应用筛选"><span>当前筛选</span><el-tag v-for="filter in activeFilters" :key="filter.key" closable @close="removeFilter(filter.key)">{{ filter.label }}</el-tag></div>
 
     <ErrorState v-if="failed" title="反馈加载失败" description="请检查网络后重试。" retry-label="重新加载" @retry="load" />
     <SectionCard v-else title="反馈列表" :description="`共 ${total} 条反馈`" :padded="false">
@@ -214,8 +202,7 @@ const queryState = useListQuery({
       row-key="id"
       @row-click="(row: Feedback) => openDetail(row.id)"
     >
-      <el-table-column prop="feedback_no" label="编号" width="180" />
-      <el-table-column prop="title" label="标题" min-width="240" show-overflow-tooltip />
+      <el-table-column label="反馈" min-width="280"><template #default="s"><button class="record-title" @click.stop="openDetail(s.row.id)">{{ s.row.title }}</button><div class="mono record-code">{{ s.row.feedback_no }}</div></template></el-table-column>
       <el-table-column label="类型" width="120">
         <template #default="s">{{ feedbackTypeLabel[s.row.feedback_type] ?? s.row.feedback_type }}</template>
       </el-table-column>
@@ -269,42 +256,9 @@ const queryState = useListQuery({
       "
     />
 
-    <!-- Mobile filter drawer -->
-    <el-drawer v-model="filterDrawer" title="筛选反馈" direction="rtl" size="min(420px, 100%)">
-      <el-form label-position="top">
-        <el-form-item label="关键词">
-          <el-input v-model="filters.keyword" placeholder="编号/标题/描述" clearable />
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-select v-model="filters.status" clearable placeholder="全部" style="width: 100%">
-            <el-option v-for="s in FEEDBACK_STATUSES" :key="s.value" :label="s.label" :value="s.value" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="类型">
-          <el-select v-model="filters.feedback_type" clearable placeholder="全部" style="width: 100%">
-            <el-option v-for="t in FEEDBACK_TYPES" :key="t.value" :label="t.label" :value="t.value" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="紧急度">
-          <el-select v-model="filters.urgency" clearable placeholder="全部" style="width: 100%">
-            <el-option v-for="u in FEEDBACK_URGENCIES" :key="u.value" :label="u.label" :value="u.value" />
-          </el-select>
-        </el-form-item>
-        <el-form-item v-if="canReadSystems" label="系统">
-          <el-select v-model="filters.system_id" clearable placeholder="全部" style="width: 100%">
-            <el-option v-for="s in systems" :key="s.id" :label="s.name" :value="s.id" />
-          </el-select>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="resetFilters">重置</el-button>
-        <el-button type="primary" @click="applyFilters">查询</el-button>
-      </template>
-    </el-drawer>
-
     <!-- Create Dialog -->
-    <el-dialog v-model="createDialog" title="提交反馈" class="create-dialog" width="min(860px, calc(100vw - 24px))" destroy-on-close :close-on-click-modal="false">
-      <FeedbackCreateView v-if="createDialog" embedded @cancel="createDialog = false" @created="onFeedbackCreated" />
+    <el-dialog v-model="createDialog" title="提交反馈" class="create-dialog" width="min(860px, calc(100vw - 24px))" destroy-on-close :close-on-click-modal="false" :before-close="beforeCreateClose" :show-close="!createSaving" :close-on-press-escape="!createSaving">
+      <FeedbackCreateView v-if="createDialog" ref="createFormRef" embedded @cancel="createDialog = false" @created="onFeedbackCreated" @saving="createSaving = $event" />
     </el-dialog>
 
     <!-- Scheme C: Detail Drawer with full-screen expansion support -->
@@ -312,7 +266,7 @@ const queryState = useListQuery({
       v-model="detailDrawer"
       title="反馈详情"
       direction="rtl"
-      size="min(860px, 94vw)"
+      :size="isMobile ? '100%' : 'min(860px, 94vw)'"
       destroy-on-close
       class="detail-drawer"
     >
@@ -325,7 +279,7 @@ const queryState = useListQuery({
             class="expand-btn"
             @click="openFullScreen(activeFeedbackId)"
           >
-            新标签/全屏直达
+            打开完整页面
           </el-button>
         </div>
       </template>
@@ -342,7 +296,10 @@ const queryState = useListQuery({
 </template>
 
 <style scoped>
-.filters { margin-bottom: var(--if-space-4); }
+.active-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: -4px 0 16px; color: var(--if-text-secondary); font-size: 13px; }
+.record-title { display: block; border: 0; padding: 4px 0; background: transparent; color: var(--if-text-primary); font: inherit; font-size: 14px; font-weight: 600; text-align: left; cursor: pointer; overflow-wrap: anywhere; }
+.record-title:hover { color: var(--if-brand-600); }
+.record-code { margin-top: 2px; }
 .cards { display: grid; gap: 8px; padding: var(--if-space-3); }
 .pager { margin-top: var(--if-space-4); justify-content: flex-end; }
 .drawer-header-custom { display: flex; align-items: center; justify-content: space-between; width: 100%; padding-right: 28px; }

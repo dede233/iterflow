@@ -5,7 +5,7 @@ import DeleteEntityButton from '@/components/DeleteEntityButton.vue'
 import CollaborationPeople from '@/components/CollaborationPeople.vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, type UploadRequestOptions } from 'element-plus'
-import { useRoute, useRouter } from 'vue-router'
+import { onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
 import {
   changeFeedbackStatus,
   convertFeedback,
@@ -171,12 +171,13 @@ watch(() => [auth.user?.id, auth.accessToken, auth.permissionCodes.join(',')], (
   convertDialog.value = false
 }, { flush: 'sync' })
 
-async function requestClose(): Promise<boolean> {
+async function requestClose(confirmClean = isCreateMode.value): Promise<boolean> {
   if (convertSubmitting.value) return false
   if (!convertDialog.value) return true
-  return await createFormRef.value?.requestClose(isCreateMode.value) ?? true
+  return await createFormRef.value?.requestClose(confirmClean) ?? true
 }
 defineExpose({ requestClose })
+onBeforeRouteUpdate((to, from) => to.path === from.path || requestClose(false))
 
 async function beforeConvertClose(done: () => void): Promise<void> {
   if (await requestClose()) done()

@@ -121,12 +121,15 @@ test('Phase 7 real restricted users: presence, conflict, publish, notification a
     await expect(submit).toHaveURL(new RegExp(`#/feedbacks/${feedback.id}$`))
     await pageA.goto(`/#/feedbacks/${feedback.id}`)
     await status(pageA, '受理', `/feedbacks/${feedback.id}`)
-    await pageA.getByRole('button', { name: '转需求', exact: true }).click()
+    await expect(pageA.getByText('下一步处理', { exact: true })).toBeVisible()
+    await pageA.getByRole('button', { name: '新建需求', exact: true }).click()
+    const createRequirement = pageA.getByRole('dialog', { name: '新建需求', exact: true })
+    await expect(createRequirement.getByRole('textbox', { name: /需求标题$/ })).toHaveValue(title)
     const converted = pageA.waitForResponse(r => r.url().endsWith(`/feedbacks/${feedback.id}/convert`) && r.request().method() === 'POST')
     // Finish the conversion navigation's first detail read before assignment/reload.
     // URL changes alone do not mean that the detail response body is available.
     const initialDetail = pageA.waitForResponse(r => /\/api\/v1\/requirements\/\d+$/.test(r.url()) && r.request().method() === 'GET').then(r => r.json())
-    await pageA.getByRole('dialog', { name: '转为需求' }).getByRole('button', { name: '确定', exact: true }).click()
+    await createRequirement.getByRole('button', { name: '确定', exact: true }).click()
     const requirement = await (await converted).json()
     await expect(pageA).toHaveURL(new RegExp(`#/requirements/${requirement.id}\\?return_to=%2Ffeedbacks$`))
     const initialRequirement = await initialDetail

@@ -185,6 +185,7 @@ const stubs = {
   'el-descriptions-item': elementStub,
   'el-drawer': elementStub,
   'el-divider': elementStub,
+  'el-dropdown': { template: '<div><slot /></div>' },
   'el-empty': {
     props: { description: String },
     template: '<div class="empty">{{ description }}</div>',
@@ -536,35 +537,83 @@ describe('detail views enforce permission-aware loading in mounted components', 
 
   it('allows CREATE_NEW without LINK_EXISTING and reloads Feedback without navigation', async () => {
     permissionSet('rd.feedback.view', 'rd.feedback.convert')
+    mocks.getFeedback.mockResolvedValueOnce(feedback).mockResolvedValue({
+      ...feedback, status: 'REQUIREMENT_LINKED', main_requirement_id: requirement.id, revision: 2,
+    })
     const wrapper = mount(FeedbackDetailView, { global: { stubs, directives: { loading: {} } } })
     await flushPromises()
 
     expect(wrapper.text()).toContain('反馈标题')
-    const convertButton = wrapper.findAll('button').find((button) => button.text() === '转需求')
+    const convertButton = wrapper.findAll('button').find((button) => button.text() === '新建需求')
     expect(convertButton).toBeDefined()
+    expect(wrapper.text()).not.toContain('关联已有需求')
+    expect(wrapper.text()).not.toContain('更多处理')
     await convertButton!.trigger('click')
     await flushPromises()
-    expect(wrapper.text()).toContain('新建需求')
-    expect(wrapper.text()).not.toContain('关联已有需求')
+    expect(wrapper.get('.dialog').text()).not.toContain('转换方式')
 
     const confirmButton = wrapper.findAll('button').find((button) => button.text() === '确定')
     expect(confirmButton).toBeDefined()
     await confirmButton!.trigger('click')
     await flushPromises()
 
-    expect(mocks.convertFeedback).toHaveBeenCalledOnce()
+    expect(mocks.convertFeedback).toHaveBeenCalledWith(feedback.id, expect.objectContaining({
+      type: 'CREATE_NEW', revision: feedback.revision, requirement_title: feedback.title,
+      description: '<p>反馈描述</p>', description_format: 'HTML', participants: [],
+    }))
     expect(mocks.routerPush).not.toHaveBeenCalled()
     expect(mocks.getFeedback).toHaveBeenCalledTimes(2)
+    expect(mocks.getRequirement).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('当前无法查看关联需求')
+    expect(wrapper.text()).not.toContain('新建需求')
+    wrapper.unmount()
   })
 
-  it('offers LINK_EXISTING when the mounted converter can read Requirements', async () => {
-    permissionSet('rd.feedback.view', 'rd.feedback.convert', 'rd.requirement.view')
+  it.each([
+    { permissions: ['rd.feedback.convert', 'rd.requirement.view'], expected: ['新建需求', '关联已有需求'] },
+    { permissions: ['rd.feedback.edit', 'rd.requirement.view'], expected: ['更多处理'] },
+    { permissions: ['rd.requirement.view'], expected: [] },
+  ])('shows accepted feedback actions according to $permissions', async ({ permissions, expected }) => {
+    permissionSet('rd.feedback.view', ...permissions)
     const wrapper = mount(FeedbackDetailView, { global: { stubs, directives: { loading: {} } } })
     await flushPromises()
-    const convertButton = wrapper.findAll('button').find((button) => button.text() === '转需求')
-    await convertButton!.trigger('click')
+    const actions = ['新建需求', '关联已有需求', '更多处理']
+    expect(wrapper.findAll('button').map(button => button.text()).filter(label => actions.includes(label))).toEqual(expected)
+    expect(wrapper.text()).toContain(expected.length ? '下一步处理' : '受理进度')
+    expect(mocks.getRequirement).not.toHaveBeenCalled()
+    expect(mocks.convertFeedback).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
+  it.each([
+    { status: 'REQUIREMENT_LINKED', scopeAllowed: true },
+    { status: 'REQUIREMENT_LINKED', scopeAllowed: false },
+    { status: 'ONLINE', scopeAllowed: true },
+  ] as const)('resolves the linked requirement once for $status (visible=$scopeAllowed)', async ({ status, scopeAllowed }) => {
+    permissionSet('rd.feedback.view', 'rd.feedback.edit', 'rd.feedback.convert', 'rd.requirement.view')
+    mocks.getFeedback.mockResolvedValue({ ...feedback, status, main_requirement_id: requirement.id })
+    if (!scopeAllowed) mocks.getRequirement.mockRejectedValueOnce(new Error('outside DataScope'))
+    const wrapper = mount(FeedbackDetailView, { props: { embedded: true, embeddedId: feedback.id }, global: { stubs, directives: { loading: {} } } })
     await flushPromises()
-    expect(wrapper.text()).toContain('关联已有需求')
+    expect(mocks.getRequirement).toHaveBeenCalledExactlyOnceWith(requirement.id)
+    expect(wrapper.text()).not.toContain('下一步处理')
+    expect(wrapper.text()).not.toContain('新建需求')
+    expect(wrapper.text()).not.toContain('关联已有需求')
+    const linkName = `${requirement.requirement_no} · ${requirement.title}`
+    expect(wrapper.findAll('a').filter(link => link.text() === linkName)).toHaveLength(scopeAllowed ? 1 : 0)
+    if (!scopeAllowed) expect(wrapper.text()).toContain('当前无法查看关联需求')
+    wrapper.unmount()
+  })
+
+  it('does not offer conversion for a historical linked feedback without a requirement ID', async () => {
+    permissionSet('rd.feedback.view', 'rd.feedback.edit', 'rd.feedback.convert', 'rd.requirement.view')
+    mocks.getFeedback.mockResolvedValue({ ...feedback, status: 'REQUIREMENT_LINKED' })
+    const wrapper = mount(FeedbackDetailView, { global: { stubs, directives: { loading: {} } } })
+    await flushPromises()
+    expect(wrapper.text()).toContain('暂无关联需求记录')
+    expect(wrapper.findAll('button').map(button => button.text())).not.toContain('转需求')
+    expect(mocks.getRequirement).not.toHaveBeenCalled()
+    wrapper.unmount()
   })
 })
 

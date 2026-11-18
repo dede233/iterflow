@@ -362,6 +362,15 @@ class FeedbackService:
         previous_status = feedback.status
 
         if payload.type is FeedbackConvertType.CREATE_NEW:
+            system_id = feedback.system_id
+            module_id = feedback.module_id
+            if payload.system_id is not None:
+                if system_id is None:
+                    self._validate_system_module(payload.system_id, None)
+                    system_id = payload.system_id
+                    module_id = None
+                elif payload.system_id != system_id:
+                    raise AppError(42232, "新需求须沿用来源反馈的业务系统", 422)
             target = Requirement(
                 requirement_no=next_business_no(
                     self.db, Requirement, Requirement.requirement_no, "REQ"
@@ -371,8 +380,8 @@ class FeedbackService:
                 source=RequirementSource.FEEDBACK,
                 priority=payload.priority,
                 status=RequirementStatus.DRAFT,
-                system_id=feedback.system_id,
-                module_id=feedback.module_id,
+                system_id=system_id,
+                module_id=module_id,
                 description=payload.description,
                 description_format=payload.description_format,
                 acceptance_criteria=payload.acceptance_criteria,
@@ -445,7 +454,11 @@ class FeedbackService:
                 "REQUIREMENT",
                 target.id,
                 "CREATE_FROM_FEEDBACK",
-                after={"feedback_id": feedback.id, "requirement_no": target.requirement_no},
+                after={
+                    "feedback_id": feedback.id,
+                    "requirement_no": target.requirement_no,
+                    "system_id": target.system_id,
+                },
             )
         collaboration = CollaborationService(self.db)
         collaboration.event(

@@ -200,12 +200,14 @@ async function showConversionError(error: unknown, revision: number): Promise<vo
     : actionErrorMessage(error)
   await showConflict(error, revision, (latest) => {
     if (conversionSource.value) conversionSource.value = latest
+    convertError.value = ''
   })
 }
 
-async function submitFeedbackRequirement(payload: Omit<RequirementCreatePayload, 'system_id'>): Promise<number | undefined> {
+async function submitFeedbackRequirement(payload: RequirementCreatePayload): Promise<number | undefined> {
   const feedback = conversionSource.value
   if (!feedback || !convertDialog.value || !isCreateMode.value || !canConvert.value) return
+  if (feedback.system_id != null && payload.system_id != null && feedback.system_id !== payload.system_id) return
   convertError.value = ''
   try {
     const requirement = await convertFeedback(feedback.id, {
@@ -219,6 +221,7 @@ async function submitFeedbackRequirement(payload: Omit<RequirementCreatePayload,
       acceptance_criteria: payload.acceptance_criteria,
       participants: payload.participants,
       requirement_id: null,
+      ...(feedback.system_id == null && payload.system_id != null ? { system_id: payload.system_id } : {}),
     })
     return requirement.id
   } catch (error) {

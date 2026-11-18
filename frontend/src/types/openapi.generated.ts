@@ -1449,7 +1449,7 @@ export interface paths {
         };
         /**
          * 业务系统选择项
-         * @description 需求或版本查看、创建、编辑权限可读取启用系统的最小选择项，不返回管理元数据。
+         * @description 反馈转需求权限或需求、版本的查看、创建、编辑权限可读取启用系统的 ID 和名称。
          */
         get: operations["system_options_api_v1_systems_options_get"];
         put?: never;
@@ -2636,6 +2636,11 @@ export interface components {
              * @description 对象的乐观锁修订号；写入时提交最后读取的修订号。
              */
             revision: number;
+            /**
+             * 业务系统 ID
+             * @description 反馈无业务系统时，新建需求可选一个已启用系统。反馈已有系统时继承，关联已有需求时不可指定。
+             */
+            system_id?: number | null;
             /** 需求标题 */
             requirement_title?: string | null;
             /** 需求类型 */

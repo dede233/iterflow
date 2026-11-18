@@ -4954,7 +4954,7 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
       security:
       - bearerAuth: []
-      description: 需求或版本查看、创建、编辑权限可读取启用系统的最小选择项，不返回管理元数据。
+      description: 反馈转需求权限或需求、版本的查看、创建、编辑权限可读取启用系统的 ID 和名称。
   /systems:
     get:
       tags:
@@ -7673,6 +7673,13 @@ components:
           minimum: 1.0
           title: 修订号
           description: 对象的乐观锁修订号；写入时提交最后读取的修订号。
+        system_id:
+          anyOf:
+          - type: integer
+            exclusiveMinimum: 0.0
+          - type: 'null'
+          title: 业务系统 ID
+          description: 反馈无业务系统时，新建需求可选一个已启用系统。反馈已有系统时继承，关联已有需求时不可指定。
         requirement_title:
           anyOf:
           - type: string

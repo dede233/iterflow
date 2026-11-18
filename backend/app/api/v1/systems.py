@@ -26,6 +26,7 @@ def system_options(
     db: Session = Depends(get_db),
     user: User = Depends(
         require_any_permission(
+            "rd.feedback.convert",
             "rd.requirement.view",
             "rd.requirement.create",
             "rd.requirement.edit",

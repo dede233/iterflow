@@ -2,7 +2,7 @@
 import BusinessSystemSelect from '@/components/BusinessSystemSelect.vue'
 import PeopleSelector from '@/components/PeopleSelector.vue'
 import type { Participant, Person } from '@/api/collaboration'
-import { defineAsyncComponent, nextTick, reactive, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, nextTick, reactive, ref, watch } from 'vue'
 import { plainTextToHtml, richTextPlainText } from '@/utils/richText'
 const RichTextEditor = defineAsyncComponent(() => import('@/components/RichTextEditor.vue'))
 import { ElMessage } from 'element-plus'
@@ -19,7 +19,7 @@ type FeedbackConversion = {
   confirmPeople: Person[]
   allowed: boolean
   error: string
-  submit: (payload: Omit<RequirementCreatePayload, 'system_id'>) => Promise<number | undefined>
+  submit: (payload: RequirementCreatePayload) => Promise<number | undefined>
 }
 
 const router = useRouter()
@@ -46,6 +46,10 @@ const form = reactive({
   description: props.conversion ? plainTextToHtml(props.conversion.source.description) : '',
   acceptance_criteria: '',
 })
+const inheritedSystemId = computed(() => props.conversion?.source.system_id ?? null)
+const systemSelectionConflicts = computed(() =>
+  inheritedSystemId.value != null && form.system_id != null && form.system_id !== inheritedSystemId.value,
+)
 
 const initialSnapshot = JSON.stringify({ form, roles })
 const draft = useUnsavedChanges({
@@ -74,7 +78,7 @@ async function cancel(): Promise<void> {
 
 async function submit(): Promise<void> {
   const conversion = props.conversion
-  if (saving.value || (conversion && !conversion.allowed)) return
+  if (saving.value || systemSelectionConflicts.value || (conversion && !conversion.allowed)) return
   errors.title = validationMessage('title')
   errors.description = validationMessage('description')
   const firstError = errors.title ? 'title' : errors.description ? 'description' : null
@@ -87,8 +91,9 @@ async function submit(): Promise<void> {
   }
   saving.value = true
   try {
-    const payload: Omit<RequirementCreatePayload, 'system_id'> = {
+    const payload: RequirementCreatePayload = {
       participants: Object.entries(roles).flatMap(([role, ids]) => ids.map(user_id => ({ role: role as Participant['role'], user_id }))),
+      system_id: form.system_id,
       title: form.title.trim(),
       requirement_type: form.requirement_type,
       priority: form.priority,
@@ -98,7 +103,7 @@ async function submit(): Promise<void> {
     }
     const id = conversion
       ? await conversion.submit(payload)
-      : (await createRequirement({ ...payload, system_id: form.system_id })).id
+      : (await createRequirement(payload)).id
     if (id === undefined) return
     completed.value = true
     if (!conversion) ElMessage.success('需求已创建')
@@ -129,7 +134,13 @@ async function submit(): Promise<void> {
         </el-form-item>
         <div class="span-2 form-section-heading">归属与确认</div>
         <el-form-item label="业务系统">
-          <span v-if="conversion" class="inherited-system">{{ conversion.source.system_name || (conversion.source.system_id != null ? `系统 #${conversion.source.system_id}` : '未指定') }}</span>
+          <div v-if="inheritedSystemId != null" class="inherited-system">
+            <span>{{ conversion?.source.system_name || `系统 #${inheritedSystemId}` }}</span>
+            <template v-if="systemSelectionConflicts">
+              <p class="system-conflict" role="alert">反馈的业务系统已更新，与草稿中的选择不同。</p>
+              <el-button link type="primary" :disabled="saving" @click="form.system_id = null">使用反馈的业务系统</el-button>
+            </template>
+          </div>
           <BusinessSystemSelect v-else v-model="form.system_id" />
         </el-form-item>
         <el-form-item label="需求类型" required>
@@ -151,7 +162,7 @@ async function submit(): Promise<void> {
         <p v-if="conversion?.error" class="submit-error" role="alert">{{ conversion.error }}</p>
         <div class="editor-actions">
           <el-button :disabled="saving" @click="cancel">取消</el-button>
-          <el-button type="primary" native-type="submit" :disabled="conversion && !conversion.allowed" :loading="saving">创建</el-button>
+          <el-button type="primary" native-type="submit" :disabled="systemSelectionConflicts || (conversion && !conversion.allowed)" :loading="saving">创建</el-button>
         </div>
       </el-form>
     </SectionCard>
@@ -168,6 +179,7 @@ async function submit(): Promise<void> {
 .embedded-form :deep(.section-card) { border: 0; box-shadow: none; }
 .expand-writing { margin-left: auto; }
 .inherited-system { overflow-wrap: anywhere; }
+.system-conflict { margin: 0; color: var(--if-danger-fg); }
 [data-field="description"] :deep(.el-form-item__label) { width: 100%; display: flex; align-items: center; }
 .writing-expanded :deep(.rich-text-editor .tiptap) { min-height: min(48dvh, 480px); max-height: 64dvh; }
 .submit-error { margin: 0; padding: 8px 20px; color: var(--if-danger-fg); overflow-wrap: anywhere; }

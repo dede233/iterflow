@@ -100,6 +100,7 @@ class FeedbackConvertRequest(BaseModel):
     type: FeedbackConvertType
     revision: int = Field(ge=1)
     # CREATE_NEW fields
+    system_id: int | None = Field(default=None, gt=0)
     requirement_title: str | None = Field(default=None, min_length=2, max_length=200)
     requirement_type: str | None = Field(
         default=None, min_length=1, max_length=32, pattern=r"^[A-Z][A-Z0-9_]*$"
@@ -116,6 +117,8 @@ class FeedbackConvertRequest(BaseModel):
     @model_validator(mode="after")
     def check_mode_fields(self) -> Self:
         ParticipantsChange(revision=1, participants=self.participants)
+        if self.type is FeedbackConvertType.LINK_EXISTING and self.system_id is not None:
+            raise ValueError("关联已有需求不能指定业务系统")
         if self.type is FeedbackConvertType.LINK_EXISTING and self.description_images:
             raise ValueError("关联已有需求不能添加正文图片")
         if self.type is FeedbackConvertType.LINK_EXISTING and self.participants:

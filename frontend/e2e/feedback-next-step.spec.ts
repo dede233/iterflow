@@ -9,8 +9,9 @@ const description = '提交人提供的具体内容\n第二行保留原始语义
 async function fixture(page: Page, status: Feedback['status']) {
   const feedback: Feedback = {
     id: 1, feedback_no: 'FB-NEXT', title, feedback_type: 'OTHER', urgency: 'NORMAL',
-    status, description, submitter_id: 1, system_id: 1, system_name: '系统甲', module_id: null,
-    main_requirement_id: null, revision: 4, created_at: timestamp, updated_at: timestamp, updated_by: 1,
+    status, description, submitter_id: 1, submitter_display_name: '指定接收人', system_id: 1, system_name: '系统甲', module_id: null,
+    expected_result: null, actual_result: null, reproduce_steps: null, main_requirement_id: null, duplicate_of_id: null,
+    revision: 4, created_at: timestamp, updated_at: timestamp, updated_by: 1,
   }
   let requirement: Requirement | undefined
   const statusWrites: FeedbackStatusChangePayload[] = []
@@ -40,7 +41,7 @@ async function fixture(page: Page, status: Feedback['status']) {
       requirement = {
         id: 7, requirement_no: 'REQ-NEXT', title: payload.requirement_title!, requirement_type: 'FEATURE',
         status: 'DRAFT', priority: 'P2', source: 'FEEDBACK', description: payload.description!, description_format: 'HTML',
-        system_id: feedback.system_id, system_name: feedback.system_name, module_id: null, owner_id: null,
+        system_id: feedback.system_id, system_name: feedback.system_name, module_id: null, owner_id: null, release_frozen: false,
         current_version_id: null, acceptance_criteria: null, revision: 1, created_at: timestamp, updated_at: timestamp, updated_by: 1,
       }
       feedback.main_requirement_id = requirement.id
@@ -52,7 +53,7 @@ async function fixture(page: Page, status: Feedback['status']) {
     const responses: Record<string, unknown> = {
       '/auth/me': { id: 1, username: 'mock-guide-viewer', display_name: '指定接收人', status: 'ACTIVE', revision: 1, must_change_password: false, data_scope: 'SELF', role_ids: [], permission_codes: ['*'] },
       '/notifications/unread-count': { unread_count: 0 },
-      '/me/mail-preferences': { revision: 1, mode: 'TASKS', email: null, verified: false, pending_email: null, smtp_enabled: false },
+      '/me/mail-preferences': { revision: 1, mode: 'TASKS', email: null, verified: false, pending_email: null, smtp_enabled: false, notice_acknowledged: true },
       '/systems': { systems: [{ id: 1, name: '系统甲', enabled: true }], modules: [] },
       '/feedbacks': { items: [feedback], total: 1, page: 1, page_size: 20 },
       '/feedbacks/1': feedback,
@@ -60,7 +61,7 @@ async function fixture(page: Page, status: Feedback['status']) {
       '/feedbacks/1/comments': [],
       '/feedbacks/1/collaboration': { revision: feedback.revision, recipients: [{ id: 1, display_name: '指定接收人' }], handler_id: accepted ? 1 : null, accepted_by: accepted ? 1 : null, accepted_at: accepted ? timestamp : null },
       '/requirements/7': requirement,
-      '/requirements/7/feedbacks': [feedback],
+      '/requirements/7/feedbacks': [{ feedback_id: feedback.id, feedback_no: feedback.feedback_no, title: feedback.title, status: feedback.status, is_primary: true }],
       '/requirements/7/workflow': { revision: 1, content_revision: 1, confirmed_revision: null, needs_confirmation: true, legacy_completed: false, design_status: 'NOT_REQUIRED', paused_from: null, records: [] },
       '/requirements/7/participants': { revision: 1, participants: [{ user_id: 1, role: 'CONFIRM', display_name: '指定接收人', active: true }] },
     }

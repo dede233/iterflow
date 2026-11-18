@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import BatchActionsDialog from '@/components/BatchActionsDialog.vue'
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { listFeedbacks } from '@/api/feedbacks'
 import FeedbackCreateView from './FeedbackCreateView.vue'
@@ -51,6 +51,7 @@ async function beforeCreateClose(done: () => void): Promise<void> {
   if (!createSaving.value && (await createFormRef.value?.requestClose() ?? false)) done()
 }
 const detailDrawer = ref(false)
+const detailRef = ref<InstanceType<typeof FeedbackDetailView>>()
 const activeFeedbackId = ref<number | null>(null)
 const systems = ref<BusinessSystemItem[]>([])
 const canReadSystems = computed(() => can(['sys.system.view', 'sys.system.manage']))
@@ -125,8 +126,14 @@ function openDetail(id: number): void {
   detailDrawer.value = true
 }
 
-function openFullScreen(id: number): void {
+async function beforeDetailClose(done: () => void): Promise<void> {
+  if (await detailRef.value?.requestClose() ?? true) done()
+}
+
+async function openFullScreen(id: number): Promise<void> {
+  if (detailRef.value && !(await detailRef.value.requestClose())) return
   detailDrawer.value = false
+  await nextTick()
   void router.push(queryState.detail(`/feedbacks/${id}`))
 }
 
@@ -269,6 +276,7 @@ const queryState = useListQuery({
       :size="isMobile ? '100%' : 'min(860px, 94vw)'"
       destroy-on-close
       class="detail-drawer"
+      :before-close="beforeDetailClose"
     >
       <template #header>
         <div class="drawer-header-custom">
@@ -285,6 +293,7 @@ const queryState = useListQuery({
       </template>
       <FeedbackDetailView
         v-if="activeFeedbackId && detailDrawer"
+        ref="detailRef"
         :key="activeFeedbackId"
         embedded
         :embedded-id="activeFeedbackId"

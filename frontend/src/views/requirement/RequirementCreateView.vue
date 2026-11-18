@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import BusinessSystemSelect from '@/components/BusinessSystemSelect.vue'
 import PeopleSelector from '@/components/PeopleSelector.vue'
-import type { Participant } from '@/api/collaboration'
+import type { Participant, Person } from '@/api/collaboration'
 import { defineAsyncComponent, nextTick, reactive, ref, watch } from 'vue'
-import { richTextPlainText } from '@/utils/richText'
+import { plainTextToHtml, richTextPlainText } from '@/utils/richText'
 const RichTextEditor = defineAsyncComponent(() => import('@/components/RichTextEditor.vue'))
 import { ElMessage } from 'element-plus'
 import { onBeforeRouteLeave, useRouter } from 'vue-router'
@@ -12,25 +12,38 @@ import { createRequirement } from '@/api/requirements'
 import { REQUIREMENT_PRIORITIES, REQUIREMENT_TYPES } from '@/constants/requirement'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import SectionCard from '@/components/ui/SectionCard.vue'
-import type { RequirementCreatePayload } from '@/types/domain'
+import type { Feedback, RequirementCreatePayload } from '@/types/domain'
+
+type FeedbackConversion = {
+  source: Pick<Feedback, 'title' | 'description' | 'system_id' | 'system_name'>
+  confirmPeople: Person[]
+  allowed: boolean
+  error: string
+  submit: (payload: Omit<RequirementCreatePayload, 'system_id'>) => Promise<number | undefined>
+}
 
 const router = useRouter()
-const props = withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
+const props = withDefaults(defineProps<{ embedded?: boolean; conversion?: FeedbackConversion }>(), { embedded: false })
 const emit = defineEmits<{ cancel: []; created: [id: number]; saving: [value: boolean]; expanded: [value: boolean] }>()
 const saving = ref(false)
 const expanded = ref(false)
 const completed = ref(false)
 const formRoot = ref<HTMLElement>()
 const errors = reactive({ title: '', description: '' })
-const roles = reactive<Record<Participant['role'], number[]>>({ CONFIRM: [], DESIGN: [], DEVELOP: [], ACCEPT: [] })
+const roles = reactive<Record<Participant['role'], number[]>>({
+  CONFIRM: props.conversion?.confirmPeople.map(person => person.id) ?? [],
+  DESIGN: [],
+  DEVELOP: [],
+  ACCEPT: [],
+})
 const deliveryRoles: Participant['role'][] = ['DESIGN', 'DEVELOP', 'ACCEPT']
 const roleLabels = { CONFIRM: '需求确认人', DESIGN: '设计人员（可选）', DEVELOP: '开发人员', ACCEPT: '验收人员' }
 const form = reactive({
   system_id: null as number | null,
-  title: '',
+  title: props.conversion?.source.title ?? '',
   requirement_type: 'FEATURE',
   priority: 'P2' as RequirementCreatePayload['priority'],
-  description: '',
+  description: props.conversion ? plainTextToHtml(props.conversion.source.description) : '',
   acceptance_criteria: '',
 })
 
@@ -40,7 +53,7 @@ const draft = useUnsavedChanges({
   isDirty: () => JSON.stringify({ form, roles }) !== initialSnapshot,
   isBusy: () => saving.value,
 })
-const requestClose = () => draft.requestLeave(props.embedded)
+const requestClose = (confirmClean = props.embedded) => draft.requestLeave(confirmClean)
 defineExpose({ requestClose })
 onBeforeRouteLeave(() => draft.requestLeave())
 watch(saving, value => emit('saving', value), { flush: 'sync' })
@@ -60,7 +73,8 @@ async function cancel(): Promise<void> {
 }
 
 async function submit(): Promise<void> {
-  if (saving.value) return
+  const conversion = props.conversion
+  if (saving.value || (conversion && !conversion.allowed)) return
   errors.title = validationMessage('title')
   errors.description = validationMessage('description')
   const firstError = errors.title ? 'title' : errors.description ? 'description' : null
@@ -73,20 +87,23 @@ async function submit(): Promise<void> {
   }
   saving.value = true
   try {
-    const created = await createRequirement({
+    const payload: Omit<RequirementCreatePayload, 'system_id'> = {
       participants: Object.entries(roles).flatMap(([role, ids]) => ids.map(user_id => ({ role: role as Participant['role'], user_id }))),
-      system_id: form.system_id,
       title: form.title.trim(),
       requirement_type: form.requirement_type,
       priority: form.priority,
       description: form.description.trim(),
       description_format: 'HTML',
       acceptance_criteria: form.acceptance_criteria.trim() || null,
-    })
+    }
+    const id = conversion
+      ? await conversion.submit(payload)
+      : (await createRequirement({ ...payload, system_id: form.system_id })).id
+    if (id === undefined) return
     completed.value = true
-    ElMessage.success('需求已创建')
-    if (props.embedded) emit('created', created.id)
-    else await router.replace(`/requirements/${created.id}`)
+    if (!conversion) ElMessage.success('需求已创建')
+    if (props.embedded) emit('created', id)
+    else await router.replace(`/requirements/${id}`)
   } finally {
     saving.value = false
   }
@@ -111,7 +128,10 @@ async function submit(): Promise<void> {
           <el-input v-model="form.acceptance_criteria" type="textarea" :rows="3" />
         </el-form-item>
         <div class="span-2 form-section-heading">归属与确认</div>
-        <el-form-item label="业务系统"><BusinessSystemSelect v-model="form.system_id" /></el-form-item>
+        <el-form-item label="业务系统">
+          <span v-if="conversion" class="inherited-system">{{ conversion.source.system_name || (conversion.source.system_id != null ? `系统 #${conversion.source.system_id}` : '未指定') }}</span>
+          <BusinessSystemSelect v-else v-model="form.system_id" />
+        </el-form-item>
         <el-form-item label="需求类型" required>
           <el-select v-model="form.requirement_type" style="width: 100%">
             <el-option v-for="t in REQUIREMENT_TYPES" :key="t.value" :label="t.label" :value="t.value" />
@@ -122,15 +142,16 @@ async function submit(): Promise<void> {
             <el-option v-for="p in REQUIREMENT_PRIORITIES" :key="p.value" :label="p.label" :value="p.value" />
           </el-select>
         </el-form-item>
-        <el-form-item label="需求确认人"><PeopleSelector v-model="roles.CONFIRM" kind="requirement" multiple /></el-form-item>
+        <el-form-item label="需求确认人"><PeopleSelector v-model="roles.CONFIRM" kind="requirement" :selected="conversion?.confirmPeople" multiple /></el-form-item>
         <details class="span-2 optional-people"><summary>后续人员安排 <span>可在待开发阶段设置</span></summary><div class="editor-grid">
           <el-form-item v-for="role in deliveryRoles" :key="role" :label="roleLabels[role]"><PeopleSelector v-model="roles[role]" kind="requirement" multiple /></el-form-item>
         </div></details>
         </div>
         </div>
+        <p v-if="conversion?.error" class="submit-error" role="alert">{{ conversion.error }}</p>
         <div class="editor-actions">
           <el-button :disabled="saving" @click="cancel">取消</el-button>
-          <el-button type="primary" native-type="submit" :loading="saving">创建</el-button>
+          <el-button type="primary" native-type="submit" :disabled="conversion && !conversion.allowed" :loading="saving">创建</el-button>
         </div>
       </el-form>
     </SectionCard>
@@ -146,7 +167,9 @@ async function submit(): Promise<void> {
 .embedded-form { min-width: 0; }
 .embedded-form :deep(.section-card) { border: 0; box-shadow: none; }
 .expand-writing { margin-left: auto; }
+.inherited-system { overflow-wrap: anywhere; }
 [data-field="description"] :deep(.el-form-item__label) { width: 100%; display: flex; align-items: center; }
 .writing-expanded :deep(.rich-text-editor .tiptap) { min-height: min(48dvh, 480px); max-height: 64dvh; }
+.submit-error { margin: 0; padding: 8px 20px; color: var(--if-danger-fg); overflow-wrap: anywhere; }
 @media (max-width: 767px) { .embedded-form :deep(.editor-actions) { bottom: 0; } }
 </style>

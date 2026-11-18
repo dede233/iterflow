@@ -1,12 +1,13 @@
 import { mockReadPanels } from './collaboration-fixture'
 import { expect, test, type Page } from '@playwright/test'
 
-async function setup(page: Page, convert: boolean) {
+async function setup(page: Page, entry: 'direct' | 'guided' | 'legacy') {
   const writes: unknown[] = [], unexpected: string[] = [], errors: string[] = []
   let release!: () => void
   const pending = new Promise<void>(resolve => { release = resolve })
   const requirement = { id: 11, title: '防重复提交需求', requirement_no: 'REQ-11', requirement_type: 'FEATURE', priority: 'P2', status: 'DRAFT', source: 'DIRECT', description: '<p>验证双击只有一次写入</p>', description_format: 'HTML', acceptance_criteria: null, revision: 1, owner_id: null, current_version_id: null, created_at: '2026-11-04T00:00:00Z', updated_at: '2026-11-04T00:00:00Z', updated_by: 1 }
-  const feedback = { id: 1, title: '待转需求反馈', feedback_no: 'FB-1', feedback_type: 'OTHER', urgency: 'NORMAL', status: 'NEW', description: '反馈内容转为需求', revision: 1, submitter_id: 1, system_id: null, module_id: null, main_requirement_id: null, created_at: '2026-11-04T00:00:00Z', updated_at: '2026-11-04T00:00:00Z', updated_by: 1 }
+  const feedback = { id: 1, title: '待转需求反馈', feedback_no: 'FB-1', feedback_type: 'OTHER', urgency: 'NORMAL', status: entry === 'guided' ? 'ACCEPTED' : 'NEW', description: '反馈内容转为需求', revision: 1, submitter_id: 1, system_id: null, module_id: null, main_requirement_id: null, created_at: '2026-11-04T00:00:00Z', updated_at: '2026-11-04T00:00:00Z', updated_by: 1 }
+  const convert = entry !== 'direct'
   page.on('pageerror', error => errors.push(error.message))
   await page.addInitScript(() => { localStorage.setItem('iterflow.access_token', 'issue4-submit'); localStorage.setItem('iterflow.refresh_token', 'issue4-submit') })
   await page.route('**/api/v1/**', async route => {
@@ -42,20 +43,20 @@ async function setup(page: Page, convert: boolean) {
 }
 
 for (const width of [375, 1440]) {
-  for (const convert of [false, true]) {
-    test(`${convert ? 'convert feedback' : 'create requirement'} sends only once on immediate double click ${width}px`, async ({ page }) => {
+  for (const entry of ['direct', 'guided', 'legacy'] as const) {
+    test(`${entry} creation sends only once on immediate double click ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 })
-      const audit = await setup(page, convert)
+      const audit = await setup(page, entry)
+      const convert = entry !== 'direct'
+      const form = page.getByRole('dialog', { name: entry === 'guided' ? '新建需求' : '转为需求', exact: true })
       if (convert) {
-        await page.getByRole('button', { name: '转需求', exact: true }).click()
-        await expect(page.getByRole('dialog', { name: '转为需求', exact: true }).getByRole('textbox', { name: '需求描述', exact: true })).toContainText('反馈内容转为需求')
+        await page.getByRole('button', { name: entry === 'guided' ? '新建需求' : '转需求', exact: true }).click()
+        await expect(form.getByRole('textbox', { name: '需求描述', exact: true })).toContainText('反馈内容转为需求')
       } else {
         await page.getByRole('textbox', { name: '*标题', exact: true }).fill('防重复提交需求')
         await page.getByRole('textbox', { name: '需求描述', exact: true }).fill('验证双击只有一次写入')
       }
-      const button = convert
-        ? page.getByRole('dialog', { name: '转为需求', exact: true }).getByRole('button', { name: '确定', exact: true })
-        : page.getByRole('button', { name: '创建', exact: true })
+      const button = (convert ? form : page).getByRole('button', { name: '创建', exact: true })
       await expect(button).toBeEnabled()
       // Dispatch both clicks in the same task, before Vue renders the loading state.
       // This exercises the synchronous guard, not just Element Plus's disabled button.
@@ -65,7 +66,15 @@ for (const width of [375, 1440]) {
       expect(audit.writes).toHaveLength(1)
       const body = audit.writes[0] as Record<string, unknown>
       expect(body.description_format).toBe('HTML')
-      if (convert) { expect(body.revision).toBe(1); expect(body.type).toBe('CREATE_NEW') }
+      if (convert) {
+        expect(body.revision).toBe(1)
+        expect(body.type).toBe('CREATE_NEW')
+        await page.keyboard.press('Escape')
+        await expect(form).toBeVisible()
+        await expect(form.getByRole('button', { name: '关闭此对话框', exact: true })).toBeHidden()
+        await expect(form.getByRole('button', { name: '取消', exact: true })).toBeDisabled()
+        await expect(page.getByRole('dialog', { name: '确认关闭？', exact: true })).toBeHidden()
+      }
       audit.release()
       await expect(page).toHaveURL(convert ? /\/#\/requirements\/11\?return_to=%2Ffeedbacks$/ : /\/#\/requirements\/11$/)
       await expect(page.getByRole('heading', { name: '防重复提交需求', exact: true })).toBeVisible()

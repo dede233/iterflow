@@ -366,6 +366,7 @@ def test_convert_create_new(req_api):
     req = resp.json()
     assert req["source"] == "FEEDBACK"
     assert req["status"] == "DRAFT"
+    assert req["system_id"] is None
 
     detail = client.get(f"/api/v1/feedbacks/{fb['id']}", headers=headers["alice"]).json()
     assert detail["status"] == "REQUIREMENT_LINKED"
@@ -424,6 +425,67 @@ def test_convert_create_new(req_api):
         ).all()
     )
     assert "CREATE_FROM_FEEDBACK" in req_actions
+
+
+def test_conversion_system_selection_is_scoped_to_new_requirement(req_api):
+    client, session, headers, _ids = req_api
+    session.add_all(
+        [
+            BusinessSystem(id=31, code="TARGET", name="客户服务"),
+            BusinessSystem(id=32, code="OTHER", name="其他系统"),
+            BusinessSystem(id=33, code="DISABLED", name="已停用", enabled=False),
+        ]
+    )
+    session.commit()
+    converter = headers["converter"]
+    options = client.get("/api/v1/systems/options", headers=converter)
+    assert options.status_code == 200
+    assert sorted(options.json(), key=lambda row: row["id"]) == [
+        {"id": 31, "name": "客户服务"},
+        {"id": 32, "name": "其他系统"},
+    ]
+    assert client.get("/api/v1/systems", headers=converter).status_code == 403
+    feedback = _create_feedback(client, headers["alice"])
+    path = f"/api/v1/feedbacks/{feedback['id']}/convert"
+    payload = {
+        "type": "CREATE_NEW",
+        "revision": feedback["revision"],
+        "requirement_title": "选择业务系统",
+        "requirement_type": "FEATURE",
+        "description": "从无系统的反馈转入需求",
+    }
+    for invalid in (33, 999, -1):
+        rejected = client.post(path, headers=converter, json={**payload, "system_id": invalid})
+        assert rejected.status_code == 422
+    rejected = client.post(
+        path,
+        headers=headers["alice"],
+        json={
+            "type": "LINK_EXISTING",
+            "revision": feedback["revision"],
+            "requirement_id": 1,
+            "system_id": 31,
+        },
+    )
+    assert rejected.status_code == 422
+    assert session.scalar(select(Requirement.id)) is None
+    created = client.post(path, headers=converter, json={**payload, "system_id": 31})
+    assert created.status_code == 200, created.text
+    assert created.json()["system_id"] == 31
+    detail = client.get(f"/api/v1/feedbacks/{feedback['id']}", headers=headers["alice"]).json()
+    assert detail["system_id"] is None
+    assert detail["main_requirement_id"] == created.json()["id"]
+
+    bound = _create_feedback(client, headers["alice"], system_id=32)
+    bound_path = f"/api/v1/feedbacks/{bound['id']}/convert"
+    payload["revision"] = bound["revision"]
+    assert (
+        client.post(bound_path, headers=converter, json={**payload, "system_id": 31}).status_code
+        == 422
+    )
+    inherited = client.post(bound_path, headers=converter, json=payload)
+    assert inherited.status_code == 200, inherited.text
+    assert inherited.json()["system_id"] == 32
 
 
 def test_convert_link_existing(req_api):

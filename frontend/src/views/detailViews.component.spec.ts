@@ -540,7 +540,10 @@ describe('detail views enforce permission-aware loading in mounted components', 
     mocks.getFeedback.mockResolvedValueOnce(feedback).mockResolvedValue({
       ...feedback, status: 'REQUIREMENT_LINKED', main_requirement_id: requirement.id, revision: 2,
     })
-    const wrapper = mount(FeedbackDetailView, { global: { stubs, directives: { loading: {} } } })
+    const wrapper = mount(FeedbackDetailView, { global: {
+      stubs: { ...stubs, 'el-form': { template: '<form><slot /></form>' } },
+      directives: { loading: {} },
+    } })
     await flushPromises()
 
     expect(wrapper.text()).toContain('反馈标题')
@@ -552,9 +555,8 @@ describe('detail views enforce permission-aware loading in mounted components', 
     await flushPromises()
     expect(wrapper.get('.dialog').text()).not.toContain('转换方式')
 
-    const confirmButton = wrapper.findAll('button').find((button) => button.text() === '确定')
-    expect(confirmButton).toBeDefined()
-    await confirmButton!.trigger('click')
+    expect(wrapper.get('.dialog').text()).toContain('创建')
+    await wrapper.get('.dialog form').trigger('submit')
     await flushPromises()
 
     expect(mocks.convertFeedback).toHaveBeenCalledWith(feedback.id, expect.objectContaining({

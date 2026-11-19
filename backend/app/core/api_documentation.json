@@ -1057,6 +1057,90 @@
         }
       }
     },
+    "FeedbackAcceptAndConvertRequest": {
+      "title": "FeedbackAcceptAndConvertRequest",
+      "properties": {
+        "type": {
+          "title": "反馈转化方式"
+        },
+        "revision": {
+          "title": "修订号",
+          "description": "对象的乐观锁修订号；写入时提交最后读取的修订号。"
+        },
+        "accept_on_convert": {
+          "title": "受理并转需求",
+          "description": "必须为 true，在待处理反馈转需求的同一事务中记录实际受理信息。"
+        },
+        "accept_reason": {
+          "title": "代受理原因",
+          "description": "仅在受理并转需求时使用。管理人员代指定接收人受理时必填。",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "system_id": {
+          "title": "业务系统 ID",
+          "description": "反馈无业务系统时，新建需求可选一个已启用系统。反馈已有系统时继承，关联已有需求时不可指定。",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "requirement_title": {
+          "title": "需求标题",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "requirement_type": {
+          "title": "需求类型",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "priority": {
+          "title": "优先级"
+        },
+        "description_images": {
+          "title": "正文新图片",
+          "description": "正文临时图片编号对应的 PNG、JPEG 或 WebP 数据。仅随保存提交，单张最多 4 MiB，总计 8 MiB。",
+          "additionalProperties": {}
+        },
+        "description": {
+          "title": "描述",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "acceptance_criteria": {
+          "title": "验收标准",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "description_format": {
+          "title": "需求描述格式",
+          "description": "旧数据默认 PLAIN；HTML 使用服务端白名单清洗，详情和历史快照按格式安全显示。更新未提供时保留原格式。"
+        },
+        "participants": {
+          "title": "环节人员",
+          "description": "转为新需求时至少指定一名 CONFIRM。关联已有需求时沿用目标需求的环节人员。",
+          "items": {}
+        },
+        "requirement_id": {
+          "title": "需求 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        }
+      }
+    },
     "FeedbackBatchAction": {
       "title": "FeedbackBatchAction",
       "properties": {
@@ -1122,6 +1206,26 @@
           "title": "修订号",
           "description": "对象的乐观锁修订号；写入时提交最后读取的修订号。"
         },
+        "accept_on_convert": {
+          "title": "受理并转需求",
+          "description": "设为 true 时，在待处理反馈转需求的同一事务中记录实际受理信息。"
+        },
+        "accept_reason": {
+          "title": "代受理原因",
+          "description": "仅在受理并转需求时使用。管理人员代指定接收人受理时必填。",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "system_id": {
+          "title": "业务系统 ID",
+          "description": "反馈无业务系统时，新建需求可选一个已启用系统。反馈已有系统时继承，关联已有需求时不可指定。",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
         "requirement_title": {
           "title": "需求标题",
           "anyOf": [
@@ -1164,6 +1268,7 @@
         },
         "participants": {
           "title": "环节人员",
+          "description": "转为新需求时至少指定一名 CONFIRM。关联已有需求时沿用目标需求的环节人员。",
           "items": {}
         },
         "requirement_id": {
@@ -1754,6 +1859,146 @@
       "properties": {
         "unread_count": {
           "title": "未读通知数"
+        }
+      }
+    },
+    "OnlineReviewConfirm": {
+      "title": "OnlineReviewConfirm",
+      "properties": {
+        "revision": {
+          "title": "需求修订号"
+        },
+        "note": {
+          "title": "确认说明",
+          "anyOf": [
+            {},
+            {}
+          ]
+        }
+      }
+    },
+    "OnlineReviewConfirmation": {
+      "title": "OnlineReviewConfirmation",
+      "properties": {
+        "confirmed_by": {
+          "title": "线上确认人"
+        },
+        "confirmed_by_name": {
+          "title": "线上确认人姓名"
+        },
+        "confirmed_at": {
+          "title": "线上确认时间"
+        },
+        "note": {
+          "title": "确认说明",
+          "anyOf": [
+            {},
+            {}
+          ]
+        }
+      }
+    },
+    "OnlineReviewFeedbackCreate": {
+      "title": "OnlineReviewFeedbackCreate",
+      "properties": {
+        "title": {
+          "title": "反馈标题"
+        },
+        "feedback_type": {
+          "title": "反馈类型"
+        },
+        "urgency": {
+          "title": "紧急程度"
+        },
+        "system_id": {
+          "title": "业务系统 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "module_id": {
+          "title": "所属模块 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "description": {
+          "title": "描述"
+        },
+        "expected_result": {
+          "title": "预期结果",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "actual_result": {
+          "title": "实际结果",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "reproduce_steps": {
+          "title": "复现步骤",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "recipient_ids": {
+          "title": "反馈接收人",
+          "items": {}
+        },
+        "revision": {
+          "title": "需求修订号"
+        }
+      }
+    },
+    "OnlineReviewFeedbackItem": {
+      "title": "OnlineReviewFeedbackItem",
+      "properties": {
+        "id": {
+          "title": "反馈 ID"
+        },
+        "feedback_no": {
+          "title": "反馈编号"
+        },
+        "title": {
+          "title": "反馈标题"
+        },
+        "status": {
+          "title": "处理状态"
+        },
+        "created_at": {
+          "title": "反馈时间"
+        }
+      }
+    },
+    "OnlineReviewOut": {
+      "title": "OnlineReviewOut",
+      "properties": {
+        "revision": {
+          "title": "需求修订号"
+        },
+        "can_confirm": {
+          "title": "当前用户可确认"
+        },
+        "confirmation": {
+          "title": "线上确认记录",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "feedbacks": {
+          "title": "可见线上反馈",
+          "items": {}
+        },
+        "feedback_total": {
+          "title": "可见线上反馈总数"
         }
       }
     },
@@ -2577,6 +2822,7 @@
         },
         "participants": {
           "title": "环节人员",
+          "description": "至少指定一名 CONFIRM。开发人员和验收人员在确认需求前补齐。",
           "items": {}
         },
         "description_images": {
@@ -3882,7 +4128,8 @@
         "tags": [
           "Requirement"
         ],
-        "summary": "需求详情"
+        "summary": "需求详情",
+        "description": "确认当前内容时须已有有效的需求确认人、开发人员及验收人员。COMPLETE_AND_ACCEPT 仅供开发中同时担任开发和验收的本人使用，内容须已确认且设计须已完成或无需设计。一次提交提验并验收通过，需求进入待发布。"
       }
     },
     "/collaboration/people": {
@@ -4166,7 +4413,16 @@
           "Feedback"
         ],
         "summary": "反馈转正式需求",
-        "description": "CREATE_NEW 仅需要 rd.feedback.convert。LINK_EXISTING 还需要 rd.requirement.view，且目标需求必须在当前 Requirement DataScope 内。操作与关系及审计写入同一事务。"
+        "description": "CREATE_NEW 仅需要 rd.feedback.convert，并须指定至少一名需求确认人。LINK_EXISTING 还需要 rd.requirement.view，且目标需求必须在当前 Requirement DataScope 内。accept_on_convert=true 时仅待处理反馈可提交，还须有 rd.feedback.edit 及原受理资格。管理员代受理须填写原因。受理信息、转换、关联、审计及通知事件一次提交。 线上反馈只能关联未上线且未取消的修复需求。"
+      }
+    },
+    "/feedbacks/{feedback_id}/accept-and-convert": {
+      "post": {
+        "tags": [
+          "Feedback"
+        ],
+        "summary": "受理并转需求",
+        "description": "待处理反馈的受理与转需求在同一事务完成。须有 rd.feedback.edit 和 rd.feedback.convert 及原受理资格。管理员代受理须填写原因。新建需求须指定至少一名确认人。关联已有需求还须有 rd.requirement.view，且目标在当前 Requirement DataScope 内。线上反馈只能关联未上线且未取消的修复需求。"
       }
     },
     "/feedbacks/{feedback_id}/activities": {
@@ -4242,13 +4498,40 @@
         "description": "需要 rd.requirement.view 与 rd.feedback.view。先校验 Requirement DataScope，再按 Feedback DataScope 过滤关联反馈；仅返回当前用户可见的反馈。"
       }
     },
+    "/requirements/{requirement_id}/online-review": {
+      "get": {
+        "tags": [
+          "Requirement"
+        ],
+        "summary": "查看线上效果确认",
+        "description": "需求查看权限及对象范围内可查询。线上反馈按反馈权限和对象范围分页，每页 10 条。"
+      }
+    },
+    "/requirements/{requirement_id}/online-review/confirm": {
+      "post": {
+        "tags": [
+          "Requirement"
+        ],
+        "summary": "确认线上效果",
+        "description": "仅已上线需求的实际创建人可确认一次。提交当前 revision，保存实际操作者、时间和选填说明。"
+      }
+    },
+    "/requirements/{requirement_id}/online-review/feedbacks": {
+      "post": {
+        "tags": [
+          "Requirement"
+        ],
+        "summary": "提交已上线需求的线上反馈",
+        "description": "需有需求查看及反馈创建权限。反馈为独立待处理记录，来源关系随反馈及审计同一事务保存。"
+      }
+    },
     "/requirements/{requirement_id}/status": {
       "patch": {
         "tags": [
           "Requirement"
         ],
         "summary": "变更需求状态",
-        "description": "六阶段流转：开发参与人提交验收，可指定多名验收人，其中任意一名有效验收人确认即可进入 DONE，其他验收人无需重复确认；不再要求每名开发人员单独确认。记录实际操作人，并通过 revision CAS 防止重复流转。人员资格、内容确认、原因、审计及事务回滚统一校验。ONLINE 仅由成功发布产生。"
+        "description": "六阶段流转：待确认进入待开发前须指定有效的需求确认人、开发人员和验收人员。开发参与人提交验收，可指定多名验收人，其中任意一名有效验收人确认即可进入 DONE，其他验收人无需重复确认；不再要求每名开发人员单独确认。记录实际操作人，并通过 revision CAS 防止重复流转。人员资格、内容确认、原因、审计及事务回滚统一校验。ONLINE 仅由成功发布产生。"
       }
     },
     "/requirements/{requirement_id}/activities": {
@@ -4500,7 +4783,7 @@
           "System"
         ],
         "summary": "业务系统选择项",
-        "description": "需求或版本查看、创建、编辑权限可读取启用系统的最小选择项，不返回管理元数据。"
+        "description": "反馈转需求权限或需求、版本的查看、创建、编辑权限可读取启用系统的 ID 和名称。"
       }
     },
     "/systems": {

@@ -12,6 +12,7 @@ from test_acceptance import BACKEND, TEST_PORT
 from alembic import command
 from app.core import database
 from app.core.config import get_settings
+from app.core.mysql_preflight import validate_mysql
 from app.core.security import hash_password
 from app.models.entities import Permission, Role, User
 
@@ -96,6 +97,13 @@ def test_mysql_existing_upgrade_preserves_accounts_and_checks_role_collision(
                 db.execute(
                     text("UPDATE rd_requirement SET status='DESIGNING' WHERE id=:rid"), {"rid": rid}
                 )
+            count_triggers = text(
+                "SELECT COUNT(*) FROM information_schema.triggers WHERE trigger_schema=DATABASE()"
+            )
+            command.upgrade(cfg, "mysql57_0016")
+            with engine.connect() as db:
+                assert db.scalar(text("SELECT version_num FROM alembic_version")) == "mysql57_0016"
+                assert db.scalar(count_triggers) == 110
             command.upgrade(cfg, "head")
             with engine.connect() as db:
                 row = db.execute(
@@ -121,16 +129,9 @@ def test_mysql_existing_upgrade_preserves_accounts_and_checks_role_collision(
                     == "2026-10-20T12:34:56+00:00"
                 )
             with engine.connect() as db:
-                assert db.scalar(text("SELECT version_num FROM alembic_version")) == "mysql57_0016"
-                assert (
-                    db.scalar(
-                        text(
-                            "SELECT COUNT(*) FROM information_schema.triggers "
-                            "WHERE trigger_schema=DATABASE()"
-                        )
-                    )
-                    == 110
-                )
+                assert db.scalar(text("SELECT version_num FROM alembic_version")) == "mysql57_0017"
+                assert db.scalar(count_triggers) == 113
+                assert validate_mysql(db)["table_count"] == 36
             with Session(engine) as db:
                 assert set(db.scalars(select(Role.code))) == {"DEVELOPER", "DESIGNER"}
         with Session(engine) as db:

@@ -24,7 +24,7 @@ const feedback = (id: number) => ({
 const cases = [
   { path: '/versions', label: '版本', item: version, titleField: 'name', editField: '版本名称', action: '取消版本', nextStatus: 'CANCELED' },
   { path: '/requirements', label: '需求', item: requirement, titleField: 'title', editField: '标题', action: '开始开发', nextStatus: 'DEVELOPING' },
-  { path: '/feedbacks', label: '反馈', item: feedback, titleField: 'title', editField: '标题', action: '受理', nextStatus: 'ACCEPTED' },
+  { path: '/feedbacks', label: '反馈', item: feedback, titleField: 'title', editField: '标题', action: '关闭', nextStatus: 'CLOSED' },
 ] as const
 
 for (const width of [1280, 390]) {
@@ -167,6 +167,7 @@ for (const width of [1280, 390]) {
       if (entry.path === '/requirements') await drawer.getByRole('button', { name: '展开需求进度', exact: true }).click()
       await drawer.getByRole('button', { name: entry.action, exact: true }).click()
       const statusDialog = page.getByRole('dialog', { name: entry.action, exact: true })
+      if (entry.path === '/feedbacks') await statusDialog.getByRole('textbox', { name: /原因/ }).fill('该反馈无需继续跟进')
       await statusDialog.getByRole('button', { name: '确定', exact: true }).click()
       await expect(statusDialog).not.toBeVisible()
       await expect.poll(() => listQueries.length).toBe(3)

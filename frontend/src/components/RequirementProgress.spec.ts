@@ -5,11 +5,15 @@ import { useAuthStore } from '@/stores/auth'
 const mocks = vi.hoisted(() => ({ workflow: vi.fn(), participants: vi.fn(), act: vi.fn() }))
 vi.mock('@/api/collaboration', () => ({ getWorkflow: mocks.workflow, getParticipants: mocks.participants, actWorkflow: mocks.act }))
 import RequirementProgress from './RequirementProgress.vue'
+const deliveryPeople = [
+  { user_id: 2, role: 'DEVELOP', display_name: '开发人', active: true },
+  { user_id: 3, role: 'ACCEPT', display_name: '验收人', active: true },
+]
 beforeEach(() => {
   vi.resetAllMocks(); setActivePinia(createPinia())
   useAuthStore().user = { id: 2, permission_codes: ['rd.requirement.view', 'rd.requirement.status'] } as any
   mocks.workflow.mockResolvedValue({ revision: 8, needs_confirmation: true, legacy_completed: false, design_status: 'NOT_REQUIRED', records: [] })
-  mocks.participants.mockResolvedValue({ participants: [{ user_id: 2, role: 'CONFIRM', display_name: '确认人', active: true }] })
+  mocks.participants.mockResolvedValue({ participants: [{ user_id: 2, role: 'CONFIRM', display_name: '确认人', active: true }, ...deliveryPeople] })
 })
 function panel() {
   return mount(RequirementProgress, { props: { item: { id: 1, revision: 8, status: 'DRAFT' } as any }, global: { stubs: {
@@ -47,7 +51,7 @@ it('clears progress on loss of access and ignores old responses', async () => {
   expect(wrapper.findAll('li')).toHaveLength(0)
   wrapper.unmount()
 })
-it('places assignment in the planned card after confirmation and preserves confirmation assignment', async () => {
+it('keeps delivery personnel editable in the planned card after confirmation', async () => {
   useAuthStore().user!.permission_codes.push('rd.requirement.edit')
   const wrapper = panel(); await flushPromises()
   await wrapper.find('.progress-toggle').trigger('click')
@@ -56,9 +60,9 @@ it('places assignment in the planned card after confirmation and preserves confi
   expect(wrapper.find('.step-detail').text()).not.toContain('选择 / 调整人员')
   await wrapper.setProps({ item: { id: 1, revision: 9, status: 'CONFIRMED' } as any }); await flushPromises()
   const card = wrapper.find('.step-detail')
-  expect(card.text()).toContain('开发：待分配')
+  expect(card.text()).toContain('开发：开发人')
   expect(card.text()).toContain('设计：不需要设计')
-  expect(card.text()).toContain('验收：待分配')
+  expect(card.text()).toContain('验收：验收人')
   await card.find('button').trigger('click')
   expect(wrapper.findComponent({ name: 'RequirementPeopleDialog' }).props('roles')).toEqual(['DESIGN', 'DEVELOP', 'ACCEPT'])
   await wrapper.setProps({ readonly: true })
@@ -100,7 +104,7 @@ it('explains who can assign when the viewer cannot edit people', async () => {
 
 it('requires a reason for delegated confirmation before sending a request', async () => {
   useAuthStore().user!.can_view_api_docs = true
-  mocks.participants.mockResolvedValue({ revision: 8, participants: [{ user_id: 3, role: 'CONFIRM', display_name: '其他确认人', active: true }] })
+  mocks.participants.mockResolvedValue({ revision: 8, participants: [{ user_id: 3, role: 'CONFIRM', display_name: '其他确认人', active: true }, ...deliveryPeople] })
   const wrapper = panel(); await flushPromises()
   await wrapper.find('.progress-toggle').trigger('click')
   await wrapper.findAll('button').find(b => b.text() === '确认当前内容')!.trigger('click')
@@ -117,7 +121,7 @@ it('requires a reason for delegated confirmation before sending a request', asyn
 })
 
 it('does not allow a non-designated ordinary user to confirm', async () => {
-  mocks.participants.mockResolvedValue({ participants: [{ user_id: 3, role: 'CONFIRM', display_name: '其他确认人', active: true }] })
+  mocks.participants.mockResolvedValue({ participants: [{ user_id: 3, role: 'CONFIRM', display_name: '其他确认人', active: true }, ...deliveryPeople] })
   const wrapper = panel(); await flushPromises()
   await wrapper.find('.progress-toggle').trigger('click')
   expect(wrapper.findAll('button').some(b => b.text() === '确认当前内容')).toBe(false)
@@ -134,18 +138,34 @@ it.each(['CONFIRMED', 'DEVELOPING', 'TESTING'])('does not offer delegated role a
   wrapper.unmount()
 })
 
-it('opens assignment once after successful confirmation and refreshed revision', async () => {
+it.each([
+  ['DRAFT', 'DEVELOP', '开发人员'],
+  ['DEVELOPING', 'ACCEPT', '验收人员'],
+])('requires active %s/%s personnel before confirming', async (status, missing, label) => {
+  useAuthStore().user!.permission_codes.push('rd.requirement.edit')
+  mocks.participants.mockResolvedValue({ revision: 8, participants: [
+    { user_id: 2, role: 'CONFIRM', display_name: '确认人', active: true },
+    ...deliveryPeople.map(person => ({ ...person, active: person.role !== missing })),
+  ] })
+  const wrapper = panel()
+  await wrapper.setProps({ item: { id: 1, revision: 8, status } as any }); await flushPromises()
+  expect(wrapper.text()).toContain(`尚未设置有效的${label}`)
+  expect(wrapper.findAll('button').some(b => b.text() === '确认当前内容')).toBe(false)
+  await wrapper.findAll('button').find(b => b.text() === '设置开发与验收人员')!.trigger('click')
+  expect(wrapper.findComponent({ name: 'RequirementPeopleDialog' }).props('roles')).toEqual(['DESIGN', 'DEVELOP', 'ACCEPT'])
+  expect(mocks.act).not.toHaveBeenCalled()
+  wrapper.unmount()
+})
+
+it('closes confirmation without opening the personnel editor', async () => {
   useAuthStore().user!.permission_codes.push('rd.requirement.edit')
   const wrapper = panel(); await flushPromises()
   await wrapper.find('.progress-toggle').trigger('click')
   await wrapper.findAll('button').find(b => b.text() === '确认当前内容')!.trigger('click')
   await wrapper.find('form').trigger('submit'); await flushPromises()
   expect(wrapper.findComponent({ name: 'RequirementPeopleDialog' }).exists()).toBe(false)
+  mocks.workflow.mockResolvedValue({ revision: 9, needs_confirmation: false, legacy_completed: false, design_status: 'NOT_REQUIRED', records: [] })
   await wrapper.setProps({ item: { id: 1, revision: 9, status: 'CONFIRMED' } as any }); await flushPromises()
-  const dialog = wrapper.findComponent({ name: 'RequirementPeopleDialog' })
-  expect(dialog.props('roles')).toEqual(['DESIGN', 'DEVELOP', 'ACCEPT'])
-  dialog.vm.$emit('close'); await flushPromises()
-  await wrapper.setProps({ item: { id: 1, revision: 10, status: 'CONFIRMED' } as any }); await flushPromises()
   expect(wrapper.findComponent({ name: 'RequirementPeopleDialog' }).exists()).toBe(false)
   wrapper.unmount()
 })
@@ -179,6 +199,42 @@ it.each(['missing-acceptor', 'unfinished-design', 'unconfirmed-content'])('block
   await button.trigger('click')
   expect(wrapper.emitted('status')).toBeUndefined()
   expect(mocks.act).not.toHaveBeenCalled()
+  wrapper.unmount()
+})
+
+it.each(['no-status-permission', 'only-acceptor', 'inactive-acceptor', 'unassigned-admin', 'readonly'])('does not offer combined acceptance without eligibility: %s', async mode => {
+  const auth = useAuthStore()
+  auth.user!.can_view_api_docs = mode === 'unassigned-admin'
+  if (mode === 'no-status-permission') auth.user!.permission_codes = ['rd.requirement.view']
+  mocks.workflow.mockResolvedValue({ revision: 8, needs_confirmation: false, design_status: 'NOT_REQUIRED', records: [] })
+  mocks.participants.mockResolvedValue({ participants: [
+    { user_id: ['only-acceptor', 'unassigned-admin'].includes(mode) ? 3 : 2, role: 'DEVELOP', active: true },
+    { user_id: mode === 'unassigned-admin' ? 3 : 2, role: 'ACCEPT', active: mode !== 'inactive-acceptor' },
+  ] })
+  const wrapper = panel()
+  await wrapper.setProps({ item: { id: 1, revision: 8, status: 'DEVELOPING' } as any, readonly: mode === 'readonly' })
+  await flushPromises()
+  expect(wrapper.findAll('button').some(button => button.text() === '开发完成并验收通过')).toBe(false)
+  expect(mocks.act).not.toHaveBeenCalled()
+  wrapper.unmount()
+})
+
+it('keeps combined acceptance open when the service does not recognize the action', async () => {
+  mocks.workflow.mockResolvedValue({ revision: 8, needs_confirmation: false, design_status: 'NOT_REQUIRED', records: [] })
+  mocks.participants.mockResolvedValue({ participants: deliveryPeople.map(person => ({ ...person, user_id: 2 })) })
+  mocks.act.mockRejectedValue({ response: { status: 422, data: { detail: [{
+    loc: ['body', 'action'], type: 'literal_error', input: 'COMPLETE_AND_ACCEPT', msg: 'Internal enum values',
+  }] } } })
+  const wrapper = panel()
+  await wrapper.setProps({ item: { id: 1, revision: 8, status: 'DEVELOPING' } as any }); await flushPromises()
+  await wrapper.findAll('button').find(button => button.text() === '开发完成并验收通过')!.trigger('click')
+  const reason = wrapper.get('textarea')
+  await reason.setValue('  ')
+  await wrapper.get('form').trigger('submit'); await flushPromises()
+  expect(mocks.act).toHaveBeenCalledExactlyOnceWith(1, { action: 'COMPLETE_AND_ACCEPT', revision: 8, reason: null })
+  expect(wrapper.get('[role="alert"]').text()).toContain('当前服务不支持此流程操作')
+  expect(reason.element.value).toBe('  ')
+  expect(wrapper.emitted('updated')).toBeUndefined()
   wrapper.unmount()
 })
 
@@ -226,6 +282,7 @@ it('allows any of multiple active confirmers and requires a reason to reopen can
   mocks.participants.mockResolvedValue({ participants: [
     { user_id: 3, role: 'CONFIRM', display_name: '第一确认人', active: true },
     { user_id: 2, role: 'CONFIRM', display_name: '第二确认人', active: true },
+    ...deliveryPeople,
   ] })
   const wrapper = panel(); await flushPromises()
   expect(wrapper.find('.progress-summary').text()).toContain('第一确认人、第二确认人')

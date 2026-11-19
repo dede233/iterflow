@@ -14,6 +14,7 @@ from system_binding_fixture import create_test_system
 
 from alembic import command
 from app.core.exceptions import AppError
+from app.core.mysql_preflight import validate_mysql
 from app.models.entities import (
     Feedback,
     Notification,
@@ -249,10 +250,16 @@ def exercise_targets(fixture, scenario, monkeypatch):
             with pytest.raises(DBAPIError), engine.begin() as conn:
                 conn.execute(text(f"UPDATE {table} SET platform='UNSUPPORTED'"))
         if mysql:
-            from app.core.mysql_preflight import validate_mysql
-
             with engine.connect() as conn:
-                assert validate_mysql(conn)["table_count"] == 35
+                # MySQL commits the 0017 downgrade before 0016 refuses to drop Alipay history.
+                assert (
+                    conn.scalar(text("SELECT version_num FROM alembic_version")) == "mysql57_0016"
+                )
+                assert validate_mysql(conn, allow_legacy=True)["table_count"] == 35
+        command.upgrade(cfg, "head")
+        if mysql:
+            with engine.connect() as conn:
+                assert validate_mysql(conn)["table_count"] == 36
         else:
             command.check(cfg)
         return
@@ -275,10 +282,8 @@ def exercise_targets(fixture, scenario, monkeypatch):
             after = dict(conn.execute(text("SELECT * FROM rd_version")).mappings().one())
             assert not after.pop("release_frozen") and after == before
         if mysql:
-            from app.core.mysql_preflight import validate_mysql
-
             with engine.connect() as conn:
-                assert validate_mysql(conn)["table_count"] == 35
+                assert validate_mysql(conn)["table_count"] == 36
         else:
             command.check(cfg)
         return

@@ -31,7 +31,13 @@ def exercise_issue4(fixture, scenario):
         other_id = other.id
     people = [{"user_id": uid, "role": "CONFIRM"}]
     if scenario == "race":
-        people.append({"user_id": other_id, "role": "CONFIRM"})
+        people.extend(
+            [
+                {"user_id": other_id, "role": "CONFIRM"},
+                {"user_id": uid, "role": "DEVELOP"},
+                {"user_id": uid, "role": "ACCEPT"},
+            ]
+        )
     response = client.post(
         "/api/v1/requirements",
         headers=headers,
@@ -158,5 +164,5 @@ def exercise_issue4(fixture, scenario):
         command.downgrade(config, previous)
     with engine.connect() as db:
         assert db.scalar(text("SELECT version_num FROM alembic_version")) == (
-            "mysql57_0012" if mysql else "0018_alipay_targets"
+            "mysql57_0012" if mysql else "0019_online_review"
         )

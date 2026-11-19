@@ -20,7 +20,7 @@ function panel() {
     PeopleSelector: { props: ['modelValue', 'multiple'], template: '<div />' },
     'el-dialog': { template: '<section><slot/></section>' },
     'el-form': { template: '<form><slot/></form>' },
-    'el-form-item': { template: '<div><slot/></div>' },
+    'el-form-item': { props: ['error'], template: '<div><slot/><p v-if="error">{{ error }}</p></div>' },
     'el-button': { template: '<button><slot/></button>' },
   } } })
 }
@@ -52,6 +52,21 @@ it('retains choices after a conflict and never automatically replays the write',
   expect(wrapper.get('[role="alert"]').text()).toContain('所选人员已保留')
   wrapper.unmount()
 })
+it('validates required delivery people individually before replacing the whole assignment', async () => {
+  const wrapper = panel(); await wrapper.setProps({ requiredRoles: ['DEVELOP', 'ACCEPT'] }); await flushPromises()
+  const person = (role: string) => wrapper.get(`[data-role="${role}"]`).findComponent(PeopleSelector)
+  person('ACCEPT').vm.$emit('update:modelValue', [])
+  await wrapper.find('form').trigger('submit'); await flushPromises()
+  expect(wrapper.get('[data-role="ACCEPT"]').text()).toContain('请至少选择一名验收人员')
+  expect(person('DEVELOP').props('modelValue')).toEqual([2])
+  expect(mocks.save).not.toHaveBeenCalled()
+  person('ACCEPT').vm.$emit('update:modelValue', [3, 4])
+  await wrapper.find('form').trigger('submit'); await flushPromises()
+  expect(mocks.save).toHaveBeenCalledExactlyOnceWith(1, 12, [
+    { role: 'CONFIRM', user_id: 1 }, { role: 'DEVELOP', user_id: 2 }, { role: 'ACCEPT', user_id: 3 }, { role: 'ACCEPT', user_id: 4 },
+  ])
+  wrapper.unmount()
+})
 it('preserves other roles when only the acceptance person is edited', async () => {
   const wrapper = panel(); await wrapper.setProps({ roles: ['ACCEPT'] }); await flushPromises()
   wrapper.findComponent(PeopleSelector).vm.$emit('update:modelValue', [7])
@@ -61,6 +76,33 @@ it('preserves other roles when only the acceptance person is edited', async () =
   ])
   wrapper.unmount()
 })
+
+it('adds active developers once, preserves original acceptors and waits for save', async () => {
+  mocks.get.mockResolvedValue({ revision: 12, participants: [
+    { role: 'CONFIRM', user_id: 1, display_name: '确认人', active: true },
+    { role: 'DEVELOP', user_id: 2, display_name: '兼任开发人', active: true },
+    { role: 'DEVELOP', user_id: 4, display_name: '新增验收人', active: true },
+    { role: 'DEVELOP', user_id: 5, display_name: '停用开发人', active: false },
+    { role: 'ACCEPT', user_id: 3, display_name: '原验收人', active: true },
+    { role: 'ACCEPT', user_id: 2, display_name: '兼任开发人', active: true },
+  ] })
+  const wrapper = panel(); await flushPromises()
+  const selector = (role: string) => wrapper.get(`[data-role="${role}"]`).findComponent(PeopleSelector)
+  const add = wrapper.findAll('button').find(button => button.text() === '将开发人员加入验收')!
+  await add.trigger('click')
+  expect(selector('ACCEPT').props('modelValue')).toEqual([3, 2, 4])
+  expect(add.attributes('disabled')).toBeDefined()
+  expect(mocks.save).not.toHaveBeenCalled()
+
+  selector('DEVELOP').vm.$emit('update:modelValue', [2, 4])
+  await wrapper.get('form').trigger('submit'); await flushPromises()
+  expect(mocks.save).toHaveBeenCalledExactlyOnceWith(1, 12, [
+    { role: 'CONFIRM', user_id: 1 }, { role: 'DEVELOP', user_id: 2 }, { role: 'DEVELOP', user_id: 4 },
+    { role: 'ACCEPT', user_id: 3 }, { role: 'ACCEPT', user_id: 2 }, { role: 'ACCEPT', user_id: 4 },
+  ])
+  wrapper.unmount()
+})
+
 it('ignores a late personnel response after losing permission', async () => {
   let resolve!: (value: unknown) => void
   mocks.get.mockImplementation(() => new Promise(r => { resolve = r }))

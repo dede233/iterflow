@@ -36,6 +36,9 @@ async function fixture(page: Page, options: Options = {}) {
       requirement.revision = Math.max(requirement.revision, latestRequirementRevision)
       return json(requirement)
     }
+    if (method === 'GET' && path === '/api/v1/requirements/7/online-review' && requirement.status === 'ONLINE') {
+      return json({ revision: requirement.revision, can_confirm: false, confirmation: null, feedbacks: [], feedback_total: 0 })
+    }
     const responses: Record<string, unknown> = {
       '/api/v1/systems/options': [{ id: 1, name: '系统甲' }],
       '/api/v1/auth/me': { id: 1, username: 'source-local', display_name: '本地合成用户', status: 'ACTIVE', revision: 1, must_change_password: false, data_scope: 'ALL', role_ids: [], permission_codes: options.permissions || ['*'] },
@@ -151,6 +154,7 @@ for (const [label, options] of [
     await page.goto('/#/requirements/7')
     await expect(page.getByRole('heading', { name: audit.requirement.title, exact: true })).toBeVisible()
     await expect(page.getByRole('button', { name: '创建版本', exact: true })).toHaveCount(0)
+    if (label === 'online') await expect(page.getByRole('heading', { name: '线上效果确认', exact: true })).toBeVisible()
     if ('linked' in options) await expect(page.getByRole('link', { name: 'V2 · 从需求创建独立版本', exact: true })).toBeVisible()
     expect(audit.writes).toHaveLength(0)
     clean(audit)

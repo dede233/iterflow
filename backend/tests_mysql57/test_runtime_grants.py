@@ -14,13 +14,17 @@ from app.core.mysql_preflight import validate_mysql
 
 
 @pytest.mark.parametrize(
-    "new_tables",
+    "new_tables, expected_privileges",
     [
-        ("sys_announcement", "sys_announcement_read"),
-        ("sys_release_target", "rd_release_batch", "rd_release_batch_target"),
+        (("sys_announcement", "sys_announcement_read"), {"SELECT", "INSERT", "UPDATE", "DELETE"}),
+        (
+            ("sys_release_target", "rd_release_batch", "rd_release_batch_target"),
+            {"SELECT", "INSERT", "UPDATE", "DELETE"},
+        ),
+        (("rd_requirement_online_feedback",), {"SELECT", "INSERT"}),
     ],
 )
-def test_runtime_template_covers_new_tables(mysql_api, new_tables):
+def test_runtime_template_covers_new_tables(mysql_api, new_tables, expected_privileges):
     _, admin, _, _ = mysql_api
     name = "grant_test_" + uuid4().hex[:16]
     password = token_urlsafe(32)
@@ -66,7 +70,7 @@ def test_runtime_template_covers_new_tables(mysql_api, new_tables):
                         {"table": table},
                     )
                 )
-                assert privileges == {"SELECT", "INSERT", "UPDATE", "DELETE"}
+                assert privileges == expected_privileges
             assert not list(
                 connection.execute(
                     text(

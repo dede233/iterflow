@@ -34,6 +34,7 @@ def exercise_version_entry(fixture, scenario, monkeypatch):
             "title": "新建版本关联需求",
             "description": "隔离验收内容",
             "requirement_type": "FEATURE",
+            "participants": [{"role": "CONFIRM", "user_id": uid}],
             "system_id": system_id,
         },
     )

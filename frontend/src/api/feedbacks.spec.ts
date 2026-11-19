@@ -21,6 +21,7 @@ axios.defaults.adapter = async (config: InternalAxiosRequestConfig) => {
 
 const {
   createFeedback,
+  convertFeedback,
   changeFeedbackStatus,
   listFeedbacks,
   createFeedbackComment,
@@ -36,9 +37,9 @@ beforeEach(() => {
 })
 
 describe('availableStatusActions (frozen human state machine)', () => {
-  it('offers the four NEW transitions when the user may edit', () => {
+  it('offers NEW dispositions independently from conversion', () => {
     const targets = availableStatusActions('NEW', true).map((a) => a.target)
-    expect(targets).toEqual(['ACCEPTED', 'DUPLICATE', 'CANNOT_REPRODUCE', 'CLOSED'])
+    expect(targets).toEqual(['DUPLICATE', 'CANNOT_REPRODUCE', 'CLOSED'])
   })
 
   it('never offers ACCEPTED -> NEW', () => {
@@ -102,6 +103,21 @@ describe('feedback API DTO mapping', () => {
       reason: '关闭',
       duplicate_of_id: null,
     })
+  })
+
+  it('posts acceptance and conversion together with the feedback revision', async () => {
+    const payload = { type: 'LINK_EXISTING' as const, requirement_id: 8, revision: 4, accept_on_convert: true, accept_reason: '核实后受理' }
+    nextResponse = { status: 200, data: { id: 8, revision: 3 } }
+    await expect(convertFeedback(3, payload)).resolves.toMatchObject({ id: 8 })
+    expect(lastRequest?.method).toBe('post')
+    expect(lastRequest?.url).toBe('/feedbacks/3/accept-and-convert')
+    expect(JSON.parse(String(lastRequest?.data))).toEqual(payload)
+  })
+
+  it('keeps the regular endpoint for an already accepted feedback', async () => {
+    nextResponse = { status: 200, data: { id: 8 } }
+    await convertFeedback(3, { type: 'LINK_EXISTING', requirement_id: 8, revision: 4 })
+    expect(lastRequest?.url).toBe('/feedbacks/3/convert')
   })
 
   it('listFeedbacks forwards filter params', async () => {

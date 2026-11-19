@@ -3,6 +3,7 @@ import BusinessSystemAttribution from '@/components/BusinessSystemAttribution.vu
 import RecentEntityActivity from '@/components/RecentEntityActivity.vue'
 import BusinessSystemSelect from '@/components/BusinessSystemSelect.vue'
 import RequirementProgress from '@/components/RequirementProgress.vue'
+import RequirementOnlineReview from './RequirementOnlineReview.vue'
 import { computed, defineAsyncComponent, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import RequirementNumber from '@/components/RequirementNumber.vue'
 import RichTextContent from '@/components/RichTextContent.vue'
@@ -69,6 +70,7 @@ async function showConflict(error: unknown, revision: number, onReload?: (latest
 }
 
 const item = ref<Requirement | null>(null)
+const onlineReview = ref<InstanceType<typeof RequirementOnlineReview>>()
 const feedbacks = ref<LinkedFeedback[]>([])
 const loading = ref(false)
 const activityRefresh = ref(0)
@@ -162,11 +164,14 @@ const editDraft = useUnsavedChanges({
   isDirty: () => JSON.stringify(editForm) !== editSnapshot.value,
   isBusy: () => editSubmitting.value,
 })
-const canLeaveDetail = () => creatingVersion.value || statusSubmitting.value ? false : editDraft.requestLeave()
+async function canLeaveDetail(): Promise<boolean> {
+  if (creatingVersion.value || statusSubmitting.value || !(await editDraft.requestLeave())) return false
+  return await onlineReview.value?.requestClose() ?? true
+}
 onBeforeRouteLeave(canLeaveDetail)
 onBeforeRouteUpdate(canLeaveDetail)
 async function requestClose(): Promise<boolean> {
-  if (creatingVersion.value || statusSubmitting.value || !(await editDraft.requestLeave())) return false
+  if (!(await canLeaveDetail())) return false
   editDialog.value = false
   return true
 }
@@ -261,6 +266,16 @@ async function load(): Promise<void> {
   }
 }
 
+async function refreshAfterOnlineReview(): Promise<void> {
+  emit('updated')
+  activityRefresh.value++
+  try {
+    item.value = await getRequirement(id)
+  } catch {
+    // Keep the detail open while a related feedback may still have pending attachments.
+  }
+}
+
 function onDeleted() {
   emit('updated')
   if (props.embedded) emit('close')
@@ -292,6 +307,7 @@ onMounted(load)
       <BusinessSystemAttribution :system-id="item.system_id" :system-name="item.system_name" />
 
       <RequirementProgress :item="item" @updated="load" @status="openStatusDialog" />
+      <RequirementOnlineReview v-if="item.status === 'ONLINE'" :key="item.id" ref="onlineReview" :item="item" :return-to="backTo" @updated="refreshAfterOnlineReview" />
       <div class="requirement-layout"><div class="detail-grid">
       <SectionCard title="需求详情" class="detail-main">
         <div class="requirement-content"><h3>需求描述</h3><RichTextContent :requirement-id="item.id" :content="item.description" :format="item.description_format" /></div>

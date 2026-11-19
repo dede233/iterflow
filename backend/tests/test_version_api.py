@@ -174,11 +174,14 @@ def _version(client, headers, **overrides) -> dict:
 
 
 def _requirement(client, headers, **overrides) -> dict:
+    people = client.get("/api/v1/collaboration/people?kind=requirement", headers=headers)
+    assert people.status_code == 200, people.text
     body = {
         "system_id": 1,
         "title": "需求",
         "requirement_type": "FEATURE",
         "description": "描述内容",
+        "participants": [{"role": "CONFIRM", "user_id": people.json()["items"][0]["id"]}],
     }
     body.update(overrides)
     r = client.post("/api/v1/requirements", headers=headers, json=body)
@@ -768,7 +771,7 @@ def test_relation_remove_and_move_stale_requirement_metadata(ver_api):
 
 
 def test_create_requirement_with_version_uses_version_service_rules(ver_api):
-    client, session, headers, _ids = ver_api
+    client, session, headers, ids = ver_api
     v = _version(client, headers["alice"])
     created = _requirement(
         client,
@@ -828,6 +831,7 @@ def test_create_requirement_with_version_uses_version_service_rules(ver_api):
             "title": "取消版本不能直接关联",
             "requirement_type": "FEATURE",
             "description": "描述内容",
+            "participants": [{"role": "CONFIRM", "user_id": ids["alice"]}],
             "version_id": ready_version["id"],
             "version_revision": canceled.json()["revision"],
         },
@@ -861,7 +865,7 @@ def test_requirement_creator_without_version_permissions_can_create_independent_
 def test_requirement_create_with_version_requires_both_conditional_permissions(
     ver_api, permissions: set[str], role_code: str
 ):
-    client, session, headers, _ids = ver_api
+    client, session, headers, ids = ver_api
     version = _version(client, headers["boss"])
     creator = _custom_creator_headers(
         session, code=role_code, permissions=permissions, scope=DataScope.ALL
@@ -880,6 +884,7 @@ def test_requirement_create_with_version_requires_both_conditional_permissions(
                 "title": "不得关联版本",
                 "requirement_type": "FEATURE",
                 "description": "未获关系写权限",
+                "participants": [{"role": "CONFIRM", "user_id": ids["boss"]}],
                 "version_id": version["id"],
                 "version_revision": version["revision"],
             },
@@ -890,7 +895,7 @@ def test_requirement_create_with_version_requires_both_conditional_permissions(
 
 
 def test_requirement_create_with_version_succeeds_for_all_three_permissions(ver_api):
-    client, session, headers, _ids = ver_api
+    client, session, headers, ids = ver_api
     version = _version(client, headers["boss"])
     creator = _custom_creator_headers(
         session,
@@ -907,6 +912,7 @@ def test_requirement_create_with_version_succeeds_for_all_three_permissions(ver_
             "system_id": 1,
             "requirement_type": "FEATURE",
             "description": "三个权限均具备",
+            "participants": [{"role": "CONFIRM", "user_id": ids["boss"]}],
             "version_id": version["id"],
             "version_revision": version["revision"],
         },
@@ -932,7 +938,7 @@ def test_requirement_create_with_version_succeeds_for_all_three_permissions(ver_
 
 
 def test_requirement_create_with_version_hides_out_of_scope_version(ver_api):
-    client, session, headers, _ids = ver_api
+    client, session, headers, ids = ver_api
     version = _version(client, headers["boss"])
     creator = _custom_creator_headers(
         session,
@@ -954,6 +960,7 @@ def test_requirement_create_with_version_hides_out_of_scope_version(ver_api):
                 "title": "越界版本不得关联",
                 "requirement_type": "FEATURE",
                 "description": "目标属于其他用户",
+                "participants": [{"role": "CONFIRM", "user_id": ids["boss"]}],
                 "version_id": version["id"],
                 "version_revision": version["revision"],
             },

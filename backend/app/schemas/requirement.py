@@ -9,7 +9,12 @@ from app.models.enums import (
     RequirementSource,
     RequirementStatus,
 )
-from app.schemas.collaboration import ParticipantInput, ParticipantsChange, PersonOption
+from app.schemas.collaboration import (
+    ParticipantInput,
+    ParticipantsChange,
+    PersonOption,
+    require_confirmation_participant,
+)
 from app.schemas.common import PageResult
 from app.schemas.content_validation import requirement_title
 from app.services.rich_text import sanitize_requirement_description
@@ -35,6 +40,7 @@ class RequirementCreate(BaseModel):
     @model_validator(mode="after")
     def require_version_revision_for_version_relation(self) -> Self:
         ParticipantsChange(revision=1, participants=self.participants)
+        require_confirmation_participant(self.participants)
         self.description = sanitize_requirement_description(
             self.description, self.description_format
         )

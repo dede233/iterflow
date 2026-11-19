@@ -9,6 +9,7 @@ import { feedbackStatusLabel } from '@/constants/feedback'
 import { requirementStatusLabel } from '@/constants/requirement'
 import { versionStatusLabel } from '@/constants/version'
 const props = defineProps<{ kind: 'feedback' | 'requirement' | 'version'; allowed: boolean; active: boolean; disabled?: boolean; excludeId?: number; systemId?: number | null }>()
+const emit = defineEmits<{ selected: [option: SelectionOption] }>()
 const model = defineModel<number | null>({ default: null })
 const auth = useAuthStore()
 const readable = computed(() => props.allowed && auth.hasPermission(`rd.${props.kind}.view`))
@@ -25,27 +26,33 @@ const search = useScopedSearch(
 )
 watch(() => [props.active, model.value], () => { if (!props.active || model.value !== selected.value?.id) selected.value = null })
 watch(() => [auth.user?.id, auth.accessToken, readable.value], () => { selected.value = null; model.value = null }, { flush: 'sync' })
-function choose(option: SelectionOption) { model.value = option.id; selected.value = option; search.close() }
+function choose(option: SelectionOption) {
+  model.value = option.id
+  selected.value = option
+  search.close()
+  emit('selected', option)
+}
 </script>
 <template>
-  <div class="object-selector">
+  <slot v-if="$slots.trigger" name="trigger" :open="search.open" :disabled="!readable || disabled || !active" />
+  <div v-else class="object-selector">
     <template v-if="readable">
       <span class="selection-label">{{ selected ? `${selected.code} · ${selected.title}` : (model ? `#${model}` : '尚未选择') }}</span>
       <div class="selection-actions"><el-button :disabled="disabled || !active" @click="search.open">选择{{ names[kind] }}</el-button><el-button v-if="model" :disabled="disabled" @click="model = null; selected = null">清除</el-button></div>
     </template>
     <el-input-number v-else v-model="model" :disabled="disabled" :min="1" :precision="0" :aria-label="`${names[kind]} ID`" style="width: 100%" />
-    <el-dialog :model-value="search.state.open" :title="`选择${names[kind]}`" width="min(640px, calc(100vw - 24px))" append-to-body destroy-on-close @update:model-value="(value: boolean) => { if (!value) search.close() }">
-      <el-input :model-value="search.state.keyword" :aria-label="`搜索${names[kind]}`" placeholder="搜索编号或标题" :maxlength="200" clearable @update:model-value="search.search" />
-      <div class="selector-results" :aria-busy="search.state.loading">
-        <p v-if="search.state.loading" role="status">正在搜索…</p>
-        <div v-else-if="search.state.error" role="alert">搜索失败，请重试。<el-button @click="search.retry">重试</el-button></div>
-        <p v-else-if="!search.state.items.length">暂无可见结果</p>
-        <button v-for="option in search.state.items" v-else :key="option.id" type="button" class="selector-option" @click="choose(option)"><strong>{{ option.code }}</strong><span>{{ option.title }}</span><small>{{ labels[kind][option.status] || option.status }}</small></button>
-      </div>
-      <el-pagination v-if="!search.state.loading && !search.state.error" layout="prev, pager, next" :current-page="search.state.page" :page-size="20" :total="search.state.total" @current-change="search.paginate" />
-      <template #footer><el-button @click="search.close">取消</el-button></template>
-    </el-dialog>
   </div>
+  <el-dialog :model-value="search.state.open" :title="`选择${names[kind]}`" width="min(640px, calc(100vw - 24px))" append-to-body destroy-on-close @update:model-value="(value: boolean) => { if (!value) search.close() }">
+    <el-input :model-value="search.state.keyword" :aria-label="`搜索${names[kind]}`" placeholder="搜索编号或标题" :maxlength="200" clearable @update:model-value="search.search" />
+    <div class="selector-results" :aria-busy="search.state.loading">
+      <p v-if="search.state.loading" role="status">正在搜索…</p>
+      <div v-else-if="search.state.error" role="alert">搜索失败，请重试。<el-button @click="search.retry">重试</el-button></div>
+      <p v-else-if="!search.state.items.length">暂无可见结果</p>
+      <button v-for="option in search.state.items" v-else :key="option.id" type="button" class="selector-option" @click="choose(option)"><strong>{{ option.code }}</strong><span>{{ option.title }}</span><small>{{ labels[kind][option.status] || option.status }}</small></button>
+    </div>
+    <el-pagination v-if="!search.state.loading && !search.state.error" layout="prev, pager, next" :current-page="search.state.page" :page-size="20" :total="search.state.total" @current-change="search.paginate" />
+    <template #footer><el-button @click="search.close">取消</el-button></template>
+  </el-dialog>
 </template>
 <style scoped>
 .object-selector { width: 100%; min-width: 0; }

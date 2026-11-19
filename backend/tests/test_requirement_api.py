@@ -1,11 +1,12 @@
 from collections.abc import Iterator
+from datetime import datetime
 from pathlib import Path
 
 import pytest
 import yaml
 from conftest import assert_revision_conflict, resolve_openapi_ref
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, event, select
+from sqlalchemy import create_engine, event, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -27,6 +28,7 @@ from app.models.entities import (
     ReleaseTarget,
     Requirement,
     RequirementFeedback,
+    RequirementOnlineFeedback,
     RequirementParticipant,
     RequirementStep,
     Role,
@@ -46,6 +48,7 @@ PERMS = {
     "rd.requirement.status",
     "rd.feedback.view",
     "rd.feedback.create",
+    "rd.feedback.edit",
     "rd.feedback.convert",
 }
 
@@ -77,6 +80,7 @@ def req_api(tmp_path: Path) -> Iterator[Fixture]:
         RequirementStep.__table__,
         RequirementParticipant.__table__,
         RequirementFeedback.__table__,
+        RequirementOnlineFeedback.__table__,
         FileObject.__table__,
         AttachmentRelation.__table__,
     ):
@@ -216,6 +220,53 @@ def _create_feedback(client, headers, **overrides) -> dict:
 # --------------------------------------------------------------------------- #
 # CRUD + revision                                                             #
 # --------------------------------------------------------------------------- #
+@pytest.mark.parametrize("conversion", [False, True])
+def test_new_requirement_requires_an_eligible_confirmer(req_api, conversion):
+    client, db, headers, ids = req_api
+    actor = headers["alice"]
+    payload = {"requirement_type": "FEATURE", "description": "合规描述"}
+    if conversion:
+        feedback = _create_feedback(client, actor)
+        path = f"/api/v1/feedbacks/{feedback['id']}/convert"
+        payload.update(
+            type="CREATE_NEW",
+            revision=feedback["revision"],
+            requirement_title="反馈转新需求",
+        )
+    else:
+        path = "/api/v1/requirements"
+        payload["title"] = "直接新建需求"
+
+    tracked = (
+        Requirement,
+        RequirementParticipant,
+        RequirementFeedback,
+        CollaborationEvent,
+        OperationLog,
+    )
+    before = [db.scalar(select(func.count()).select_from(model)) for model in tracked]
+    missing = [
+        payload,
+        {**payload, "participants": [{"role": "DEVELOP", "user_id": ids["alice"]}]},
+    ]
+    for body in missing:
+        rejected = client.post(path, headers=actor, json=body)
+        assert rejected.status_code == 422, rejected.text
+        assert "请至少指定一名需求确认人" in rejected.text
+
+    ineligible = client.post(
+        path,
+        headers=actor,
+        json={**payload, "participants": [{"role": "CONFIRM", "user_id": ids["converter"]}]},
+    )
+    assert ineligible.status_code == 422 and ineligible.json()["code"] == 42260
+    assert [db.scalar(select(func.count()).select_from(model)) for model in tracked] == before
+    if conversion:
+        current = db.get(Feedback, feedback["id"])
+        assert current.status == "NEW"
+        assert current.revision == feedback["revision"] and current.main_requirement_id is None
+
+
 def test_requirement_crud_and_optimistic_lock(req_api):
     client, _session, headers, _ids = req_api
     created = _create_req(client, headers["alice"], title="A 需求")
@@ -348,9 +399,11 @@ def test_self_scope_isolation(req_api):
 # --------------------------------------------------------------------------- #
 # Feedback -> Requirement convert                                             #
 # --------------------------------------------------------------------------- #
-def test_convert_create_new(req_api):
-    client, session, headers, _ids = req_api
+@pytest.mark.parametrize("accept_on_convert", [False, True])
+def test_convert_create_new(req_api, accept_on_convert):
+    client, session, headers, ids = req_api
     fb = _create_feedback(client, headers["alice"], title="待转反馈")
+    participants = [{"role": "CONFIRM", "user_id": ids["alice"]}]
     resp = client.post(
         f"/api/v1/feedbacks/{fb['id']}/convert",
         headers=headers["alice"],
@@ -360,16 +413,33 @@ def test_convert_create_new(req_api):
             "requirement_title": "由反馈转来的需求",
             "requirement_type": "FEATURE",
             "description": "整理后的研发需求",
+            "participants": participants,
+            **({"accept_on_convert": True} if accept_on_convert else {}),
         },
     )
     assert resp.status_code == 200, resp.text
     req = resp.json()
     assert req["source"] == "FEEDBACK"
     assert req["status"] == "DRAFT"
+    assert req["system_id"] is None
+    assigned = client.get(
+        f"/api/v1/requirements/{req['id']}/participants", headers=headers["alice"]
+    ).json()
+    assert assigned["participants"] == [
+        {**participants[0], "active": True, "display_name": "alice"}
+    ]
 
     detail = client.get(f"/api/v1/feedbacks/{fb['id']}", headers=headers["alice"]).json()
     assert detail["status"] == "REQUIREMENT_LINKED"
     assert detail["main_requirement_id"] == req["id"]
+    assert detail["revision"] == fb["revision"] + 1
+    info = client.get(
+        f"/api/v1/feedbacks/{fb['id']}/collaboration", headers=headers["alice"]
+    ).json()
+    assert (
+        info["handler_id"] == info["accepted_by"] == (ids["alice"] if accept_on_convert else None)
+    )
+    assert bool(info["accepted_at"]) == accept_on_convert
 
     # Requirement -> source feedback traceability.
     linked = client.get(f"/api/v1/requirements/{req['id']}/feedbacks", headers=headers["alice"])
@@ -387,6 +457,7 @@ def test_convert_create_new(req_api):
             "requirement_title": "再转一次",
             "requirement_type": "FEATURE",
             "description": "描述",
+            "participants": participants,
         },
     )
     assert again.status_code == 409
@@ -401,10 +472,11 @@ def test_convert_create_new(req_api):
                 "requirement_title": "旧版本再次转换",
                 "requirement_type": "FEATURE",
                 "description": "描述",
+                "participants": participants,
             },
         ),
         revision=detail["revision"],
-        updated_by=_ids["alice"],
+        updated_by=ids["alice"],
     )
 
     # Audit chain.
@@ -426,9 +498,83 @@ def test_convert_create_new(req_api):
     assert "CREATE_FROM_FEEDBACK" in req_actions
 
 
+def test_conversion_system_selection_is_scoped_to_new_requirement(req_api):
+    client, session, headers, ids = req_api
+    session.add_all(
+        [
+            BusinessSystem(id=31, code="TARGET", name="客户服务"),
+            BusinessSystem(id=32, code="OTHER", name="其他系统"),
+            BusinessSystem(id=33, code="DISABLED", name="已停用", enabled=False),
+        ]
+    )
+    session.commit()
+    converter = headers["converter"]
+    options = client.get("/api/v1/systems/options", headers=converter)
+    assert options.status_code == 200
+    assert sorted(options.json(), key=lambda row: row["id"]) == [
+        {"id": 31, "name": "客户服务"},
+        {"id": 32, "name": "其他系统"},
+    ]
+    assert client.get("/api/v1/systems", headers=converter).status_code == 403
+    feedback = _create_feedback(client, headers["alice"])
+    path = f"/api/v1/feedbacks/{feedback['id']}/convert"
+    payload = {
+        "type": "CREATE_NEW",
+        "revision": feedback["revision"],
+        "requirement_title": "选择业务系统",
+        "requirement_type": "FEATURE",
+        "description": "从无系统的反馈转入需求",
+        "participants": [{"role": "CONFIRM", "user_id": ids["alice"]}],
+    }
+    for invalid in (33, 999, -1):
+        rejected = client.post(path, headers=converter, json={**payload, "system_id": invalid})
+        assert rejected.status_code == 422
+    rejected = client.post(
+        path,
+        headers=headers["alice"],
+        json={
+            "type": "LINK_EXISTING",
+            "revision": feedback["revision"],
+            "requirement_id": 1,
+            "system_id": 31,
+        },
+    )
+    assert rejected.status_code == 422
+    assert session.scalar(select(Requirement.id)) is None
+    created = client.post(path, headers=converter, json={**payload, "system_id": 31})
+    assert created.status_code == 200, created.text
+    assert created.json()["system_id"] == 31
+    detail = client.get(f"/api/v1/feedbacks/{feedback['id']}", headers=headers["alice"]).json()
+    assert detail["system_id"] is None
+    assert detail["main_requirement_id"] == created.json()["id"]
+
+    bound = _create_feedback(client, headers["alice"], system_id=32)
+    bound_path = f"/api/v1/feedbacks/{bound['id']}/convert"
+    payload["revision"] = bound["revision"]
+    assert (
+        client.post(bound_path, headers=converter, json={**payload, "system_id": 31}).status_code
+        == 422
+    )
+    inherited = client.post(bound_path, headers=converter, json=payload)
+    assert inherited.status_code == 200, inherited.text
+    assert inherited.json()["system_id"] == 32
+
+
 def test_convert_link_existing(req_api):
-    client, _session, headers, _ids = req_api
-    existing = _create_req(client, headers["alice"], title="已有需求")
+    client, session, headers, ids = req_api
+    existing = _create_req(
+        client,
+        headers["alice"],
+        title="已有需求",
+        participants=[{"role": "CONFIRM", "user_id": ids["alice"]}],
+    )
+    participants = select(RequirementParticipant).where(
+        RequirementParticipant.requirement_id == existing["id"]
+    )
+    historical_confirmer = session.scalar(participants)
+    assert historical_confirmer is not None
+    historical_confirmer.active = False
+    session.commit()
     fb = _create_feedback(client, headers["alice"], title="归并到已有")
     resp = client.post(
         f"/api/v1/feedbacks/{fb['id']}/convert",
@@ -440,6 +586,8 @@ def test_convert_link_existing(req_api):
     detail = client.get(f"/api/v1/feedbacks/{fb['id']}", headers=headers["alice"]).json()
     assert detail["status"] == "REQUIREMENT_LINKED"
     assert detail["main_requirement_id"] == existing["id"]
+    people = list(session.scalars(participants))
+    assert [(p.role, p.user_id, p.active) for p in people] == [("CONFIRM", ids["alice"], False)]
 
 
 def test_convert_missing_fields_is_422(req_api):
@@ -465,15 +613,119 @@ def test_convert_missing_fields_is_422(req_api):
     )
 
 
-def test_convert_link_existing_out_of_scope_is_404(req_api):
-    client, _session, headers, _ids = req_api
+def test_accept_and_convert_requires_explicit_acceptance(req_api):
+    client, session, headers, ids = req_api
+    feedback = _create_feedback(client, headers["alice"], recipient_ids=[ids["alice"]])
+    path = f"/api/v1/feedbacks/{feedback['id']}/accept-and-convert"
+    payload = {
+        "type": "CREATE_NEW",
+        "revision": feedback["revision"],
+        "requirement_title": "从反馈新建",
+        "requirement_type": "FEATURE",
+        "description": "描述内容",
+        "participants": [{"role": "CONFIRM", "user_id": ids["alice"]}],
+    }
+    for invalid in ({}, {"accept_on_convert": False}):
+        response = client.post(path, headers=headers["alice"], json={**payload, **invalid})
+        assert response.status_code == 422, response.text
+        assert response.json()["detail"][0]["loc"] == ["body", "accept_on_convert"]
+    assert session.scalar(select(Requirement.id)) is None
+
+    response = client.post(
+        path, headers=headers["alice"], json={**payload, "accept_on_convert": True}
+    )
+    assert response.status_code == 200, response.text
+    row = session.get(Feedback, feedback["id"])
+    assert row.main_requirement_id == response.json()["id"]
+    assert row.status == "REQUIREMENT_LINKED" and row.revision == feedback["revision"] + 1
+    assert row.handler_id == row.accepted_by == ids["alice"] and row.accepted_at
+
+
+def test_accept_and_link_rechecks_target_scope_after_lock(req_api, monkeypatch):
+    client, session, headers, ids = req_api
+    target = _create_req(
+        client, headers["bob"], participants=[{"role": "CONFIRM", "user_id": ids["alice"]}]
+    )
+    assert (
+        client.get(f"/api/v1/requirements/{target['id']}", headers=headers["alice"]).status_code
+        == 200
+    )
+    feedback = _create_feedback(client, headers["alice"], recipient_ids=[ids["alice"]])
+    refresh = session.refresh
+
+    def refresh_after_participant_change(item, *args, **kwargs):
+        if isinstance(item, Requirement) and kwargs.get("with_for_update"):
+            session.execute(
+                update(RequirementParticipant)
+                .where(RequirementParticipant.requirement_id == target["id"])
+                .values(active=False)
+            )
+        return refresh(item, *args, **kwargs)
+
+    monkeypatch.setattr(session, "refresh", refresh_after_participant_change)
+    response = client.post(
+        f"/api/v1/feedbacks/{feedback['id']}/accept-and-convert",
+        headers=headers["alice"],
+        json={
+            "type": "LINK_EXISTING",
+            "revision": feedback["revision"],
+            "requirement_id": target["id"],
+            "accept_on_convert": True,
+        },
+    )
+    assert response.status_code == 404, response.text
+    assert session.scalar(select(RequirementFeedback.id)) is None
+    row = session.get(Feedback, feedback["id"])
+    assert row.revision == feedback["revision"] and row.accepted_at is None
+
+
+@pytest.mark.parametrize("target_status", ["ONLINE", "CANCELED"])
+def test_online_feedback_cannot_link_to_terminal_repair(req_api, target_status):
+    client, session, headers, ids = req_api
+    actor = headers["alice"]
+    source = _create_req(client, actor)
+    target = _create_req(client, actor)
+    feedback = _create_feedback(client, actor, recipient_ids=[ids["alice"]])
+    session.get(Requirement, source["id"]).status = "ONLINE"
+    session.get(Requirement, target["id"]).status = target_status
+    session.add(RequirementOnlineFeedback(requirement_id=source["id"], feedback_id=feedback["id"]))
+    session.commit()
+    fields = {
+        "type": "LINK_EXISTING",
+        "revision": feedback["revision"],
+        "requirement_id": target["id"],
+    }
+
+    response = client.post(
+        f"/api/v1/feedbacks/{feedback['id']}/accept-and-convert",
+        headers=actor,
+        json={**fields, "accept_on_convert": True},
+    )
+    assert response.status_code == 409 and response.json()["code"] == 40989, response.text
+    assert session.scalar(select(RequirementFeedback.id)) is None
+    row = session.get(Feedback, feedback["id"])
+    assert row.status == "NEW" and row.accepted_at is None
+
+    ordinary = _create_feedback(client, actor, recipient_ids=[ids["alice"]])
+    allowed = client.post(f"/api/v1/feedbacks/{ordinary['id']}/convert", headers=actor, json=fields)
+    assert allowed.status_code == 200, allowed.text
+
+
+@pytest.mark.parametrize("accept_on_convert", [False, True])
+def test_convert_link_existing_out_of_scope_is_404(req_api, accept_on_convert):
+    client, session, headers, _ids = req_api
     alice_req = _create_req(client, headers["alice"], title="alice私有需求")
     bob_fb = _create_feedback(client, headers["bob"], title="bob反馈")
     # bob (SELF) cannot link to a requirement he cannot see.
     resp = client.post(
         f"/api/v1/feedbacks/{bob_fb['id']}/convert",
         headers=headers["bob"],
-        json={"type": "LINK_EXISTING", "revision": 1, "requirement_id": alice_req["id"]},
+        json={
+            "type": "LINK_EXISTING",
+            "revision": 1,
+            "requirement_id": alice_req["id"],
+            "accept_on_convert": accept_on_convert,
+        },
     )
     assert resp.status_code == 404
     # bob's feedback stays NEW (transaction did nothing).
@@ -481,6 +733,10 @@ def test_convert_link_existing_out_of_scope_is_404(req_api):
         client.get(f"/api/v1/feedbacks/{bob_fb['id']}", headers=headers["bob"]).json()["status"]
         == "NEW"
     )
+    row = session.get(Feedback, bob_fb["id"])
+    assert row.revision == bob_fb["revision"]
+    assert row.handler_id is row.accepted_by is row.accepted_at is row.main_requirement_id is None
+    assert session.scalar(select(RequirementFeedback.id)) is None
 
 
 def test_linked_feedback_requires_both_permissions_and_filters_feedback_scope(req_api):
@@ -509,7 +765,7 @@ def test_linked_feedback_requires_both_permissions_and_filters_feedback_scope(re
 
 
 def test_converter_without_requirement_view_can_create_but_not_link(req_api):
-    client, _session, headers, _ids = req_api
+    client, _session, headers, ids = req_api
     existing = _create_req(client, headers["alice"], title="已有需求")
     linked_feedback = _create_feedback(client, headers["alice"], title="不能关联")
     link = client.post(
@@ -520,22 +776,186 @@ def test_converter_without_requirement_view_can_create_but_not_link(req_api):
     assert link.status_code == 403
 
     new_feedback = _create_feedback(client, headers["alice"], title="可以新建")
-    create = client.post(
-        f"/api/v1/feedbacks/{new_feedback['id']}/convert",
-        headers=headers["converter"],
-        json={
-            "type": "CREATE_NEW",
-            "revision": 1,
-            "requirement_title": "从反馈新建",
-            "requirement_type": "FEATURE",
-            "description": "描述内容",
-        },
+    path = f"/api/v1/feedbacks/{new_feedback['id']}/convert"
+    payload = {
+        "type": "CREATE_NEW",
+        "revision": 1,
+        "requirement_title": "从反馈新建",
+        "requirement_type": "FEATURE",
+        "description": "描述内容",
+        "participants": [{"role": "CONFIRM", "user_id": ids["alice"]}],
+    }
+    for route in (path, path.replace("/convert", "/accept-and-convert")):
+        combined = client.post(
+            route, headers=headers["converter"], json={**payload, "accept_on_convert": True}
+        )
+        assert combined.status_code == 403, combined.text
+    assert (
+        client.get(path.removesuffix("/convert"), headers=headers["alice"]).json() == new_feedback
     )
+    create = client.post(path, headers=headers["converter"], json=payload)
     assert create.status_code == 200, create.text
 
 
+def test_accept_and_convert_requires_in_scope_current_new_feedback_and_eligible_actor(req_api):
+    client, session, headers, ids = req_api
+    feedback = _create_feedback(client, headers["alice"], recipient_ids=[ids["alice"]])
+    path = f"/api/v1/feedbacks/{feedback['id']}"
+    payload = {
+        "type": "CREATE_NEW",
+        "revision": feedback["revision"],
+        "accept_on_convert": True,
+        "requirement_title": "需要有效受理",
+        "requirement_type": "FEATURE",
+        "description": "描述内容",
+        "participants": [{"role": "CONFIRM", "user_id": ids["alice"]}],
+    }
+    initial_logs = session.scalar(select(func.count(OperationLog.id)))
+    initial_events = session.scalar(select(func.count(CollaborationEvent.id)))
+    assert client.post(f"{path}/convert", headers=headers["bob"], json=payload).status_code == 404
+    stale = client.post(
+        f"{path}/convert", headers=headers["boss"], json={**payload, "revision": 999}
+    )
+    assert_revision_conflict(stale, revision=feedback["revision"], updated_by=ids["alice"])
+    unauthorized = client.post(
+        f"{path}/convert",
+        headers=headers["boss"],
+        json={**payload, "accept_reason": "普通非接收人"},
+    )
+    assert unauthorized.status_code == 403, unauthorized.text
+    assert client.get(path, headers=headers["alice"]).json() == feedback
+    row = session.get(Feedback, feedback["id"])
+    assert row.handler_id is row.accepted_by is row.accepted_at is None
+    assert session.scalar(select(Requirement.id)) is None
+    assert session.scalar(select(RequirementFeedback.id)) is None
+    assert session.scalar(select(func.count(OperationLog.id))) == initial_logs
+    assert session.scalar(select(func.count(CollaborationEvent.id))) == initial_events
+
+    accepted = client.patch(
+        f"{path}/status",
+        headers=headers["alice"],
+        json={"status": "ACCEPTED", "revision": feedback["revision"]},
+    )
+    assert accepted.status_code == 200, accepted.text
+    # SQLite drops time zone info when materializing the row from the database.
+    session.refresh(row)
+    before_rejected_convert = client.get(path, headers=headers["alice"]).json()
+    prior_collaboration = client.get(f"{path}/collaboration", headers=headers["alice"]).json()
+    response = client.post(
+        f"{path}/convert",
+        headers=headers["alice"],
+        json={**payload, "revision": accepted.json()["revision"]},
+    )
+    assert response.status_code == 409 and response.json()["code"] == 40911
+    assert client.get(path, headers=headers["alice"]).json() == before_rejected_convert
+    assert (
+        client.get(f"{path}/collaboration", headers=headers["alice"]).json() == prior_collaboration
+    )
+    assert session.scalar(select(Requirement.id)) is None
+
+
+def test_accept_and_link_existing_records_actual_delegated_operator(req_api):
+    client, session, headers, ids = req_api
+    role = session.scalar(select(Role).where(Role.code == "ALLROLE"))
+    role.code = "DEVELOPMENT_LEAD"
+    role.is_system = True
+    session.commit()
+    existing = _create_req(client, headers["alice"], title="已有需求")
+    feedback = _create_feedback(client, headers["alice"], recipient_ids=[ids["alice"]])
+    path = f"/api/v1/feedbacks/{feedback['id']}"
+    payload = {
+        "type": "LINK_EXISTING",
+        "revision": feedback["revision"],
+        "requirement_id": existing["id"],
+        "accept_on_convert": True,
+    }
+    for reason, code in [(None, 403), ("   ", 403), ("短", 422), ("长" * 501, 422)]:
+        rejected = client.post(
+            f"{path}/convert", headers=headers["boss"], json={**payload, "accept_reason": reason}
+        )
+        assert rejected.status_code == code, rejected.text
+    assert client.get(path, headers=headers["alice"]).json() == feedback
+
+    reason = "接收人暂时无法处理, 由主管代受理"
+    linked = client.post(
+        f"{path}/convert", headers=headers["boss"], json={**payload, "accept_reason": reason}
+    )
+    assert linked.status_code == 200, linked.text
+    assert linked.json() == existing
+    row = session.get(Feedback, feedback["id"])
+    assert row.status == "REQUIREMENT_LINKED" and row.revision == feedback["revision"] + 1
+    assert row.handler_id == row.accepted_by == ids["boss"]
+    assert row.accepted_at
+    relation = session.scalars(select(RequirementFeedback)).one()
+    assert relation.requirement_id == existing["id"] and relation.feedback_id == feedback["id"]
+    assert relation.is_primary
+
+    audit = session.scalars(
+        select(OperationLog).where(OperationLog.action == "CONVERT_REQUIREMENT")
+    ).one()
+    assert audit.operator_id == ids["boss"] and audit.before_data == {"status": "NEW"}
+    audit_data = dict(audit.after_data)
+    accepted_at = datetime.fromisoformat(audit_data.pop("accepted_at"))
+    assert accepted_at.replace(tzinfo=None) == row.accepted_at.replace(tzinfo=None)
+    assert audit_data == {
+        "status": "REQUIREMENT_LINKED",
+        "requirement_id": existing["id"],
+        "convert_type": "LINK_EXISTING",
+        "accept_on_convert": True,
+        "accept_reason": reason,
+        "handler_id": ids["boss"],
+        "accepted_by": ids["boss"],
+    }
+    events = session.scalars(
+        select(CollaborationEvent).where(
+            CollaborationEvent.entity_type == "FEEDBACK",
+            CollaborationEvent.action.in_(("STATUS_ACCEPTED", "STATUS_REQUIREMENT_LINKED")),
+        )
+    ).all()
+    assert [(item.action, item.actor_id, item.recipient_ids) for item in events] == [
+        ("STATUS_REQUIREMENT_LINKED", ids["boss"], [ids["alice"]])
+    ]
+
+
+def test_accept_and_convert_rolls_back_when_image_binding_fails(req_api, monkeypatch):
+    client, session, headers, ids = req_api
+    feedback = _create_feedback(client, headers["alice"], recipient_ids=[ids["alice"]])
+    path = f"/api/v1/feedbacks/{feedback['id']}"
+    initial_logs = session.scalar(select(func.count(OperationLog.id)))
+    initial_events = session.scalar(select(func.count(CollaborationEvent.id)))
+
+    def request_db():
+        # A distinct request session ensures teardown rolls back any uncommitted inserts.
+        with Session(session.get_bind()) as db:
+            yield db
+
+    monkeypatch.setitem(app.dependency_overrides, get_db, request_db)
+    invalid = client.post(
+        f"{path}/convert",
+        headers=headers["alice"],
+        json={
+            "type": "CREATE_NEW",
+            "revision": feedback["revision"],
+            "accept_on_convert": True,
+            "requirement_title": "不能提交的图文需求",
+            "requirement_type": "FEATURE",
+            "description": "描述未引用任何图片",
+            "description_images": {"local-unused": "data:image/png;base64,iVBORw0KGgo="},
+            "participants": [{"role": "CONFIRM", "user_id": ids["alice"]}],
+        },
+    )
+    assert invalid.status_code == 422 and invalid.json()["code"] == 42265
+    assert client.get(path, headers=headers["alice"]).json() == feedback
+    row = session.get(Feedback, feedback["id"])
+    assert row.handler_id is row.accepted_by is row.accepted_at is None
+    assert session.scalar(select(Requirement.id)) is None
+    assert session.scalar(select(RequirementFeedback.id)) is None
+    assert session.scalar(select(func.count(OperationLog.id))) == initial_logs
+    assert session.scalar(select(func.count(CollaborationEvent.id))) == initial_events
+
+
 def test_convert_stale_revision_rolls_back(req_api):
-    client, session, headers, _ids = req_api
+    client, session, headers, ids = req_api
     fb = _create_feedback(client, headers["alice"], title="并发反馈")
     before = session.scalar(select(Requirement).where(Requirement.title == "并发反馈"))
     assert before is None
@@ -550,6 +970,7 @@ def test_convert_stale_revision_rolls_back(req_api):
             "requirement_title": "不该被创建",
             "requirement_type": "FEATURE",
             "description": "should roll back",
+            "participants": [{"role": "CONFIRM", "user_id": ids["alice"]}],
         },
     )
     assert resp.status_code == 409
@@ -676,7 +1097,7 @@ def test_description_image_access_and_history(req_api):
 
 
 def test_convert_and_edit_description_images(req_api):
-    client, _session, headers, _ids = req_api
+    client, _session, headers, ids = req_api
     key = "local-12345678-1234-1234-1234-123456789abc"
     data = {
         "description": f'<p>反馈截图</p><img data-file-id="{key}">',
@@ -693,6 +1114,7 @@ def test_convert_and_edit_description_images(req_api):
             "revision": fb["revision"],
             "requirement_title": "图文需求",
             "requirement_type": "FEATURE",
+            "participants": [{"role": "CONFIRM", "user_id": ids["alice"]}],
         },
     )
     assert response.status_code == 200, response.text

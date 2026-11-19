@@ -1,8 +1,22 @@
 from sqlalchemy import ColumnElement, func, or_, select
 from sqlalchemy.orm import Session
 
-from app.models.entities import Requirement, RequirementParticipant, User
-from app.models.enums import DataScope, Priority, RequirementSource, RequirementStatus
+from app.models.entities import (
+    Release,
+    Requirement,
+    RequirementParticipant,
+    User,
+    Version,
+    VersionRequirement,
+)
+from app.models.enums import (
+    DataScope,
+    Priority,
+    ReleaseResult,
+    RequirementSource,
+    RequirementStatus,
+    VersionStatus,
+)
 from app.repositories.base import BaseRepository
 
 
@@ -27,16 +41,33 @@ class RequirementRepository(BaseRepository[Requirement]):
             Requirement.id.in_(participant),
         )
 
-    def get_scoped(self, entity_id: int, user_id: int, data_scope: DataScope) -> Requirement | None:
+    def get_scoped(
+        self, entity_id: int, user_id: int, data_scope: DataScope, *, lock: bool = False
+    ) -> Requirement | None:
         stmt = select(Requirement).where(
             Requirement.id == entity_id, Requirement.deleted_at.is_(None)
         )
         if data_scope is not DataScope.ALL:
             stmt = stmt.where(self.self_criterion(user_id))
+        if lock:
+            stmt = stmt.with_for_update().execution_options(populate_existing=True)
         item = self.db.scalar(stmt)
         if item:
             self.populate_handlers([item])
         return item
+
+    def successful_release_id(self, requirement_id: int) -> int | None:
+        return self.db.scalar(
+            select(Release.id)
+            .join(Version, Version.id == Release.version_id)
+            .join(VersionRequirement, VersionRequirement.version_id == Version.id)
+            .where(
+                VersionRequirement.requirement_id == requirement_id,
+                VersionRequirement.active.is_(True),
+                Version.status == VersionStatus.RELEASED,
+                Release.result == ReleaseResult.SUCCESS,
+            )
+        )
 
     def list_scoped(
         self,

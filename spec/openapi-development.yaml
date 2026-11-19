@@ -1067,6 +1067,15 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/WorkflowOut'
+        '409':
+          description: revision CAS 冲突 (40910) 或该操作的业务冲突
+          content:
+            application/json:
+              schema:
+                anyOf:
+                - $ref: '#/components/schemas/RevisionConflictResponse'
+                - $ref: '#/components/schemas/ErrorResponse'
+                title: Response 409 Workflow Action Api V1 Requirements  Requirement Id  Workflow Post
         '422':
           description: Validation Error
           content:
@@ -1085,6 +1094,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+      description: 确认当前内容时须已有有效的需求确认人、开发人员及验收人员。COMPLETE_AND_ACCEPT 仅供开发中同时担任开发和验收的本人使用，内容须已确认且设计须已完成或无需设计。一次提交提验并验收通过，需求进入待发布。
   /collaboration/people:
     get:
       tags:
@@ -2886,8 +2896,72 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-      description: CREATE_NEW 仅需要 rd.feedback.convert。LINK_EXISTING 还需要 rd.requirement.view，且目标需求必须在当前
-        Requirement DataScope 内。操作与关系及审计写入同一事务。
+      description: CREATE_NEW 仅需要 rd.feedback.convert，并须指定至少一名需求确认人。LINK_EXISTING 还需要 rd.requirement.view，且目标需求必须在当前
+        Requirement DataScope 内。accept_on_convert=true 时仅待处理反馈可提交，还须有 rd.feedback.edit 及原受理资格。管理员代受理须填写原因。受理信息、转换、关联、审计及通知事件一次提交。
+        线上反馈只能关联未上线且未取消的修复需求。
+  /feedbacks/{feedback_id}/accept-and-convert:
+    post:
+      tags:
+      - Feedback
+      summary: 受理并转需求
+      operationId: accept_and_convert_feedback
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: feedback_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Feedback Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeedbackAcceptAndConvertRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RequirementOut'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: revision CAS 冲突 (40910) 或该操作的业务冲突
+          content:
+            application/json:
+              schema:
+                anyOf:
+                - $ref: '#/components/schemas/RevisionConflictResponse'
+                - $ref: '#/components/schemas/ErrorResponse'
+                title: Response 409 Accept And Convert Feedback
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: 待处理反馈的受理与转需求在同一事务完成。须有 rd.feedback.edit 和 rd.feedback.convert 及原受理资格。管理员代受理须填写原因。新建需求须指定至少一名确认人。关联已有需求还须有
+        rd.requirement.view，且目标在当前 Requirement DataScope 内。线上反馈只能关联未上线且未取消的修复需求。
   /feedbacks/{feedback_id}/activities:
     get:
       tags:
@@ -3420,6 +3494,194 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
       description: 需要 rd.requirement.view 与 rd.feedback.view。先校验 Requirement DataScope，再按 Feedback DataScope
         过滤关联反馈；仅返回当前用户可见的反馈。
+  /requirements/{requirement_id}/online-review:
+    get:
+      tags:
+      - Requirement
+      summary: 查看线上效果确认
+      operationId: get_online_review
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: requirement_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Requirement Id
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OnlineReviewOut'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: revision CAS 冲突 (40910) 或该操作的业务冲突
+          content:
+            application/json:
+              schema:
+                anyOf:
+                - $ref: '#/components/schemas/RevisionConflictResponse'
+                - $ref: '#/components/schemas/ErrorResponse'
+                title: Response 409 Get Online Review
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      description: 需求查看权限及对象范围内可查询。线上反馈按反馈权限和对象范围分页，每页 10 条。
+  /requirements/{requirement_id}/online-review/confirm:
+    post:
+      tags:
+      - Requirement
+      summary: 确认线上效果
+      operationId: confirm_online_review
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: requirement_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Requirement Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OnlineReviewConfirm'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OnlineReviewConfirmation'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: revision CAS 冲突 (40910) 或该操作的业务冲突
+          content:
+            application/json:
+              schema:
+                anyOf:
+                - $ref: '#/components/schemas/RevisionConflictResponse'
+                - $ref: '#/components/schemas/ErrorResponse'
+                title: Response 409 Confirm Online Review
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      description: 仅已上线需求的实际创建人可确认一次。提交当前 revision，保存实际操作者、时间和选填说明。
+  /requirements/{requirement_id}/online-review/feedbacks:
+    post:
+      tags:
+      - Requirement
+      summary: 提交已上线需求的线上反馈
+      operationId: create_online_review_feedback
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: requirement_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Requirement Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OnlineReviewFeedbackCreate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedbackOut'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: revision CAS 冲突 (40910) 或该操作的业务冲突
+          content:
+            application/json:
+              schema:
+                anyOf:
+                - $ref: '#/components/schemas/RevisionConflictResponse'
+                - $ref: '#/components/schemas/ErrorResponse'
+                title: Response 409 Create Online Review Feedback
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      description: 需有需求查看及反馈创建权限。反馈为独立待处理记录，来源关系随反馈及审计同一事务保存。
   /requirements/{requirement_id}/status:
     patch:
       tags:
@@ -3481,7 +3743,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-      description: 六阶段流转：开发参与人提交验收，可指定多名验收人，其中任意一名有效验收人确认即可进入 DONE，其他验收人无需重复确认；不再要求每名开发人员单独确认。记录实际操作人，并通过
+      description: 六阶段流转：待确认进入待开发前须指定有效的需求确认人、开发人员和验收人员。开发参与人提交验收，可指定多名验收人，其中任意一名有效验收人确认即可进入 DONE，其他验收人无需重复确认；不再要求每名开发人员单独确认。记录实际操作人，并通过
         revision CAS 防止重复流转。人员资格、内容确认、原因、审计及事务回滚统一校验。ONLINE 仅由成功发布产生。
   /requirements/{requirement_id}/activities:
     get:
@@ -4954,7 +5216,7 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
       security:
       - bearerAuth: []
-      description: 需求或版本查看、创建、编辑权限可读取启用系统的最小选择项，不返回管理元数据。
+      description: 反馈转需求权限或需求、版本的查看、创建、编辑权限可读取启用系统的 ID 和名称。
   /systems:
     get:
       tags:
@@ -7601,6 +7863,99 @@ components:
       - request_id
       title: ErrorResponse
       type: object
+    FeedbackAcceptAndConvertRequest:
+      properties:
+        type:
+          $ref: '#/components/schemas/FeedbackConvertType'
+          title: 反馈转化方式
+        revision:
+          type: integer
+          minimum: 1.0
+          title: 修订号
+          description: 对象的乐观锁修订号；写入时提交最后读取的修订号。
+        accept_on_convert:
+          type: boolean
+          const: true
+          title: 受理并转需求
+          description: 必须为 true，在待处理反馈转需求的同一事务中记录实际受理信息。
+        accept_reason:
+          anyOf:
+          - type: string
+            maxLength: 500
+            minLength: 2
+          - type: 'null'
+          title: 代受理原因
+          description: 仅在受理并转需求时使用。管理人员代指定接收人受理时必填。
+        system_id:
+          anyOf:
+          - type: integer
+            exclusiveMinimum: 0.0
+          - type: 'null'
+          title: 业务系统 ID
+          description: 反馈无业务系统时，新建需求可选一个已启用系统。反馈已有系统时继承，关联已有需求时不可指定。
+        requirement_title:
+          anyOf:
+          - type: string
+            maxLength: 200
+            minLength: 2
+          - type: 'null'
+          title: 需求标题
+        requirement_type:
+          anyOf:
+          - type: string
+            maxLength: 32
+            minLength: 1
+            pattern: ^[A-Z][A-Z0-9_]*$
+          - type: 'null'
+          title: 需求类型
+        priority:
+          $ref: '#/components/schemas/Priority'
+          default: P2
+          title: 优先级
+        description_images:
+          additionalProperties:
+            type: string
+          type: object
+          maxProperties: 12
+          title: 正文新图片
+          description: 正文临时图片编号对应的 PNG、JPEG 或 WebP 数据。仅随保存提交，单张最多 4 MiB，总计 8 MiB。
+        description:
+          anyOf:
+          - type: string
+            minLength: 2
+          - type: 'null'
+          title: 描述
+        acceptance_criteria:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: 验收标准
+        description_format:
+          type: string
+          enum:
+          - PLAIN
+          - HTML
+          title: 需求描述格式
+          default: PLAIN
+          description: 旧数据默认 PLAIN；HTML 使用服务端白名单清洗，详情和历史快照按格式安全显示。更新未提供时保留原格式。
+        participants:
+          items:
+            $ref: '#/components/schemas/ParticipantInput'
+          type: array
+          maxItems: 100
+          title: 环节人员
+          description: 转为新需求时至少指定一名 CONFIRM。关联已有需求时沿用目标需求的环节人员。
+        requirement_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: 需求 ID
+      type: object
+      required:
+      - type
+      - revision
+      - accept_on_convert
+      title: FeedbackAcceptAndConvertRequest
     FeedbackBatchAction:
       properties:
         items:
@@ -7673,6 +8028,26 @@ components:
           minimum: 1.0
           title: 修订号
           description: 对象的乐观锁修订号；写入时提交最后读取的修订号。
+        accept_on_convert:
+          type: boolean
+          title: 受理并转需求
+          default: false
+          description: 设为 true 时，在待处理反馈转需求的同一事务中记录实际受理信息。
+        accept_reason:
+          anyOf:
+          - type: string
+            maxLength: 500
+            minLength: 2
+          - type: 'null'
+          title: 代受理原因
+          description: 仅在受理并转需求时使用。管理人员代指定接收人受理时必填。
+        system_id:
+          anyOf:
+          - type: integer
+            exclusiveMinimum: 0.0
+          - type: 'null'
+          title: 业务系统 ID
+          description: 反馈无业务系统时，新建需求可选一个已启用系统。反馈已有系统时继承，关联已有需求时不可指定。
         requirement_title:
           anyOf:
           - type: string
@@ -7724,6 +8099,7 @@ components:
           type: array
           maxItems: 100
           title: 环节人员
+          description: 转为新需求时至少指定一名 CONFIRM。关联已有需求时沿用目标需求的环节人员。
         requirement_id:
           anyOf:
           - type: integer
@@ -8437,6 +8813,163 @@ components:
       required:
       - unread_count
       title: NotificationUnreadCount
+    OnlineReviewConfirm:
+      properties:
+        revision:
+          type: integer
+          minimum: 1.0
+          title: 需求修订号
+        note:
+          anyOf:
+          - type: string
+            maxLength: 500
+          - type: 'null'
+          title: 确认说明
+      type: object
+      required:
+      - revision
+      title: OnlineReviewConfirm
+    OnlineReviewConfirmation:
+      properties:
+        confirmed_by:
+          type: integer
+          title: 线上确认人
+        confirmed_by_name:
+          type: string
+          title: 线上确认人姓名
+        confirmed_at:
+          type: string
+          format: date-time
+          title: 线上确认时间
+        note:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: 确认说明
+      type: object
+      required:
+      - confirmed_by
+      - confirmed_by_name
+      - confirmed_at
+      - note
+      title: OnlineReviewConfirmation
+    OnlineReviewFeedbackCreate:
+      properties:
+        title:
+          type: string
+          maxLength: 200
+          minLength: 2
+          title: 反馈标题
+        feedback_type:
+          $ref: '#/components/schemas/FeedbackType'
+          title: 反馈类型
+        urgency:
+          $ref: '#/components/schemas/FeedbackUrgency'
+          default: NORMAL
+          title: 紧急程度
+        system_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: 业务系统 ID
+        module_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: 所属模块 ID
+        description:
+          type: string
+          minLength: 2
+          title: 描述
+        expected_result:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: 预期结果
+        actual_result:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: 实际结果
+        reproduce_steps:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: 复现步骤
+        recipient_ids:
+          items:
+            type: integer
+          type: array
+          maxItems: 50
+          minItems: 1
+          title: 反馈接收人
+        revision:
+          type: integer
+          minimum: 1.0
+          title: 需求修订号
+      type: object
+      required:
+      - title
+      - feedback_type
+      - description
+      - recipient_ids
+      - revision
+      title: OnlineReviewFeedbackCreate
+    OnlineReviewFeedbackItem:
+      properties:
+        id:
+          type: integer
+          title: 反馈 ID
+        feedback_no:
+          type: string
+          title: 反馈编号
+        title:
+          type: string
+          title: 反馈标题
+        status:
+          $ref: '#/components/schemas/FeedbackStatus'
+          title: 处理状态
+        created_at:
+          type: string
+          format: date-time
+          title: 反馈时间
+      type: object
+      required:
+      - id
+      - feedback_no
+      - title
+      - status
+      - created_at
+      title: OnlineReviewFeedbackItem
+    OnlineReviewOut:
+      properties:
+        revision:
+          type: integer
+          title: 需求修订号
+        can_confirm:
+          type: boolean
+          title: 当前用户可确认
+        confirmation:
+          anyOf:
+          - $ref: '#/components/schemas/OnlineReviewConfirmation'
+          - type: 'null'
+          title: 线上确认记录
+        feedbacks:
+          items:
+            $ref: '#/components/schemas/OnlineReviewFeedbackItem'
+          type: array
+          title: 可见线上反馈
+        feedback_total:
+          type: integer
+          title: 可见线上反馈总数
+      type: object
+      required:
+      - revision
+      - can_confirm
+      - confirmation
+      - feedbacks
+      - feedback_total
+      title: OnlineReviewOut
     ParticipantInput:
       properties:
         user_id:
@@ -9482,6 +10015,7 @@ components:
           type: array
           maxItems: 100
           title: 环节人员
+          description: 至少指定一名 CONFIRM。开发人员和验收人员在确认需求前补齐。
         description_images:
           additionalProperties:
             type: string
@@ -10651,6 +11185,7 @@ components:
           type: string
           enum:
           - CONFIRM
+          - COMPLETE_AND_ACCEPT
           - REOPEN
           - REQUEST_CHANGES
           - DESIGN_PENDING

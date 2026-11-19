@@ -4,12 +4,12 @@ from fastapi import APIRouter, BackgroundTasks, Depends, File, Query, UploadFile
 from fastapi.responses import Response, StreamingResponse
 from sqlalchemy.orm import Session
 
-from app.api.deps import require_permission
+from app.api.deps import ensure_all_permissions, require_all_permissions, require_permission
 from app.api.openapi import api_error_responses, api_revision_conflict_responses
 from app.core.database import get_db
-from app.core.exceptions import NotFoundError, PermissionDenied
-from app.models.entities import Feedback, User
-from app.models.enums import FeedbackStatus, FeedbackType, FeedbackUrgency
+from app.core.exceptions import NotFoundError
+from app.models.entities import Feedback, Requirement, User
+from app.models.enums import FeedbackConvertType, FeedbackStatus, FeedbackType, FeedbackUrgency
 from app.repositories.feedback_repository import FeedbackRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.audit import EntityActivityOut
@@ -21,6 +21,7 @@ from app.schemas.entity_actions import (
     FeedbackBatchAction,
 )
 from app.schemas.feedback import (
+    FeedbackAcceptAndConvertRequest,
     FeedbackConvertRequest,
     FeedbackCreate,
     FeedbackOut,
@@ -293,11 +294,35 @@ def convert_feedback(
     db: Session = Depends(get_db),
     user: User = Depends(require_permission("rd.feedback.convert")),
 ):
+    return _convert_feedback(feedback_id, payload, db, user)
+
+
+@router.post(
+    "/{feedback_id}/accept-and-convert",
+    response_model=RequirementOut,
+    responses=api_revision_conflict_responses(403, 404, 409),
+    operation_id="accept_and_convert_feedback",
+)
+def accept_and_convert_feedback(
+    feedback_id: int,
+    payload: FeedbackAcceptAndConvertRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_all_permissions("rd.feedback.edit", "rd.feedback.convert")),
+):
+    return _convert_feedback(feedback_id, payload, db, user)
+
+
+def _convert_feedback(
+    feedback_id: int, payload: FeedbackConvertRequest, db: Session, user: User
+) -> Requirement:
     _scoped_feedback_or_404(db, user, feedback_id)
-    if payload.type.value == "LINK_EXISTING":
-        permissions = UserRepository(db).permission_codes(user.id)
-        if "*" not in permissions and "rd.requirement.view" not in permissions:
-            raise PermissionDenied()
+    additional_permissions = []
+    if payload.accept_on_convert:
+        additional_permissions.append("rd.feedback.edit")
+    if payload.type is FeedbackConvertType.LINK_EXISTING:
+        additional_permissions.append("rd.requirement.view")
+    if additional_permissions:
+        ensure_all_permissions(user, db, *additional_permissions)
     scope = UserRepository(db).data_scope(user.id)
     return FeedbackService(db).convert(
         feedback_id, payload, user.id, viewer_scope=scope, viewer_id=user.id

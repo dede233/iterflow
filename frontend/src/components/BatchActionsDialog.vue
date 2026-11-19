@@ -4,7 +4,7 @@ import { batchActions, submitVersionAcceptance, type ActionKind, type BatchActio
 import { getRequirement } from '@/api/requirements'
 import { getFeedback } from '@/api/feedbacks'
 import { getVersion } from '@/api/versions'
-import { getWorkflow, getParticipants, getFeedbackCollaboration } from '@/api/collaboration'
+import { getWorkflow, getParticipants } from '@/api/collaboration'
 import { useAuthStore } from '@/stores/auth'
 import { useResponsive } from '@/composables/useResponsive'
 import { feedbackStatusLabel } from '@/constants/feedback'
@@ -47,7 +47,7 @@ const dialogTitle = computed(() => `批量处理${entity.value}`)
 const scopeLabel = computed(() => versionScope.value ? '当前版本清单的筛选结果' : '当前页')
 const options = computed(() => kind.value === 'requirements'
   ? [
-      { value: 'CONFIRM', label: '确认需求', transition: '待确认 → 待开发', description: '由需求确认人确认当前内容；其他阶段仅重新确认内容，保留原阶段。' },
+      { value: 'CONFIRM', label: '确认需求', transition: '待确认 → 待开发', description: '确认前须指定有效的需求确认人、开发人员和验收人员。任一有权限的确认人确认即可，重新确认保留原阶段。' },
       { value: 'DEVELOPING', label: '开始开发', transition: '待开发 → 开发中', description: '由开发人员开始处理已确认的需求。' },
       versionScope.value
         ? { value: 'SUBMIT_ACCEPTANCE', label: '提交验收', transition: '待开发 / 开发中 → 待验收', description: '已完成开发的需求可直接提交；待开发需求省去开始开发登记，仍由验收人确认。' }
@@ -55,7 +55,6 @@ const options = computed(() => kind.value === 'requirements'
       { value: 'DONE', label: '验收通过', transition: '待验收 → 待发布', description: '由任一有效验收人确认通过；之后仍需在版本中发布。' },
     ]
   : [
-      { value: 'ACCEPTED', label: '受理反馈', transition: '待处理 → 已受理', description: '由任一指定接收人受理；没有指定接收人时，由有权限的人员处理。' },
       { value: 'CLOSED', label: '关闭反馈', transition: '待处理 / 已受理 → 已关闭', description: '关闭不再跟进的反馈，需填写关闭原因。' },
     ])
 const chosen = computed(() => options.value.find(option => option.value === action.value))
@@ -115,13 +114,9 @@ async function inspect(id: number): Promise<Preview> {
   const base = { id, title: original.title, code: code(original), status: statusLabel(original.status) }
   try {
     if (kind.value === 'feedbacks') {
-      const [item, people] = await Promise.all([getFeedback(id), getFeedbackCollaboration(id)])
-      const allowed = action.value === 'ACCEPTED' ? item.status === 'NEW' : ['NEW', 'ACCEPTED'].includes(item.status)
-      let blocker = allowed ? '' : `当前为「${statusLabel(item.status)}」，${action.value === 'ACCEPTED' ? '仅待处理反馈可受理' : '仅待处理或已受理反馈可关闭'}。`
-      const delegated = action.value === 'ACCEPTED' && people.recipients.length > 0 && !people.recipients.some(p => p.id === auth.user?.id)
-      if (!blocker && delegated && !auth.user?.can_view_api_docs) blocker = '请由指定接收人受理；可在反馈详情查看接收人。'
-      if (people.revision !== item.revision) blocker = '信息已变化，请返回调整后重新检查。'
-      return { ...base, title: item.title || base.title, code: item.feedback_no || base.code, status: statusLabel(item.status), revision: item.revision, blocker, delegated }
+      const item = await getFeedback(id)
+      const blocker = ['NEW', 'ACCEPTED'].includes(item.status) ? '' : `当前为「${statusLabel(item.status)}」，仅待处理或已受理反馈可关闭。`
+      return { ...base, title: item.title || base.title, code: item.feedback_no || base.code, status: statusLabel(item.status), revision: item.revision, blocker, delegated: false }
     }
     const [item, workflow, people] = await Promise.all([getRequirement(id), getWorkflow(id), getParticipants(id)])
     const source: Record<string, string[]> = { CONFIRM: ['DRAFT', 'CONFIRMED', 'DEVELOPING', 'TESTING', 'DONE', 'PAUSED'], DEVELOPING: ['CONFIRMED'], TESTING: ['DEVELOPING'], SUBMIT_ACCEPTANCE: ['CONFIRMED', 'DEVELOPING'], DONE: ['TESTING'] }
@@ -129,18 +124,26 @@ async function inspect(id: number): Promise<Preview> {
     let blocker = source[action.value]?.includes(item.status) ? '' : `当前为「${statusLabel(item.status)}」，${sourceHint[action.value]}。`
     if (versionSubmission.value && item.current_version_id !== sessionVersionId.value) blocker = '需求已不在当前版本中，请刷新版本清单后重新选择。'
     if (versionSubmission.value && !blocker && (!checkedVersion.value?.system_id || !item.system_id || checkedVersion.value.system_id !== item.system_id)) blocker = '需求或版本未指定业务系统，或双方系统不一致；请先在详情中处理。'
-    const role = action.value === 'CONFIRM' ? 'CONFIRM' : action.value === 'DONE' ? 'ACCEPT' : 'DEVELOP'
-    const roleName = { CONFIRM: '需求确认人', ACCEPT: '验收人员', DEVELOP: '开发人员' }[role]
+    const confirmingContent = action.value === 'CONFIRM'
+    const role = confirmingContent ? 'CONFIRM' : action.value === 'DONE' ? 'ACCEPT' : 'DEVELOP'
+    const roleNames = { CONFIRM: '需求确认人', ACCEPT: '验收人员', DEVELOP: '开发人员' }
     const members = people.participants.filter(p => p.role === role && p.active)
     const delegated = members.length > 0 && !members.some(p => p.user_id === auth.user?.id)
     const submittingAcceptance = action.value === 'TESTING' || versionSubmission.value
     const missingRoles = (['DEVELOP', 'ACCEPT'] as const).filter(r => !people.participants.some(p => p.role === r && p.active))
     const missingPeople = versionSubmission.value && !blocker && missingRoles.length > 0
-    if (missingPeople) blocker = `尚未设置有效${missingRoles.map(r => r === 'DEVELOP' ? '开发人员' : '验收人员').join('、')}，请先设置人员后重新检查。`
-    if (!blocker && !members.length) blocker = `尚未设置有效${roleName}，请到需求详情的进度区域设置。`
-    if (!blocker && delegated && !auth.user?.can_view_api_docs) blocker = `请由指定的${roleName}执行，可在需求详情查看人员。`
-    if (!blocker && action.value === 'CONFIRM' && !workflow.needs_confirmation) blocker = '当前内容已确认，无需重复确认。'
-    if (!blocker && action.value !== 'CONFIRM' && workflow.needs_confirmation) blocker = '当前内容需要重新确认，请先由需求确认人确认后再处理。'
+    if (missingPeople) blocker = `尚未设置有效${missingRoles.map(role => roleNames[role]).join('、')}，请先设置人员后重新检查。`
+    if (!blocker && confirmingContent) {
+      const missingConfirmRoles = members.length ? missingRoles : (['CONFIRM', ...missingRoles] as const)
+      if (!workflow.needs_confirmation) blocker = '当前内容已确认，无需重复确认。'
+      else if (missingConfirmRoles.length) {
+        const guidance = canEditPeople.value ? '请到需求详情的进度区域设置后重新检查。' : '请联系有人员编辑权限的成员完成设置。'
+        blocker = `尚未设置有效${missingConfirmRoles.map(role => roleNames[role]).join('、')}，暂不能确认当前内容。${guidance}`
+      }
+    }
+    if (!blocker && !members.length) blocker = `尚未设置有效${roleNames[role]}，请到需求详情的进度区域设置。`
+    if (!blocker && delegated && !auth.user?.can_view_api_docs) blocker = `请由指定的${roleNames[role]}执行，可在需求详情查看人员。`
+    if (!blocker && !confirmingContent && workflow.needs_confirmation) blocker = '当前内容需要重新确认，请先由需求确认人确认后再处理。'
     if (!blocker && submittingAcceptance && !people.participants.some(p => p.role === 'ACCEPT' && p.active)) blocker = '尚未设置有效验收人员，请到需求详情的进度区域设置。'
     if (!blocker && submittingAcceptance && !['NOT_REQUIRED', 'DONE'].includes(workflow.design_status)) blocker = '设计尚未完成，请先在需求详情完成设计或说明无需设计的原因。'
     if (item.revision !== workflow.revision || item.revision !== people.revision) blocker = '信息已变化，请返回调整后重新检查。'
@@ -224,12 +227,16 @@ async function submit() {
             <span><strong>{{ option.label }}</strong><span class="batch-transition">{{ option.transition }}</span><small>{{ option.description }}</small></span>
           </label>
         </fieldset>
+        <p v-if="kind === 'feedbacks' && auth.hasPermission('rd.feedback.convert')" class="batch-hint batch-acceptance-hint">受理并转需求需在每条反馈的详情中完成。</p>
         <div class="batch-selection-heading"><h3>选择{{ entity }}</h3><strong aria-live="polite">已选 {{ selected.length }} / 50 条</strong></div>
         <p class="batch-hint">{{ scopeLabel }}共 {{ rows.length }} 条{{ entity }}，每次最多选择 50 条。{{ versionScope ? '只包含当前筛选下可见的需求。' : '只包含当前页，不包含其他分页。' }}</p>
         <div class="batch-tools"><el-button :disabled="locked || !rows.length" @click="selectPage">{{ rows.length > 50 ? '选择前 50 条' : versionScope ? '选择当前清单' : '选择当前页' }}</el-button><el-button :disabled="locked || !selected.length" @click="selected = []">清空选择</el-button></div>
         <p v-if="!rows.length" class="batch-empty">当前范围没有记录，请关闭弹窗后调整筛选条件。</p>
         <el-checkbox-group v-model="selected" :max="50" :disabled="locked" class="batch-selection" :aria-label="`选择${entity}`">
-          <el-checkbox v-for="row in rows" :key="row.id" :value="row.id" :class="{ picked: selected.includes(row.id) }"><span class="batch-row-code">{{ code(row) }}</span><strong>{{ row.title }}</strong><small>{{ statusLabel(row.status) }}</small></el-checkbox>
+          <div v-for="row in rows" :key="row.id" class="batch-selection-row" :class="{ picked: selected.includes(row.id) }">
+            <el-checkbox :value="row.id"><span class="batch-row-code">{{ code(row) }}</span><strong>{{ row.title }}</strong><small>{{ statusLabel(row.status) }}</small></el-checkbox>
+            <a v-if="kind === 'feedbacks' && row.status === 'NEW' && auth.hasPermission('rd.feedback.convert')" :href="detailLink(row.id)" :aria-label="`查看反馈 ${code(row)} 详情（新标签页）`" target="_blank" rel="noopener">查看详情</a>
+          </div>
         </el-checkbox-group>
       </template>
       <template v-else-if="stage === 'review'">
@@ -278,7 +285,7 @@ async function submit() {
       </div>
     </template>
   </el-dialog>
-  <RequirementPeopleDialog v-if="peopleEditor !== null && open" :id="peopleEditor" :roles="['DEVELOP', 'ACCEPT']" title="设置开发与验收人员" @updated="peopleUpdated" @close="peopleClosed" />
+  <RequirementPeopleDialog v-if="peopleEditor !== null && open" :id="peopleEditor" :roles="['DEVELOP', 'ACCEPT']" :required-roles="['DEVELOP', 'ACCEPT']" title="设置开发与验收人员" @updated="peopleUpdated" @close="peopleClosed" />
 </template>
 
 <style scoped>
@@ -301,13 +308,16 @@ h3:focus-visible { outline: 2px solid var(--if-brand-500); outline-offset: 2px; 
 .batch-transition { color: var(--if-info-fg); margin: 4px 0; font-size: 13px; }
 .batch-action small, .batch-hint { color: var(--if-text-secondary); font-size: 13px; line-height: 1.6; }
 .batch-hint { margin: 8px 0 12px; }
+.batch-acceptance-hint { margin: -12px 0 20px; }
 .batch-selection-heading, .batch-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
 .batch-selection-heading { justify-content: space-between; }
 .batch-selection-heading h3 { margin: 0; }
 .batch-selection-heading > strong { font-size: 13px; color: var(--if-info-fg); }
 .batch-selection { display: flex; flex-direction: column; margin-top: 12px; }
-.batch-selection :deep(.el-checkbox) { padding: 12px; margin: 0; height: auto; min-height: 60px; border: 1px solid var(--if-border); border-bottom-width: 0; align-items: flex-start; }
-.batch-selection :deep(.el-checkbox:last-child) { border-bottom-width: 1px; }
+.batch-selection-row { display: flex; align-items: center; gap: 8px; border: 1px solid var(--if-border); border-bottom-width: 0; }
+.batch-selection-row:last-child { border-bottom-width: 1px; }
+.batch-selection-row a { display: inline-flex; align-items: center; flex: none; min-height: 44px; margin-right: 12px; color: var(--if-info-fg); text-decoration: underline; }
+.batch-selection :deep(.el-checkbox) { flex: 1; min-width: 0; padding: 12px; margin: 0; height: auto; min-height: 60px; align-items: flex-start; }
 .batch-selection :deep(.el-checkbox__input) { margin-top: 4px; }
 .batch-selection :deep(.el-checkbox__label) { min-width: 0; white-space: normal; overflow-wrap: anywhere; color: var(--if-text-primary); }
 .batch-selection .picked { background: var(--if-info-bg); }

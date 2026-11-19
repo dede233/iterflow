@@ -8,7 +8,8 @@ export type FeedbackCreatePayload = Schema<'FeedbackCreate'>
 export type PriorityValue = Schema<'Priority'>
 export type FeedbackUpdatePayload = Schema<'FeedbackUpdate'>
 export type FeedbackStatusChangePayload = Schema<'FeedbackStatusChange'>
-export type ConvertFeedbackPayload = Schema<'FeedbackConvertRequest'>
+type FeedbackConvertRequest = Schema<'FeedbackConvertRequest'>
+export type ConvertFeedbackPayload = Omit<FeedbackConvertRequest, 'accept_on_convert'> & Partial<Pick<FeedbackConvertRequest, 'accept_on_convert'>>
 
 export type SystemsResponse = Schema<'BusinessSystemCatalogOut'>
 export type BusinessSystemItem = SystemsResponse['systems'][number]

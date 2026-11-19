@@ -23,6 +23,10 @@ const detailLoading = ref(false)
 const drawerVisible = ref(false)
 const selected = ref<AuditItem | null>(null)
 const timeRange = ref<[Date, Date] | null>(null)
+const mobileTimeRangePopperOptions = {
+  strategy: 'fixed' as const,
+  modifiers: [{ name: 'preventOverflow', options: { altAxis: true, tether: false, padding: 8 } }],
+}
 const paging = reactive({ page: 1, size: 20 })
 const filters = reactive({
   entity_type: '',
@@ -120,7 +124,7 @@ const queryState = useListQuery({
       <el-form-item label="操作"><el-select v-model="filters.action" clearable filterable placeholder="全部操作"><el-option v-for="item in auditActionOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item>
       <el-form-item label="操作人 ID"><el-input-number v-model="filters.operator_id" :min="1" controls-position="right" /></el-form-item>
       <el-form-item label="时间范围" class="time-filter">
-        <el-date-picker v-model="timeRange" type="datetimerange" range-separator="至" start-placeholder="开始时间" end-placeholder="结束时间" />
+        <el-date-picker v-model="timeRange" type="datetimerange" range-separator="至" start-placeholder="开始时间" end-placeholder="结束时间" popper-class="list-filter-date-popper" />
       </el-form-item>
       <div class="filter-actions">
         <el-button type="primary" native-type="submit">查询</el-button>
@@ -159,7 +163,7 @@ const queryState = useListQuery({
         <el-form-item label="实体 ID"><el-input-number v-model="filters.entity_id" :min="1" controls-position="right" /></el-form-item>
         <el-form-item label="操作"><el-select v-model="filters.action" clearable filterable placeholder="全部操作"><el-option v-for="item in auditActionOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item>
         <el-form-item label="操作人 ID"><el-input-number v-model="filters.operator_id" :min="1" controls-position="right" /></el-form-item>
-        <el-form-item label="时间范围"><el-date-picker v-model="timeRange" type="datetimerange" range-separator="至" start-placeholder="开始时间" end-placeholder="结束时间" /></el-form-item>
+        <el-form-item label="时间范围"><el-date-picker v-model="timeRange" type="datetimerange" single-panel range-separator="至" start-placeholder="开始时间" end-placeholder="结束时间" popper-class="list-filter-date-popper" :popper-options="mobileTimeRangePopperOptions" /></el-form-item>
       </el-form>
       <template #footer><div class="drawer-actions"><el-button @click="reset">重置</el-button><el-button type="primary" @click="search">查询</el-button></div></template>
     </el-drawer>

@@ -1,7 +1,13 @@
 from sqlalchemy import ColumnElement, func, or_, select
 from sqlalchemy.orm import Session
 
-from app.models.entities import BusinessModule, BusinessSystem, Feedback, User
+from app.models.entities import (
+    BusinessModule,
+    BusinessSystem,
+    Feedback,
+    RequirementOnlineFeedback,
+    User,
+)
 from app.models.enums import DataScope, FeedbackStatus, FeedbackType, FeedbackUrgency
 from app.repositories.base import BaseRepository
 
@@ -36,6 +42,33 @@ class FeedbackRepository(BaseRepository[Feedback]):
         if data_scope is not DataScope.ALL:
             stmt = stmt.where(Feedback.submitter_id == user_id)
         return self.db.scalar(stmt)
+
+    def list_online_for_requirement(
+        self, requirement_id: int, user_id: int, data_scope: DataScope, page: int, page_size: int
+    ) -> tuple[list[Feedback], int]:
+        criteria = [
+            RequirementOnlineFeedback.requirement_id == requirement_id,
+            Feedback.deleted_at.is_(None),
+        ]
+        if data_scope is not DataScope.ALL:
+            criteria.append(Feedback.submitter_id == user_id)
+        rows = (
+            select(Feedback)
+            .join(RequirementOnlineFeedback, RequirementOnlineFeedback.feedback_id == Feedback.id)
+            .where(*criteria)
+        )
+        total = self.db.scalar(select(func.count()).select_from(rows.subquery())) or 0
+        offset = (page - 1) * page_size
+        if offset >= total:
+            return [], total
+        items = list(
+            self.db.scalars(
+                rows.order_by(Feedback.created_at.desc(), Feedback.id.desc())
+                .offset(offset)
+                .limit(page_size)
+            ).all()
+        )
+        return items, total
 
     @staticmethod
     def _filters(

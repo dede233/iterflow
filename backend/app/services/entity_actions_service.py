@@ -5,7 +5,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import AppError, ConflictError, NotFoundError, PermissionDenied
-from app.models.entities import Feedback, Requirement, RequirementFeedback, User, VersionRequirement
+from app.models.entities import (
+    Feedback,
+    Requirement,
+    RequirementFeedback,
+    RequirementOnlineFeedback,
+    User,
+    VersionRequirement,
+)
 from app.models.enums import ManualFeedbackStatus, ManualRequirementStatus, UserStatus
 from app.repositories.feedback_repository import FeedbackRepository
 from app.repositories.requirement_repository import RequirementRepository
@@ -61,6 +68,9 @@ class EntityActionsService:
             relation = select(RequirementFeedback.id).where(
                 RequirementFeedback.feedback_id == entity_id
             )
+            online_relation = select(RequirementOnlineFeedback.feedback_id).where(
+                RequirementOnlineFeedback.feedback_id == entity_id
+            )
             referenced = self.db.scalar(
                 select(Feedback.id)
                 .where(Feedback.duplicate_of_id == entity_id)
@@ -74,6 +84,9 @@ class EntityActionsService:
             relation = select(RequirementFeedback.id).where(
                 RequirementFeedback.requirement_id == entity_id
             )
+            online_relation = select(RequirementOnlineFeedback.feedback_id).where(
+                RequirementOnlineFeedback.requirement_id == entity_id
+            )
             referenced = self.db.scalar(
                 select(VersionRequirement.id)
                 .where(VersionRequirement.requirement_id == entity_id)
@@ -85,6 +98,9 @@ class EntityActionsService:
             has_pointer
             or referenced is not None
             or self.db.scalar(relation.limit(1).with_for_update()) is not None
+            # Provenance is inserted with a new Feedback or under the source
+            # Requirement lock. Existing feedback cannot acquire it later.
+            or self.db.scalar(online_relation.limit(1)) is not None
         ):
             raise AppError(40972, "记录已有业务关联或历史引用, 不能删除", 409)
         now = datetime.now(UTC)

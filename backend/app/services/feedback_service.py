@@ -11,6 +11,7 @@ from app.models.entities import (
     FileObject,
     Requirement,
     RequirementFeedback,
+    RequirementOnlineFeedback,
     RequirementParticipant,
 )
 from app.models.enums import (
@@ -178,7 +179,7 @@ class FeedbackService:
         self.audit.log("FEEDBACK", feedback_id, "ATTACHMENT_ADD", after={"file_id": file_id})
         self.db.commit()
 
-    def create(self, payload: FeedbackCreate, operator_id: int) -> Feedback:
+    def create(self, payload: FeedbackCreate, operator_id: int, *, commit: bool = True) -> Feedback:
         self._validate_system_module(payload.system_id, payload.module_id)
         item = Feedback(
             feedback_no=next_business_no(self.db, Feedback, Feedback.feedback_no, "FB"),
@@ -192,8 +193,9 @@ class FeedbackService:
         if payload.recipient_ids is not None:
             CollaborationService(self.db).set_recipients(item, payload.recipient_ids, operator_id)
         self.audit.log("FEEDBACK", item.id, "CREATE", after={"feedback_no": item.feedback_no})
-        self.db.commit()
-        self.db.refresh(item)
+        if commit:
+            self.db.commit()
+            self.db.refresh(item)
         return item
 
     def update(self, feedback_id: int, payload: FeedbackUpdate, operator_id: int) -> Feedback:
@@ -340,9 +342,8 @@ class FeedbackService:
         """Convert a feedback to a requirement in a single transaction.
 
         CREATE_NEW builds a new requirement from the feedback; LINK_EXISTING
-        attaches to an existing (scoped-visible) requirement. Either way the
-        requirement link + the feedback status flip + the relation row + audit
-        all commit together, or nothing does. No version association here.
+        attaches to an existing (scoped-visible) requirement. The link, status
+        update, optional acceptance, audit and events commit together.
         """
         feedback = self.db.scalar(
             select(Feedback)
@@ -360,8 +361,35 @@ class FeedbackService:
         if feedback.main_requirement_id is not None:
             raise ConflictError("该反馈已经关联正式需求", code=40913)
         previous_status = feedback.status
+        collaboration = CollaborationService(self.db)
+        acceptance_values = {}
+        acceptance_audit = {}
+        if payload.accept_on_convert:
+            if previous_status != FeedbackStatus.NEW:
+                raise ConflictError("仅待处理反馈可以受理并转需求", code=40911)
+            acceptance_values = collaboration.accept_values(
+                feedback, operator_id, payload.accept_reason
+            )
+            acceptance_audit = {
+                **acceptance_values,
+                "accepted_at": acceptance_values["accepted_at"].isoformat(),
+                "accept_on_convert": True,
+                "accept_reason": payload.accept_reason,
+            }
 
         if payload.type is FeedbackConvertType.CREATE_NEW:
+            system_id = feedback.system_id
+            module_id = feedback.module_id
+            if payload.system_id is not None:
+                if system_id is None:
+                    self._validate_system_module(payload.system_id, None)
+                    system_id = payload.system_id
+                    module_id = None
+                elif payload.system_id != system_id:
+                    raise AppError(42232, "新需求须沿用来源反馈的业务系统", 422)
+            collaboration.validate_people(
+                sorted({p.user_id for p in payload.participants}), "requirement", operator_id
+            )
             target = Requirement(
                 requirement_no=next_business_no(
                     self.db, Requirement, Requirement.requirement_no, "REQ"
@@ -371,8 +399,8 @@ class FeedbackService:
                 source=RequirementSource.FEEDBACK,
                 priority=payload.priority,
                 status=RequirementStatus.DRAFT,
-                system_id=feedback.system_id,
-                module_id=feedback.module_id,
+                system_id=system_id,
+                module_id=module_id,
                 description=payload.description,
                 description_format=payload.description_format,
                 acceptance_criteria=payload.acceptance_criteria,
@@ -389,9 +417,6 @@ class FeedbackService:
                 target.description_format,
                 payload.description_images,
             )
-            CollaborationService(self.db).validate_people(
-                sorted({p.user_id for p in payload.participants}), "requirement", operator_id
-            )
             for person in payload.participants:
                 self.db.add(RequirementParticipant(requirement_id=target.id, **person.model_dump()))
             self.db.flush()
@@ -399,14 +424,27 @@ class FeedbackService:
             requirement_id = payload.requirement_id
             if requirement_id is None:  # defensive; the request validator guarantees this
                 raise AppError(42240, "LINK_EXISTING 需要 requirement_id", 422)
-            linked = RequirementRepository(self.db).get_scoped(
-                requirement_id, viewer_id, viewer_scope
-            )
+            requirements = RequirementRepository(self.db)
+            linked = requirements.get_scoped(requirement_id, viewer_id, viewer_scope)
             if linked is None:
                 raise NotFoundError("目标需求不存在")
             self.db.refresh(linked, with_for_update=True)
-            if linked.deleted_at is not None:
+            # A participant's SELF visibility may have changed while waiting for the lock.
+            if linked.deleted_at is not None or (
+                viewer_scope is not DataScope.ALL
+                and requirements.get_scoped(requirement_id, viewer_id, viewer_scope) is None
+            ):
                 raise NotFoundError("目标需求不存在")
+            if linked.status in {RequirementStatus.ONLINE, RequirementStatus.CANCELED}:
+                source = self.db.get(RequirementOnlineFeedback, feedback_id)
+                if source is not None:
+                    if source.requirement_id == linked.id:
+                        raise ConflictError(
+                            "线上反馈不能转回其来源需求, 请选择待修复需求", code=40989
+                        )
+                    raise ConflictError(
+                        "线上反馈不能关联已上线或已取消的需求, 请选择待修复需求", code=40989
+                    )
             target = linked
 
         # Atomic feedback flip; a stale revision here rolls back the whole
@@ -418,6 +456,7 @@ class FeedbackService:
                 "main_requirement_id": target.id,
                 "status": FeedbackStatus.REQUIREMENT_LINKED,
                 "updated_by": operator_id,
+                **acceptance_values,
             },
         ):
             self.db.rollback()
@@ -438,6 +477,7 @@ class FeedbackService:
                 "status": FeedbackStatus.REQUIREMENT_LINKED,
                 "requirement_id": target.id,
                 "convert_type": payload.type,
+                **acceptance_audit,
             },
         )
         if payload.type is FeedbackConvertType.CREATE_NEW:
@@ -445,9 +485,12 @@ class FeedbackService:
                 "REQUIREMENT",
                 target.id,
                 "CREATE_FROM_FEEDBACK",
-                after={"feedback_id": feedback.id, "requirement_no": target.requirement_no},
+                after={
+                    "feedback_id": feedback.id,
+                    "requirement_no": target.requirement_no,
+                    "system_id": target.system_id,
+                },
             )
-        collaboration = CollaborationService(self.db)
         collaboration.event(
             "FEEDBACK",
             feedback.id,

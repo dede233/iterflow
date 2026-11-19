@@ -43,3 +43,6 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON `iterflow`.`sys_announcement_read` TO 'i
 GRANT SELECT, INSERT, UPDATE, DELETE ON `iterflow`.`sys_release_target` TO 'iterflow_runtime'@'APP_HOST';
 GRANT SELECT, INSERT, UPDATE, DELETE ON `iterflow`.`rd_release_batch` TO 'iterflow_runtime'@'APP_HOST';
 GRANT SELECT, INSERT, UPDATE, DELETE ON `iterflow`.`rd_release_batch_target` TO 'iterflow_runtime'@'APP_HOST';
+
+-- Published requirement follow-up feedback (mysql57_0017).
+GRANT SELECT, INSERT ON `iterflow`.`rd_requirement_online_feedback` TO 'iterflow_runtime'@'APP_HOST';

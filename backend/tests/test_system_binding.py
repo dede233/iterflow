@@ -87,7 +87,7 @@ def test_create_validation_options_and_filters(binding_api):
     "system_id,module_id", [(99999, None), (103, None), (102, 101), (None, 101)]
 )
 def test_requirement_rejects_invalid_directory(binding_api, system_id, module_id):
-    client, _db, headers, _users = binding_api
+    client, _db, headers, users = binding_api
     response = client.post(
         "/api/v1/requirements",
         headers=headers["boss"],
@@ -95,6 +95,7 @@ def test_requirement_rejects_invalid_directory(binding_api, system_id, module_id
             "title": "系统绑定需求",
             "description": "完整的需求内容",
             "requirement_type": "FEATURE",
+            "participants": [{"role": "CONFIRM", "user_id": users["boss"].id}],
             "system_id": system_id,
             "module_id": module_id,
         },

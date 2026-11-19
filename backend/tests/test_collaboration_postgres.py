@@ -146,7 +146,12 @@ def test_participants_grant_only_object_scope_and_preserve_legacy_owner(collabor
     req = client.post(
         "/api/v1/requirements",
         headers=headers[1],
-        json={"title": "需求内容", "requirement_type": "FEATURE", "description": "说明"},
+        json={
+            "title": "需求内容",
+            "requirement_type": "FEATURE",
+            "description": "说明",
+            "participants": [{"role": "CONFIRM", "user_id": 1}],
+        },
     ).json()
     base = f"/api/v1/requirements/{req['id']}"
     assert client.get(base, headers=headers[4]).status_code == 404
@@ -298,19 +303,25 @@ def test_workflow_roles_content_reconfirmation_design_and_history(collaboration_
     )
 
 
-def test_new_unassigned_requirement_cannot_bypass_confirmation(collaboration_api):
-    client, headers, _engine = collaboration_api
-    req = client.post(
-        "/api/v1/requirements",
-        headers=headers[1],
-        json={"title": "缺少人员", "description": "说明", "requirement_type": "FEATURE"},
-    ).json()
-    base = f"/api/v1/requirements/{req['id']}"
+def test_legacy_unassigned_requirement_cannot_bypass_confirmation(collaboration_api):
+    client, headers, engine = collaboration_api
+    with Session(engine) as db:
+        req = Requirement(
+            requirement_no="REQ-LEGACY",
+            title="缺少人员",
+            description="说明",
+            requirement_type="FEATURE",
+            created_by=1,
+        )
+        db.add(req)
+        db.commit()
+        base = f"/api/v1/requirements/{req.id}"
     response = client.patch(
         base + "/status", headers=headers[1], json={"status": "CONFIRMED", "revision": 1}
     )
     assert response.status_code == 409
-    assert client.get(base, headers=headers[1]).json()["revision"] == 1
+    latest = client.get(base, headers=headers[1]).json()
+    assert latest["revision"] == 1 and latest["status"] == "DRAFT"
 
 
 def test_bulk_add_is_atomic_and_preserves_status(collaboration_api):
@@ -330,6 +341,7 @@ def test_bulk_add_is_atomic_and_preserves_status(collaboration_api):
                 "title": f"批量需求{i}",
                 "description": "说明",
                 "requirement_type": "FEATURE",
+                "participants": [{"role": "CONFIRM", "user_id": 1}],
             },
         ).json()
         for i in range(2)
@@ -382,6 +394,7 @@ def test_concurrent_batches_cannot_partially_attach(collaboration_api):
                 "title": f"并发需求{i}",
                 "description": "说明",
                 "requirement_type": "FEATURE",
+                "participants": [{"role": "CONFIRM", "user_id": 1}],
             },
         ).json()
         for i in range(2)
@@ -466,10 +479,30 @@ def test_required_recipients_current_handlers_and_clarification(collaboration_ap
         ).json()["total"]
         == 0
     )
-    confirmed = client.post(
+    rejected = client.post(
         base + "/workflow", headers=headers[2], json={"revision": 2, "action": "CONFIRM"}
     )
-    assert confirmed.status_code == 200
+    assert rejected.status_code == 409
+    assert "验收人员" in rejected.json()["message"]
+    assigned = client.put(
+        base + "/participants",
+        headers=headers[1],
+        json={
+            "revision": 2,
+            "participants": [
+                {"role": "CONFIRM", "user_id": 2},
+                {"role": "DEVELOP", "user_id": 3},
+                {"role": "ACCEPT", "user_id": 2},
+            ],
+        },
+    )
+    assert assigned.status_code == 200, assigned.text
+    confirmed = client.post(
+        base + "/workflow",
+        headers=headers[2],
+        json={"revision": assigned.json()["revision"], "action": "CONFIRM"},
+    )
+    assert confirmed.status_code == 200, confirmed.text
     assert client.get(base, headers=headers[1]).json()["current_handlers"] == [
         {"id": 3, "display_name": "人员3"}
     ]

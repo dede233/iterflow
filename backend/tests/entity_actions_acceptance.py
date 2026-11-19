@@ -35,7 +35,9 @@ def exercise_actions(fixture, scenario, monkeypatch):
             "description": "需求范围",
             "requirement_type": "FEATURE",
             "system_id": system_id,
-            "participants": [{"user_id": uid, "role": "CONFIRM"}],
+            "participants": [
+                {"user_id": uid, "role": role} for role in ("CONFIRM", "DEVELOP", "ACCEPT")
+            ],
         },
     )
     assert response.status_code == 200, response.text

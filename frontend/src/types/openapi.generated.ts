@@ -280,7 +280,10 @@ export interface paths {
         /** 需求详情 */
         get: operations["workflow_api_v1_requirements__requirement_id__workflow_get"];
         put?: never;
-        /** 需求详情 */
+        /**
+         * 需求详情
+         * @description 确认当前内容时须已有有效的需求确认人、开发人员及验收人员。COMPLETE_AND_ACCEPT 仅供开发中同时担任开发和验收的本人使用，内容须已确认且设计须已完成或无需设计。一次提交提验并验收通过，需求进入待发布。
+         */
         post: operations["workflow_action_api_v1_requirements__requirement_id__workflow_post"];
         delete?: never;
         options?: never;
@@ -799,9 +802,29 @@ export interface paths {
         put?: never;
         /**
          * 反馈转正式需求
-         * @description CREATE_NEW 仅需要 rd.feedback.convert。LINK_EXISTING 还需要 rd.requirement.view，且目标需求必须在当前 Requirement DataScope 内。操作与关系及审计写入同一事务。
+         * @description CREATE_NEW 仅需要 rd.feedback.convert，并须指定至少一名需求确认人。LINK_EXISTING 还需要 rd.requirement.view，且目标需求必须在当前 Requirement DataScope 内。accept_on_convert=true 时仅待处理反馈可提交，还须有 rd.feedback.edit 及原受理资格。管理员代受理须填写原因。受理信息、转换、关联、审计及通知事件一次提交。 线上反馈只能关联未上线且未取消的修复需求。
          */
         post: operations["convert_feedback_api_v1_feedbacks__feedback_id__convert_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/feedbacks/{feedback_id}/accept-and-convert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 受理并转需求
+         * @description 待处理反馈的受理与转需求在同一事务完成。须有 rd.feedback.edit 和 rd.feedback.convert 及原受理资格。管理员代受理须填写原因。新建需求须指定至少一名确认人。关联已有需求还须有 rd.requirement.view，且目标在当前 Requirement DataScope 内。线上反馈只能关联未上线且未取消的修复需求。
+         */
+        post: operations["accept_and_convert_feedback"];
         delete?: never;
         options?: never;
         head?: never;
@@ -934,6 +957,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/requirements/{requirement_id}/online-review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查看线上效果确认
+         * @description 需求查看权限及对象范围内可查询。线上反馈按反馈权限和对象范围分页，每页 10 条。
+         */
+        get: operations["get_online_review"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/requirements/{requirement_id}/online-review/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 确认线上效果
+         * @description 仅已上线需求的实际创建人可确认一次。提交当前 revision，保存实际操作者、时间和选填说明。
+         */
+        post: operations["confirm_online_review"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/requirements/{requirement_id}/online-review/feedbacks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 提交已上线需求的线上反馈
+         * @description 需有需求查看及反馈创建权限。反馈为独立待处理记录，来源关系随反馈及审计同一事务保存。
+         */
+        post: operations["create_online_review_feedback"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/requirements/{requirement_id}/status": {
         parameters: {
             query?: never;
@@ -949,7 +1032,7 @@ export interface paths {
         head?: never;
         /**
          * 变更需求状态
-         * @description 六阶段流转：开发参与人提交验收，可指定多名验收人，其中任意一名有效验收人确认即可进入 DONE，其他验收人无需重复确认；不再要求每名开发人员单独确认。记录实际操作人，并通过 revision CAS 防止重复流转。人员资格、内容确认、原因、审计及事务回滚统一校验。ONLINE 仅由成功发布产生。
+         * @description 六阶段流转：待确认进入待开发前须指定有效的需求确认人、开发人员和验收人员。开发参与人提交验收，可指定多名验收人，其中任意一名有效验收人确认即可进入 DONE，其他验收人无需重复确认；不再要求每名开发人员单独确认。记录实际操作人，并通过 revision CAS 防止重复流转。人员资格、内容确认、原因、审计及事务回滚统一校验。ONLINE 仅由成功发布产生。
          */
         patch: operations["change_status_api_v1_requirements__requirement_id__status_patch"];
         trace?: never;
@@ -1449,7 +1532,7 @@ export interface paths {
         };
         /**
          * 业务系统选择项
-         * @description 需求或版本查看、创建、编辑权限可读取启用系统的最小选择项，不返回管理元数据。
+         * @description 反馈转需求权限或需求、版本的查看、创建、编辑权限可读取启用系统的 ID 和名称。
          */
         get: operations["system_options_api_v1_systems_options_get"];
         put?: never;
@@ -2595,6 +2678,66 @@ export interface components {
             /** 请求追踪 ID */
             request_id: string | null;
         };
+        /** FeedbackAcceptAndConvertRequest */
+        FeedbackAcceptAndConvertRequest: {
+            /** 反馈转化方式 */
+            type: components["schemas"]["FeedbackConvertType"];
+            /**
+             * 修订号
+             * @description 对象的乐观锁修订号；写入时提交最后读取的修订号。
+             */
+            revision: number;
+            /**
+             * 受理并转需求
+             * @description 必须为 true，在待处理反馈转需求的同一事务中记录实际受理信息。
+             * @constant
+             */
+            accept_on_convert: true;
+            /**
+             * 代受理原因
+             * @description 仅在受理并转需求时使用。管理人员代指定接收人受理时必填。
+             */
+            accept_reason?: string | null;
+            /**
+             * 业务系统 ID
+             * @description 反馈无业务系统时，新建需求可选一个已启用系统。反馈已有系统时继承，关联已有需求时不可指定。
+             */
+            system_id?: number | null;
+            /** 需求标题 */
+            requirement_title?: string | null;
+            /** 需求类型 */
+            requirement_type?: string | null;
+            /**
+             * 优先级
+             * @default P2
+             */
+            priority: components["schemas"]["Priority"];
+            /**
+             * 正文新图片
+             * @description 正文临时图片编号对应的 PNG、JPEG 或 WebP 数据。仅随保存提交，单张最多 4 MiB，总计 8 MiB。
+             */
+            description_images?: {
+                [key: string]: string;
+            };
+            /** 描述 */
+            description?: string | null;
+            /** 验收标准 */
+            acceptance_criteria?: string | null;
+            /**
+             * 需求描述格式
+             * @description 旧数据默认 PLAIN；HTML 使用服务端白名单清洗，详情和历史快照按格式安全显示。更新未提供时保留原格式。
+             * @default PLAIN
+             * @enum {string}
+             */
+            description_format: "PLAIN" | "HTML";
+            /**
+             * 环节人员
+             * @description 转为新需求时至少指定一名 CONFIRM。关联已有需求时沿用目标需求的环节人员。
+             */
+            participants?: components["schemas"]["ParticipantInput"][];
+            /** 需求 ID */
+            requirement_id?: number | null;
+        };
         /** FeedbackBatchAction */
         FeedbackBatchAction: {
             /** 待操作记录 */
@@ -2636,6 +2779,22 @@ export interface components {
              * @description 对象的乐观锁修订号；写入时提交最后读取的修订号。
              */
             revision: number;
+            /**
+             * 受理并转需求
+             * @description 设为 true 时，在待处理反馈转需求的同一事务中记录实际受理信息。
+             * @default false
+             */
+            accept_on_convert: boolean;
+            /**
+             * 代受理原因
+             * @description 仅在受理并转需求时使用。管理人员代指定接收人受理时必填。
+             */
+            accept_reason?: string | null;
+            /**
+             * 业务系统 ID
+             * @description 反馈无业务系统时，新建需求可选一个已启用系统。反馈已有系统时继承，关联已有需求时不可指定。
+             */
+            system_id?: number | null;
             /** 需求标题 */
             requirement_title?: string | null;
             /** 需求类型 */
@@ -2663,7 +2822,10 @@ export interface components {
              * @enum {string}
              */
             description_format: "PLAIN" | "HTML";
-            /** 环节人员 */
+            /**
+             * 环节人员
+             * @description 转为新需求时至少指定一名 CONFIRM。关联已有需求时沿用目标需求的环节人员。
+             */
             participants?: components["schemas"]["ParticipantInput"][];
             /** 需求 ID */
             requirement_id?: number | null;
@@ -3031,6 +3193,84 @@ export interface components {
         NotificationUnreadCount: {
             /** 未读通知数 */
             unread_count: number;
+        };
+        /** OnlineReviewConfirm */
+        OnlineReviewConfirm: {
+            /** 需求修订号 */
+            revision: number;
+            /** 确认说明 */
+            note?: string | null;
+        };
+        /** OnlineReviewConfirmation */
+        OnlineReviewConfirmation: {
+            /** 线上确认人 */
+            confirmed_by: number;
+            /** 线上确认人姓名 */
+            confirmed_by_name: string;
+            /**
+             * 线上确认时间
+             * Format: date-time
+             */
+            confirmed_at: string;
+            /** 确认说明 */
+            note: string | null;
+        };
+        /** OnlineReviewFeedbackCreate */
+        OnlineReviewFeedbackCreate: {
+            /** 反馈标题 */
+            title: string;
+            /** 反馈类型 */
+            feedback_type: components["schemas"]["FeedbackType"];
+            /**
+             * 紧急程度
+             * @default NORMAL
+             */
+            urgency: components["schemas"]["FeedbackUrgency"];
+            /** 业务系统 ID */
+            system_id?: number | null;
+            /** 所属模块 ID */
+            module_id?: number | null;
+            /** 描述 */
+            description: string;
+            /** 预期结果 */
+            expected_result?: string | null;
+            /** 实际结果 */
+            actual_result?: string | null;
+            /** 复现步骤 */
+            reproduce_steps?: string | null;
+            /** 反馈接收人 */
+            recipient_ids: number[];
+            /** 需求修订号 */
+            revision: number;
+        };
+        /** OnlineReviewFeedbackItem */
+        OnlineReviewFeedbackItem: {
+            /** 反馈 ID */
+            id: number;
+            /** 反馈编号 */
+            feedback_no: string;
+            /** 反馈标题 */
+            title: string;
+            /** 处理状态 */
+            status: components["schemas"]["FeedbackStatus"];
+            /**
+             * 反馈时间
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** OnlineReviewOut */
+        OnlineReviewOut: {
+            /** 需求修订号 */
+            revision: number;
+            /** 当前用户可确认 */
+            can_confirm: boolean;
+            /** 线上确认记录 */
+            confirmation: components["schemas"]["OnlineReviewConfirmation"] | null;
+            /** 可见线上反馈 */
+            feedbacks: components["schemas"]["OnlineReviewFeedbackItem"][];
+            /** 可见线上反馈总数 */
+            feedback_total: number;
         };
         /**
          * ParticipantInput
@@ -3552,7 +3792,10 @@ export interface components {
              * @description 历史总负责人只读；新写入不再接受 owner_id。
              */
             owner_id?: null;
-            /** 环节人员 */
+            /**
+             * 环节人员
+             * @description 至少指定一名 CONFIRM。开发人员和验收人员在确认需求前补齐。
+             */
             participants?: components["schemas"]["ParticipantInput"][];
             /**
              * 正文新图片
@@ -4182,7 +4425,7 @@ export interface components {
              * 动作
              * @enum {string}
              */
-            action: "CONFIRM" | "REOPEN" | "REQUEST_CHANGES" | "DESIGN_PENDING" | "DESIGN_START" | "DESIGN_DONE" | "DESIGN_CANCEL";
+            action: "CONFIRM" | "COMPLETE_AND_ACCEPT" | "REOPEN" | "REQUEST_CHANGES" | "DESIGN_PENDING" | "DESIGN_START" | "DESIGN_DONE" | "DESIGN_CANCEL";
             /** 原因 */
             reason?: string | null;
         };
@@ -5355,6 +5598,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description revision CAS 冲突 (40910) 或该操作的业务冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Validation Error */
@@ -7383,6 +7635,77 @@ export interface operations {
             };
         };
     };
+    accept_and_convert_feedback: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                feedback_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FeedbackAcceptAndConvertRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RequirementOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description revision CAS 冲突 (40910) 或该操作的业务冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_feedback_activities_api_v1_feedbacks__feedback_id__activities_get: {
         parameters: {
             query?: never;
@@ -7899,6 +8222,217 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_online_review: {
+        parameters: {
+            query?: {
+                page?: number;
+            };
+            header?: never;
+            path: {
+                requirement_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OnlineReviewOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description revision CAS 冲突 (40910) 或该操作的业务冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    confirm_online_review: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requirement_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OnlineReviewConfirm"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OnlineReviewConfirmation"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description revision CAS 冲突 (40910) 或该操作的业务冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_online_review_feedback: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requirement_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OnlineReviewFeedbackCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedbackOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description revision CAS 冲突 (40910) 或该操作的业务冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Validation Error */

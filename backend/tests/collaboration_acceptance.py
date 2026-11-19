@@ -76,7 +76,7 @@ def setup_team(fixture, multiple_acceptance=False):
 
 
 def exercise_workflow(fixture, scenario, monkeypatch):
-    client, engine, _, admin = fixture
+    client, engine, admin_id, admin = fixture
     multiple_acceptance = scenario in {"acceptance_multiple", "acceptance_race"}
     people, headers, req, payload = setup_team(fixture, multiple_acceptance)
     system_id = req["system_id"]
@@ -157,6 +157,7 @@ def exercise_workflow(fixture, scenario, monkeypatch):
                     "requirement_type": "FEATURE",
                     "system_id": system_id,
                     "description": "原子批量",
+                    "participants": [{"role": "CONFIRM", "user_id": admin_id}],
                 },
             )
         )

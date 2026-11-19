@@ -50,11 +50,9 @@ export interface StatusAction {
   needsDuplicate: boolean
 }
 
-// Human-settable transitions, keyed by the current status. Mirrors the backend
-// ALLOWED_TRANSITIONS. Downstream statuses expose no manual action.
+// Transitions offered by the feedback status editor. Acceptance is handled by conversion.
 const TRANSITIONS: Record<string, StatusAction[]> = {
   NEW: [
-    { target: 'ACCEPTED', label: '受理', needsReason: false, needsDuplicate: false },
     { target: 'DUPLICATE', label: '标记重复', needsReason: false, needsDuplicate: true },
     { target: 'CANNOT_REPRODUCE', label: '无法复现', needsReason: true, needsDuplicate: false },
     { target: 'CLOSED', label: '关闭', needsReason: true, needsDuplicate: false },

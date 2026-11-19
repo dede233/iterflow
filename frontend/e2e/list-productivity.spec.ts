@@ -1,6 +1,8 @@
 import { mockCollaboration } from './collaboration-fixture'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 
+test.use({ timezoneId: 'Asia/Shanghai' })
+
 const configs = [
   { path: 'requirements', permission: 'rd.requirement.view', title: '需求管理', drawer: '筛选需求', result: '筛选命中需求', row: { requirement_no: 'REQ-77', title: '筛选命中需求', priority: 'P1', source: 'FEEDBACK', status: 'CONFIRMED' }, params: { keyword: 'hit', status: 'CONFIRMED' } },
   { path: 'versions', permission: 'rd.version.view', title: '版本管理', drawer: '筛选版本', result: '筛选命中版本', row: { version_no: 'V1.6.0', name: '筛选命中版本', planned_release_date: '2026-10-02', status: 'RELEASED' }, params: { status: 'RELEASED', planned_release_from: '2026-10-01', planned_release_to: '2026-10-03' } },
@@ -46,6 +48,26 @@ async function filterForm(page: Page, width: number, config: typeof configs[numb
   return drawer
 }
 
+async function selectCrossMonthRange(page: Page, form: Locator, width: number) {
+  const mobile = width < 768
+  await form.getByPlaceholder('开始日期').click()
+  const popper = page.locator('.el-picker__popper:visible')
+  await expect(popper).toBeVisible()
+  await expect.poll(() => popper.evaluate(element => {
+    const { left, right } = element.getBoundingClientRect()
+    return Math.max(-left, right - window.innerWidth, element.scrollWidth - element.clientWidth)
+  })).toBeLessThanOrEqual(1)
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width + 1)
+  const calendars = popper.locator('.el-date-table')
+  await expect(calendars).toHaveCount(mobile ? 1 : 2)
+  await calendars.first().locator('td.available').getByText('1', { exact: true }).click()
+  if (mobile) await popper.getByRole('button', { name: '下个月', exact: true }).click()
+  await calendars.last().locator('td.available').getByText('3', { exact: true }).click()
+  await expect(popper).toHaveCount(0)
+  await expect(form.getByPlaceholder('开始日期')).toHaveValue('2026-10-01')
+  await expect(form.getByPlaceholder('结束日期')).toHaveValue('2026-11-03')
+}
+
 for (const width of [375, 390, 768, 1280, 1440]) {
   for (const config of configs) {
     test(`${config.path} filters and pagination at ${width}px`, async ({ page }) => {
@@ -63,7 +85,7 @@ for (const width of [375, 390, 768, 1280, 1440]) {
         await selectStatus(page, form, '已发布')
         if (width >= 768) await form.getByRole('button', { name: /^更多筛选/ }).click()
         await form.getByPlaceholder('开始日期').click()
-        const popper = page.locator('.version-filter-date-popper:visible')
+        const popper = page.locator('.list-filter-date-popper:visible')
         await expect(popper).toHaveCount(1)
         await expect(popper).toContainText(/\d{4}\s*年/)
         await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width + 1)
@@ -108,6 +130,31 @@ for (const width of [375, 390, 768, 1280, 1440]) {
         await page.getByRole('dialog', { name: '发布记录详情', exact: true }).getByRole('button', { name: '打开完整页面', exact: true }).click()
         await expect(page).toHaveURL(/\/#\/releases\/77\?return_to=%2Freleases%3Fversion_id%3D42$/)
       }
+      expect(state.unexpected).toEqual([])
+    })
+  }
+}
+
+const versionConfig = configs[1]
+const releaseConfig = configs[2]
+for (const width of [320, 375, 820, 1440]) {
+  for (const config of [versionConfig, releaseConfig]) {
+    test(`${config.path} date filter can select a range across months at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: width < 768 ? 640 : 900 })
+      await page.clock.setFixedTime(new Date('2026-10-15T04:00:00Z'))
+      const state = await fixture(page, config)
+      await page.goto(`/#/${config.path}`)
+      await expect(page.getByRole('heading', { name: config.title, exact: true })).toBeVisible()
+      await expect.poll(() => state.requests.length).toBe(1)
+      const form = await filterForm(page, width, config)
+      if (config.path === 'versions' && width >= 768) await form.getByRole('button', { name: /^更多筛选/ }).click()
+      await selectCrossMonthRange(page, form, width)
+      expect(state.requests).toHaveLength(1)
+      await form.getByRole('button', { name: '查询', exact: true }).click()
+      const dates = config.path === 'versions'
+        ? { planned_release_from: '2026-10-01', planned_release_to: '2026-11-03' }
+        : { released_from: '2026-09-30T16:00:00.000Z', released_before: '2026-11-03T16:00:00.000Z' }
+      await expect.poll(() => state.requests.at(-1)).toEqual({ page: '1', page_size: '20', ...dates })
       expect(state.unexpected).toEqual([])
     })
   }

@@ -55,6 +55,8 @@ export const auditActionLabels: Record<string, string> = {
   ATTACHMENT_ADD: '添加附件',
   CONVERT_REQUIREMENT: '转为需求',
   CREATE_FROM_FEEDBACK: '由反馈创建',
+  ONLINE_EFFECT_CONFIRMED: '确认线上效果',
+  CREATE_ONLINE_FEEDBACK: '提交线上反馈',
   COMMENT_CREATE: '添加评论',
   VERSION_REQUIREMENT_ADD: '加入版本',
   VERSION_REQUIREMENT_REMOVE: '移出版本',

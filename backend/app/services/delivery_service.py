@@ -242,8 +242,13 @@ class DeliveryService:
                 subtype="html",
             )
         else:
-            record_type = Feedback if event.entity_type == "FEEDBACK" else Requirement
-            record = self.db.get(record_type, event.entity_id)
+            feedback = None
+            record: Feedback | Requirement | None
+            if event.entity_type == "FEEDBACK":
+                feedback = self.db.get(Feedback, event.entity_id)
+                record = feedback
+            else:
+                record = self.db.get(Requirement, event.entity_id)
             record_title = record.title if record else f"{event.entity_type} #{event.entity_id}"
             kind = "反馈" if event.entity_type == "FEEDBACK" else "需求"
             action = event.action.removeprefix("REQUIREMENT_")
@@ -251,15 +256,13 @@ class DeliveryService:
             if event.action.startswith("REQUIREMENT_"):
                 label = "关联需求有新进展：" + label
             event_time = _mail_time(event.created_at)
-            submitted_sentence = bool(
-                event.entity_type == "FEEDBACK"
-                and event.action == "STATUS_ACCEPTED"
-                and record
-                and record.submitter_id == delivery.user_id
-            )
-            if submitted_sentence:
+            if (
+                event.action == "STATUS_ACCEPTED"
+                and feedback
+                and feedback.submitter_id == delivery.user_id
+            ):
                 summary = (
-                    f"您于 {_mail_time(record.created_at)} 提交的反馈《{record_title}》已受理。"
+                    f"您于 {_mail_time(feedback.created_at)} 提交的反馈《{record_title}》已受理。"
                 )
                 heading = "您提交的反馈已受理"
             else:

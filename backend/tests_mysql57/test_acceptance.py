@@ -987,7 +987,7 @@ def test_mysql_restart_and_isolated_backup_restore(mysql_api, monkeypatch, tmp_p
             )
         )
         db.commit()
-    design = client.post(
+    design_response = client.post(
         "/api/v1/requirements",
         headers=headers,
         json={
@@ -995,10 +995,13 @@ def test_mysql_restart_and_isolated_backup_restore(mysql_api, monkeypatch, tmp_p
             "requirement_type": "FEATURE",
             "description": "独立恢复验收",
             "participants": [
-                {"role": role, "user_id": mysql_api[2]} for role in ("CONFIRM", "DESIGN")
+                {"role": role, "user_id": mysql_api[2]}
+                for role in ("CONFIRM", "DESIGN", "DEVELOP", "ACCEPT")
             ],
         },
-    ).json()
+    )
+    assert design_response.status_code == 200, design_response.text
+    design = design_response.json()
     for action in ("CONFIRM", "DESIGN_PENDING", "DESIGN_START"):
         result = client.post(
             f"/api/v1/requirements/{design['id']}/workflow",
@@ -1191,7 +1194,7 @@ def test_mysql_preflight_requires_empty_or_verified_schema(mysql_api):
 
     with mysql_api[1].connect() as connection:
         result = validate_mysql(connection)
-        assert result["table_count"] == 35
+        assert result["table_count"] == 36
         with pytest.raises(RuntimeError, match="empty"):
             validate_mysql(connection, empty=True)
         connection.execute(text("DROP TRIGGER domain_sys_user_insert"))
@@ -1521,7 +1524,7 @@ def test_mysql_upgrade_legacy_0001_preserves_full_keys(monkeypatch):
         monkeypatch.setattr(migrate, "engine", engine)
         migrate.main()
         with engine.connect() as c:
-            assert validate_mysql(c)["table_count"] == 35
+            assert validate_mysql(c)["table_count"] == 36
         with Session(engine) as session:
             assert set(session.scalars(select(FileObject.storage_key))) == set(keys)
     finally:

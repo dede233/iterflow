@@ -107,6 +107,19 @@ def sql(statement, parameters=()):
         return cursor.fetchall()
 
 
+def grant_runtime_table_access(schema):
+    for (table,) in sql(
+        "SELECT table_name FROM information_schema.tables WHERE table_schema=%s",
+        (schema,),
+    ):
+        rights = {
+            "alembic_version": "SELECT",
+            "iterflow_file_key_node": "SELECT",
+            "rd_requirement_online_feedback": "SELECT, INSERT",
+        }.get(table, "SELECT, INSERT, UPDATE, DELETE")
+        sql(f"GRANT {rights} ON `{schema}`.`{table}` TO %s@'%%'", (runtime_user,))
+
+
 def restore_package(stage, dump, files, headers, requirement_id, file_id, system_id):
     """Restore only into another newly created local test DB and new volumes."""
     restored = db_name + "_restore"
@@ -180,16 +193,7 @@ def restore_package(stage, dump, files, headers, requirement_id, file_id, system
             restored,
             input=dump,
         )
-        for (table,) in sql(
-            "SELECT table_name FROM information_schema.tables WHERE table_schema=%s",
-            (restored,),
-        ):
-            rights = (
-                "SELECT"
-                if table in {"alembic_version", "iterflow_file_key_node"}
-                else "SELECT, INSERT, UPDATE, DELETE"
-            )
-            sql(f"GRANT {rights} ON `{restored}`.`{table}` TO %s@'%%'", (runtime_user,))
+        grant_runtime_table_access(restored)
         dc(
             "--profile",
             "ops",
@@ -259,20 +263,18 @@ def restore_package(stage, dump, files, headers, requirement_id, file_id, system
                 client.delete(f"/api/v1/files/{new_file}", headers=headers).status_code
                 == 204
             )
-        assert (
-            sql(
-                "SELECT COUNT(*) FROM information_schema.triggers WHERE trigger_schema=%s",
-                (restored,),
-            )[0][0]
-            == 110
-        )
+        restored_triggers = sql(
+            "SELECT COUNT(*) FROM information_schema.triggers WHERE trigger_schema=%s",
+            (restored,),
+        )[0][0]
+        assert restored_triggers == 113
         dc("stop", "api", "notification-worker")
         post_dump = dc(
             "--profile", "ops", "run", "--rm", "-T", "client", stdout=subprocess.PIPE
         ).stdout
         return {
             "package_isolated_restore": True,
-            "restored_guard_triggers": 110,
+            "restored_guard_triggers": restored_triggers,
             "restored_business_system_binding": True,
             "restored_function_runtime_upload": True,
             "package_post_restore_backup_sha256": hashlib.sha256(post_dump).hexdigest(),
@@ -423,19 +425,7 @@ try:
             assert granted_tables == actual_tables, (
                 "Shipped runtime grants must cover the migrated schema exactly"
             )
-            for (table,) in sql(
-                "SELECT table_name FROM information_schema.tables WHERE table_schema=%s",
-                (db_name,),
-            ):
-                rights = {
-                    "alembic_version": "SELECT",
-                    "iterflow_file_key_node": "SELECT",
-                    "rd_requirement_online_feedback": "SELECT, INSERT",
-                }.get(table, "SELECT, INSERT, UPDATE, DELETE")
-                sql(
-                    f"GRANT {rights} ON `{db_name}`.`{table}` TO %s@'%%'",
-                    (runtime_user,),
-                )
+            grant_runtime_table_access(db_name)
             dc("--profile", "init", "run", "--rm", "seed")
             assert sql(f"SELECT COUNT(*) FROM `{db_name}`.sys_user")[0][0] == 1
             for table in (
@@ -567,6 +557,7 @@ try:
                         "requirement_type": "FEATURE",
                         "priority": "P2",
                         "description": "发布验证",
+                        "participants": [{"role": "CONFIRM", "user_id": user["id"]}],
                     },
                 ).json()
                 assert r["system_id"] == system["id"]

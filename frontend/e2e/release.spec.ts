@@ -402,7 +402,7 @@ test('Phase 7 real restricted users: presence, conflict, publish, notification a
       onlineTitle,
       `反馈 #${feedback.id} · 反馈已关联需求`,
       `反馈 #${feedback.id} · 关联需求进度更新: 需求已提交验收`,
-      ...['需求进入开发', '需求验收通过, 等待发布'].flatMap(label => [
+      ...['需求进入开发', '需求验收通过，等待发布'].flatMap(label => [
         `反馈 #${feedback.id} · 关联需求进度更新: ${label}`,
         `反馈 #${feedback.id} · 关联需求进度更新: ${label}`,
       ]),

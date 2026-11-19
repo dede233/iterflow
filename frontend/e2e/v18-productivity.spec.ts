@@ -152,6 +152,7 @@ for (const width of [1440, 375]) test(`Feedback LINK_EXISTING opens the scoped s
   await expect(convert.getByRole('radio')).toHaveCount(0)
   await convert.getByRole('button', { name: '确定', exact: true }).click()
   await expect.poll(() => state.requests.find(r => r.path === '/feedbacks/1/convert')?.body).toMatchObject({ type: 'LINK_EXISTING', revision: 4, requirement_id: 7, participants: [] })
+  expect(state.requests.find(r => r.path === '/feedbacks/1/convert')?.body).not.toHaveProperty('accept_on_convert')
   await expect(page.getByRole('heading', { name: requirement(7).title })).toBeVisible()
   const writeIndex = state.requests.findIndex(r => r.path === '/feedbacks/1/convert')
   expect(state.requests.slice(0, writeIndex).filter(r => r.path === '/requirements/7')).toHaveLength(1)

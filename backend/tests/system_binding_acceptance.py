@@ -29,6 +29,7 @@ def exercise_binding(fixture, scenario):
             "title": "系统绑定验收",
             "description": "隔离数据库验收内容",
             "requirement_type": "FEATURE",
+            "participants": [{"role": "CONFIRM", "user_id": uid}],
             "system_id": first,
         },
     )

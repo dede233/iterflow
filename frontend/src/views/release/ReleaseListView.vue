@@ -94,15 +94,19 @@ const queryState = useListQuery({
 
 <template>
   <section class="page">
-    <PageHeader title="发布记录" description="查看版本的实际发布历史与发布说明。" eyebrow="发布">
-      <template #actions><el-button v-if="isMobile" @click="filterDrawer = true"><AppIcon name="filter" :size="16" />筛选</el-button></template>
-    </PageHeader>
-    <el-radio-group v-model="historyTab" aria-label="发布历史范围"><el-radio-button value="overall">整体发布记录</el-radio-button><el-radio-button value="targets">目标实际记录</el-radio-button></el-radio-group>
+    <PageHeader title="发布记录" description="查看版本的实际发布历史与发布说明。" eyebrow="发布" />
+    <el-radio-group v-model="historyTab" class="release-history-switch" aria-label="发布历史范围">
+      <el-radio-button value="overall">整体发布记录</el-radio-button>
+      <el-radio-button value="targets">目标实际记录</el-radio-button>
+    </el-radio-group>
     <TargetReleaseRecords v-if="historyTab === 'targets'" />
     <template v-else>
+    <div v-if="isMobile" class="release-filter-trigger">
+      <el-button @click="filterDrawer = true"><AppIcon name="filter" :size="16" />筛选</el-button>
+    </div>
     <ListFilterPanel v-model="filterDrawer" :mobile="isMobile" title="筛选发布记录" @search="applyFilters" @reset="resetFilters">
       <el-form-item label="版本 ID"><el-input-number v-model="filters.version_id" :min="1" :precision="0" step-strictly controls-position="right" /></el-form-item>
-      <el-form-item label="发布日期"><el-date-picker v-model="dateRange" type="daterange" value-format="YYYY-MM-DD" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" popper-class="release-filter-date-popper" /></el-form-item>
+      <el-form-item label="发布日期"><el-date-picker v-model="dateRange" type="daterange" :single-panel="isMobile" value-format="YYYY-MM-DD" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" popper-class="list-filter-date-popper" /></el-form-item>
     </ListFilterPanel>
     <ErrorState v-if="failed" title="发布记录加载失败" description="请检查网络后重试。" retry-label="重新加载" @retry="load" />
     <SectionCard v-else title="发布历史" :description="`共 ${total} 次发布`" :padded="false">
@@ -143,6 +147,20 @@ const queryState = useListQuery({
 </template>
 
 <style scoped>
+.release-history-switch {
+  display: flex;
+  width: fit-content;
+  max-width: 100%;
+  margin-block-end: var(--if-space-4);
+}
+
+.release-filter-trigger {
+  display: flex;
+  justify-content: flex-end;
+  margin-block-end: var(--if-space-2);
+}
+.release-filter-trigger .el-button { min-height: 44px; }
+
 .cards { display: grid; gap: 8px; padding: var(--if-space-3); }
 .release-card { min-width: 0; padding: 14px; border: 1px solid var(--if-border); border-radius: var(--if-radius); background: var(--if-bg-surface); }
 .release-card-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
@@ -151,14 +169,17 @@ const queryState = useListQuery({
 .release-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .release-actions :deep(.el-button + .el-button) { margin-left: 0; }
 .pager { margin-top: var(--if-space-4); justify-content: flex-end; }
-@media (max-width: 767px) { .pager { justify-content: center; } }
-</style>
-
-<style>
 @media (max-width: 767px) {
-  .release-filter-date-popper .el-date-range-picker { width: min(340px, calc(100vw - 24px)); }
-  .release-filter-date-popper .el-date-range-picker__content { width: 100%; float: none; }
-  .release-filter-date-popper .el-date-range-picker__content.is-right { border-left: 0; border-top: 1px solid var(--if-border); }
-  .release-filter-date-popper { max-height: calc(100vh - 24px); overflow-y: auto; }
+  .release-history-switch { width: 100%; }
+  .release-history-switch :deep(.el-radio-button) { flex: 1; min-width: 0; }
+  .release-history-switch :deep(.el-radio-button__inner) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding-inline: var(--if-space-2);
+    white-space: normal;
+  }
+  .pager { justify-content: center; }
 }
 </style>

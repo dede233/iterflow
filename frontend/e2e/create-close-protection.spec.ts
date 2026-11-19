@@ -88,6 +88,11 @@ for (const kind of ['feedbacks', 'requirements'] as const) {
       await form.locator('.el-select__wrapper').filter({ has: page.getByRole('combobox', { name: /反馈接收人/ }) }).click()
       await page.getByRole('option', { name: /合成接收人/ }).click()
       await form.getByRole('textbox', { name: /^\*?标题$/ }).click()
+    } else {
+      const confirmer = form.locator('[data-field="confirm"]')
+      await confirmer.locator('.el-select__wrapper').click()
+      await page.getByRole('option', { name: '合成接收人', exact: true }).click()
+      await confirmer.getByRole('combobox').press('Escape')
     }
     await form.getByRole('button', { name: kind === 'feedbacks' ? '提交' : '创建', exact: true }).click()
     await expect.poll(() => audit.writes.length).toBe(1)

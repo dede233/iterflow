@@ -15,7 +15,7 @@ def content_api(tmp_path):
     "title", ["", "  ", "\u200b\ufeff", "一", "\x01\x02", "\x00\x00", "有效标题\x00"]
 )
 def test_reject_empty_create_and_edit_without_writes(content_api, title):
-    client, db, headers, _ = content_api
+    client, db, headers, ids = content_api
     item = _create_req(client, headers["boss"])
     before = [
         db.scalar(select(func.count()).select_from(m))
@@ -25,7 +25,12 @@ def test_reject_empty_create_and_edit_without_writes(content_api, title):
         (
             client.post,
             "/api/v1/requirements",
-            {"title": title, "description": "有效描述", "requirement_type": "FEATURE"},
+            {
+                "title": title,
+                "description": "有效描述",
+                "requirement_type": "FEATURE",
+                "participants": [{"role": "CONFIRM", "user_id": ids["boss"]}],
+            },
         ),
         (
             client.patch,

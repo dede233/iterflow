@@ -14,7 +14,8 @@ function view(embedded = true) {
   const wrapper = mount(RequirementCreateView, { props: { embedded }, attachTo: document.body, global: {
     plugins: [ElementPlus],
     stubs: {
-      BusinessSystemSelect: true, PeopleSelector: true,
+      BusinessSystemSelect: true,
+      PeopleSelector: { props: ['modelValue'], emits: ['update:modelValue'], template: '<input :value="modelValue[0]" @input="$emit(\'update:modelValue\', $event.target.value ? [Number($event.target.value)] : [])" />' },
       RichTextEditor: { props: ['modelValue', 'disabled'], emits: ['update:modelValue'], template: '<textarea aria-label="需求描述" :disabled="disabled" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />' },
     },
   } })
@@ -37,6 +38,36 @@ it('shows persistent field errors, focuses the first invalid input, and clears e
   expect(mocks.create).not.toHaveBeenCalled()
   await valid(wrapper); await flushPromises()
   await vi.waitFor(() => expect(wrapper.text()).not.toContain('至少需要 2 个字符'))
+})
+it('requires a confirmer and sends only the selected required role when delivery personnel are empty', async () => {
+  mocks.create.mockResolvedValue({ id: 41 })
+  const wrapper = view(); await flushPromises(); await valid(wrapper)
+  const confirmer = wrapper.get('[data-field="confirm"]')
+  await wrapper.get('form').trigger('submit'); await flushPromises()
+  await vi.waitFor(() => expect(confirmer.text()).toContain('请至少选择一名需求确认人'))
+  expect(document.activeElement).toBe(confirmer.get('input').element)
+  expect(mocks.create).not.toHaveBeenCalled()
+  await confirmer.get('input').setValue('7'); await flushPromises()
+  await vi.waitFor(() => expect(confirmer.text()).not.toContain('请至少选择一名需求确认人'))
+  await wrapper.get('form').trigger('submit'); await flushPromises()
+  expect(mocks.create).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ participants: [{ role: 'CONFIRM', user_id: 7 }] }))
+})
+it('adds selected developers to the existing acceptors in the creation form', async () => {
+  mocks.create.mockResolvedValue({ id: 41 })
+  const wrapper = view(); await flushPromises(); await valid(wrapper)
+  const add = wrapper.findAll('button').find(button => button.text() === '将开发人员加入验收')!
+  expect(add.attributes('disabled')).toBeDefined()
+  await wrapper.get('[data-field="confirm"] input').setValue('7')
+  await wrapper.get('[data-role="DEVELOP"] input').setValue('8')
+  await wrapper.get('[data-role="ACCEPT"] input').setValue('9')
+  await add.trigger('click')
+  expect(add.attributes('disabled')).toBeDefined()
+  expect(mocks.create).not.toHaveBeenCalled()
+
+  await wrapper.get('form').trigger('submit'); await flushPromises()
+  expect(mocks.create).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ participants: [
+    { role: 'CONFIRM', user_id: 7 }, { role: 'DEVELOP', user_id: 8 }, { role: 'ACCEPT', user_id: 9 }, { role: 'ACCEPT', user_id: 8 },
+  ] }))
 })
 it('keeps a dirty draft on cancel and route leave until the user confirms', async () => {
   const confirm = vi.spyOn(ElMessageBox, 'confirm').mockRejectedValue('cancel')
@@ -62,6 +93,7 @@ it('blocks close and duplicate submissions while saving; successful creation per
   mocks.create.mockImplementation(() => new Promise(done => { resolve = done }))
   const confirm = vi.spyOn(ElMessageBox, 'confirm')
   const wrapper = view(false); await flushPromises(); await valid(wrapper)
+  await wrapper.get('[data-field="confirm"] input').setValue('7')
   await wrapper.get('form').trigger('submit'); await flushPromises()
   await wrapper.get('form').trigger('submit')
   expect(mocks.create).toHaveBeenCalledTimes(1)

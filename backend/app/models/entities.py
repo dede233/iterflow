@@ -458,6 +458,21 @@ class RequirementFeedback(Base):
     )
 
 
+class RequirementOnlineFeedback(Base):
+    __tablename__ = "rd_requirement_online_feedback"
+    __table_args__ = (Index("ix_requirement_online_feedback_requirement_id", "requirement_id"),)
+    feedback_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("rd_feedback.id", name="fk_online_feedback_feedback", ondelete="RESTRICT"),
+        primary_key=True,
+        autoincrement=False,
+    )
+    requirement_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("rd_requirement.id", name="fk_online_feedback_requirement", ondelete="RESTRICT"),
+    )
+
+
 class VersionRequirement(Base):
     __tablename__ = "rd_version_requirement"
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)

@@ -427,11 +427,11 @@ try:
                 "SELECT table_name FROM information_schema.tables WHERE table_schema=%s",
                 (db_name,),
             ):
-                rights = (
-                    "SELECT"
-                    if table in {"alembic_version", "iterflow_file_key_node"}
-                    else "SELECT, INSERT, UPDATE, DELETE"
-                )
+                rights = {
+                    "alembic_version": "SELECT",
+                    "iterflow_file_key_node": "SELECT",
+                    "rd_requirement_online_feedback": "SELECT, INSERT",
+                }.get(table, "SELECT, INSERT, UPDATE, DELETE")
                 sql(
                     f"GRANT {rights} ON `{db_name}`.`{table}` TO %s@'%%'",
                     (runtime_user,),

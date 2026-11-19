@@ -22,6 +22,7 @@ from app.core.database import get_db
 from app.core.security import create_access_token
 from app.main import app
 from app.models.entities import (
+    CollaborationEvent,
     Feedback,
     Notification,
     OperationLog,
@@ -29,6 +30,7 @@ from app.models.entities import (
     Release,
     Requirement,
     RequirementFeedback,
+    RequirementStep,
     Role,
     RolePermission,
     User,
@@ -138,9 +140,178 @@ def postgres_http_client(postgres_e2e_engine):
         app.dependency_overrides.pop(get_db, None)
 
 
+def assert_feedback_accept_conversion(client, engine, headers, user_id, feedback, requirement):
+    path = f"/api/v1/feedbacks/{feedback['id']}"
+    detail = client.get(path, headers=headers)
+    assert detail.status_code == 200, detail.text
+    assert detail.json()["status"] == "REQUIREMENT_LINKED"
+    assert detail.json()["main_requirement_id"] == requirement["id"]
+    assert detail.json()["revision"] == feedback["revision"] + 1
+    collaboration = client.get(f"{path}/collaboration", headers=headers)
+    assert collaboration.status_code == 200, collaboration.text
+    assert collaboration.json()["handler_id"] == collaboration.json()["accepted_by"] == user_id
+    assert collaboration.json()["accepted_at"]
+
+    with Session(engine) as session:
+        conversion = session.scalars(
+            select(OperationLog).where(
+                OperationLog.entity_type == "FEEDBACK",
+                OperationLog.entity_id == feedback["id"],
+                OperationLog.action == "CONVERT_REQUIREMENT",
+            )
+        ).one()
+        assert conversion.operator_id == user_id
+        assert conversion.before_data["status"] == "NEW"
+        assert conversion.after_data["status"] == "REQUIREMENT_LINKED"
+        assert conversion.after_data["requirement_id"] == requirement["id"]
+        assert conversion.after_data["accept_on_convert"] is True
+        assert (
+            conversion.after_data["handler_id"] == conversion.after_data["accepted_by"] == user_id
+        )
+        assert conversion.after_data["accepted_at"]
+        feedback_events = session.scalars(
+            select(CollaborationEvent).where(
+                CollaborationEvent.entity_type == "FEEDBACK",
+                CollaborationEvent.entity_id == feedback["id"],
+                CollaborationEvent.action.in_(("STATUS_ACCEPTED", "STATUS_REQUIREMENT_LINKED")),
+            )
+        ).all()
+        assert [(row.action, row.actor_id, row.recipient_ids) for row in feedback_events] == [
+            ("STATUS_REQUIREMENT_LINKED", user_id, [user_id])
+        ]
+        requirement_event = session.scalars(
+            select(CollaborationEvent).where(
+                CollaborationEvent.entity_type == "REQUIREMENT",
+                CollaborationEvent.entity_id == requirement["id"],
+                CollaborationEvent.action == "CREATED",
+            )
+        ).one()
+        assert requirement_event.actor_id == user_id
+        assert requirement_event.recipient_ids == [user_id]
+
+
+def advance_requirement_to_ready(
+    client, engine, headers, user_id, feedback, requirement, version, *, complete_and_accept
+):
+    path = f"/api/v1/requirements/{requirement['id']}"
+    version_path = f"/api/v1/versions/{version['id']}"
+    progress_by_status = {
+        "CONFIRMED": "PLANNING",
+        "DEVELOPING": "DEVELOPING",
+        "TESTING": "TESTING",
+        "DONE": "READY",
+    }
+    statuses = ("CONFIRMED", "DEVELOPING") if complete_and_accept else tuple(progress_by_status)
+    for status in statuses:
+        response = client.patch(
+            path + "/status",
+            headers=headers,
+            json={"status": status, "revision": requirement["revision"]},
+        )
+        assert response.status_code == 200, response.text
+        requirement = response.json()
+        progress = client.get(version_path, headers=headers).json()
+        assert progress["status"] == progress_by_status[status]
+        assert progress["revision"] == version["revision"]
+    if not complete_and_accept:
+        return
+
+    revision = requirement["revision"]
+    direct_status = client.patch(
+        path + "/status", headers=headers, json={"status": "DONE", "revision": revision}
+    )
+    assert direct_status.status_code == 409 and direct_status.json()["code"] == 40911
+    reason = "开发完成并通过验收"
+    payload = {"action": "COMPLETE_AND_ACCEPT", "revision": revision, "reason": reason}
+    barrier = Barrier(2)
+
+    def complete(_index):
+        barrier.wait()
+        return client.post(path + "/workflow", headers=headers, json=payload)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        completed, stale = sorted(
+            pool.map(complete, range(2)), key=lambda result: result.status_code
+        )
+    assert completed.status_code == 200, completed.text
+    assert completed.json()["revision"] == revision + 1
+    assert stale.status_code == 409 and stale.json()["code"] == 40910, stale.text
+    assert stale.json()["data"]["current_revision"] == revision + 1
+    assert stale.json()["data"]["current_updated_by"] == user_id
+    repeated = client.post(
+        path + "/workflow", headers=headers, json={**payload, "revision": revision + 1}
+    )
+    assert repeated.status_code == 409 and repeated.json()["code"] == 40961, repeated.text
+    current = client.get(path, headers=headers).json()
+    assert current["status"] == "DONE" and current["revision"] == revision + 1
+    progress = client.get(version_path, headers=headers).json()
+    assert progress["status"] == "READY" and progress["revision"] == version["revision"]
+
+    with Session(engine) as session:
+        steps = session.scalars(
+            select(RequirementStep).where(
+                RequirementStep.requirement_id == requirement["id"],
+                RequirementStep.action.in_(("STATUS_TESTING", "STATUS_DONE")),
+            )
+        ).all()
+        assert len(steps) == 2
+        assert {(step.action, step.detail["from"], step.detail["to"]) for step in steps} == {
+            ("STATUS_TESTING", "DEVELOPING", "TESTING"),
+            ("STATUS_DONE", "TESTING", "DONE"),
+        }
+        assert len({step.id for step in steps}) == 2
+        actor = session.get(User, user_id)
+        for step in steps:
+            assert step.actor_id == user_id and step.created_at
+            assert step.detail["actor_name"] == actor.display_name
+            assert step.detail["source"] == payload["action"] and step.detail["reason"] == reason
+            assert step.detail["content_revision"] == completed.json()["content_revision"]
+            for field in ("description", "description_format", "acceptance_criteria"):
+                assert step.detail[field] == requirement[field]
+            assert {(p["role"], p["user_id"]) for p in step.detail["participants"]} == {
+                (role, user_id) for role in ("CONFIRM", "DEVELOP", "ACCEPT")
+            }
+        logs = session.scalars(
+            select(OperationLog).where(
+                OperationLog.entity_type == "REQUIREMENT",
+                OperationLog.entity_id == requirement["id"],
+                OperationLog.action == "STATUS_CHANGE",
+            )
+        ).all()
+        assert len(logs) == 3
+        shortcut = next(log for log in logs if log.after_data["status"] == "DONE")
+        assert shortcut.operator_id == user_id
+        assert shortcut.before_data == {"status": "DEVELOPING"}
+        assert shortcut.after_data == {
+            "status": "DONE",
+            "via": "TESTING",
+            "source": payload["action"],
+            "reason": reason,
+        }
+        assert all(log.after_data["status"] != "TESTING" for log in logs)
+        for kind, entity_id, prefix in (
+            ("REQUIREMENT", requirement["id"], ""),
+            ("FEEDBACK", feedback["id"], "REQUIREMENT_"),
+        ):
+            events = session.scalars(
+                select(CollaborationEvent).where(
+                    CollaborationEvent.entity_type == kind,
+                    CollaborationEvent.entity_id == entity_id,
+                    CollaborationEvent.action.in_(
+                        (prefix + "STATUS_TESTING", prefix + "STATUS_DONE")
+                    ),
+                )
+            ).all()
+            assert [(event.action, event.actor_id, event.recipient_ids) for event in events] == [
+                (prefix + "STATUS_DONE", user_id, [user_id])
+            ]
+
+
+@pytest.mark.parametrize("complete_and_accept", [False, True], ids=["separate", "one-step"])
 def test_full_v1_business_lifecycle_over_http_and_postgresql(
     postgres_http_client: TestClient,
     postgres_e2e_engine: tuple[Engine, int, dict[str, str]],
+    complete_and_accept: bool,
 ) -> None:
     client = postgres_http_client
     engine, user_id, headers = postgres_e2e_engine
@@ -162,29 +333,26 @@ def test_full_v1_business_lifecycle_over_http_and_postgresql(
     feedback = feedback_response.json()
     assert feedback["status"] == "NEW"
 
-    accepted = client.patch(
-        f"/api/v1/feedbacks/{feedback['id']}/status",
-        headers=headers,
-        json={"status": "ACCEPTED", "revision": feedback["revision"]},
-    )
-    assert accepted.status_code == 200, accepted.text
-
     converted = client.post(
-        f"/api/v1/feedbacks/{feedback['id']}/convert",
+        f"/api/v1/feedbacks/{feedback['id']}/accept-and-convert",
         headers=headers,
         json={
             "type": "CREATE_NEW",
-            "revision": accepted.json()["revision"],
+            "revision": feedback["revision"],
+            "accept_on_convert": True,
             "requirement_title": "Phase 8.2 converted requirement",
             "requirement_type": "FEATURE",
             "priority": "P2",
             "description": "Requirement created through feedback conversion.",
+            "acceptance_criteria": "确认流程与实际发布记录",
+            "participants": [{"role": "CONFIRM", "user_id": user_id}],
         },
     )
     assert converted.status_code == 200, converted.text
     requirement = converted.json()
     assert requirement["source"] == "FEEDBACK"
     assert requirement["status"] == "DRAFT"
+    assert_feedback_accept_conversion(client, engine, headers, user_id, feedback, requirement)
 
     version_response = client.post(
         "/api/v1/versions",
@@ -226,23 +394,16 @@ def test_full_v1_business_lifecycle_over_http_and_postgresql(
     )
     assert assigned.status_code == 200, assigned.text
     current_requirement["revision"] = assigned.json()["revision"]
-    for status in ("CONFIRMED", "DEVELOPING", "TESTING", "DONE"):
-        response = client.patch(
-            f"/api/v1/requirements/{requirement['id']}/status",
-            headers=headers,
-            json={"status": status, "revision": current_requirement["revision"]},
-        )
-        assert response.status_code == 200, response.text
-        current_requirement = response.json()
-        expected_progress = {
-            "CONFIRMED": "PLANNING",
-            "DEVELOPING": "DEVELOPING",
-            "TESTING": "TESTING",
-            "DONE": "READY",
-        }[status]
-        progress = client.get(f"/api/v1/versions/{version['id']}", headers=headers).json()
-        assert progress["status"] == expected_progress
-        assert progress["revision"] == version["revision"]
+    advance_requirement_to_ready(
+        client,
+        engine,
+        headers,
+        user_id,
+        feedback,
+        current_requirement,
+        version,
+        complete_and_accept=complete_and_accept,
+    )
 
     relation_revision = version["revision"]
     version = client.get(f"/api/v1/versions/{version['id']}", headers=headers).json()

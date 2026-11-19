@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.api.deps import ensure_all_permissions, require_any_permission, require_permission
+from app.api.openapi import api_revision_conflict_responses
 from app.api.v1.feedbacks import _scoped_feedback_or_404
 from app.api.v1.requirements import _scoped_requirement_or_404
 from app.core.database import get_db
@@ -32,7 +33,11 @@ def workflow(
     return WorkflowService(db).view(_scoped_requirement_or_404(db, user, requirement_id))
 
 
-@router.post("/requirements/{requirement_id}/workflow", response_model=WorkflowOut)
+@router.post(
+    "/requirements/{requirement_id}/workflow",
+    response_model=WorkflowOut,
+    responses=api_revision_conflict_responses(409),
+)
 def workflow_action(
     requirement_id: int,
     payload: WorkflowAction,

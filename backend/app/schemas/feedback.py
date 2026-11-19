@@ -11,7 +11,11 @@ from app.models.enums import (
     ManualFeedbackStatus,
     Priority,
 )
-from app.schemas.collaboration import ParticipantInput, ParticipantsChange
+from app.schemas.collaboration import (
+    ParticipantInput,
+    ParticipantsChange,
+    require_confirmation_participant,
+)
 from app.schemas.common import PageResult
 from app.schemas.content_validation import requirement_title
 from app.services.rich_text import sanitize_requirement_description
@@ -99,6 +103,8 @@ class FeedbackConvertRequest(BaseModel):
 
     type: FeedbackConvertType
     revision: int = Field(ge=1)
+    accept_on_convert: bool = False
+    accept_reason: str | None = Field(default=None, min_length=2, max_length=500)
     # CREATE_NEW fields
     system_id: int | None = Field(default=None, gt=0)
     requirement_title: str | None = Field(default=None, min_length=2, max_length=200)
@@ -131,6 +137,7 @@ class FeedbackConvertRequest(BaseModel):
             ]
             if missing:
                 raise ValueError(f"CREATE_NEW 需要字段: {', '.join(missing)}")
+            require_confirmation_participant(self.participants)
             assert self.description is not None
             assert self.requirement_title is not None
             self.requirement_title = requirement_title(self.requirement_title)
@@ -141,3 +148,7 @@ class FeedbackConvertRequest(BaseModel):
             if self.requirement_id is None:
                 raise ValueError("LINK_EXISTING 需要 requirement_id")
         return self
+
+
+class FeedbackAcceptAndConvertRequest(FeedbackConvertRequest):
+    accept_on_convert: Literal[True]

@@ -1,6 +1,8 @@
 import { mockCollaboration } from './collaboration-fixture'
 import { expect, test } from '@playwright/test'
 
+test.use({ timezoneId: 'Asia/Shanghai' })
+
 const admin = {
   id: 1, username: 'admin', display_name: '系统管理员', email: 'admin@example.com',
   status: 'ACTIVE', revision: 1, must_change_password: false, data_scope: 'ALL', role_ids: [1],
@@ -102,6 +104,54 @@ test('mobile admin filters and read-only audit detail remain usable', async ({ p
   await expect(page.getByRole('heading', { name: '审计记录详情' })).toBeVisible()
   await expect(page.getByText('DEVELOPING')).toBeVisible()
 })
+
+for (const width of [320, 375, 820, 1440]) {
+  test(`audit date and time range can be selected at ${width}px`, async ({ page }) => {
+    const mobile = width < 768
+    await page.setViewportSize({ width, height: mobile ? 640 : 900 })
+    await page.clock.setFixedTime(new Date('2026-10-15T04:00:00Z'))
+    await page.goto('/#/admin/audits')
+    await expect(page.locator('.audit-table, .audit-card').getByText('变更状态', { exact: true })).toBeVisible()
+    if (mobile) await page.getByRole('button', { name: '筛选记录' }).click()
+    const form = mobile ? page.getByRole('dialog', { name: '筛选审计记录' }) : page.locator('.filters')
+    await form.getByPlaceholder('开始时间', { exact: true }).click()
+    const popper = page.locator('.el-picker__popper:visible')
+    await expect(popper).toBeVisible()
+    await expect(popper).toBeInViewport({ ratio: 0.99 })
+    await expect.poll(() => popper.evaluate(element => {
+      const { left, right } = element.getBoundingClientRect()
+      return Math.max(-left, right - window.innerWidth, element.scrollWidth - element.clientWidth)
+    })).toBeLessThanOrEqual(1)
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width + 1)
+
+    const calendars = popper.locator('.el-date-table')
+    await expect(calendars).toHaveCount(mobile ? 1 : 2)
+    await calendars.first().locator('td.available').getByText('29', { exact: true }).click()
+    if (mobile) await popper.getByRole('button', { name: '下个月', exact: true }).click()
+    await calendars.last().locator('td.available').getByText('3', { exact: true }).click()
+
+    for (const [label, time] of [['开始时间', '08:15:20'], ['结束时间', '18:45:30']]) {
+      const editor = popper.locator('.el-date-range-picker__time-picker-wrap').filter({ has: page.getByPlaceholder(label, { exact: true }) })
+      const input = editor.getByPlaceholder(label, { exact: true })
+      await expect(input).toBeInViewport({ ratio: 0.99 })
+      await input.click()
+      const timePanel = editor.locator('.el-time-panel')
+      await expect(timePanel).toBeInViewport({ ratio: 0.99 })
+      await input.fill(time)
+      await input.press('Tab')
+      await expect(timePanel).toBeHidden()
+    }
+    const confirm = popper.locator('.el-picker-panel__footer').getByRole('button', { name: '确定', exact: true })
+    await expect(confirm).toBeInViewport({ ratio: 0.99 })
+    await confirm.click()
+    await expect(popper).toHaveCount(0)
+    const query = page.waitForRequest(request => new URL(request.url()).pathname === '/api/v1/audits')
+    await form.getByRole('button', { name: '查询', exact: true }).click()
+    const params = new URL((await query).url()).searchParams
+    expect(params.get('time_from')).toBe('2026-10-29T00:15:20.000Z')
+    expect(params.get('time_to')).toBe('2026-11-03T10:45:30.000Z')
+  })
+}
 
 test('mobile user and role actions open their existing revision-based editors', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 900 })

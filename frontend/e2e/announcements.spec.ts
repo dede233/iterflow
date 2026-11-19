@@ -1,6 +1,8 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 import { mockCollaboration } from './collaboration-fixture'
-for(const width of [1440,375]) test(`announcement draft preview publish and account read at ${width}px`,async({page})=>{
+const importantLabel = '重要更新：涉及流程变化或需要用户配合，登录后弹出提醒'
+
+for(const width of [1440,375]) test(`announcement draft preview publish and account read at ${width}px`,async({page}, info)=>{
  await page.setViewportSize({width,height:900})
  let item:any=null
  const writes:string[]=[]
@@ -22,6 +24,41 @@ for(const width of [1440,375]) test(`announcement draft preview publish and acco
  await page.goto('/#/announcements')
  await page.getByRole('button',{name:'新增公告',exact:true}).click()
  const edit=page.getByRole('dialog',{name:'新增更新公告',exact:true})
+ const checkbox = edit.getByRole('checkbox', { name: importantLabel, exact: true })
+ const label = edit.getByText(importantLabel, { exact: true })
+ await expect(label).toBeVisible()
+ await expect(checkbox).not.toBeChecked()
+ const geometry = await label.evaluate(element => {
+   const body = element.closest('.el-dialog__body')!
+   const bodyBounds = body.getBoundingClientRect()
+   const checkboxBounds = element.closest('.el-checkbox')!.getBoundingClientRect()
+   const range = document.createRange()
+   range.selectNodeContents(element)
+   const lines = [...range.getClientRects()]
+   return {
+     lineCount: lines.length,
+     labelFits: lines.every(line =>
+       line.left >= checkboxBounds.left - 1 &&
+       line.right <= Math.min(checkboxBounds.right, bodyBounds.right) + 1 &&
+       line.top >= checkboxBounds.top - 1 && line.bottom <= checkboxBounds.bottom + 1,
+     ),
+     targetHeight: checkboxBounds.height,
+     bodyOverflow: body.scrollWidth - body.clientWidth,
+   }
+ })
+ expect(geometry.labelFits).toBe(true)
+ expect(geometry.bodyOverflow).toBeLessThanOrEqual(1)
+ if (width === 375) {
+   expect(geometry.lineCount).toBeGreaterThan(1)
+   expect(geometry.targetHeight).toBeGreaterThanOrEqual(44)
+ } else {
+   expect(geometry.lineCount).toBe(1)
+ }
+ await label.click()
+ await expect(checkbox).toBeChecked()
+ await page.screenshot({ path: info.outputPath('announcement-checkbox.png') })
+ await label.click()
+ await expect(checkbox).not.toBeChecked()
  await edit.getByRole('textbox',{name:'公告标题',exact:true}).fill('业务系统绑定更新')
  await edit.getByRole('textbox',{name:'版本标识',exact:true}).fill('2026.11')
  await edit.locator('[contenteditable=true]').fill('新增业务系统选择，历史版本可按提示补齐归属。')
@@ -41,5 +78,5 @@ for(const width of [1440,375]) test(`announcement draft preview publish and acco
  await expect.poll(()=>writes).toEqual(['create','publish','read'])
  await expect(page.getByRole('heading',{name:'业务系统绑定更新',exact:true})).toBeVisible()
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
- await page.screenshot({path:`test-results/announcement-${width}.png`,fullPage:true})
+ await page.screenshot({path:info.outputPath('announcement-published.png'),fullPage:true})
 })

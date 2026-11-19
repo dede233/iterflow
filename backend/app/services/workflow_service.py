@@ -8,6 +8,7 @@ from app.models.entities import Requirement, RequirementParticipant, Requirement
 from app.models.enums import UserStatus
 from app.repositories.user_repository import UserRepository
 from app.schemas.workflow import DesignStatus, WorkflowAction, WorkflowOut, WorkflowRecord
+from app.services.audit_service import AuditService
 from app.services.collaboration_service import CollaborationService
 from app.services.revision_conflict import revision_conflict_data
 from app.services.system_binding_service import SystemBindingService
@@ -47,11 +48,21 @@ class WorkflowService:
             query = query.where(RequirementParticipant.role == role)
         return list(self.db.scalars(query))
 
-    def actor(self, item: Requirement, role: str, actor_id: int, reason: str | None):
+    def actor(
+        self,
+        item: Requirement,
+        role: str,
+        actor_id: int,
+        reason: str | None,
+        *,
+        allow_delegation: bool = True,
+    ):
         people = self.people(item, role)
         if not people:
             raise AppError(40961, "请先分配对应环节人员", 409)
         if actor_id not in people:
+            if not allow_delegation:
+                raise PermissionDenied("仅同时担任开发和验收的人员本人可提交此操作")
             if (
                 not UserRepository(self.db).can_view_api_docs(actor_id)
                 or not reason
@@ -59,11 +70,23 @@ class WorkflowService:
             ):
                 raise PermissionDenied("仅对应环节人员可操作; 管理员代操作须填写原因")
 
+    def validate_confirmation(self, item: Requirement, actor_id: int, reason: str | None) -> None:
+        self.actor(item, "CONFIRM", actor_id, reason)
+        missing = [
+            label
+            for role, label in (("DEVELOP", "开发人员"), ("ACCEPT", "验收人员"))
+            if not self.people(item, role)
+        ]
+        if missing:
+            raise AppError(40961, f"请先指定{'和'.join(missing)}", 409)
+
     @staticmethod
     def confirmed(item: Requirement):
         return item.legacy_completed or item.confirmed_revision == item.content_revision
 
-    def record(self, item: Requirement, action: str, actor_id: int, detail: dict):
+    def record(
+        self, item: Requirement, action: str, actor_id: int, detail: dict, *, notify: bool = True
+    ):
         actor = self.db.get(User, actor_id)
         self.db.add(
             RequirementStep(
@@ -84,25 +107,32 @@ class WorkflowService:
                 },
             )
         )
-        self.collaboration.requirement_event(
-            item, action, actor_id, follow_feedback=action.startswith("STATUS_")
-        )
+        if notify:
+            self.collaboration.requirement_event(
+                item, action, actor_id, follow_feedback=action.startswith("STATUS_")
+            )
 
     def validate_transition(
-        self, item: Requirement, target: str, actor_id: int, reason: str | None
+        self,
+        item: Requirement,
+        target: str,
+        actor_id: int,
+        reason: str | None,
+        *,
+        allow_delegation: bool = True,
     ):
         if target == "CONFIRMED" and item.status == "DRAFT":
-            self.actor(item, "CONFIRM", actor_id, reason)
+            self.validate_confirmation(item, actor_id, reason)
         elif target == "DEVELOPING":
             self.actor(item, "ACCEPT" if item.status == "TESTING" else "DEVELOP", actor_id, reason)
         elif target == "TESTING":
-            self.actor(item, "DEVELOP", actor_id, reason)
+            self.actor(item, "DEVELOP", actor_id, reason, allow_delegation=allow_delegation)
             if not self.people(item, "ACCEPT"):
                 raise AppError(40961, "请先指定验收人", 409)
             if item.design_status not in {"NOT_REQUIRED", "DONE"}:
                 raise AppError(40961, "请先完成设计或说明取消设计的原因", 409)
         elif target == "DONE":
-            self.actor(item, "ACCEPT", actor_id, reason)
+            self.actor(item, "ACCEPT", actor_id, reason, allow_delegation=allow_delegation)
         if target in {"DEVELOPING", "TESTING", "DONE"} and not self.confirmed(item):
             raise AppError(40961, "当前内容尚未确认", 409)
         if (
@@ -167,8 +197,6 @@ class WorkflowService:
             "shortcut": shortcut,
         }
         self.record(item, "STATUS_TESTING", actor_id, detail)
-        from app.services.audit_service import AuditService
-
         AuditService(self.db).log(
             "REQUIREMENT",
             item.id,
@@ -178,6 +206,33 @@ class WorkflowService:
         )
         return item.revision
 
+    def _complete_and_accept_locked(
+        self, item: Requirement, payload: WorkflowAction, actor_id: int
+    ):
+        if item.status != "DEVELOPING":
+            raise AppError(40961, "仅开发中的需求可完成开发并通过验收", 409)
+        self.validate_transition(item, "TESTING", actor_id, payload.reason, allow_delegation=False)
+        self.validate_transition(item, "DONE", actor_id, payload.reason, allow_delegation=False)
+        self.collaboration.bump(item, payload.revision, actor_id, {"status": "DONE"})
+        detail = {"source": payload.action, "reason": payload.reason}
+        self.record(
+            item,
+            "STATUS_TESTING",
+            actor_id,
+            {**detail, "from": "DEVELOPING", "to": "TESTING"},
+            notify=False,
+        )
+        self.record(item, "STATUS_DONE", actor_id, {**detail, "from": "TESTING", "to": "DONE"})
+        AuditService(self.db).log(
+            "REQUIREMENT",
+            item.id,
+            "STATUS_CHANGE",
+            before={"status": "DEVELOPING"},
+            after={**detail, "via": "TESTING", "status": "DONE"},
+        )
+        self.db.commit()
+        return self.view(item)
+
     def act(self, item: Requirement, payload: WorkflowAction, actor_id: int):
         self.lock(item)
         if getattr(item, "deleted_at", None) is not None:
@@ -186,6 +241,8 @@ class WorkflowService:
             raise ConflictError("需求已修改, 请刷新后重试", revision_conflict_data(item))
         if item.status == "ONLINE" or (item.status == "CANCELED" and payload.action != "REOPEN"):
             raise AppError(40961, "终态需求不能修改流程", 409)
+        if payload.action == "COMPLETE_AND_ACCEPT":
+            return self._complete_and_accept_locked(item, payload, actor_id)
         values: dict[str, Any] = {}
         if payload.action == "REOPEN":
             if item.status != "CANCELED":
@@ -207,7 +264,7 @@ class WorkflowService:
                 raise AppError(40961, "仅待确认阶段可要求补充, 请填写意见", 409)
             self.actor(item, "CONFIRM", actor_id, payload.reason)
         elif payload.action == "CONFIRM":
-            self.actor(item, "CONFIRM", actor_id, payload.reason)
+            self.validate_confirmation(item, actor_id, payload.reason)
             if item.confirmed_revision == item.content_revision:
                 raise AppError(40961, "当前内容已确认", 409)
             values["confirmed_revision"] = item.content_revision
@@ -247,8 +304,6 @@ class WorkflowService:
                 "acceptance_criteria": item.acceptance_criteria,
             },
         )
-        from app.services.audit_service import AuditService
-
         AuditService(self.db).log(
             "REQUIREMENT", item.id, payload.action, after={**values, "reason": payload.reason}
         )

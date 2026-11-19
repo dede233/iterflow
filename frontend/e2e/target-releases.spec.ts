@@ -69,6 +69,49 @@ async function fixture(page: Page) {
 }
 
 for (const width of [1440, 375, 812]) {
+  test(`release history switch has room and the correct filters at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await fixture(page)
+    await page.goto('/#/releases')
+
+    const historySwitch = page.getByRole('radiogroup', { name: '发布历史范围' })
+    const overall = historySwitch.getByRole('radio', { name: '整体发布记录' })
+    const targets = historySwitch.getByRole('radio', { name: '目标实际记录' })
+    const mobileFilter = page.getByRole('button', { name: '筛选', exact: true })
+    const overallPanel = width < 768
+      ? page.locator('.section-card').filter({ has: page.getByRole('heading', { name: '发布历史' }) })
+      : page.locator('.list-filters')
+    await expect(overall).toBeChecked()
+    await expect(overallPanel).toBeVisible()
+    const switchBox = (await historySwitch.boundingBox())!
+    expect((await overallPanel.boundingBox())!.y - switchBox.y - switchBox.height).toBeGreaterThanOrEqual(16)
+
+    if (width < 768) {
+      const labels = historySwitch.locator('.el-radio-button__inner')
+      const first = (await labels.nth(0).boundingBox())!
+      const second = (await labels.nth(1).boundingBox())!
+      expect(first.height).toBeGreaterThanOrEqual(44)
+      expect(second.height).toBeGreaterThanOrEqual(44)
+      expect(first.width).toBeCloseTo(second.width)
+      expect((await mobileFilter.boundingBox())!.y - switchBox.y - switchBox.height).toBeGreaterThanOrEqual(16)
+      await mobileFilter.click()
+      const drawer = page.getByRole('dialog', { name: '筛选发布记录' })
+      await expect(drawer).toBeVisible()
+      await page.keyboard.press('Escape')
+      await expect(drawer).toBeHidden()
+    }
+
+    await overall.focus()
+    await page.keyboard.press('ArrowRight')
+    await expect(targets).toBeChecked()
+    await expect(mobileFilter).toHaveCount(0)
+    const targetPanel = page.locator('.filter-panel').filter({ has: page.getByRole('combobox', { name: '发布目标筛选' }) })
+    await expect(targetPanel).toBeVisible()
+    expect((await historySwitch.boundingBox())!.y).toBe(switchBox.y)
+    expect((await targetPanel.boundingBox())!.y - switchBox.y - switchBox.height).toBeGreaterThanOrEqual(16)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true)
+  })
+
   for (const chooseOnPublish of [true, false]) test(`coverage is optional, later multi-select at ${width}px / selected=${chooseOnPublish}`, async ({ page }) => {
     await page.setViewportSize({ width, height: width === 812 ? 375 : width === 375 ? 812 : 1000 })
     const data = await fixture(page)

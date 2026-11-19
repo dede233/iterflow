@@ -2,13 +2,13 @@ import { mockReadPanels } from './collaboration-fixture'
 import { expect, test } from '@playwright/test'
 
 for (const width of [375, 1440]) {
-  test(`assign confirmer before content confirmation at ${width}px`, async ({ page }, testInfo) => {
+  test(`assign required roles before content confirmation at ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 900 })
     await page.addInitScript(() => {
       localStorage.setItem('iterflow.access_token', 'confirm-flow-mock')
       localStorage.setItem('iterflow.refresh_token', 'confirm-flow-mock')
     })
-    const item = { id: 1, requirement_no: 'REQ-CONFIRM-001', title: '先设置确认人再确认内容', requirement_type: 'FEATURE', source: 'DIRECT', priority: 'P1', status: 'DRAFT', owner_id: null, current_version_id: null, description: '确认内容时无需提前分配设计、开发或验收人员。', acceptance_criteria: '分配人员和确认内容分别显式操作。', system_id: null, module_id: null, created_at: '2026-11-02T00:00:00Z', updated_at: '2026-11-02T00:00:00Z', updated_by: 1, revision: 1 }
+    const item = { id: 1, requirement_no: 'REQ-CONFIRM-001', title: '确认前补齐环节人员', requirement_type: 'FEATURE', source: 'DIRECT', priority: 'P1', status: 'DRAFT', owner_id: null, current_version_id: null, description: '旧需求先补齐确认、开发和验收人员。', acceptance_criteria: '分配人员和确认内容分别显式操作。', system_id: null, module_id: null, created_at: '2026-11-02T00:00:00Z', updated_at: '2026-11-02T00:00:00Z', updated_by: 1, revision: 1 }
     let participants: { role: string; user_id: number; display_name: string; active: boolean }[] = []
     let confirmed = false
     const writes: unknown[] = []
@@ -21,9 +21,10 @@ for (const width of [375, 1440]) {
       const method = route.request().method()
       if (path === '/api/v1/requirements/1/participants' && method === 'PUT') {
         const body = route.request().postDataJSON()
-        expect(body).toEqual(confirmed
-          ? { revision: 3, participants: [{ role: 'CONFIRM', user_id: 1 }, { role: 'DEVELOP', user_id: 1 }, { role: 'ACCEPT', user_id: 1 }] }
-          : { revision: 1, participants: [{ role: 'CONFIRM', user_id: 1 }] })
+        expect(body).toEqual({
+          revision: item.revision,
+          participants: (item.revision === 1 ? ['CONFIRM'] : ['CONFIRM', 'DEVELOP', 'ACCEPT']).map(role => ({ role, user_id: 1 })),
+        })
         writes.push(body)
         participants = body.participants.map((p: { role: string; user_id: number }) => ({ ...p, display_name: '测试确认人', active: true }))
         item.revision++
@@ -31,8 +32,8 @@ for (const width of [375, 1440]) {
       }
       if (path === '/api/v1/requirements/1/workflow' && method === 'POST') {
         const body = route.request().postDataJSON()
-        expect(body).toEqual({ revision: 2, action: 'CONFIRM', reason: null })
-        expect(participants.map(p => p.role)).toEqual(['CONFIRM'])
+        expect(body).toEqual({ revision: 3, action: 'CONFIRM', reason: null })
+        expect(participants.map(p => p.role)).toEqual(['CONFIRM', 'DEVELOP', 'ACCEPT'])
         writes.push(body)
         confirmed = true; item.status = 'CONFIRMED'; item.revision++
         return route.fulfill({ json: workflow() })
@@ -64,48 +65,60 @@ for (const width of [375, 1440]) {
     await page.screenshot({ path: testInfo.outputPath(`missing-confirmer-${width}.png`), fullPage: true })
     await page.getByRole('button', { name: '设置确认人', exact: true }).click()
     const peopleDialog = page.getByRole('dialog', { name: '选择需求确认人', exact: true })
+    const legacyConfirmer = peopleDialog.locator('[data-role="CONFIRM"]').getByRole('combobox')
     await peopleDialog.locator('.el-select__wrapper').click()
-    const listId = await peopleDialog.getByRole('combobox', { name: '需求确认人', exact: true }).getAttribute('aria-controls')
+    const listId = await legacyConfirmer.getAttribute('aria-controls')
     await page.locator(`[id="${listId}"]`).getByRole('option', { name: '测试确认人', exact: true }).click()
-    await peopleDialog.getByRole('combobox', { name: '需求确认人', exact: true }).press('Escape')
+    await legacyConfirmer.press('Escape')
     await expect(page.locator(`[id="${listId}"]`)).toBeHidden()
     await peopleDialog.getByRole('button', { name: '保存人员', exact: true }).click()
     await expect(peopleDialog).toBeHidden()
-    await expect(page.getByRole('list', { name: '需求阶段' }).locator('li').nth(0)).toContainText('当前阶段')
+    const steps = page.getByRole('list', { name: '需求阶段' }).locator('li')
+    const confirm = page.getByRole('button', { name: '确认当前内容', exact: true })
+    const arrange = page.getByRole('button', { name: '设置开发与验收人员', exact: true })
+    await expect(steps.nth(0)).toContainText('当前阶段')
+    await expect(page.getByText(/尚未设置有效的开发人员、验收人员/)).toBeVisible()
+    await expect(confirm).toHaveCount(0)
+    await expect(arrange).toBeVisible()
     expect(writes).toHaveLength(1)
-    await page.getByRole('button', { name: '确认当前内容', exact: true }).click()
-    const confirmDialog = page.getByRole('dialog', { name: '确认当前内容', exact: true })
-    await expect(confirmDialog.getByText('说明（选填）')).toBeVisible()
-    await confirmDialog.getByRole('button', { name: '确认操作', exact: true }).click()
-    await expect(confirmDialog).toBeHidden()
+    await arrange.click()
     const assignment = page.getByRole('dialog', { name: '安排设计、开发与验收人员', exact: true })
     await expect(assignment).toBeVisible()
     await expect(assignment).toHaveCSS('opacity', '1')
     await expect(page.locator('.el-dialog:visible')).toHaveCount(1)
-    await expect(assignment.getByRole('combobox', { name: '开发人员', exact: true })).toBeVisible()
-    await expect(assignment.getByText('验收人员可多选，任意一人验收通过即可。')).toBeVisible()
-    await page.screenshot({ path: testInfo.outputPath(`automatic-assignment-${width}.png`), fullPage: true })
-    if (width === 1440) {
-      for (const label of ['开发人员', '验收人员']) {
-        const selector = assignment.getByRole('combobox', { name: label, exact: true })
-        await assignment.locator('.el-form-item').filter({ has: page.getByRole('combobox', { name: label, exact: true }) }).locator('.el-select__wrapper').click()
-        const id = await selector.getAttribute('aria-controls')
-        await page.locator(`[id="${id}"]`).getByRole('option', { name: '测试确认人', exact: true }).click()
-        await selector.press('Escape')
-      }
-      await assignment.getByRole('button', { name: '保存人员', exact: true }).click()
-    } else {
-      await assignment.getByRole('button', { name: '取消', exact: true }).click()
-    }
+    await expect(assignment.getByRole('combobox', { name: '设计人员（可选）', exact: true })).toBeVisible()
+    await expect(assignment.getByText(/验收人员可多选/)).toBeVisible()
+    await page.screenshot({ path: testInfo.outputPath(`pre-confirm-assignment-${width}.png`), fullPage: true })
+    await assignment.getByRole('button', { name: '取消', exact: true }).click()
     await expect(assignment).toBeHidden()
+    await expect(confirm).toHaveCount(0)
+    expect(writes).toHaveLength(1)
+    await arrange.click()
+    for (const role of ['DEVELOP', 'ACCEPT']) {
+      const field = assignment.locator(`[data-role="${role}"]`)
+      const selector = field.getByRole('combobox')
+      await field.locator('.el-select__wrapper').click()
+      const id = await selector.getAttribute('aria-controls')
+      await page.locator(`[id="${id}"]`).getByRole('option', { name: '测试确认人', exact: true }).click()
+      await selector.press('Escape')
+    }
+    await assignment.getByRole('button', { name: '保存人员', exact: true }).click()
+    await expect(assignment).toBeHidden()
+    await expect(steps.nth(0)).toContainText('当前阶段')
+    expect(writes).toHaveLength(2)
+    await confirm.click()
+    const confirmDialog = page.getByRole('dialog', { name: '确认当前内容', exact: true })
+    await expect(confirmDialog.getByText('说明（选填）')).toBeVisible()
+    await confirmDialog.getByRole('button', { name: '确认操作', exact: true }).click()
+    await expect(confirmDialog).toBeHidden()
+    await expect(steps.nth(1)).toContainText('当前阶段')
     await expect(page.locator('.el-dialog:visible')).toHaveCount(0)
-    await expect(page.getByRole('list', { name: '需求阶段' }).locator('li').nth(1)).toContainText('当前阶段')
-    await page.getByRole('list', { name: '需求阶段' }).locator('li').nth(0).getByRole('button').click()
+    await steps.nth(0).getByRole('button').click()
     await expect(page.locator('.step-detail')).toContainText('当前内容已确认')
-    await page.getByRole('list', { name: '需求阶段' }).locator('li').nth(1).getByRole('button').click()
+    await steps.nth(1).getByRole('button').click()
     await expect(page.getByRole('button', { name: '选择 / 调整人员', exact: true })).toBeVisible()
-    await expect(page.getByRole('button', { name: '开始开发', exact: true })).toHaveCount(width === 1440 ? 1 : 0)
-    expect(writes).toHaveLength(width === 1440 ? 3 : 2)
+    await expect(page.getByRole('button', { name: '开始开发', exact: true })).toBeEnabled()
+    expect(writes).toHaveLength(3)
     await page.getByRole('button', { name: '收起需求进度', exact: true }).scrollIntoViewIfNeeded()
     await page.screenshot({ path: testInfo.outputPath(`confirmed-${width}.png`), fullPage: true })
     expect(unexpected).toEqual([])

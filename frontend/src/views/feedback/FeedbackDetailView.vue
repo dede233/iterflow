@@ -3,9 +3,9 @@ import BusinessSystemAttribution from '@/components/BusinessSystemAttribution.vu
 import RecentEntityActivity from '@/components/RecentEntityActivity.vue'
 import DeleteEntityButton from '@/components/DeleteEntityButton.vue'
 import CollaborationPeople from '@/components/CollaborationPeople.vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, onScopeDispose, reactive, ref, watch } from 'vue'
 import { ElMessage, type UploadRequestOptions } from 'element-plus'
-import { onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
+import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
 import {
   changeFeedbackStatus,
   convertFeedback,
@@ -85,15 +85,27 @@ const systems = ref<BusinessSystemItem[]>([])
 const canReadSystems = computed(() => can(['sys.system.view', 'sys.system.manage']))
 const canEdit = computed(() => can('rd.feedback.edit') && item.value?.status !== 'ONLINE')
 const collaboration = ref<FeedbackCollaboration | null>(null)
-const delegatedAcceptance = computed(() => !!collaboration.value?.recipients.length && !collaboration.value.recipients.some(p => p.id === auth.user?.id))
-const canAccept = computed(() => canEdit.value && !!collaboration.value && collaboration.value.revision === item.value?.revision && (!delegatedAcceptance.value || auth.user?.can_view_api_docs === true))
+const currentCollaboration = computed(() => collaboration.value?.revision === item.value?.revision ? collaboration.value : null)
+const delegatedAcceptance = computed(() => !!currentCollaboration.value?.recipients.length && !currentCollaboration.value.recipients.some(p => p.id === auth.user?.id))
+const canAccept = computed(() => item.value?.status === 'NEW' && canEdit.value && !!currentCollaboration.value && (!delegatedAcceptance.value || auth.user?.can_view_api_docs === true))
 const canAttach = computed(() => can('rd.feedback.create') && item.value?.status !== 'ONLINE')
 const canLinkExisting = computed(() => canLinkExistingRequirementFor(can))
 const isAccepted = computed(() => item.value?.status === 'ACCEPTED')
 const showRequirementGuide = computed(() => item.value?.status === 'REQUIREMENT_LINKED' || item.value?.status === 'ONLINE')
+const converted = ref(false)
 const canConvert = computed(
-  () => can('rd.feedback.convert') && !!item.value && !showRequirementGuide.value && item.value.main_requirement_id == null,
+  () => can('rd.feedback.convert') && !!item.value && !converted.value && !showRequirementGuide.value && item.value.main_requirement_id == null,
 )
+const canAcceptAndConvert = computed(() => canAccept.value && canConvert.value)
+const canConvertOnly = computed(() => canConvert.value && !canAcceptAndConvert.value
+  && (item.value?.status !== 'NEW' || !canEdit.value || !!currentCollaboration.value))
+const acceptanceHint = computed(() => {
+  if (item.value?.status !== 'NEW' || !canEdit.value) return ''
+  if (!currentCollaboration.value) return '请先在“接收与处理”中核对接收人信息。'
+  if (!canAccept.value) return '请联系指定接收人受理此反馈；如需调整接收人，可在“接收与处理”中设置。'
+  if (!canConvert.value && !converted.value) return '请联系有转需求权限的接收人处理此反馈。'
+  return ''
+})
 const acceptedByName = computed(() => {
   const data = collaboration.value
   if (!data?.accepted_by || data.revision !== item.value?.revision) return ''
@@ -114,7 +126,7 @@ async function showConflict(error: unknown, revision: number, onReload?: (latest
 }
 
 const statusActions = computed<StatusAction[]>(() =>
-  item.value ? availableStatusActions(item.value.status, canEdit.value).filter(a => a.target !== 'ACCEPTED' || canAccept.value) : [],
+  item.value ? availableStatusActions(item.value.status, canEdit.value) : [],
 )
 const hasAcceptedActions = computed(() => canConvert.value || statusActions.value.length > 0)
 const dispositionLabels: Partial<Record<StatusAction['target'], string>> = {
@@ -128,9 +140,14 @@ const defaultConfirmPeople = computed(() => auth.user && can('rd.requirement.vie
   : [])
 const convertDialog = ref(false)
 const convertError = ref('')
-const convertEntry = ref<'legacy' | 'create' | 'link'>('legacy')
+const convertEntry = ref<'accept' | 'legacy' | 'create' | 'link'>('legacy')
 const convertMode = ref<ConvertFeedbackPayload['type']>('CREATE_NEW')
 const isCreateMode = computed(() => convertMode.value === 'CREATE_NEW')
+const acceptOnConvert = computed(() => convertEntry.value === 'accept')
+const showConvertModes = computed(() => acceptOnConvert.value || convertEntry.value === 'legacy')
+const requiresAcceptReason = computed(() => acceptOnConvert.value && delegatedAcceptance.value)
+const acceptReason = ref('')
+const acceptReasonError = ref('')
 const conversionSource = ref<Feedback | null>(null)
 const createFormRef = ref<InstanceType<typeof RequirementCreateView>>()
 const createSaving = ref(false)
@@ -139,37 +156,75 @@ const linkSubmitting = ref(false)
 const convertSubmitting = computed(() => createSaving.value || linkSubmitting.value)
 const guidedRequirement = ref<SelectionOption | null>(null)
 const selectedRequirementId = ref<number | null>(null)
-const convertDialogTitles = { legacy: '转为需求', create: '新建需求', link: '关联已有需求' }
+const convertDialogTitles = { accept: '受理并转需求', legacy: '转为需求', create: '新建需求', link: '关联已有需求' }
+let conversionSession: AbortController | null = null
+const conversionBlocker = computed(() => {
+  if (!conversionSource.value || !item.value) return ''
+  if (convertEntry.value === 'legacy' && canConvert.value && !canConvertOnly.value) {
+    return canAcceptAndConvert.value ? '当前反馈可由你受理，请从反馈详情打开“受理并转需求”。' : '请先在“接收与处理”中核对接收人信息。'
+  }
+  if (!acceptOnConvert.value) return ''
+  if (item.value.status !== 'NEW') return `反馈状态已变为「${feedbackStatusLabel[item.value.status]}」，请从反馈详情选择当前可用的处理方式。`
+  if (!canConvert.value) return '反馈已关联需求或当前账号无转需求权限，请在反馈详情核对。'
+  if (!currentCollaboration.value) return '请在“接收与处理”中核对最新接收人信息。'
+  if (!canAccept.value) return '当前账号无法受理此反馈，请联系指定接收人处理。'
+  return ''
+})
+const conversionAllowed = computed(() => canConvert.value && !conversionBlocker.value)
+const displayedConvertError = computed(() => conversionBlocker.value || convertError.value)
 const feedbackConversion = computed(() => conversionSource.value && {
   source: conversionSource.value,
   confirmPeople: defaultConfirmPeople.value,
-  allowed: canConvert.value,
-  error: convertError.value,
+  allowed: conversionAllowed.value,
+  error: displayedConvertError.value,
+  submitLabel: acceptOnConvert.value ? '受理并创建需求' : undefined,
+  isDirty: () => showConvertModes.value && (acceptReason.value !== '' || selectedRequirementId.value != null),
+  busy: linkSubmitting.value,
+  validate: validateAcceptanceReason,
   submit: submitFeedbackRequirement,
 })
 
 function openConvert(entry: typeof convertEntry.value = 'legacy', requirement: SelectionOption | null = null): void {
   if (!item.value || !canConvert.value || convertDialog.value || convertSubmitting.value) return
+  if (entry === 'accept' && !canAcceptAndConvert.value) return
+  if (entry === 'legacy' && !canConvertOnly.value) return
   if (entry === 'link' && (!canLinkExisting.value || !requirement)) return
   convertEntry.value = entry
   convertMode.value = entry === 'link' ? 'LINK_EXISTING' : 'CREATE_NEW'
-  conversionSource.value = entry === 'link' ? null : item.value
+  conversionSource.value = item.value
   guidedRequirement.value = requirement
   selectedRequirementId.value = requirement?.id ?? null
+  acceptReason.value = ''
+  acceptReasonError.value = ''
   convertError.value = ''
+  conversionSession = new AbortController()
   convertDialog.value = true
 }
 
 watch(convertDialog, (open) => {
-  if (!open) createExpanded.value = false
-})
+  if (open) return
+  conversionSession?.abort()
+  conversionSession = null
+  createExpanded.value = false
+  createSaving.value = false
+  linkSubmitting.value = false
+}, { flush: 'sync' })
+onScopeDispose(() => conversionSession?.abort())
 watch(convertMode, () => { convertError.value = '' })
-watch(() => [auth.user?.id, auth.accessToken, auth.permissionCodes.join(',')], () => {
-  if (convertEntry.value !== 'link') return
+watch([
+  () => auth.user?.id,
+  () => auth.user?.data_scope,
+  () => auth.user?.can_view_api_docs,
+  () => Boolean(auth.accessToken),
+  () => [...auth.permissionCodes].sort().join(','),
+], () => {
+  if (!convertDialog.value) return
   guidedRequirement.value = null
   selectedRequirementId.value = null
+  conflict.close()
   convertDialog.value = false
 }, { flush: 'sync' })
+watch(acceptReason, () => { acceptReasonError.value = '' })
 
 async function requestClose(confirmClean = isCreateMode.value): Promise<boolean> {
   if (convertSubmitting.value) return false
@@ -178,6 +233,7 @@ async function requestClose(confirmClean = isCreateMode.value): Promise<boolean>
 }
 defineExpose({ requestClose })
 onBeforeRouteUpdate((to, from) => to.path === from.path || requestClose(false))
+onBeforeRouteLeave(() => convertEntry.value !== 'link' || requestClose(false))
 
 async function beforeConvertClose(done: () => void): Promise<void> {
   if (await requestClose()) done()
@@ -188,25 +244,58 @@ async function dismissLink(): Promise<void> {
 }
 
 async function finishConversion(id: number, message: string): Promise<void> {
+  converted.value = true
   emit('updated')
   ElMessage.success(message)
   convertDialog.value = false
   await finishFeedbackConversion(id, can, (path) => router.push(related(path)), load)
 }
 
-async function showConversionError(error: unknown, revision: number): Promise<void> {
-  convertError.value = (error as { response?: { status?: number } })?.response?.status === 404
-    ? '反馈或目标需求当前无法访问。'
-    : actionErrorMessage(error)
+async function showConversionError(error: unknown, revision: number, signal: AbortSignal): Promise<void> {
+  if (signal.aborted) return
+  const response = (error as { response?: { status?: number; data?: { detail?: unknown } } })?.response
+  if (response?.status === 404) {
+    convertError.value = acceptOnConvert.value && response.data?.detail === 'Not Found'
+      ? '当前服务不支持受理并转需求，请联系管理员检查版本。原输入已保留。'
+      : '反馈或目标需求当前无法访问。'
+  } else {
+    convertError.value = actionErrorMessage(error)
+  }
   await showConflict(error, revision, (latest) => {
-    if (conversionSource.value) conversionSource.value = latest
+    if (signal.aborted) return
+    if (!acceptOnConvert.value || latest.status === 'NEW') conversionSource.value = latest
     convertError.value = ''
   })
 }
 
+function validateAcceptanceReason(): boolean {
+  if (!requiresAcceptReason.value) return true
+  const length = [...acceptReason.value.trim()].length
+  acceptReasonError.value = ''
+  if (length < 2) {
+    acceptReasonError.value = '请填写至少 2 个字符的代受理原因'
+  } else if (length > 500) {
+    acceptReasonError.value = '代受理原因最多 500 个字符'
+  }
+  if (acceptReasonError.value) {
+    const mode = isCreateMode.value ? 'create' : 'link'
+    document.querySelector<HTMLTextAreaElement>(`[data-accept-reason="${mode}"] textarea`)?.focus()
+  }
+  return !acceptReasonError.value
+}
+
+function acceptancePayload(): Pick<ConvertFeedbackPayload, 'accept_on_convert' | 'accept_reason'> {
+  if (!acceptOnConvert.value) return {}
+  return {
+    accept_on_convert: true,
+    ...(requiresAcceptReason.value ? { accept_reason: acceptReason.value.trim() } : {}),
+  }
+}
+
 async function submitFeedbackRequirement(payload: RequirementCreatePayload): Promise<number | undefined> {
   const feedback = conversionSource.value
-  if (!feedback || !convertDialog.value || !isCreateMode.value || !canConvert.value) return
+  const signal = conversionSession?.signal
+  if (!feedback || !signal || !isCreateMode.value || !conversionAllowed.value) return
   if (feedback.system_id != null && payload.system_id != null && feedback.system_id !== payload.system_id) return
   convertError.value = ''
   try {
@@ -221,27 +310,31 @@ async function submitFeedbackRequirement(payload: RequirementCreatePayload): Pro
       acceptance_criteria: payload.acceptance_criteria,
       participants: payload.participants,
       requirement_id: null,
+      ...acceptancePayload(),
       ...(feedback.system_id == null && payload.system_id != null ? { system_id: payload.system_id } : {}),
-    })
-    return requirement.id
+    }, signal)
+    if (!signal.aborted) return requirement.id
   } catch (error) {
-    await showConversionError(error, feedback.revision)
+    await showConversionError(error, feedback.revision, signal)
   }
 }
 
 async function submitLink(): Promise<void> {
-  const feedback = item.value
+  const feedback = conversionSource.value
+  const signal = conversionSession?.signal
   const requirementId = selectedRequirementId.value
-  if (!feedback || !convertDialog.value || isCreateMode.value || convertSubmitting.value || !canConvert.value || !canLinkExisting.value) return
+  if (!feedback || !signal || isCreateMode.value || convertSubmitting.value || !conversionAllowed.value || !canLinkExisting.value) return
   if (!requirementId) {
     ElMessage.warning('请选择目标需求')
     return
   }
+  if (!validateAcceptanceReason()) return
+  const acceptance = acceptancePayload()
   linkSubmitting.value = true
   convertError.value = ''
   try {
     await getRequirement(requirementId)
-    if (!canLinkExisting.value || !canConvert.value || selectedRequirementId.value !== requirementId) return
+    if (signal.aborted || !canLinkExisting.value || !conversionAllowed.value || selectedRequirementId.value !== requirementId) return
     const requirement = await convertFeedback(feedback.id, {
       type: 'LINK_EXISTING',
       revision: feedback.revision,
@@ -249,12 +342,13 @@ async function submitLink(): Promise<void> {
       description_format: 'HTML',
       participants: [],
       requirement_id: requirementId,
-    })
-    await finishConversion(requirement.id, '已关联需求')
+      ...acceptance,
+    }, signal)
+    if (!signal.aborted) await finishConversion(requirement.id, acceptOnConvert.value ? '已受理并关联需求' : '已关联需求')
   } catch (error) {
-    await showConversionError(error, feedback.revision)
+    await showConversionError(error, feedback.revision, signal)
   } finally {
-    linkSubmitting.value = false
+    if (!signal.aborted) linkSubmitting.value = false
   }
 }
 
@@ -264,8 +358,7 @@ const statusSubmitting = ref(false)
 const currentAction = ref<StatusAction | null>(null)
 const statusForm = reactive({ reason: '', duplicate_of_id: null as number | null })
 const statusError = ref('')
-const statusReasonRequired = computed(() => !!currentAction.value && (currentAction.value.needsReason || (currentAction.value.target === 'ACCEPTED' && delegatedAcceptance.value)))
-const statusReasonLabel = computed(() => currentAction.value?.target === 'ACCEPTED' && delegatedAcceptance.value ? '代受理原因（必填）' : '原因')
+const statusReasonRequired = computed(() => currentAction.value?.needsReason ?? false)
 
 function openStatusDialog(action: StatusAction): void {
   currentAction.value = action
@@ -283,10 +376,6 @@ function selectDisposition(target: StatusAction['target']): void {
 async function submitStatus(): Promise<void> {
   if (!item.value || !currentAction.value || statusSubmitting.value || !canEdit.value) return
   const action = currentAction.value
-  if (action.target === 'ACCEPTED' && !canAccept.value) {
-    statusError.value = '接收人信息尚未加载或你不是本反馈的接收人，请联系指定接收人受理。'
-    return
-  }
   if (statusReasonRequired.value && !statusForm.reason.trim()) {
     ElMessage.warning('请填写原因')
     return
@@ -305,7 +394,7 @@ async function submitStatus(): Promise<void> {
       duplicate_of_id: action.needsDuplicate ? statusForm.duplicate_of_id : null,
     })
     emit('updated')
-    ElMessage.success(action.target === 'ACCEPTED' ? '反馈已受理' : '状态已更新')
+    ElMessage.success('状态已更新')
     statusDialog.value = false
     await load()
   } catch (error) {
@@ -459,7 +548,8 @@ onMounted(async () => {
           <el-button v-if="canEdit" @click="openEdit">编辑</el-button>
           <DeleteEntityButton v-if="canEdit && item.status === 'NEW' && !item.main_requirement_id" kind="feedbacks" :id="item.id" :revision="item.revision" :title="item.title" @refresh="load" @deleted="onDeleted" />
           <template v-if="!isAccepted">
-            <el-button v-if="canConvert" type="primary" @click="openConvert()">转需求</el-button>
+            <el-button v-if="canAcceptAndConvert" type="primary" @click="openConvert('accept')">受理并转需求</el-button>
+            <el-button v-else-if="canConvertOnly" type="primary" @click="openConvert()">转需求</el-button>
             <el-button
               v-for="action in statusActions"
               :key="action.target"
@@ -520,7 +610,7 @@ onMounted(async () => {
       </section>
 
       <BusinessSystemAttribution :system-id="item.system_id" :system-name="item.system_name" />
-      <p v-if="item.status === 'NEW' && canEdit && collaboration && !canAccept" role="status">请联系指定接收人受理此反馈；如需调整接收人，可在“接收与处理”中设置。</p>
+      <p v-if="acceptanceHint" class="acceptance-hint" role="status">{{ acceptanceHint }}</p>
       <CollaborationPeople v-if="can('rd.feedback.view')" kind="feedback" :id="item.id" :revision="item.revision" :editable="canEdit" @loaded="collaboration = $event" @updated="load" />
 
       <div class="detail-grid">
@@ -613,7 +703,7 @@ onMounted(async () => {
         <el-form-item v-if="currentAction?.needsDuplicate" label="重复目标反馈 ID" required>
           <ScopedObjectSelector v-model="statusForm.duplicate_of_id" kind="feedback" :allowed="can('rd.feedback.view')" :active="statusDialog" :disabled="statusSubmitting" :exclude-id="feedbackId" />
         </el-form-item>
-        <el-form-item v-if="statusReasonRequired" :label="statusReasonLabel" required>
+        <el-form-item v-if="statusReasonRequired" label="原因" required>
           <el-input v-model="statusForm.reason" type="textarea" :rows="3" />
         </el-form-item>
         <p v-if="currentAction && !statusReasonRequired && !currentAction.needsDuplicate">
@@ -694,15 +784,15 @@ onMounted(async () => {
       :width="isCreateMode ? 'min(1040px, calc(100vw - 32px))' : 'min(560px, 92vw)'"
       :fullscreen="isCreateMode && createExpanded"
       :before-close="beforeConvertClose"
-      :close-on-click-modal="!isCreateMode && !convertSubmitting"
+      :close-on-click-modal="!isCreateMode && !acceptOnConvert && !convertSubmitting"
       :close-on-press-escape="!convertSubmitting"
       :show-close="!convertSubmitting"
       append-to-body
       destroy-on-close
     >
-      <template v-if="convertEntry === 'legacy'" #header="{ titleId, titleClass }">
+      <template v-if="showConvertModes" #header="{ titleId, titleClass }">
         <div>
-          <span :id="titleId" :class="titleClass">{{ convertDialogTitles.legacy }}</span>
+          <span :id="titleId" :class="titleClass">{{ convertDialogTitles[convertEntry] }}</span>
           <div class="convert-mode">
             <span>转换方式</span>
             <el-radio-group v-model="convertMode" aria-label="转换方式" :disabled="convertSubmitting">
@@ -713,28 +803,37 @@ onMounted(async () => {
         </div>
       </template>
       <RequirementCreateView
-        v-if="convertDialog && feedbackConversion"
+        v-if="convertDialog && feedbackConversion && convertEntry !== 'link'"
         v-show="isCreateMode"
         ref="createFormRef"
         embedded
         :conversion="feedbackConversion"
         @cancel="convertDialog = false"
-        @created="finishConversion($event, '已转为需求')"
+        @created="finishConversion($event, acceptOnConvert ? '已受理并创建需求' : '已转为需求')"
         @saving="createSaving = $event"
         @expanded="createExpanded = $event"
-      />
-      <el-form v-if="!isCreateMode" label-position="top">
+      >
+        <template v-if="requiresAcceptReason" #additional-fields>
+          <el-form-item label="代受理原因（必填）" required :error="acceptReasonError" class="span-2" data-accept-reason="create">
+            <el-input v-model="acceptReason" type="textarea" :rows="2" :maxlength="500" />
+          </el-form-item>
+        </template>
+      </RequirementCreateView>
+      <el-form v-if="!isCreateMode" label-position="top" :disabled="convertSubmitting" @submit.prevent="submitLink">
         <el-form-item v-if="convertEntry === 'link' && guidedRequirement" label="目标需求">
           <span class="multiline">{{ guidedRequirement.code }} · {{ guidedRequirement.title }}</span>
         </el-form-item>
-        <el-form-item v-else-if="convertEntry === 'legacy'" label="目标需求" required>
+        <el-form-item v-else-if="showConvertModes" label="目标需求" required>
           <ScopedObjectSelector v-model="selectedRequirementId" kind="requirement" :allowed="canLinkExisting" :active="convertDialog" :disabled="convertSubmitting" />
         </el-form-item>
-        <p v-if="convertError" class="convert-error" role="alert">{{ convertError }}</p>
+        <el-form-item v-if="requiresAcceptReason" label="代受理原因（必填）" required :error="acceptReasonError" data-accept-reason="link">
+          <el-input v-model="acceptReason" type="textarea" :rows="2" :maxlength="500" />
+        </el-form-item>
+        <p v-if="displayedConvertError" class="convert-error" role="alert">{{ displayedConvertError }}</p>
       </el-form>
       <template v-if="!isCreateMode" #footer>
         <el-button :disabled="convertSubmitting" @click="dismissLink">取消</el-button>
-        <el-button type="primary" :loading="convertSubmitting" :disabled="!canConvert || !canLinkExisting" @click="submitLink">确定</el-button>
+        <el-button type="primary" :loading="convertSubmitting" :disabled="!conversionAllowed || !canLinkExisting" @click="submitLink">{{ acceptOnConvert ? '受理并关联已有需求' : '确定' }}</el-button>
       </template>
     </el-dialog>
   </section>
@@ -779,6 +878,7 @@ onMounted(async () => {
   transform: translateY(-2px) rotate(45deg);
 }
 .convert-error { color: var(--if-danger-fg); overflow-wrap: anywhere; }
+.acceptance-hint { margin: var(--if-space-3) 0; color: var(--if-text-2); }
 .convert-mode { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--if-space-3); margin-top: var(--if-space-2); }
 .detail-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(250px, 300px); align-items: start; gap: var(--if-space-4); }
 .detail-main, .detail-side { min-width: 0; }

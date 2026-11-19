@@ -1,7 +1,9 @@
+# ruff: noqa: RUF001
 import smtplib
 import ssl
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, timedelta, timezone
 from email.message import EmailMessage
+from html import escape
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -39,13 +41,13 @@ ACTION_LABELS = {
     "STATUS_REQUIREMENT_LINKED": "反馈已关联需求",
     "CREATED": "新需求待确认",
     "REQUEST_CHANGES": "需求需要补充说明",
-    "RECONFIRM": "需求内容变更, 待重新确认",
+    "RECONFIRM": "需求内容变更，待重新确认",
     "CONFIRM": "需求内容已确认",
-    "REOPEN": "需求已重新打开, 待确认",
-    "STATUS_CONFIRMED": "需求已确认, 等待开发",
+    "REOPEN": "需求已重新打开，待确认",
+    "STATUS_CONFIRMED": "需求已确认，等待开发",
     "STATUS_DEVELOPING": "需求进入开发",
     "STATUS_TESTING": "需求已提交验收",
-    "STATUS_DONE": "需求验收通过, 等待发布",
+    "STATUS_DONE": "需求验收通过，等待发布",
     "STATUS_PAUSED": "需求已暂停",
     "STATUS_CANCELED": "需求已取消",
     "PARTICIPANTS_CHANGE": "环节人员已调整",
@@ -57,6 +59,17 @@ ACTION_LABELS = {
     "PUBLISHED": "已随版本上线",
     "VERIFY_EMAIL": "验证通知邮箱",
 }
+
+MAIL_TIMEZONE = timezone(timedelta(hours=8), name="UTC+08:00")
+
+
+def _mail_time(value: datetime) -> str:
+    value = value.replace(tzinfo=UTC) if value.tzinfo is None else value
+    return value.astimezone(MAIL_TIMEZONE).strftime("%Y年%m月%d日 %H:%M")
+
+
+def _safe_subject(value: str) -> str:
+    return " ".join(value.split())[:80]
 
 
 def send_smtp(message: EmailMessage, address: str) -> None:
@@ -200,19 +213,137 @@ class DeliveryService:
         message["To"] = email
         message["Message-ID"] = f"<{delivery.id}@iterflow.notifications>"
         if event.action == "VERIFY_EMAIL":
-            message["Subject"] = "迭程 IterFlow · 邮箱验证"
+            code = verification_code(event.id)
+            profile_url = f"{settings.app_public_url.rstrip('/')}/#/profile#mail-notifications"
+            message["Subject"] = "迭程 IterFlow｜验证通知邮箱"
             message.set_content(
-                f"验证码: {verification_code(event.id)}\n15 分钟内有效。"
-                "请在已登录的个人中心输入;这不会确认任何业务流程。"
+                "您好，\n\n您正在为迭程 IterFlow 账号验证通知邮箱。\n"
+                f"验证码：{code}\n\n验证码 15 分钟内有效。请登录个人中心输入验证码。\n"
+                f"打开个人中心：\n{profile_url}\n\n"
+                "如果这不是你本人发起的操作，请忽略此邮件。\n\n迭程 IterFlow"
+            )
+            message.add_alternative(
+                self._html_message(
+                    eyebrow="账号安全",
+                    heading="验证您的通知邮箱",
+                    intro="您正在为迭程 IterFlow 账号验证通知邮箱。",
+                    details=(
+                        '<div style="margin:24px 0;padding:18px 20px;background:#f4f5f7;'
+                        "border-radius:6px;text-align:center;font-size:30px;font-weight:700;"
+                        f'letter-spacing:6px;color:#202124">{escape(code)}</div>'
+                    ),
+                    button_label="打开个人中心",
+                    button_url=profile_url,
+                    note=(
+                        "验证码 15 分钟内有效。请在个人中心输入验证码。<br>"
+                        "如果这不是你本人发起的操作，请忽略此邮件。"
+                    ),
+                ),
+                subtype="html",
             )
         else:
-            title, content = self._text(event)
-            message["Subject"] = f"迭程 IterFlow · {title}"
+            record_type = Feedback if event.entity_type == "FEEDBACK" else Requirement
+            record = self.db.get(record_type, event.entity_id)
+            record_title = record.title if record else f"{event.entity_type} #{event.entity_id}"
+            kind = "反馈" if event.entity_type == "FEEDBACK" else "需求"
+            action = event.action.removeprefix("REQUIREMENT_")
+            label = ACTION_LABELS.get(action, "协作进度有更新")
+            if event.action.startswith("REQUIREMENT_"):
+                label = "关联需求有新进展：" + label
+            event_time = _mail_time(event.created_at)
+            submitted_sentence = bool(
+                event.entity_type == "FEEDBACK"
+                and event.action == "STATUS_ACCEPTED"
+                and record
+                and record.submitter_id == delivery.user_id
+            )
+            if submitted_sentence:
+                summary = (
+                    f"您于 {_mail_time(record.created_at)} 提交的反馈《{record_title}》已受理。"
+                )
+                heading = "您提交的反馈已受理"
+            else:
+                summary = f"{kind}《{record_title}》于 {event_time} 更新：{label}。"
+                heading = f"{kind}有新进展"
             path = "feedbacks" if event.entity_type == "FEEDBACK" else "requirements"
+            link = f"{settings.app_public_url.rstrip('/')}/#/{path}/{event.entity_id}"
+            link_label = f"查看{kind}详情"
+            message["Subject"] = (
+                f"迭程 IterFlow｜{_safe_subject(label)}：{_safe_subject(record_title)}"
+            )
             message.set_content(
-                f"{content}\n{settings.app_public_url.rstrip('/')}/#/{path}/{event.entity_id}\n通知送达不表示业务已确认。"
+                f"您好，\n\n{summary}\n\n{link_label}：\n{link}\n\n"
+                f"{kind}编号：#{event.entity_id}\n\n"
+                "此邮件由迭程 IterFlow 自动发送。业务状态以系统记录为准。"
+            )
+            message.add_alternative(
+                self._html_message(
+                    eyebrow=f"{kind}进度通知",
+                    heading=heading,
+                    intro=summary,
+                    details=(
+                        f'<div style="margin:22px 0 6px;padding:14px 16px;'
+                        f'background:#f4f5f7;border-radius:6px;color:#5f6368;font-size:14px">'
+                        f"{escape(kind)}编号：#{event.entity_id}<br>"
+                        f"更新时间：{escape(event_time)}</div>"
+                    ),
+                    button_label=link_label,
+                    button_url=link,
+                    note="此邮件由迭程 IterFlow 自动发送。业务状态以系统记录为准。",
+                ),
+                subtype="html",
             )
         return message
+
+    @staticmethod
+    def _html_message(
+        *,
+        eyebrow: str,
+        heading: str,
+        intro: str,
+        details: str = "",
+        button_label: str | None = None,
+        button_url: str | None = None,
+        note: str,
+    ) -> str:
+        button = ""
+        if button_label and button_url:
+            safe_url = escape(button_url, quote=True)
+            button = (
+                '<table role="presentation" cellspacing="0" cellpadding="0" border="0" '
+                'style="margin:26px 0 12px"><tr><td bgcolor="#202124" '
+                'style="border-radius:5px"><a href="'
+                f'{safe_url}" style="display:inline-block;padding:13px 22px;color:#ffffff;'
+                f'text-decoration:none;font-size:15px;font-weight:600">'
+                f"{escape(button_label)}</a></td></tr></table>"
+                f'<p style="margin:12px 0 0;font-size:12px;line-height:1.6;color:#74777c">'
+                f"如果按钮无法打开，请复制此链接到浏览器：<br>"
+                f'<a href="{safe_url}" style="color:#345f9f;word-break:break-all">'
+                f"{escape(button_url)}</a></p>"
+            )
+        return (
+            '<!doctype html><html><body style="margin:0;padding:24px 12px;'
+            "background:#f3f4f5;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Arial,"
+            'sans-serif;color:#202124"><table role="presentation" width="100%" '
+            'cellspacing="0" cellpadding="0" border="0"><tr><td align="center">'
+            '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" '
+            'border="0" style="max-width:620px;background:#ffffff"><tr><td '
+            'style="padding:26px 32px 20px;border-bottom:1px solid #e8e9eb">'
+            '<div style="font-size:20px;line-height:1.3;font-weight:700;color:#202124">'
+            '迭程 <span style="font-weight:500;color:#5f6368">IterFlow</span></div>'
+            '</td></tr><tr><td style="padding:32px">'
+            f'<div style="margin-bottom:12px;font-size:12px;line-height:1.4;'
+            f'font-weight:600;color:#68717c">{escape(eyebrow)}</div>'
+            f'<h1 style="margin:0 0 18px;font-size:25px;line-height:1.4;'
+            f'font-weight:650;color:#202124">{escape(heading)}</h1>'
+            f'<p style="margin:0;font-size:15px;line-height:1.8;color:#3c4043">'
+            f"{escape(intro)}</p>{details}{button}"
+            f'<p style="margin:28px 0 0;padding-top:18px;border-top:1px solid #e8e9eb;'
+            f'font-size:12px;line-height:1.7;color:#74777c">{note}</p>'
+            '</td></tr><tr><td style="padding:16px 32px 24px;font-size:12px;'
+            'color:#8a8d91">迭程 IterFlow · 需求与版本协作管理系统</td></tr>'
+            "</table></td></tr></table></body></html>"
+        )
 
     @staticmethod
     def _text(event: CollaborationEvent):

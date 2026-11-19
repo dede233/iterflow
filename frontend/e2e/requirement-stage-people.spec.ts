@@ -73,9 +73,10 @@ for (const width of [320, 375, 768, 1200, 1440, 1800]) {
     await card.getByRole('button', { name: '选择 / 调整人员', exact: true }).click()
     const dialog = page.getByRole('dialog', { name: '安排设计、开发与验收人员' })
     await expect(dialog).toBeVisible()
-    for (const [label, person] of [['设计人员（可选）', '设计小王'], ['开发人员', '开发小林'], ['验收人员', '验收小李'], ['验收人员', '验收小陈']]) {
-      await dialog.locator('.el-form-item').filter({ has: page.getByText(label!, { exact: true }) }).locator('.el-select__wrapper').click()
-      const listId = await dialog.getByRole('combobox', { name: label, exact: true }).getAttribute('aria-controls')
+    for (const [role, person] of [['DESIGN', '设计小王'], ['DEVELOP', '开发小林'], ['ACCEPT', '验收小李'], ['ACCEPT', '验收小陈']]) {
+      const field = dialog.locator(`[data-role="${role}"]`)
+      await field.locator('.el-select__wrapper').click()
+      const listId = await field.getByRole('combobox').getAttribute('aria-controls')
       await page.locator(`[id="${listId}"]`).getByRole('option', { name: person, exact: true }).click()
       await dialog.getByText('保存人员后，仍需由对应人员执行确认或阶段操作。').click()
       await expect(page.locator(`[id="${listId}"]`)).toBeHidden()

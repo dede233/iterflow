@@ -118,7 +118,10 @@ def req(db, owner, n, **kwargs):
     )
     db.add(item)
     db.flush()
-    db.add(RequirementParticipant(requirement_id=item.id, user_id=owner.id, role="CONFIRM"))
+    db.add_all(
+        RequirementParticipant(requirement_id=item.id, user_id=owner.id, role=role)
+        for role in ("CONFIRM", "DEVELOP", "ACCEPT")
+    )
     db.commit()
     return item
 

@@ -541,7 +541,11 @@ describe('detail views enforce permission-aware loading in mounted components', 
       ...feedback, status: 'REQUIREMENT_LINKED', main_requirement_id: requirement.id, revision: 2,
     })
     const wrapper = mount(FeedbackDetailView, { global: {
-      stubs: { ...stubs, 'el-form': { template: '<form><slot /></form>' } },
+      stubs: {
+        ...stubs, PeopleSelector: true,
+        'el-form': { template: '<form><slot /></form>' },
+        'el-form-item': { props: ['error'], template: '<div><slot /><p v-if="error">{{ error }}</p></div>' },
+      },
       directives: { loading: {} },
     } })
     await flushPromises()
@@ -558,11 +562,19 @@ describe('detail views enforce permission-aware loading in mounted components', 
     expect(wrapper.get('.dialog').text()).toContain('创建')
     await wrapper.get('.dialog form').trigger('submit')
     await flushPromises()
+    expect(mocks.convertFeedback).not.toHaveBeenCalled()
+    const confirmer = wrapper.get('[data-field="confirm"]')
+    expect(confirmer.text()).toContain('请至少选择一名需求确认人')
+    confirmer.findComponent({ name: 'PeopleSelector' }).vm.$emit('update:modelValue', [7])
+    await flushPromises()
+    await wrapper.get('.dialog form').trigger('submit')
+    await flushPromises()
 
     expect(mocks.convertFeedback).toHaveBeenCalledWith(feedback.id, expect.objectContaining({
       type: 'CREATE_NEW', revision: feedback.revision, requirement_title: feedback.title,
-      description: '<p>反馈描述</p>', description_format: 'HTML', participants: [],
-    }))
+      description: '<p>反馈描述</p>', description_format: 'HTML', participants: [{ role: 'CONFIRM', user_id: 7 }],
+    }), expect.any(AbortSignal))
+    expect(mocks.convertFeedback.mock.calls[0]![1]).not.toHaveProperty('accept_on_convert')
     expect(mocks.routerPush).not.toHaveBeenCalled()
     expect(mocks.getFeedback).toHaveBeenCalledTimes(2)
     expect(mocks.getRequirement).not.toHaveBeenCalled()

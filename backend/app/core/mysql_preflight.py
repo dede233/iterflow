@@ -2,6 +2,8 @@
 
 from sqlalchemy import inspect, text
 
+CURRENT_MYSQL_HEAD = "mysql57_0017"
+
 
 def validate_mysql(
     connection,
@@ -92,7 +94,7 @@ def validate_mysql(
             and allow_legacy
         )
         if not (
-            head == "mysql57_0016"
+            head == CURRENT_MYSQL_HEAD
             or legacy
             or (
                 allow_legacy
@@ -110,18 +112,20 @@ def validate_mysql(
             )
         ):
             raise RuntimeError("MySQL Alembic head is missing or unsupported")
-        if head in {
-            "mysql57_0011",
+        issue4_heads = {
             "mysql57_0012",
             "mysql57_0013",
             "mysql57_0014",
             "mysql57_0015",
             "mysql57_0016",
-        } and "notice_acknowledged_at" not in {
+            CURRENT_MYSQL_HEAD,
+        }
+        target_release_heads = {"mysql57_0015", "mysql57_0016", CURRENT_MYSQL_HEAD}
+        if head in issue4_heads | {"mysql57_0011"} and "notice_acknowledged_at" not in {
             c["name"] for c in inspect(connection).get_columns("sys_mail_preference")
         }:
             raise RuntimeError("Mail notice acknowledgement column is missing")
-        if head in {"mysql57_0012", "mysql57_0013", "mysql57_0014", "mysql57_0015", "mysql57_0016"}:
+        if head in issue4_heads:
             for table in ("rd_requirement", "rd_feedback"):
                 columns = {c["name"] for c in inspect(connection).get_columns(table)}
                 required = {"deleted_at", "deleted_by"}
@@ -133,7 +137,7 @@ def validate_mysql(
                 c["name"] for c in inspect(connection).get_columns("rd_requirement_actor")
             }:
                 raise RuntimeError("Multiple confirmer migration is incomplete")
-        if head in {"mysql57_0013", "mysql57_0014", "mysql57_0015", "mysql57_0016"}:
+        if head in issue4_heads - {"mysql57_0012"}:
             inspector = inspect(connection)
             if "system_id" not in {c["name"] for c in inspector.get_columns("rd_version")}:
                 raise RuntimeError("Version system binding column is missing")
@@ -145,10 +149,12 @@ def validate_mysql(
                 raise RuntimeError("Version system binding foreign key is missing")
         portable = "iterflow_file_key_node" in tables
         business_tables = set(Base.metadata.tables)
-        if head not in {"mysql57_0014", "mysql57_0015", "mysql57_0016"}:
+        if head not in target_release_heads | {"mysql57_0014"}:
             business_tables -= {"sys_announcement", "sys_announcement_read"}
-        if head not in {"mysql57_0015", "mysql57_0016"}:
+        if head not in target_release_heads:
             business_tables -= {"sys_release_target", "rd_release_batch", "rd_release_batch_target"}
+        if head != CURRENT_MYSQL_HEAD:
+            business_tables.remove("rd_requirement_online_feedback")
         if legacy:
             business_tables -= {
                 "rd_feedback_recipient",
@@ -168,7 +174,29 @@ def validate_mysql(
                 "Initialized schema table set differs from the MySQL baseline; "
                 "check migrations and runtime table grants"
             )
-        if head in {"mysql57_0015", "mysql57_0016"}:
+        if head == CURRENT_MYSQL_HEAD:
+            table = "rd_requirement_online_feedback"
+            inspector = inspect(connection)
+            if inspector.get_pk_constraint(table)["constrained_columns"] != ["feedback_id"]:
+                raise RuntimeError("Online feedback provenance primary key is missing")
+            if not any(
+                i["column_names"] == ["requirement_id"] for i in inspector.get_indexes(table)
+            ):
+                raise RuntimeError("Online feedback provenance requirement index is missing")
+            references = {
+                (
+                    tuple(fk["constrained_columns"]),
+                    fk["referred_table"],
+                    tuple(fk["referred_columns"]),
+                )
+                for fk in inspector.get_foreign_keys(table)
+            }
+            if references != {
+                (("feedback_id",), "rd_feedback", ("id",)),
+                (("requirement_id",), "rd_requirement", ("id",)),
+            }:
+                raise RuntimeError("Online feedback provenance foreign keys are missing")
+        if head in target_release_heads:
             if "release_frozen" not in {
                 c["name"] for c in inspect(connection).get_columns("rd_version")
             }:
@@ -201,17 +229,12 @@ def validate_mysql(
                     "domain_iterflow_file_key_node_" + event
                     for event in ("insert", "update", "delete")
                 } | {"storage_key_sys_file_insert", "storage_key_sys_file_update"}
-            if head in {
+            if head in issue4_heads | {
                 "mysql57_0005",
                 "mysql57_0006",
                 "mysql57_0009",
                 "mysql57_0010",
                 "mysql57_0011",
-                "mysql57_0012",
-                "mysql57_0013",
-                "mysql57_0014",
-                "mysql57_0015",
-                "mysql57_0016",
             }:
                 expected |= {
                     "completion_rd_requirement_participant_" + event
@@ -221,7 +244,7 @@ def validate_mysql(
                     c["name"] for c in inspect(connection).get_columns("rd_requirement_participant")
                 }:
                     raise RuntimeError("Developer completion timestamp is missing")
-            if head in {"mysql57_0015", "mysql57_0016"}:
+            if head in target_release_heads:
                 expected |= {
                     "immutable_release_target_update",
                     "immutable_release_target_delete",

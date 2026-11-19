@@ -138,7 +138,7 @@ const queryState = useListQuery({
       <el-form-item label="关键词"><el-input v-model="filters.keyword" placeholder="版本号 / 名称" :maxlength="200" clearable @keyup.enter="applyFilters" /></el-form-item>
       <el-form-item label="状态"><el-select v-model="filters.status" clearable placeholder="全部"><el-option v-for="s in VERSION_STATUSES" :key="s.value" :label="s.label" :value="s.value" /></el-select></el-form-item>
       <template #advanced>
-      <el-form-item label="计划上线日期"><el-date-picker v-model="dateRange" type="daterange" value-format="YYYY-MM-DD" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" popper-class="version-filter-date-popper" /></el-form-item>
+      <el-form-item label="计划上线日期"><el-date-picker v-model="dateRange" type="daterange" :single-panel="isMobile" value-format="YYYY-MM-DD" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" popper-class="list-filter-date-popper" /></el-form-item>
       <el-form-item label="负责人"><ListEntityFilterSelect v-model="filters.owner_id" kind="owner" label="负责人" /></el-form-item>
       </template>
     </ListFilterPanel>
@@ -221,13 +221,4 @@ const queryState = useListQuery({
 .cards { display: grid; gap: 8px; padding: var(--if-space-3); }
 .pager { margin-top: var(--if-space-4); justify-content: flex-end; }
 @media (max-width: 767px) { .pager { justify-content: center; } }
-</style>
-
-<style>
-@media (max-width: 767px) {
-  .version-filter-date-popper .el-date-range-picker { width: min(340px, calc(100vw - 24px)); }
-  .version-filter-date-popper .el-date-range-picker__content { width: 100%; float: none; }
-  .version-filter-date-popper .el-date-range-picker__content.is-right { border-left: 0; border-top: 1px solid var(--if-border); }
-  .version-filter-date-popper { max-height: calc(100vh - 24px); overflow-y: auto; }
-}
 </style>

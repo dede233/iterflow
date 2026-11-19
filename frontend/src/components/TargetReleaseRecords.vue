@@ -31,10 +31,14 @@ onMounted(() => { void load(); void loadOptions() })
 onScopeDispose(() => { sequence++ })
 </script>
 <template>
-  <section class="records">
-    <p>记录版本已发布到哪些小程序或 PC；补记目标不会改变版本上线时间。</p>
-    <el-select v-model="targetId" filterable clearable placeholder="按发布目标筛选" aria-label="发布目标筛选" style="width:min(100%, 400px)" @change="page = 1; load()"><el-option v-for="target in options" :key="target.id" :label="target.label" :value="target.id" /></el-select>
-    <el-button v-if="optionsFailed" link @click="loadOptions">筛选目标加载失败，重试</el-button>
+  <section>
+    <div class="filter-panel target-record-filters">
+      <p>记录版本已发布到哪些小程序或 PC；补记目标不会改变版本上线时间。</p>
+      <el-select v-model="targetId" filterable clearable placeholder="按发布目标筛选" aria-label="发布目标筛选" @change="page = 1; load()">
+        <el-option v-for="target in options" :key="target.id" :label="target.label" :value="target.id" />
+      </el-select>
+      <el-button v-if="optionsFailed" link @click="loadOptions">筛选目标加载失败，重试</el-button>
+    </div>
     <ErrorState v-if="failed" title="目标发布记录加载失败" retry-label="重新加载" @retry="load" />
     <div v-else v-loading="loading">
       <article v-for="record in rows" :key="record.id" class="record">
@@ -52,8 +56,16 @@ onScopeDispose(() => { sequence++ })
   </section>
 </template>
 <style scoped>
-.records { padding:16px; }
+.target-record-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--if-space-2) var(--if-space-3);
+  padding-bottom: var(--if-space-4);
+}
+.target-record-filters p { flex-basis: 100%; margin: 0; color: var(--if-text-2); }
+.target-record-filters .el-select { width: min(100%, 400px); }
 .record { margin-top:12px; border:1px solid var(--if-border); border-radius:var(--if-radius-sm); padding:14px; overflow-wrap:anywhere; }
 .record p { white-space:pre-wrap; line-height:1.6; margin:8px 0; }
-.record small,.records > p { color:var(--if-text-2); }
+.record small { color:var(--if-text-2); }
 </style>

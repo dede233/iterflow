@@ -3,7 +3,7 @@ import { onScopeDispose, ref, watch } from 'vue'
 import { listPeople, type Person } from '@/api/collaboration'
 import { useAuthStore } from '@/stores/auth'
 const props = defineProps<{ modelValue: number[]; kind: 'feedback' | 'requirement'; feedbackId?: number; selected?: Person[]; multiple?: boolean }>()
-const emit = defineEmits<{ 'update:modelValue': [number[]] }>()
+const emit = defineEmits<{ 'update:modelValue': [number[]]; 'people-added': [Person[]] }>()
 const auth = useAuthStore()
 const options = ref<Person[]>([])
 const loading = ref(false)
@@ -33,9 +33,15 @@ onScopeDispose(() => { sequence++ })
 function available() {
   return [...new Map([...(props.selected ?? []), ...options.value].map(p => [p.id, p])).values()]
 }
+function updateSelection(value: number | number[] | undefined) {
+  const ids = Array.isArray(value) ? value : value ? [value] : []
+  const added = available().filter(person => ids.includes(person.id) && !props.modelValue.includes(person.id))
+  emit('update:modelValue', ids)
+  if (added.length) emit('people-added', added)
+}
 </script>
 <template>
-  <el-select :model-value="multiple ? modelValue : modelValue[0]" :multiple="multiple" filterable remote clearable :remote-method="search" :loading="loading" placeholder="搜索人员" style="width:100%" @visible-change="$event && search()" @update:model-value="emit('update:modelValue', multiple ? $event : ($event ? [$event] : []))">
+  <el-select :model-value="multiple ? modelValue : modelValue[0]" :multiple="multiple" filterable remote clearable :remote-method="search" :loading="loading" placeholder="搜索人员" style="width:100%" @visible-change="$event && search()" @update:model-value="updateSelection">
     <el-option v-for="person in available()" :key="person.id" :label="person.display_name" :value="person.id" />
     <template v-if="failed || options.length < total || (!options.length && !loading)" #footer>
       <span v-if="failed">人员加载失败 <el-button link @click="search(keyword)">重试</el-button></span>

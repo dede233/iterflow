@@ -104,7 +104,12 @@ def verify(client, headers, engine):
 def test_verified_mail_site_dedup_and_email_change(collaboration_api, smtp_sink):
     client, headers, engine = collaboration_api
     preferences = verify(client, headers, engine)
-    assert len(smtp_sink) == 1 and "验证码" in smtp_sink[0].get_content()
+    assert len(smtp_sink) == 1
+    verification_mail = smtp_sink[0]
+    assert "验证码" in verification_mail.get_body(preferencelist=("plain",)).get_content()
+    html = verification_mail.get_body(preferencelist=("html",)).get_content()
+    assert "验证您的通知邮箱" in html
+    assert "/#/profile#mail-notifications" in html
     first = create_feedback(client, headers).json()
     drain(engine)
     drain(engine)
@@ -312,7 +317,12 @@ def test_waiting_release_is_task_only_for_current_version_owner(collaboration_ap
     req = client.post(
         "/api/v1/requirements",
         headers=headers[1],
-        json={"title": "发布待办", "description": "已验收", "requirement_type": "FEATURE"},
+        json={
+            "title": "发布待办",
+            "description": "已验收",
+            "requirement_type": "FEATURE",
+            "participants": [{"role": "CONFIRM", "user_id": 1}],
+        },
     ).json()
     with Session(engine) as db:
         version = Version(version_no="MAIL-TASK", name="发布待办", owner_id=2, created_by=1)

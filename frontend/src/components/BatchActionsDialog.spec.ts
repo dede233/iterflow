@@ -15,12 +15,15 @@ const initialRows: Row[] = [
   { id: 1, title: '待确认需求', requirement_no: 'REQ-101', status: 'DRAFT' },
   { id: 2, title: '已上线需求', requirement_no: 'REQ-102', status: 'ONLINE' },
 ]
+const deliveryPeople = [
+  { user_id: 2, role: 'DEVELOP', active: true }, { user_id: 3, role: 'ACCEPT', active: true },
+]
 beforeEach(() => {
   vi.resetAllMocks(); setActivePinia(createPinia())
   useAuthStore().user = { id: 1, permission_codes: ['rd.requirement.status', 'rd.requirement.view', 'rd.feedback.edit', 'rd.feedback.view'] } as any
   mocks.requirement.mockImplementation(id => Promise.resolve({ id, title: id === 2 ? '已上线需求' : '待确认需求', requirement_no: `REQ-${100 + id}`, status: id === 2 ? 'ONLINE' : 'DRAFT', revision: 7 }))
   mocks.workflow.mockResolvedValue({ revision: 7, needs_confirmation: true, design_status: 'NOT_REQUIRED' })
-  mocks.people.mockResolvedValue({ revision: 7, participants: [{ user_id: 1, role: 'CONFIRM', active: true }] })
+  mocks.people.mockResolvedValue({ revision: 7, participants: [{ user_id: 1, role: 'CONFIRM', active: true }, ...deliveryPeople] })
   mocks.feedback.mockImplementation(id => Promise.resolve({ id, title: '待处理反馈', feedback_no: `FB-${id}`, status: 'NEW', revision: 7 }))
   mocks.collaboration.mockResolvedValue({ revision: 7, recipients: [{ id: 1, display_name: '接收人' }] })
   mocks.batch.mockResolvedValue({ results: [{ id: 1, success: true, status_code: 200, code: 0, message: '已完成', revision: 8 }] })
@@ -88,6 +91,20 @@ it('previews mixed states and submits only eligible records with inspected revis
   expect(mocks.batch).toHaveBeenCalledTimes(1)
   wrapper.unmount()
 })
+it('reports missing and inactive delivery people and skips those rows when confirming in bulk', async () => {
+  mocks.requirement.mockImplementation(id => Promise.resolve({ id, requirement_no: `REQ-${100 + id}`, status: 'DRAFT', revision: 7 }))
+  mocks.people.mockImplementation(id => Promise.resolve({ revision: 7, participants: [
+    { user_id: 1, role: 'CONFIRM', active: true },
+    ...(id === 1 ? deliveryPeople : [{ user_id: 2, role: 'DEVELOP', active: false }]),
+  ] }))
+  const wrapper = panel(); await prepare(wrapper)
+  const preview = wrapper.get('[aria-label="操作前检查"]')
+  expect(preview.text()).toContain('尚未设置有效开发人员、验收人员，暂不能确认当前内容。请联系有人员编辑权限的成员完成设置。')
+  expect(preview.find('a[href*="/requirements/2"]').exists()).toBe(true)
+  await click(wrapper, '确认需求（1 条）')
+  expect(mocks.batch).toHaveBeenCalledExactlyOnceWith('requirements', { action: 'CONFIRM', items: [{ id: 1, revision: 7 }], reason: null })
+  wrapper.unmount()
+})
 it.each([false, true])('keeps submitted identities after a parent refresh during a write (rejected=%s)', async rejected => {
   let resolve!: (value: unknown) => void
   let reject!: (reason: unknown) => void
@@ -115,7 +132,7 @@ it.each([false, true])('keeps submitted identities after a parent refresh during
 })
 it('requires delegated reasons and explains partial conflicts without replay', async () => {
   useAuthStore().user!.can_view_api_docs = true
-  mocks.people.mockResolvedValue({ revision: 7, participants: [{ user_id: 3, role: 'CONFIRM', active: true }] })
+  mocks.people.mockResolvedValue({ revision: 7, participants: [{ user_id: 3, role: 'CONFIRM', active: true }, ...deliveryPeople] })
   mocks.batch.mockResolvedValue({ results: [{ id: 1, success: false, status_code: 409, code: 40910, message: '信息已更新', revision: 9 }] })
   const wrapper = panel(); await prepare(wrapper); await click(wrapper, '确认需求（1 条）')
   expect(mocks.batch).not.toHaveBeenCalled(); expect(wrapper.text()).toContain('至少 2 个字符')
@@ -138,7 +155,7 @@ it('returns to selection and requires a fresh check instead of using the old rev
   expect(wrapper.findComponent({ name: 'el-checkbox-group' }).props('modelValue')).toEqual([1, 2])
   mocks.requirement.mockImplementation(id => Promise.resolve({ id, status: id === 2 ? 'ONLINE' : 'DRAFT', revision: 8 }))
   mocks.workflow.mockResolvedValue({ revision: 8, needs_confirmation: true, design_status: 'NOT_REQUIRED' })
-  mocks.people.mockResolvedValue({ revision: 8, participants: [{ user_id: 1, role: 'CONFIRM', active: true }] })
+  mocks.people.mockResolvedValue({ revision: 8, participants: [{ user_id: 1, role: 'CONFIRM', active: true }, ...deliveryPeople] })
   await click(wrapper, '下一步：检查'); await click(wrapper, '确认需求（1 条）')
   expect(mocks.batch.mock.calls[0]![1].items).toEqual([{ id: 1, revision: 8 }])
   wrapper.unmount()

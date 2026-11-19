@@ -1,14 +1,20 @@
 import { mockReadPanels } from './collaboration-fixture'
 import { expect, test, type Page } from '@playwright/test'
 
+const directAcceptance = '开发完成并验收通过'
+const developer = { role: 'DEVELOP', user_id: 1, display_name: '环节人员', active: true }
+const acceptor = { role: 'ACCEPT', user_id: 2, display_name: '验收小李', active: true }
+
 async function setup(page: Page, options: any = {}) {
   const { status = 'DEVELOPING', actor = 1, administrator = true, participants: initialPeople = ['CONFIRM', 'DESIGN', 'DEVELOP', 'ACCEPT'].map(role => ({ role, user_id: 1, display_name: '环节人员', active: true })), design = 'NOT_REQUIRED', confirmed: initialConfirmed = true, feedback = false, editable = true, reject = false } = options
   let participants = initialPeople, confirmed = initialConfirmed, designStatus = design
   const item = { id: 1, requirement_no: 'REQ-ENTRY', title: '流程入口回归', requirement_type: 'FEATURE', source: 'DIRECT', priority: 'P1', status, owner_id: null, current_version_id: null, description: '检查人员与状态操作衔接', acceptance_criteria: '人员保存不自动流转', revision: 8, created_at: '2026-11-03T00:00:00Z', updated_at: '2026-11-03T00:00:00Z', updated_by: 1 }
+  const converted = { ...item, status: 'DRAFT', source: 'FEEDBACK', revision: 1 }
   const writes: any[] = [], unexpected: string[] = [], errors: string[] = []
+  const records: { id: string; action: string; actor_id: number; created_at: string; detail: { actor_name: string; source: string } }[] = []
   page.on('pageerror', e => errors.push(e.message))
   await page.addInitScript(() => { localStorage.setItem('iterflow.access_token', 'local-entry'); localStorage.setItem('iterflow.refresh_token', 'local-entry') })
-  const flow = () => ({ revision: item.revision, content_revision: 2, confirmed_revision: confirmed ? 2 : 1, needs_confirmation: !confirmed, legacy_completed: false, design_status: designStatus, paused_from: status === 'PAUSED' ? 'DEVELOPING' : null, records: [] })
+  const flow = () => ({ revision: item.revision, content_revision: 2, confirmed_revision: confirmed ? 2 : 1, needs_confirmation: !confirmed, legacy_completed: false, design_status: designStatus, paused_from: status === 'PAUSED' ? 'DEVELOPING' : null, records })
   await page.route('**/api/v1/**', async route => {
     const path = new URL(route.request().url()).pathname, method = route.request().method()
     const body = method === 'GET' ? null : route.request().postDataJSON()
@@ -22,23 +28,41 @@ async function setup(page: Page, options: any = {}) {
       if (body.action === 'CONFIRM') { confirmed = true; if (item.status === 'DRAFT') item.status = 'CONFIRMED' }
       else if (body.action === 'REOPEN') { expect(body.reason?.trim().length).toBeGreaterThan(0); item.status = 'DRAFT'; confirmed = false }
       else if (body.action === 'DESIGN_DONE') designStatus = 'DONE'
+      else if (body.action === 'COMPLETE_AND_ACCEPT') {
+        if (options.workflowConflict) {
+          return route.fulfill({ status: 409, json: { code: 40901, message: '需求已修改, 请刷新后重试', data: { current_revision: item.revision + 1 } } })
+        }
+        item.status = 'DONE'
+        records.push(...['STATUS_DONE', 'STATUS_TESTING'].map(action => ({
+          id: action, action, actor_id: actor, created_at: item.updated_at,
+          detail: { actor_name: developer.display_name, source: 'COMPLETE_AND_ACCEPT' },
+        })))
+      }
       else throw new Error(`Unexpected workflow ${body.action}`)
       item.revision++
       return route.fulfill({ json: flow() })
     }
-    if (method === 'PATCH' && /\/(requirements|feedbacks)\/1\/status$/.test(path)) {
+    if (method === 'POST' && path === '/api/v1/feedbacks/1/accept-and-convert' && feedback) {
+      expect(body).toMatchObject({ revision: item.revision, type: 'CREATE_NEW', accept_on_convert: true })
+      writes.push(body)
+      return route.fulfill({ json: converted })
+    }
+    if (method === 'PATCH' && path === '/api/v1/requirements/1/status') {
       expect(body.revision).toBe(item.revision); writes.push(body)
       if (reject) return route.fulfill({ status: 403, json: { code: 40301, message: '环节人员已调整，请刷新后由对应人员操作', data: null } })
       if (actor !== 1) expect(body.reason?.trim().length).toBeGreaterThan(0)
       item.status = body.status; item.revision++
-      return route.fulfill({ json: feedback ? { ...item, feedback_no: 'FB-ENTRY', feedback_type: 'BUG', urgency: 'NORMAL', submitter_id: 2, main_requirement_id: null } : item })
+      return route.fulfill({ json: item })
     }
     const permission_codes = editable ? ['*'] : ['rd.requirement.view', 'rd.requirement.status', 'rd.feedback.view', 'rd.feedback.edit']
+    if (method === 'GET' && path === '/api/v1/requirements/1/online-review' && !feedback && item.status === 'ONLINE') {
+      return route.fulfill({ json: { revision: item.revision, can_confirm: false, confirmation: null, feedbacks: [], feedback_total: 0 } })
+    }
     const responses: Record<string, unknown> = {
       '/api/v1/auth/me': { id: actor, username: 'entry-test', display_name: '回归账号', status: 'ACTIVE', must_change_password: false, data_scope: 'ALL', permission_codes, can_view_api_docs: administrator, role_ids: [], revision: 1 },
       '/api/v1/me/mail-preferences': { revision: 1, mode: 'TASKS', email: null, pending_email: null, verified: false, smtp_enabled: false, notice_acknowledged: false },
       '/api/v1/notifications/unread-count': { unread_count: 0 }, '/api/v1/systems': { systems: [], modules: [] },
-      '/api/v1/requirements/1': item, '/api/v1/requirements/1/workflow': flow(),
+      '/api/v1/requirements/1': feedback ? converted : item, '/api/v1/requirements/1/workflow': flow(),
       '/api/v1/requirements/1/participants': { revision: item.revision, participants }, '/api/v1/requirements/1/feedbacks': [],
       '/api/v1/collaboration/people': { items: [{ id: 1, display_name: '环节人员' }, { id: 2, display_name: '验收小李' }], total: 2, page: 1, page_size: 20 },
       '/api/v1/feedbacks/1': { ...item, feedback_no: 'FB-ENTRY', feedback_type: 'BUG', urgency: 'NORMAL', submitter_id: 2, main_requirement_id: null },
@@ -59,6 +83,79 @@ async function setup(page: Page, options: any = {}) {
 function clean(audit: Awaited<ReturnType<typeof setup>>) { expect(audit.unexpected).toEqual([]); expect(audit.errors).toEqual([]) }
 
 for (const width of [375, 1440]) {
+  test(`add developers to existing acceptors and directly accept at ${width}px`, async ({ page }, info) => {
+    await page.setViewportSize({ width, height: 900 })
+    const audit = await setup(page, { administrator: false, participants: [developer, acceptor], design: width === 375 ? 'DONE' : 'NOT_REQUIRED' })
+    const shortcut = page.getByRole('button', { name: directAcceptance, exact: true })
+    const submitForAcceptance = page.getByRole('button', { name: '提交验收', exact: true })
+    await expect(submitForAcceptance).toBeEnabled()
+    await expect(shortcut).toHaveCount(0)
+    await page.getByRole('list', { name: '需求阶段' }).getByRole('button', { name: /^待开发/ }).click()
+    await page.getByRole('button', { name: '选择 / 调整人员', exact: true }).click()
+    const people = page.getByRole('dialog', { name: '安排设计、开发与验收人员', exact: true })
+    const addDevelopers = people.getByRole('button', { name: '将开发人员加入验收', exact: true })
+    await addDevelopers.click()
+    const acceptanceField = people.locator('[data-role="ACCEPT"]')
+    await expect(acceptanceField).toContainText(acceptor.display_name)
+    await expect(acceptanceField).toContainText(developer.display_name)
+    await expect(addDevelopers).toBeDisabled()
+    expect(audit.writes).toHaveLength(0)
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width + 1)
+    await people.getByRole('button', { name: '保存人员', exact: true }).click()
+    await expect(people).toBeHidden()
+    expect(audit.writes).toEqual([{ revision: 8, participants: [
+      { role: 'DEVELOP', user_id: 1 }, { role: 'ACCEPT', user_id: 2 }, { role: 'ACCEPT', user_id: 1 },
+    ] }])
+
+    await expect(submitForAcceptance).toBeEnabled()
+    await shortcut.click()
+    const dialog = page.getByRole('dialog', { name: directAcceptance, exact: true })
+    await expect(dialog.getByText('提交后，需求将进入待发布。', { exact: true })).toBeVisible()
+    await expect(dialog.getByText('代操作原因（必填）', { exact: true })).toHaveCount(0)
+    expect(audit.writes).toHaveLength(1)
+    await page.screenshot({ path: info.outputPath('complete-and-accept-confirmation.png'), animations: 'disabled' })
+    const confirm = dialog.getByRole('button', { name: '确认操作', exact: true })
+    await confirm.evaluate(button => { (button as HTMLButtonElement).click(); (button as HTMLButtonElement).click() })
+    await expect(dialog).toBeHidden()
+    await expect(page.locator('.progress-status')).toHaveText('待发布')
+    await expect(shortcut).toHaveCount(0)
+    expect(audit.writes).toHaveLength(2)
+    expect(audit.writes[1]).toMatchObject({ action: 'COMPLETE_AND_ACCEPT', revision: 9 })
+    const history = page.locator('.progress-history')
+    await history.locator('summary').first().click()
+    for (const step of ['提交验收', '验收通过']) await expect(history.getByRole('article').filter({ hasText: step })).toContainText('环节人员 #1')
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width + 1)
+    clean(audit)
+  })
+
+  test(`ordinary developer can still submit for another acceptor at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    const audit = await setup(page, { administrator: false, participants: [developer, acceptor] })
+    await expect(page.getByRole('button', { name: directAcceptance, exact: true })).toHaveCount(0)
+    await page.getByRole('button', { name: '提交验收', exact: true }).click()
+    const dialog = page.getByRole('dialog', { name: '提交验收', exact: true })
+    await dialog.getByRole('button', { name: '确定', exact: true }).click()
+    await expect(dialog).toBeHidden()
+    await expect(page.locator('.progress-status')).toHaveText('待验收')
+    expect(audit.writes).toEqual([expect.objectContaining({ status: 'TESTING', revision: 8 })])
+    clean(audit)
+  })
+
+  test(`keep combined acceptance explanation after a revision conflict at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    const audit = await setup(page, { administrator: false, workflowConflict: true })
+    await page.getByRole('button', { name: directAcceptance, exact: true }).click()
+    const dialog = page.getByRole('dialog', { name: directAcceptance, exact: true })
+    const reason = dialog.getByRole('textbox')
+    await reason.fill('按验收标准完成本轮结果验证')
+    await dialog.getByRole('button', { name: '确认操作', exact: true }).click()
+    await expect(dialog.getByRole('alert')).toHaveText('需求已修改, 请刷新后重试')
+    await expect(reason).toHaveValue('按验收标准完成本轮结果验证')
+    await expect(page.locator('.progress-status')).toHaveText('开发中')
+    expect(audit.writes).toEqual([{ action: 'COMPLETE_AND_ACCEPT', revision: 8, reason: '按验收标准完成本轮结果验证' }])
+    clean(audit)
+  })
+
   test(`assign missing acceptor before submission at ${width}px`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 900 })
     const audit = await setup(page, { participants: [{ role: 'DEVELOP', user_id: 1, display_name: '环节人员', active: true }] })
@@ -91,11 +188,13 @@ for (const width of [375, 1440]) {
       await page.setViewportSize({ width, height: 900 })
       const audit = await setup(page, mode === 'design' ? { design: 'IN_PROGRESS' } : { confirmed: false })
       await expect(page.getByRole('button', { name: '提交验收', exact: true })).toBeDisabled()
+      await expect(page.getByRole('button', { name: directAcceptance, exact: true })).toHaveCount(0)
       await page.getByRole('button', { name: mode === 'design' ? '完成设计' : '确认当前内容', exact: true }).click()
       const dialog = page.getByRole('dialog', { name: mode === 'design' ? '完成设计' : '确认当前内容', exact: true })
       await dialog.getByRole('button', { name: '确认操作', exact: true }).click()
       await expect(dialog).toBeHidden()
       await expect(page.getByRole('button', { name: '提交验收', exact: true })).toBeEnabled()
+      await expect(page.getByRole('button', { name: directAcceptance, exact: true })).toBeEnabled()
       expect(audit.writes).toHaveLength(1); clean(audit)
     })
   }
@@ -103,6 +202,7 @@ for (const width of [375, 1440]) {
     test(`require delegated ${action} reason before request at ${width}px`, async ({ page }, info) => {
       await page.setViewportSize({ width, height: 900 })
       const audit = await setup(page, { status, actor: 9 })
+      await expect(page.getByRole('button', { name: directAcceptance, exact: true })).toHaveCount(0)
       await page.getByRole('button', { name: action, exact: true }).click()
       const dialog = page.getByRole('dialog', { name: action, exact: true })
       await expect(dialog.getByText('代操作原因（必填）', { exact: true })).toBeVisible()
@@ -116,36 +216,41 @@ for (const width of [375, 1440]) {
       expect(audit.writes[0].reason).toBe('经指定人员授权代操作'); clean(audit)
     })
   }
-  test(`allow delegated feedback acceptance with reason at ${width}px`, async ({ page }) => {
+  test(`require a delegated reason for combined feedback conversion at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     const audit = await setup(page, { feedback: true, status: 'NEW', actor: 9 })
-    await page.getByRole('button', { name: '受理', exact: true }).click()
-    const dialog = page.getByRole('dialog', { name: '受理', exact: true })
-    await expect(dialog.getByRole('textbox', { name: /代受理原因（必填）/ })).toBeVisible()
-    await dialog.getByRole('button', { name: '确定', exact: true }).click()
+    await page.getByRole('button', { name: '受理并转需求', exact: true }).click()
+    const dialog = page.getByRole('dialog', { name: '受理并转需求', exact: true })
+    const reason = dialog.getByRole('textbox', { name: /代受理原因（必填）/ })
+    const submit = dialog.getByRole('button', { name: '受理并创建需求', exact: true })
+    await expect(reason).toBeVisible()
+    await submit.click()
     expect(audit.writes).toHaveLength(0)
-    await dialog.getByRole('textbox').fill('接收人授权代受理')
-    await dialog.getByRole('button', { name: '确定', exact: true }).click()
+    await reason.fill('接收人授权代受理')
+    await submit.click()
     await expect(dialog).toBeHidden()
-    expect(audit.writes[0].reason).toBe('接收人授权代受理'); clean(audit)
+    await expect(page).toHaveURL(/#\/requirements\/1\?/)
+    expect(audit.writes).toEqual([expect.objectContaining({ accept_reason: '接收人授权代受理' })]); clean(audit)
   })
   test(`hide acceptance for ordinary non-receiver at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     const audit = await setup(page, { feedback: true, status: 'NEW', actor: 9, administrator: false })
     await expect(page.getByText(/请联系指定接收人受理此反馈/)).toBeVisible()
-    await expect(page.getByRole('button', { name: '受理', exact: true })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: '受理并转需求', exact: true })).toHaveCount(0)
     expect(audit.writes).toEqual([]); clean(audit)
   })
   for (const legacy of [false, true]) {
-    test(`retain ordinary feedback acceptance legacy=${legacy} at ${width}px`, async ({ page }) => {
+    test(`allow combined feedback conversion with or without a legacy recipient legacy=${legacy} at ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 })
       const audit = await setup(page, { feedback: true, status: 'NEW', actor: 1, administrator: false, legacy })
-      await page.getByRole('button', { name: '受理', exact: true }).click()
-      const dialog = page.getByRole('dialog', { name: '受理', exact: true })
-      await expect(dialog.getByRole('textbox')).toHaveCount(0)
-      await dialog.getByRole('button', { name: '确定', exact: true }).click()
+      await page.getByRole('button', { name: '受理并转需求', exact: true }).click()
+      const dialog = page.getByRole('dialog', { name: '受理并转需求', exact: true })
+      await expect(dialog.getByRole('textbox', { name: /受理原因/ })).toHaveCount(0)
+      await dialog.getByRole('button', { name: '受理并创建需求', exact: true }).click()
       await expect(dialog).toBeHidden()
-      expect(audit.writes[0].reason).toBeNull(); clean(audit)
+      await expect(page).toHaveURL(/#\/requirements\/1\?/)
+      expect(audit.writes).toHaveLength(1)
+      expect(audit.writes[0]).not.toHaveProperty('accept_reason'); clean(audit)
     })
   }
   test(`preserve exact server refusal and input without replay at ${width}px`, async ({ page }) => {

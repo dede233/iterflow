@@ -20,6 +20,13 @@ from app.schemas.entity_actions import (
     EntityDeleted,
     RequirementBatchAction,
 )
+from app.schemas.feedback import FeedbackOut
+from app.schemas.online_review import (
+    OnlineReviewConfirm,
+    OnlineReviewConfirmation,
+    OnlineReviewFeedbackCreate,
+    OnlineReviewOut,
+)
 from app.schemas.requirement import (
     LinkedFeedbackOut,
     RequirementCreate,
@@ -32,6 +39,7 @@ from app.services.entity_actions_service import EntityActionsService
 from app.services.entity_activity_service import EntityActivityService
 from app.services.feedback_service import FeedbackService
 from app.services.file_service import FileService
+from app.services.online_review_service import OnlineReviewService
 from app.services.requirement_images import IMAGE_ENTITY
 from app.services.requirement_service import RequirementService
 
@@ -198,6 +206,61 @@ def list_requirement_feedbacks(
             requirement_id, viewer_id=user.id, viewer_scope=feedback_scope
         )
     ]
+
+
+@router.get(
+    "/{requirement_id}/online-review",
+    response_model=OnlineReviewOut,
+    responses=api_revision_conflict_responses(401, 403, 404, 409),
+    operation_id="get_online_review",
+)
+def get_online_review(
+    requirement_id: int,
+    page: int = Query(1, ge=1),
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("rd.requirement.view")),
+):
+    users = UserRepository(db)
+    permissions = users.permission_codes(user.id)
+    return OnlineReviewService(db).view(
+        requirement_id,
+        user.id,
+        users.data_scope(user.id),
+        page,
+        can_view_feedback="*" in permissions or "rd.feedback.view" in permissions,
+    )
+
+
+@router.post(
+    "/{requirement_id}/online-review/confirm",
+    response_model=OnlineReviewConfirmation,
+    responses=api_revision_conflict_responses(401, 403, 404, 409),
+    operation_id="confirm_online_review",
+)
+def confirm_online_review(
+    requirement_id: int,
+    payload: OnlineReviewConfirm,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("rd.requirement.view")),
+):
+    scope = UserRepository(db).data_scope(user.id)
+    return OnlineReviewService(db).confirm(requirement_id, payload, user, scope)
+
+
+@router.post(
+    "/{requirement_id}/online-review/feedbacks",
+    response_model=FeedbackOut,
+    responses=api_revision_conflict_responses(401, 403, 404, 409),
+    operation_id="create_online_review_feedback",
+)
+def create_online_review_feedback(
+    requirement_id: int,
+    payload: OnlineReviewFeedbackCreate,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_all_permissions("rd.requirement.view", "rd.feedback.create")),
+):
+    scope = UserRepository(db).data_scope(user.id)
+    return OnlineReviewService(db).create_feedback(requirement_id, payload, user.id, scope)
 
 
 @router.patch(

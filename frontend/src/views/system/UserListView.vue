@@ -217,8 +217,11 @@ onMounted(load)
     <div v-else v-loading="loading" class="user-cards">
       <article v-for="user in rows" :key="user.id" class="user-card">
         <div class="user-card__head">
-          <div><strong>{{ user.display_name }}</strong><span class="user-card__id">{{ user.username }}</span></div>
-          <StatusTag :status="user.status" :label="user.status === 'ACTIVE' ? '启用' : '停用'" size="sm" />
+          <div class="user-card__identity">
+            <strong>{{ user.display_name }}</strong>
+            <span class="user-card__id">{{ user.username }}</span>
+          </div>
+          <StatusTag class="user-card__status" :status="user.status" :label="user.status === 'ACTIVE' ? '启用' : '停用'" size="sm" />
         </div>
         <div class="user-card__details"><span>角色</span><span>{{ roleNames(user) }}</span></div>
         <div v-if="user.email" class="user-card__details"><span>邮箱</span><span>{{ user.email }}</span></div>
@@ -325,6 +328,8 @@ onMounted(load)
 .user-cards { display: grid; gap: 10px; padding: var(--if-space-4); }
 .user-card { min-width: 0; padding: 14px; background: var(--if-bg-surface); border: 1px solid var(--if-border); border-radius: var(--if-radius); }
 .user-card__head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 12px; }
+.user-card__identity { min-width: 0; overflow-wrap: anywhere; }
+.user-card__status { flex-shrink: 0; }
 .user-card__head strong { display: block; font-size: 15px; }
 .user-card__id { display: block; margin-top: 3px; color: var(--if-text-3); font-family: var(--if-font-mono); font-size: 12px; }
 .user-card__details { display: grid; grid-template-columns: 42px minmax(0, 1fr); gap: 8px; margin-top: 6px; color: var(--if-text-2); font-size: 12px; }

@@ -21,6 +21,14 @@ CORE_ROUTE_PERMISSION_MATRIX: dict[tuple[str, str], dict[str, Any]] = {
     },
     ("POST", "/api/v1/feedbacks/{feedback_id}/convert"): {
         "gates": [("any", ("rd.feedback.convert",))],
+        "conditional": {
+            "LINK_EXISTING": "rd.requirement.view",
+            "accept_on_convert": "rd.feedback.edit",
+        },
+        "scope": "target-requirement-SELF-404",
+    },
+    ("POST", "/api/v1/feedbacks/{feedback_id}/accept-and-convert"): {
+        "gates": [("all", ("rd.feedback.edit", "rd.feedback.convert"))],
         "conditional": {"LINK_EXISTING": "rd.requirement.view"},
         "scope": "target-requirement-SELF-404",
     },
@@ -34,6 +42,19 @@ CORE_ROUTE_PERMISSION_MATRIX: dict[tuple[str, str], dict[str, Any]] = {
     ("GET", "/api/v1/requirements/{requirement_id}/feedbacks"): {
         "gates": [("all", ("rd.requirement.view", "rd.feedback.view"))],
         "scope": "requirement-and-feedback-SELF-404-filter",
+    },
+    ("GET", "/api/v1/requirements/{requirement_id}/online-review"): {
+        "gates": [("any", ("rd.requirement.view",))],
+        "conditional": {"feedbacks": "rd.feedback.view"},
+        "scope": "requirement-SELF-404-and-feedback-items-total-filter",
+    },
+    ("POST", "/api/v1/requirements/{requirement_id}/online-review/confirm"): {
+        "gates": [("any", ("rd.requirement.view",))],
+        "scope": "requirement-SELF-404-and-creator-only-403",
+    },
+    ("POST", "/api/v1/requirements/{requirement_id}/online-review/feedbacks"): {
+        "gates": [("all", ("rd.requirement.view", "rd.feedback.create"))],
+        "scope": "source-requirement-SELF-404-and-create-as-current-user",
     },
     ("GET", "/api/v1/versions/{version_id}"): {
         "gates": [("any", ("rd.version.view",))],

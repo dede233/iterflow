@@ -22,6 +22,10 @@ from test_release_date_filters_postgres import (
     test_date_query_validation as _date_validation,
 )
 from test_v1_e2e_postgres import (
+    advance_requirement_to_ready,
+    assert_feedback_accept_conversion,
+)
+from test_v1_e2e_postgres import (
     test_concurrent_publish_has_one_http_winner_and_no_duplicate_side_effects as _publish_race,
 )
 
@@ -114,7 +118,8 @@ def mysql_api(monkeypatch, tmp_path):
         admin.dispose()
 
 
-def test_mysql_full_lifecycle(mysql_api):
+@pytest.mark.parametrize("complete_and_accept", [False, True], ids=["separate", "one-step"])
+def test_mysql_full_lifecycle(mysql_api, complete_and_accept):
     client, engine, _, _ = mysql_api
     system_id = create_test_system(engine)
     logged = client.post(
@@ -176,29 +181,26 @@ def test_mysql_full_lifecycle(mysql_api):
     feedback = feedback_response.json()
     assert feedback["status"] == "NEW"
 
-    accepted = client.patch(
-        f"/api/v1/feedbacks/{feedback['id']}/status",
-        headers=headers,
-        json={"status": "ACCEPTED", "revision": feedback["revision"]},
-    )
-    assert accepted.status_code == 200, accepted.text
-
     converted = client.post(
-        f"/api/v1/feedbacks/{feedback['id']}/convert",
+        f"/api/v1/feedbacks/{feedback['id']}/accept-and-convert",
         headers=headers,
         json={
             "type": "CREATE_NEW",
-            "revision": accepted.json()["revision"],
+            "revision": feedback["revision"],
+            "accept_on_convert": True,
             "requirement_title": "Phase 8.2 converted requirement",
             "requirement_type": "FEATURE",
             "priority": "P2",
             "description": "Requirement created through feedback conversion.",
+            "acceptance_criteria": "确认流程与实际发布记录",
+            "participants": [{"role": "CONFIRM", "user_id": user_id}],
         },
     )
     assert converted.status_code == 200, converted.text
     requirement = converted.json()
     assert requirement["source"] == "FEEDBACK"
     assert requirement["status"] == "DRAFT"
+    assert_feedback_accept_conversion(client, engine, headers, user_id, feedback, requirement)
     stale_revision = requirement["revision"]
     assigned = client.patch(
         f"/api/v1/requirements/{requirement['id']}",
@@ -257,31 +259,16 @@ def test_mysql_full_lifecycle(mysql_api):
     current_requirement = client.get(
         f"/api/v1/requirements/{requirement['id']}", headers=headers
     ).json()
-    for status in ("CONFIRMED", "DEVELOPING", "TESTING"):
-        response = client.patch(
-            f"/api/v1/requirements/{requirement['id']}/status",
-            headers=headers,
-            json={"status": status, "revision": current_requirement["revision"]},
-        )
-        assert response.status_code == 200, response.text
-        current_requirement = response.json()
-        expected_progress = {
-            "CONFIRMED": "PLANNING",
-            "DEVELOPING": "DEVELOPING",
-            "TESTING": "TESTING",
-            "DONE": "READY",
-        }[status]
-        progress = client.get(f"/api/v1/versions/{version['id']}", headers=headers).json()
-        assert progress["status"] == expected_progress
-        assert progress["revision"] == version["revision"]
-
-    response = client.patch(
-        f"/api/v1/requirements/{requirement['id']}/status",
-        headers=headers,
-        json={"status": "DONE", "revision": current_requirement["revision"]},
+    advance_requirement_to_ready(
+        client,
+        engine,
+        headers,
+        user_id,
+        feedback,
+        current_requirement,
+        version,
+        complete_and_accept=complete_and_accept,
     )
-    assert response.status_code == 200, response.text
-    current_requirement = response.json()
 
     relation_revision = version["revision"]
     version = client.get(f"/api/v1/versions/{version['id']}", headers=headers).json()
@@ -641,7 +628,7 @@ def test_mysql_catalog_chinese_search_revision_and_files(mysql_api):
 
 
 def test_mysql_many_feedbacks_and_move_history(mysql_api):
-    client, engine, _user_id, headers = mysql_api
+    client, engine, user_id, headers = mysql_api
     system_id = create_test_system(engine)
     feedbacks = []
     requirement = None
@@ -669,6 +656,7 @@ def test_mysql_many_feedbacks_and_move_history(mysql_api):
                 "requirement_type": "FEATURE",
                 "priority": "P2",
                 "description": "merged",
+                "participants": [{"role": "CONFIRM", "user_id": user_id}],
             }
             if requirement is None
             else {
@@ -842,7 +830,7 @@ def test_mysql_identifier_equality_matches_postgres(mysql_api):
 
 
 def test_mysql_concurrent_feedback_conversion(mysql_api):
-    client, engine, _user_id, headers = mysql_api
+    client, engine, user_id, headers = mysql_api
     response = client.post(
         "/api/v1/feedbacks",
         headers=headers,
@@ -871,6 +859,7 @@ def test_mysql_concurrent_feedback_conversion(mysql_api):
                     "requirement_type": "FEATURE",
                     "priority": "P2",
                     "description": "race",
+                    "participants": [{"role": "CONFIRM", "user_id": user_id}],
                 },
             ).status_code
 
@@ -1102,7 +1091,7 @@ def test_mysql_restart_and_isolated_backup_restore(mysql_api, monkeypatch, tmp_p
                     "WHERE trigger_schema=DATABASE()"
                 )
             )
-            assert restored_triggers == 110
+            assert restored_triggers == 113
         with Session(restore_engine) as session:
             assert session.get(Requirement, ids["requirement"]).current_version_id == ids["version"]
             assert session.get(Feedback, ids["feedback"]).main_requirement_id == ids["requirement"]
@@ -1310,7 +1299,7 @@ def test_mysql_runtime_principal_cannot_remove_database_protection(mysql_api, mo
     event.listen(runtime, "connect", database.configure_mysql)
     try:
         with runtime.connect() as connection:
-            assert validate_mysql(connection, inspect_triggers=False)["table_count"] == 35
+            assert validate_mysql(connection, inspect_triggers=False)["table_count"] == 36
             with pytest.raises(DBAPIError):
                 connection.execute(text("DROP TRIGGER domain_sys_user_insert"))
             with pytest.raises(DBAPIError):

@@ -24,6 +24,11 @@ class ParticipantInput(BaseModel):
     role: ParticipantRole
 
 
+def require_confirmation_participant(participants: list[ParticipantInput]) -> None:
+    if not any(person.role == "CONFIRM" for person in participants):
+        raise ValueError("请至少指定一名需求确认人")
+
+
 class ParticipantOut(ParticipantInput):
     display_name: str
     active: bool

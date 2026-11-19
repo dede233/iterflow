@@ -28,8 +28,13 @@ export const updateFeedback = (id: number, payload: FeedbackUpdatePayload) =>
 export const changeFeedbackStatus = (id: number, payload: FeedbackStatusChangePayload) =>
   api.patch<Feedback>(`/feedbacks/${id}/status`, payload, { skipRevisionConflictAlert: true, skipForbiddenAlert: true }).then((r) => r.data)
 
-export const convertFeedback = async (id: number, payload: ConvertFeedbackPayload) =>
-  api.post<Requirement>(`/feedbacks/${id}/convert`, await withDescriptionImages(payload), { skipRevisionConflictAlert: true }).then((r) => r.data)
+export const convertFeedback = async (id: number, payload: ConvertFeedbackPayload, signal?: AbortSignal) => {
+  const action = payload.accept_on_convert ? 'accept-and-convert' : 'convert'
+  return api.post<Requirement>(`/feedbacks/${id}/${action}`, await withDescriptionImages(payload), {
+    skipRevisionConflictAlert: true,
+    ...(signal ? { signal } : {}),
+  }).then((r) => r.data)
+}
 
 // --- attachments (business relation stores file_id only) ---
 export const listFeedbackAttachments = (id: number) =>

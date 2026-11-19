@@ -151,3 +151,5 @@ Apple Silicon 测试使用独立 QEMU x86_64 VM；旧 ARM VM + amd64 用户态�
 
 
 升级包含新增表时，必须同步 `runtime-grants.sql` 中对应表级授权（替换为目标数据库及既有运行账号），再以运行账号执行就绪检查。`mysql57_0014` 的 `sys_announcement`、`sys_announcement_read` 和 `mysql57_0015` 的 `sys_release_target`、`rd_release_batch`、`rd_release_batch_target` 共五表均需 SELECT/INSERT/UPDATE/DELETE；`mysql57_0016` 只扩展支付宝平台约束，不新增权限；不得授予整库、DDL 或 GRANT 权限。迁移账号的 preflight 通过不代表运行账号可访问新表。
+
+开发候选 `mysql57_0017` 新增线上反馈关系表 `rd_requirement_online_feedback`。运行账号按 [runtime-grants.sql](runtime-grants.sql) 授予该表的 `SELECT` 和 `INSERT`。升级演练须核对已有需求、反馈和发布记录，已有线上反馈关系时保留该表和数据。

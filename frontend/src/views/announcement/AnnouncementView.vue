@@ -95,7 +95,7 @@ async function publish() {
         <el-form-item label="公告标题"><el-input v-model="form.title" maxlength="200" /></el-form-item>
         <div class="form-row"><el-form-item label="版本标识"><el-input v-model="form.version_label" maxlength="100" placeholder="例如：2026.11 更新" /></el-form-item>
         <el-form-item label="上线日期"><el-input v-model="form.release_date" type="date" /></el-form-item></div>
-        <el-form-item><el-checkbox v-model="form.important">重要更新：涉及流程变化或需要用户配合，登录后弹出提醒</el-checkbox></el-form-item>
+        <el-form-item><el-checkbox v-model="form.important" class="announcement-important">重要更新：涉及流程变化或需要用户配合，登录后弹出提醒</el-checkbox></el-form-item>
         <el-form-item label="公告内容"><RichTextEditor v-model="form.content" label="公告内容" :announcement-id="item?.id" :disabled="busy" /></el-form-item>
         <p class="hint">建议按新增功能、体验优化、问题修复、需要注意组织内容；支持粘贴截图和插入本地图片。</p>
         <p v-if="error" role="alert">{{ error }}</p>
@@ -115,5 +115,8 @@ header p,.hint,.meta { color:var(--if-text-3); font-size:13px; line-height:1.7; 
 .meta,.actions { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }.actions .el-button { margin:0; }
 .notice-card { background:var(--if-bg-surface,#fff); border:1px solid var(--if-border); border-radius:12px; padding:24px; margin:16px 0; overflow-wrap:anywhere; }
 .detail-actions { margin-top:24px; }.form-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
-@media(max-width:767px) { .announcement-page { padding:16px 12px 90px; }.notice-card { padding:16px; }.form-row { grid-template-columns:1fr;gap:0; }.actions .el-button { min-height:44px; } }
+.announcement-important { max-width: 100%; height: auto; min-height: 32px; margin: 0; white-space: normal; }
+.announcement-important :deep(.el-checkbox__input) { flex-shrink: 0; }
+.announcement-important :deep(.el-checkbox__label) { min-width: 0; line-height: 1.5; overflow-wrap: anywhere; }
+@media(max-width:767px) { .announcement-page { padding:16px 12px 90px; }.notice-card { padding:16px; }.form-row { grid-template-columns:1fr;gap:0; }.actions .el-button, .announcement-important { min-height:44px; } }
 </style>

@@ -1,18 +1,23 @@
 import hashlib
 import hmac
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from typing import cast
 from uuid import uuid4
 
+from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.audit_context import audit_context, get_audit_context
 from app.core.config import get_settings
 from app.core.exceptions import AppError, ConflictError
 from app.models.entities import CollaborationEvent, MailPreference, User
+from app.models.enums import UserStatus
 from app.repositories.user_repository import UserRepository
-from app.schemas.mail import MailMode, MailPreferencesOut
+from app.schemas.mail import EmailVerificationRequest, MailMode, MailPreferencesOut
 from app.services.audit_service import AuditService
+from app.services.revision_conflict import revision_conflict_data
 
 
 def verification_code(challenge_id: str) -> str:
@@ -28,20 +33,46 @@ def aware(value: datetime) -> datetime:
     return value.replace(tzinfo=UTC) if value.tzinfo is None else value
 
 
+def current_email_verified_at(
+    email: str | None, preference: MailPreference | None
+) -> datetime | None:
+    if email and preference is not None and preference.verified_email == email:
+        return preference.verified_at
+    return None
+
+
+def current_email_challenge_id(
+    preference: MailPreference | None, user_revision: int, now: datetime
+) -> str | None:
+    if (
+        preference is not None
+        and preference.pending_email
+        and preference.challenge_expires_at
+        and aware(preference.challenge_expires_at) > now
+        and preference.challenge_attempts < 5
+        and preference.challenge_user_revision == user_revision
+    ):
+        return preference.challenge_id
+    return None
+
+
 class MailPreferencesService:
     def __init__(self, db: Session):
         self.db = db
 
     def lock(self, user: User, revision: int | None = None) -> MailPreference:
         self.db.refresh(user, with_for_update=True)
+        return self._lock_preference(user.id, revision)
+
+    def _lock_preference(self, user_id: int, revision: int | None = None) -> MailPreference:
         item = self.db.scalar(
             select(MailPreference)
-            .where(MailPreference.user_id == user.id)
+            .where(MailPreference.user_id == user_id)
             .with_for_update()
             .execution_options(populate_existing=True)
         )
         if item is None:
-            item = MailPreference(user_id=user.id)
+            item = MailPreference(user_id=user_id)
             self.db.add(item)
             self.db.flush()
         if revision is not None and item.revision != revision:
@@ -53,7 +84,7 @@ class MailPreferencesService:
             revision=item.revision,
             mode=cast(MailMode, item.mode),
             email=user.email,
-            verified=bool(user.email and item.verified_email == user.email),
+            verified=current_email_verified_at(user.email, item) is not None,
             pending_email=item.pending_email,
             smtp_enabled=get_settings().smtp_enabled,
             notice_acknowledged=item.notice_acknowledged_at is not None,
@@ -117,7 +148,45 @@ class MailPreferencesService:
         if not get_settings().smtp_enabled:
             raise AppError(40970, "邮件服务尚未启用", 409)
         item = self.lock(user, revision)
+        self._queue_verification(user, item, email, user.id, datetime.now(UTC))
+        AuditService(self.db).log("USER", user.id, "EMAIL_VERIFICATION_REQUEST")
+        self.db.commit()
+        return self.view(user, item)
+
+    def invite(
+        self, user: User, user_revision: int, operator_id: int, *, commit: bool = True
+    ) -> None:
+        self.db.refresh(user, with_for_update=True)
+        if user.revision != user_revision:
+            raise ConflictError("账号已修改, 请刷新后重试", revision_conflict_data(user))
+        if user.status != UserStatus.ACTIVE:
+            raise AppError(40970, "账号已停用", 409)
+        if not user.email:
+            raise AppError(40970, "账号尚未登记邮箱", 409)
+        try:
+            email = EmailVerificationRequest(revision=user_revision, email=user.email).email
+        except ValidationError:
+            raise AppError(40970, "账号登记的邮箱格式不正确", 409) from None
+        if not get_settings().smtp_enabled:
+            raise AppError(40970, "邮件服务尚未启用", 409)
+        item = self._lock_preference(user.id)
+        if current_email_verified_at(email, item) is not None:
+            raise AppError(40970, "账号当前邮箱已验证", 409)
         now = datetime.now(UTC)
+        if item.pending_email != email and current_email_challenge_id(item, user.revision, now):
+            raise AppError(40970, "账号已有其他邮箱待验证。请由用户在个人中心处理", 409)
+
+        self._queue_verification(user, item, email, operator_id, now)
+        with audit_context(replace(get_audit_context(), operator_id=operator_id)):
+            AuditService(self.db).log("USER", user.id, "EMAIL_VERIFICATION_INVITE")
+        if commit:
+            self.db.commit()
+        else:
+            self.db.flush()
+
+    def _queue_verification(
+        self, user: User, item: MailPreference, email: str, actor_id: int, now: datetime
+    ) -> None:
         if item.requested_at and aware(item.requested_at) > now - timedelta(seconds=60):
             raise AppError(42970, "请等待一分钟后再发送验证码", 429)
         item.pending_email = email
@@ -133,31 +202,35 @@ class MailPreferencesService:
                 entity_type="ACCOUNT",
                 entity_id=user.id,
                 action="VERIFY_EMAIL",
-                actor_id=user.id,
+                actor_id=actor_id,
                 recipient_ids=[user.id],
             )
         )
-        AuditService(self.db).log("USER", user.id, "EMAIL_VERIFICATION_REQUEST")
-        self.db.commit()
-        return self.view(user, item)
+
+    def preserve_initial_password_challenge(self, user: User) -> None:
+        if not user.email:
+            return
+        # The caller advanced the revision while holding the account lock.
+        item = self.db.get(MailPreference, user.id, with_for_update=True, populate_existing=True)
+        if (
+            item
+            and item.pending_email == user.email
+            and current_email_challenge_id(item, user.revision - 1, datetime.now(UTC))
+        ):
+            item.challenge_user_revision = user.revision
 
     def confirm(self, user: User, revision: int, code: str):
         item = self.lock(user, revision)
-        if (
-            not item.challenge_id
-            or not item.challenge_expires_at
-            or aware(item.challenge_expires_at) < datetime.now(UTC)
-            or item.challenge_attempts >= 5
-            or item.challenge_user_revision != user.revision
-        ):
+        challenge_id = current_email_challenge_id(item, user.revision, datetime.now(UTC))
+        if not challenge_id:
             raise AppError(40970, "验证码已失效, 请重新发送", 409)
-        if not hmac.compare_digest(code, verification_code(item.challenge_id)):
+        if not hmac.compare_digest(code, verification_code(challenge_id)):
             item.challenge_attempts += 1
             self.db.commit()
             raise AppError(42270, "验证码不正确", 422)
         if not UserRepository(self.db).update_with_revision(
             user.id,
-            item.challenge_user_revision,
+            user.revision,
             {"email": item.pending_email, "updated_by": user.id},
         ):
             raise ConflictError("账号已修改, 请重新验证")

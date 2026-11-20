@@ -3,6 +3,7 @@ import { computed, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { safeInternalRedirect } from '@/auth/redirect'
 import AuthShell from '@/components/ui/AuthShell.vue'
 
 const router = useRouter()
@@ -26,7 +27,9 @@ async function submit(): Promise<void> {
   try {
     await auth.changePassword(form.currentPassword, form.newPassword)
     ElMessage.success('密码已修改，请继续使用系统')
-    await router.replace(!wasForced && route.query.from === 'profile' ? '/profile' : '/')
+    await router.replace(wasForced
+      ? safeInternalRedirect(route.query.redirect)
+      : route.query.from === 'profile' ? '/profile' : '/')
   } catch {
     ElMessage.error('当前密码不正确，或新密码不符合要求')
   } finally {

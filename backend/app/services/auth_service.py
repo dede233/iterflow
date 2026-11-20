@@ -20,6 +20,7 @@ from app.models.entities import RefreshSession, User, UserRole
 from app.models.enums import UserStatus
 from app.repositories.user_repository import UserRepository
 from app.services.audit_service import AuditService
+from app.services.mail_preferences_service import MailPreferencesService
 
 
 class AuthService:
@@ -258,6 +259,9 @@ class AuthService:
             self.db.rollback()
             raise ConflictError("密码已被其他操作修改; 请重新登录", code=40901)
 
+        if before_must_change_password:
+            self.db.refresh(user)
+            MailPreferencesService(self.db).preserve_initial_password_challenge(user)
         self.revoke_user_sessions(user.id, "PASSWORD_CHANGED")
         refresh_session = self._new_refresh_session(user.id)
         self.db.add(refresh_session)

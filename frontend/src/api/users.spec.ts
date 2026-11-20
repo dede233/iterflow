@@ -8,7 +8,7 @@ axios.defaults.adapter = async (config: InternalAxiosRequestConfig) => {
   return { data: {}, status: 200, statusText: 'ok', headers: {}, config }
 }
 
-const { updateUser, updateUserRoles, updateUserStatus } = await import('@/api/users')
+const { listUsers, sendUserEmailVerification, updateUser, updateUserRoles, updateUserStatus } = await import('@/api/users')
 
 beforeEach(() => {
   lastRequest = null
@@ -44,5 +44,16 @@ describe('user administration API boundaries', () => {
     expect(lastRequest?.method).toBe('patch')
     expect(lastRequest?.url).toBe('/users/7/status')
     expect(JSON.parse(String(lastRequest?.data))).toEqual({ status: 'DISABLED', revision: 6 })
+  })
+
+  it('paginates users and sends a revision-only verification invitation', async () => {
+    await listUsers(2, 20)
+    expect(lastRequest?.url).toBe('/users')
+    expect(lastRequest?.params).toEqual({ page: 2, page_size: 20 })
+
+    await sendUserEmailVerification(7, { revision: 6 })
+    expect(lastRequest?.method).toBe('post')
+    expect(lastRequest?.url).toBe('/users/7/email-verification')
+    expect(JSON.parse(String(lastRequest?.data))).toEqual({ revision: 6 })
   })
 })

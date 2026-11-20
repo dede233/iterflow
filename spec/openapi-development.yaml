@@ -5697,7 +5697,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserOut'
+                $ref: '#/components/schemas/UserCreated'
         '403':
           description: 授予 SUPER_ADMIN 角色需要当前操作人是有效的超级管理员。
           content:
@@ -5722,6 +5722,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+      description: 超级管理员创建账号时，对已填写的邮箱自动申请验证；账号创建成功后返回验证邮件入队结果。
   /users/{user_id}:
     get:
       tags:
@@ -5827,6 +5828,67 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       description: 凭 revision 乐观锁更新；账号状态、角色和密码使用专用接口。
+  /users/{user_id}/email-verification:
+    post:
+      tags:
+      - System
+      summary: 发送邮箱确认邮件
+      operationId: invite_user_email_api_v1_users__user_id__email_verification_post
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: User Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserEmailInvitation'
+      responses:
+        '204':
+          description: Successful Response
+        '403':
+          description: 无权执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 资源不存在或不在当前数据范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 业务状态或 revision 冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: 请等待一分钟后重试
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: 未登录或登录凭证不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: 仅全范围且有用户编辑权限的有效超级管理员可向启用账号当前登记的未验证邮箱发送确认邮件。需要账号 revision；与个人中心共用一分钟发送间隔。
   /users/{user_id}/status:
     patch:
       tags:
@@ -10714,6 +10776,77 @@ components:
       - display_name
       - password
       title: UserCreate
+    UserCreated:
+      properties:
+        id:
+          type: integer
+          title: 用户 ID
+        username:
+          type: string
+          title: 用户名
+        display_name:
+          type: string
+          title: 显示名称
+        email:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: 邮箱
+        mobile:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: 手机号
+        status:
+          $ref: '#/components/schemas/UserStatus'
+          title: 用户状态
+        revision:
+          type: integer
+          title: 修订号
+          description: 对象的乐观锁修订号；写入时提交最后读取的修订号。
+        email_verification_status:
+          type: string
+          enum:
+          - NO_EMAIL
+          - UNVERIFIED
+          - PENDING
+          - FAILED
+          - VERIFIED
+          title: 当前账号邮箱验证状态
+          default: UNVERIFIED
+        role_ids:
+          items:
+            type: integer
+          type: array
+          title: 角色 ID 列表
+        verification_invitation:
+          type: string
+          enum:
+          - QUEUED
+          - FAILED
+          - SKIPPED
+          title: 建号后确认邮件入队结果
+      type: object
+      required:
+      - id
+      - username
+      - display_name
+      - email
+      - status
+      - revision
+      - verification_invitation
+      title: UserCreated
+    UserEmailInvitation:
+      properties:
+        revision:
+          type: integer
+          minimum: 1.0
+          title: 账号修订号
+      additionalProperties: false
+      type: object
+      required:
+      - revision
+      title: UserEmailInvitation
     UserOut:
       properties:
         id:
@@ -10742,6 +10875,16 @@ components:
           type: integer
           title: 修订号
           description: 对象的乐观锁修订号；写入时提交最后读取的修订号。
+        email_verification_status:
+          type: string
+          enum:
+          - NO_EMAIL
+          - UNVERIFIED
+          - PENDING
+          - FAILED
+          - VERIFIED
+          title: 当前账号邮箱验证状态
+          default: UNVERIFIED
         role_ids:
           items:
             type: integer

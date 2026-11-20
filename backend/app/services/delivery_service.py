@@ -4,6 +4,7 @@ import ssl
 from datetime import UTC, datetime, timedelta, timezone
 from email.message import EmailMessage
 from html import escape
+from urllib.parse import urlsplit
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -28,7 +29,12 @@ from app.repositories.user_repository import UserRepository
 from app.schemas.mail import DeliveryOut
 from app.services.audit_service import AuditService
 from app.services.collaboration_service import CollaborationService
-from app.services.mail_preferences_service import aware, verification_code
+from app.services.mail_preferences_service import (
+    aware,
+    current_email_challenge_id,
+    current_email_verified_at,
+    verification_code,
+)
 
 ACTION_LABELS = {
     "RECIPIENT_ADDED": "有反馈需要处理",
@@ -214,19 +220,27 @@ class DeliveryService:
         message["Message-ID"] = f"<{delivery.id}@iterflow.notifications>"
         if event.action == "VERIFY_EMAIL":
             code = verification_code(event.id)
-            profile_url = f"{settings.app_public_url.rstrip('/')}/#/profile#mail-notifications"
+            public_url = urlsplit(settings.app_public_url)
+            profile_url = public_url._replace(
+                path=f"{public_url.path.rstrip('/')}/",
+                query="",
+                fragment="/profile#mail-notifications",
+            ).geturl()
+            intro = "请完成迭程 IterFlow 账号的通知邮箱验证。"
+            instructions = "验证码 15 分钟内有效。请登录后在个人中心的「邮件通知」输入验证码。"
+            ignore = "如果您不认识此账号，可忽略此邮件。"
             message["Subject"] = "迭程 IterFlow｜验证通知邮箱"
             message.set_content(
-                "您好，\n\n您正在为迭程 IterFlow 账号验证通知邮箱。\n"
-                f"验证码：{code}\n\n验证码 15 分钟内有效。请登录个人中心输入验证码。\n"
+                f"您好，\n\n{intro}\n"
+                f"验证码：{code}\n\n{instructions}\n"
                 f"打开个人中心：\n{profile_url}\n\n"
-                "如果这不是你本人发起的操作，请忽略此邮件。\n\n迭程 IterFlow"
+                f"{ignore}\n\n迭程 IterFlow"
             )
             message.add_alternative(
                 self._html_message(
                     eyebrow="账号安全",
                     heading="验证您的通知邮箱",
-                    intro="您正在为迭程 IterFlow 账号验证通知邮箱。",
+                    intro=intro,
                     details=(
                         '<div style="margin:24px 0;padding:18px 20px;background:#f4f5f7;'
                         "border-radius:6px;text-align:center;font-size:30px;font-weight:700;"
@@ -234,10 +248,7 @@ class DeliveryService:
                     ),
                     button_label="打开个人中心",
                     button_url=profile_url,
-                    note=(
-                        "验证码 15 分钟内有效。请在个人中心输入验证码。<br>"
-                        "如果这不是你本人发起的操作，请忽略此邮件。"
-                    ),
+                    note=f"{escape(instructions)}<br>{escape(ignore)}",
                 ),
                 subtype="html",
             )
@@ -433,24 +444,17 @@ class DeliveryService:
         # account locked until SMTP finishes so a completed unbind cannot be raced.
         pref = self.db.get(MailPreference, user.id, with_for_update=True, populate_existing=True)
         email = user.email
+        verified_at = current_email_verified_at(email, pref)
         eligible = bool(
             pref
             and pref.mode != "OFF"
-            and pref.verified_email
-            and pref.verified_email == user.email
-            and pref.verified_at is not None
-            and aware(event.created_at) >= aware(pref.verified_at)
+            and verified_at is not None
+            and aware(event.created_at) >= aware(verified_at)
             and (pref.mode == "ALL" or self.is_task(event, user.id))
         )
         if event.action == "VERIFY_EMAIL":
             email = pref.pending_email if pref else None
-            eligible = bool(
-                pref
-                and pref.challenge_id == event.id
-                and pref.challenge_expires_at
-                and aware(pref.challenge_expires_at) > now
-                and pref.challenge_user_revision == user.revision
-            )
+            eligible = current_email_challenge_id(pref, user.revision, now) == event.id
         if not eligible or not email or email != row.queued_email:
             row.status = "SKIPPED"
             row.last_error = "PREFERENCE_OR_EMAIL_CHANGED"

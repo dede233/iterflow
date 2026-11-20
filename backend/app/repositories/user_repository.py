@@ -1,9 +1,17 @@
 from typing import Any, cast
 
-from sqlalchemy import Select, func, select
+from sqlalchemy import Select, and_, func, select
 from sqlalchemy.orm import Session
 
-from app.models.entities import Permission, Role, RolePermission, User, UserRole
+from app.models.entities import (
+    MailPreference,
+    NotificationDelivery,
+    Permission,
+    Role,
+    RolePermission,
+    User,
+    UserRole,
+)
 from app.models.enums import DataScope, UserStatus
 from app.repositories.base import BaseRepository
 
@@ -138,6 +146,26 @@ class UserRepository(BaseRepository[User]):
                 .order_by(UserRole.role_id)
             ).all()
         )
+
+    def verification_records(
+        self, user_ids: list[int]
+    ) -> dict[int, tuple[MailPreference, str | None]]:
+        if not user_ids:
+            return {}
+        rows = self.db.execute(
+            select(MailPreference, NotificationDelivery.status)
+            .outerjoin(
+                NotificationDelivery,
+                and_(
+                    NotificationDelivery.event_id == MailPreference.challenge_id,
+                    NotificationDelivery.user_id == MailPreference.user_id,
+                    NotificationDelivery.channel == "EMAIL",
+                ),
+            )
+            .where(MailPreference.user_id.in_(user_ids))
+            .execution_options(populate_existing=True)
+        )
+        return {preference.user_id: (preference, status) for preference, status in rows}
 
     def role_ids_by_user(self, user_ids: list[int]) -> dict[int, list[int]]:
         if not user_ids:

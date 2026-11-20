@@ -1708,7 +1708,10 @@ export interface paths {
         /** 用户列表 */
         get: operations["list_users_api_v1_users_get"];
         put?: never;
-        /** 创建用户 */
+        /**
+         * 创建用户
+         * @description 超级管理员创建账号时，对已填写的邮箱自动申请验证；账号创建成功后返回验证邮件入队结果。
+         */
         post: operations["create_user_api_v1_users_post"];
         delete?: never;
         options?: never;
@@ -1738,6 +1741,26 @@ export interface paths {
          * @description 凭 revision 乐观锁更新；账号状态、角色和密码使用专用接口。
          */
         patch: operations["update_user_api_v1_users__user_id__patch"];
+        trace?: never;
+    };
+    "/users/{user_id}/email-verification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 发送邮箱确认邮件
+         * @description 仅全范围且有用户编辑权限的有效超级管理员可向启用账号当前登记的未验证邮箱发送确认邮件。需要账号 revision；与个人中心共用一分钟发送间隔。
+         */
+        post: operations["invite_user_email_api_v1_users__user_id__email_verification_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/users/{user_id}/status": {
@@ -4167,6 +4190,44 @@ export interface components {
             /** 角色 ID 列表 */
             role_ids?: number[];
         };
+        /** UserCreated */
+        UserCreated: {
+            /** 用户 ID */
+            id: number;
+            /** 用户名 */
+            username: string;
+            /** 显示名称 */
+            display_name: string;
+            /** 邮箱 */
+            email: string | null;
+            /** 手机号 */
+            mobile?: string | null;
+            /** 用户状态 */
+            status: components["schemas"]["UserStatus"];
+            /**
+             * 修订号
+             * @description 对象的乐观锁修订号；写入时提交最后读取的修订号。
+             */
+            revision: number;
+            /**
+             * 当前账号邮箱验证状态
+             * @default UNVERIFIED
+             * @enum {string}
+             */
+            email_verification_status: "NO_EMAIL" | "UNVERIFIED" | "PENDING" | "FAILED" | "VERIFIED";
+            /** 角色 ID 列表 */
+            role_ids?: number[];
+            /**
+             * 建号后确认邮件入队结果
+             * @enum {string}
+             */
+            verification_invitation: "QUEUED" | "FAILED" | "SKIPPED";
+        };
+        /** UserEmailInvitation */
+        UserEmailInvitation: {
+            /** 账号修订号 */
+            revision: number;
+        };
         /** UserOut */
         UserOut: {
             /** 用户 ID */
@@ -4186,6 +4247,12 @@ export interface components {
              * @description 对象的乐观锁修订号；写入时提交最后读取的修订号。
              */
             revision: number;
+            /**
+             * 当前账号邮箱验证状态
+             * @default UNVERIFIED
+             * @enum {string}
+             */
+            email_verification_status: "NO_EMAIL" | "UNVERIFIED" | "PENDING" | "FAILED" | "VERIFIED";
             /** 角色 ID 列表 */
             role_ids?: number[];
         };
@@ -10728,7 +10795,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UserOut"];
+                    "application/json": components["schemas"]["UserCreated"];
                 };
             };
             /** @description 未登录或登录凭证不可用 */
@@ -10894,6 +10961,84 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    invite_user_email_api_v1_users__user_id__email_verification_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserEmailInvitation"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或 revision 冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description 请等待一分钟后重试 */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

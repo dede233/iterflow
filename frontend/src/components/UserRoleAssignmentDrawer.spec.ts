@@ -56,6 +56,7 @@ const user: UserItem = {
   email: null,
   mobile: null,
   status: 'ACTIVE',
+  email_verification_status: 'NO_EMAIL',
   revision: 4,
   role_ids: [1, 2],
 }

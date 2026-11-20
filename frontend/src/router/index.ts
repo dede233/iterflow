@@ -2,6 +2,7 @@ import { createRouter, createWebHashHistory } from 'vue-router'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { useAuthStore } from '@/stores/auth'
 import { pinia } from '@/stores/pinia'
+import { safeInternalRedirect } from '@/auth/redirect'
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -64,7 +65,11 @@ router.beforeEach(async (to) => {
   if (to.meta.public) {
     if (auth.isAuthenticated && !auth.initialized && !(await auth.restoreSession())) return true
     if (auth.isAuthenticated && auth.initialized) {
-      return auth.mustChangePassword ? { name: 'change-password' } : { name: 'dashboard' }
+      if (auth.mustChangePassword) {
+        const redirect = safeInternalRedirect(to.query.redirect)
+        return { name: 'change-password', query: redirect === '/' ? {} : { redirect } }
+      }
+      return { name: 'dashboard' }
     }
     return true
   }
@@ -76,7 +81,7 @@ router.beforeEach(async (to) => {
     return { name: 'login', query: { redirect: to.fullPath } }
   }
   if (auth.mustChangePassword && !to.meta.allowPasswordChangeRequired) {
-    return { name: 'change-password' }
+    return { name: 'change-password', query: to.fullPath === '/' ? {} : { redirect: to.fullPath } }
   }
   if (to.meta.permission && !auth.hasPermission(to.meta.permission)) {
     return { name: 'forbidden' }

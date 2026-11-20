@@ -1,6 +1,11 @@
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.models.enums import UserStatus
+
+EmailVerificationStatus = Literal["NO_EMAIL", "UNVERIFIED", "PENDING", "FAILED", "VERIFIED"]
+InvitationResult = Literal["QUEUED", "FAILED", "SKIPPED"]
 
 
 class UserOut(BaseModel):
@@ -12,7 +17,17 @@ class UserOut(BaseModel):
     mobile: str | None = None
     status: UserStatus
     revision: int
+    email_verification_status: EmailVerificationStatus = "UNVERIFIED"
     role_ids: list[int] = Field(default_factory=list)
+
+
+class UserCreated(UserOut):
+    verification_invitation: InvitationResult
+
+
+class UserEmailInvitation(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    revision: int = Field(ge=1)
 
 
 class UserPage(BaseModel):

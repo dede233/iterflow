@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { createUser, listUsers, updateUser, updateUserRoles, updateUserStatus } from '@/api/users'
+import { createUser, listUsers, sendUserEmailVerification, updateUser, updateUserRoles, updateUserStatus } from '@/api/users'
 import { listRoles } from '@/api/roles'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import SectionCard from '@/components/ui/SectionCard.vue'
@@ -21,11 +21,15 @@ import {
 } from '@/components/userRoleAssignment'
 import { usePermission } from '@/composables/usePermission'
 import { useAuthStore } from '@/stores/auth'
+import { isRevisionConflict } from '@/types/revisionConflict'
 import type { RoleItem, UserItem } from '@/types/system'
 
 const { can } = usePermission()
 const { isMobile } = useResponsive()
 const auth = useAuthStore()
+const pageSize = 20
+const page = ref(1)
+const total = ref(0)
 const rows = ref<UserItem[]>([])
 const roles = ref<RoleItem[]>([])
 const loading = ref(false)
@@ -36,6 +40,8 @@ const saving = ref(false)
 const roleDrawerVisible = ref(false)
 const roleUser = ref<UserItem | null>(null)
 const roleSaving = ref(false)
+const verificationSending = reactive(new Set<number>())
+let loadSequence = 0
 const form = reactive({
   username: '',
   display_name: '',
@@ -53,21 +59,44 @@ const canCreateUsers = computed(() => hasAllScope.value && can('sys.user.create'
 const canEditUsers = computed(() => can('sys.user.edit'))
 const canChangeUserStatus = computed(() => hasAllScope.value && can('sys.user.status'))
 const operatorIsSuperAdmin = computed(() => isCurrentUserSuperAdmin(auth.user, roles.value))
+const canSendVerification = computed(() => hasAllScope.value && canEditUsers.value && operatorIsSuperAdmin.value)
+
+type VerificationStatus = UserItem['email_verification_status']
+const verificationLabels: Record<VerificationStatus, { label: string; type: string }> = {
+  NO_EMAIL: { label: '未设置邮箱', type: 'info' },
+  UNVERIFIED: { label: '未验证', type: 'info' },
+  PENDING: { label: '待验证', type: 'warning' },
+  FAILED: { label: '发送失败', type: 'danger' },
+  VERIFIED: { label: '已验证', type: 'success' },
+}
+
+function verificationStatus(user: UserItem): VerificationStatus {
+  return user.email ? user.email_verification_status ?? 'UNVERIFIED' : 'NO_EMAIL'
+}
 
 async function load(): Promise<void> {
+  const sequence = ++loadSequence
   loading.value = true
   failed.value = false
   try {
-    const users = await listUsers()
+    const [users, roleDefinitions] = await Promise.all([
+      listUsers(page.value, pageSize),
+      canReadRoleDefinitions.value ? listRoles() : [],
+    ])
+    if (sequence !== loadSequence) return
     rows.value = users.items
-    roles.value = canReadRoleDefinitions.value
-      ? (await listRoles()).filter((role) => role.enabled)
-      : []
+    total.value = users.total
+    roles.value = roleDefinitions.filter((role) => role.enabled)
   } catch {
-    failed.value = true
+    if (sequence === loadSequence) failed.value = true
   } finally {
-    loading.value = false
+    if (sequence === loadSequence) loading.value = false
   }
+}
+
+function changePage(nextPage: number): void {
+  page.value = nextPage
+  void load()
 }
 
 function resetForm(): void {
@@ -104,7 +133,7 @@ async function save(): Promise<void> {
     const email = form.email?.trim() || null
     const mobile = form.mobile?.trim() || null
     if (!editingUser.value) {
-      await createUser({
+      const created = await createUser({
         username: form.username.trim(),
         display_name: form.display_name.trim(),
         email,
@@ -112,7 +141,18 @@ async function save(): Promise<void> {
         password: form.password,
         role_ids: form.role_ids,
       })
-      ElMessage.success('用户已创建')
+      if (created.verification_invitation === 'QUEUED') {
+        ElMessage.success('用户已创建，验证邮件已排队。')
+      } else if (created.verification_invitation === 'FAILED') {
+        ElMessage.warning(canSendVerification.value
+          ? '用户已创建，验证邮件入队失败。可在用户列表重新发送。'
+          : '用户已创建，验证邮件入队失败。请联系超级管理员重新发送。')
+      } else if (created.verification_invitation === 'SKIPPED' && email) {
+        ElMessage.info('用户已创建，验证邮件未入队。')
+      } else {
+        ElMessage.success('用户已创建')
+      }
+      page.value = 1
     } else {
       await updateUser(
         editingUser.value.id,
@@ -156,6 +196,35 @@ function mayChangeStatus(user: UserItem): boolean {
   )
 }
 
+function maySendVerification(user: UserItem): boolean {
+  const status = verificationStatus(user)
+  return canSendVerification.value && user.status === 'ACTIVE' && status !== 'NO_EMAIL' && status !== 'VERIFIED'
+}
+
+async function sendVerification(user: UserItem): Promise<void> {
+  if (!maySendVerification(user) || verificationSending.has(user.id)) return
+  verificationSending.add(user.id)
+  try {
+    await sendUserEmailVerification(user.id, { revision: user.revision })
+    ElMessage.success('验证邮件已排队。')
+    await load()
+  } catch (error) {
+    if (isRevisionConflict(error)) {
+      ElMessage.warning('该账号已更新，请核对最新邮箱后重新发送验证邮件。')
+      await load()
+      return
+    }
+    const response = (error as { response?: { status?: number; data?: { message?: unknown } } })?.response
+    if ([403, 409, 429].includes(response?.status ?? 0) && typeof response?.data?.message === 'string') {
+      ElMessage.warning(response.data.message)
+    } else {
+      ElMessage.error('未能确认验证邮件入队，请核对验证状态后重试。')
+    }
+  } finally {
+    verificationSending.delete(user.id)
+  }
+}
+
 async function toggleStatus(user: UserItem): Promise<void> {
   const status = user.status === 'ACTIVE' ? 'DISABLED' : 'ACTIVE'
   const action = status === 'ACTIVE' ? '启用' : '停用'
@@ -190,11 +259,29 @@ onMounted(load)
     </PageHeader>
 
     <ErrorState v-if="failed" title="用户列表加载失败" description="请检查网络后重试。" retry-label="重新加载" @retry="load" />
-    <SectionCard v-else title="账号列表" :description="`共 ${rows.length} 个账号`" :padded="false">
+    <SectionCard v-else title="账号列表" :description="`共 ${total} 个账号`" :padded="false">
+    <template #actions v-if="total > pageSize">
+      <el-pagination
+        class="user-pagination"
+        aria-label="账号列表分页"
+        layout="prev, pager, next"
+        :pager-count="5"
+        :current-page="page"
+        :page-size="pageSize"
+        :total="total"
+        :disabled="loading"
+        @update:current-page="changePage"
+      />
+    </template>
     <el-table v-if="!isMobile" v-loading="loading" :data="rows" row-key="id">
       <el-table-column prop="username" label="用户名" min-width="130" />
       <el-table-column prop="display_name" label="姓名" min-width="130" />
-      <el-table-column prop="email" label="邮箱" min-width="180" />
+      <el-table-column label="邮箱" min-width="190">
+        <template #default="{ row }">
+          <div v-if="row.email" class="user-email">{{ row.email }}</div>
+          <StatusTag :status="verificationStatus(row)" v-bind="verificationLabels[verificationStatus(row)]" size="sm" />
+        </template>
+      </el-table-column>
       <el-table-column label="角色" min-width="180">
         <template #default="scope">{{ roleNames(scope.row) }}</template>
       </el-table-column>
@@ -203,13 +290,14 @@ onMounted(load)
           <StatusTag :status="scope.row.status" :label="scope.row.status === 'ACTIVE' ? '启用' : '停用'" />
         </template>
       </el-table-column>
-      <el-table-column v-if="canEditUsers || canAssignUserRoles || canChangeUserStatus" label="操作" width="240" fixed="right">
+      <el-table-column v-if="canEditUsers || canAssignUserRoles || canChangeUserStatus" label="操作" :width="canSendVerification ? 290 : 240" fixed="right">
         <template #default="scope">
           <el-button v-if="canEditUsers" link type="primary" @click="openEdit(scope.row)">编辑</el-button>
           <el-button v-if="canAssignUserRoles" link type="primary" @click="openRoles(scope.row)">配置角色</el-button>
           <el-button v-if="mayChangeStatus(scope.row)" link :type="scope.row.status === 'ACTIVE' ? 'danger' : 'success'" @click="toggleStatus(scope.row)">
             {{ scope.row.status === 'ACTIVE' ? '停用' : '启用' }}
           </el-button>
+          <el-button v-if="maySendVerification(scope.row)" link type="primary" :loading="verificationSending.has(scope.row.id)" @click="sendVerification(scope.row)">发送验证邮件</el-button>
         </template>
       </el-table-column>
       <template #empty><EmptyState description="暂无用户" compact /></template>
@@ -224,11 +312,18 @@ onMounted(load)
           <StatusTag class="user-card__status" :status="user.status" :label="user.status === 'ACTIVE' ? '启用' : '停用'" size="sm" />
         </div>
         <div class="user-card__details"><span>角色</span><span>{{ roleNames(user) }}</span></div>
-        <div v-if="user.email" class="user-card__details"><span>邮箱</span><span>{{ user.email }}</span></div>
+        <div class="user-card__details">
+          <span>邮箱</span>
+          <div>
+            <div v-if="user.email" class="user-email">{{ user.email }}</div>
+            <StatusTag :status="verificationStatus(user)" v-bind="verificationLabels[verificationStatus(user)]" size="sm" />
+          </div>
+        </div>
         <div v-if="canEditUsers || canAssignUserRoles || mayChangeStatus(user)" class="user-card__actions">
           <el-button v-if="canEditUsers" @click="openEdit(user)">编辑</el-button>
           <el-button v-if="canAssignUserRoles" @click="openRoles(user)">配置角色</el-button>
           <el-button v-if="mayChangeStatus(user)" :type="user.status === 'ACTIVE' ? 'danger' : 'success'" plain @click="toggleStatus(user)">{{ user.status === 'ACTIVE' ? '停用' : '启用' }}</el-button>
+          <el-button v-if="maySendVerification(user)" type="primary" plain :loading="verificationSending.has(user.id)" @click="sendVerification(user)">发送验证邮件</el-button>
         </div>
       </article>
       <EmptyState v-if="!loading && !rows.length" description="暂无用户" compact />
@@ -325,6 +420,8 @@ onMounted(load)
 }
 .create-role-list :deep(.el-checkbox__input) { flex: 0 0 auto; }
 .create-role-list :deep(.el-tag) { margin: 0; }
+.user-pagination { margin-top: 0; }
+.user-email { margin-bottom: 2px; overflow-wrap: anywhere; }
 .user-cards { display: grid; gap: 10px; padding: var(--if-space-4); }
 .user-card { min-width: 0; padding: 14px; background: var(--if-bg-surface); border: 1px solid var(--if-border); border-radius: var(--if-radius); }
 .user-card__head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 12px; }
@@ -339,5 +436,8 @@ onMounted(load)
 
 @media (max-width: 767px) {
   .create-role-list { grid-template-columns: 1fr; }
+  .user-pagination :deep(button),
+  .user-pagination :deep(.el-pager li) { min-height: 44px; min-width: 36px; }
+  .user-card__actions :deep(.el-button) { min-height: 44px; }
 }
 </style>

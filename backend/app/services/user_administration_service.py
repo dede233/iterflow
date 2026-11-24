@@ -1,14 +1,32 @@
+from datetime import UTC, datetime
+
 from sqlalchemy import delete, update
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.core.exceptions import AppError, ConflictError, NotFoundError, PermissionDenied
 from app.core.security import hash_password
 from app.models.entities import MailPreference, Role, User, UserRole
 from app.models.enums import UserStatus
 from app.repositories.user_repository import UserRepository
-from app.schemas.user import UserCreate, UserOut, UserRoleUpdate, UserStatusChange, UserUpdate
+from app.schemas.user import (
+    EmailVerificationStatus,
+    InvitationResult,
+    UserCreate,
+    UserCreated,
+    UserOut,
+    UserRoleUpdate,
+    UserStatusChange,
+    UserUpdate,
+)
 from app.services.audit_service import AuditService
 from app.services.auth_service import AuthService
+from app.services.mail_preferences_service import (
+    MailPreferencesService,
+    current_email_challenge_id,
+    current_email_verified_at,
+)
 
 
 class UserAdministrationService:
@@ -26,10 +44,54 @@ class UserAdministrationService:
         self.users = UserRepository(db)
         self.audit = AuditService(db)
 
+    @staticmethod
+    def _verification_status(
+        user: User, record: tuple[MailPreference, str | None] | None, now: datetime
+    ) -> EmailVerificationStatus:
+        if not user.email:
+            return "NO_EMAIL"
+        if record is None:
+            return "UNVERIFIED"
+        preference, delivery = record
+        if current_email_verified_at(user.email, preference) is not None:
+            return "VERIFIED"
+        if (
+            not preference.challenge_id
+            or preference.pending_email != user.email
+            or preference.challenge_user_revision != user.revision
+        ):
+            return "UNVERIFIED"
+        if delivery in {"FAILED", "SKIPPED"}:
+            return "FAILED"
+        if current_email_challenge_id(preference, user.revision, now):
+            return "PENDING"
+        return "UNVERIFIED"
+
+    def present_users(self, users: list[User]) -> list[UserOut]:
+        roles = self.users.role_ids_by_user([user.id for user in users])
+        verification = self.users.verification_records([user.id for user in users if user.email])
+        now = datetime.now(UTC)
+        return [
+            UserOut.model_validate(user).model_copy(
+                update={
+                    "role_ids": roles[user.id],
+                    "email_verification_status": self._verification_status(
+                        user, verification.get(user.id), now
+                    ),
+                }
+            )
+            for user in users
+        ]
+
     def _out(self, user: User) -> UserOut:
-        return UserOut.model_validate(user).model_copy(
-            update={"role_ids": self.users.role_ids(user.id)}
-        )
+        return self.present_users([user])[0]
+
+    def invite_email(self, user_id: int, revision: int, operator_id: int) -> None:
+        role = self._lock_super_admin_role()
+        if not self.users.is_effective_super_admin(operator_id, role.id):
+            raise PermissionDenied("仅有效的超级管理员可发送邮箱确认邮件")
+        user = self._user_or_404(user_id)
+        MailPreferencesService(self.db).invite(user, revision, operator_id)
 
     def _lock_super_admin_role(self) -> Role:
         role = self.users.get_super_admin_role_for_update()
@@ -77,7 +139,7 @@ class UserAdministrationService:
             },
         )
 
-    def create(self, payload: UserCreate, operator_id: int) -> UserOut:
+    def create(self, payload: UserCreate, operator_id: int) -> UserCreated:
         password_hash = hash_password(payload.password)
         super_admin_role = self._lock_super_admin_role()
         self._effective_super_admin_count(super_admin_role)
@@ -109,9 +171,24 @@ class UserAdministrationService:
             "CREATE",
             after={"username": user.username, "role_ids": role_ids},
         )
+        invitation: InvitationResult = "SKIPPED"
+        if (
+            user.email
+            and get_settings().smtp_enabled
+            and self.users.is_effective_super_admin(operator_id, super_admin_role.id)
+        ):
+            try:
+                with self.db.begin_nested():
+                    MailPreferencesService(self.db).invite(
+                        user, user.revision, operator_id, commit=False
+                    )
+                invitation = "QUEUED"
+            except (AppError, SQLAlchemyError):
+                # Roll back the invitation only. The administrator can retry on this account.
+                invitation = "FAILED"
         self.db.commit()
         self.db.refresh(user)
-        return self._out(user)
+        return UserCreated(**self._out(user).model_dump(), verification_invitation=invitation)
 
     def update_profile(self, user_id: int, payload: UserUpdate, operator_id: int) -> UserOut:
         user = self._user_or_404(user_id)

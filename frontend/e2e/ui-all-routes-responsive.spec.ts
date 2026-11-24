@@ -163,14 +163,14 @@ test('all 19 authenticated screens render at every release viewport', async ({ p
       }
       if (path === '/system/users' && (width === 375 || width === 1440)) {
         const account = page.locator(width === 375 ? '.user-card' : '.el-table__row').filter({ hasText: longUsername })
-        const status = account.locator('.status-tag')
+        const status = account.locator('.status-tag[data-status="ACTIVE"]')
         await expect(status).toHaveText('启用')
         await expect(status).toBeInViewport({ ratio: 1 })
         const textFits = await account.evaluate((element, username) => {
           const bounds = element.getBoundingClientRect()
           const id = [...element.querySelectorAll('.user-card__id, .cell')].find(cell => cell.textContent === username)!
           const idBounds = id.getBoundingClientRect()
-          const badge = element.querySelector('.status-tag')!.getBoundingClientRect()
+          const badge = element.querySelector('.status-tag[data-status="ACTIVE"]')!.getBoundingClientRect()
           const range = document.createRange()
           range.selectNodeContents(id)
           const lines = [...range.getClientRects()]

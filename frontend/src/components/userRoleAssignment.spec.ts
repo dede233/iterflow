@@ -44,6 +44,7 @@ function user(roleIds: number[]): UserItem {
     email: null,
     mobile: null,
     status: 'ACTIVE',
+    email_verification_status: 'NO_EMAIL',
     revision: 6,
     role_ids: roleIds,
   }

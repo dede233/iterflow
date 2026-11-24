@@ -18,7 +18,9 @@ async function submit(): Promise<void> {
     const user = await auth.login(form.username, form.password)
     ElMessage.success(`欢迎回来，${user.display_name}`)
     const redirect = safeInternalRedirect(route.query.redirect)
-    await router.replace(user.must_change_password ? '/change-password' : redirect)
+    await router.replace(user.must_change_password
+      ? { name: 'change-password', query: redirect === '/' ? {} : { redirect } }
+      : redirect)
   } catch {
     ElMessage.error('用户名或密码错误，或账号已被停用')
   } finally {

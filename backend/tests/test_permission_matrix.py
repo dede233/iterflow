@@ -104,6 +104,10 @@ CORE_ROUTE_PERMISSION_MATRIX: dict[tuple[str, str], dict[str, Any]] = {
         "gates": [("any", ("sys.user.create",)), ("any", ("sys.user.role.assign",))],
         "scope": "ALL-required-403",
     },
+    ("POST", "/api/v1/users/{user_id}/email-verification"): {
+        "gates": [("any", ("sys.user.edit",))],
+        "scope": "ALL-and-effective-super-admin-required-403",
+    },
     ("GET", "/api/v1/roles"): {
         "gates": [("any", ("sys.role.view", "sys.role.manage", "sys.user.role.assign"))],
         "scope": "ALL-required-403",

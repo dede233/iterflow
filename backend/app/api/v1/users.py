@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_all_data_scope, require_permission
@@ -10,6 +10,8 @@ from app.models.enums import DataScope
 from app.repositories.user_repository import UserRepository
 from app.schemas.user import (
     UserCreate,
+    UserCreated,
+    UserEmailInvitation,
     UserOut,
     UserPage,
     UserRoleUpdate,
@@ -19,22 +21,6 @@ from app.schemas.user import (
 from app.services.user_administration_service import UserAdministrationService
 
 router = APIRouter(prefix="/users", tags=["users"])
-
-
-def _user_out(repository: UserRepository, user: User) -> UserOut:
-    return UserOut.model_validate(user).model_copy(
-        update={"role_ids": repository.role_ids(user.id)}
-    )
-
-
-def _user_page_out(repository: UserRepository, users: list[User]) -> list[UserOut]:
-    role_ids_by_user = repository.role_ids_by_user([item.id for item in users])
-    return [
-        UserOut.model_validate(item).model_copy(
-            update={"role_ids": role_ids_by_user.get(item.id, [])}
-        )
-        for item in users
-    ]
 
 
 def _get_user_in_scope(repository: UserRepository, user_id: int, current: User) -> User:
@@ -62,7 +48,7 @@ def list_users(
         page_size=page_size,
     )
     return {
-        "items": _user_page_out(repository, items),
+        "items": UserAdministrationService(db).present_users(items),
         "page": page,
         "page_size": page_size,
         "total": total,
@@ -76,12 +62,13 @@ def get_user(
     current: User = Depends(require_permission("sys.user.view")),
 ):
     repository = UserRepository(db)
-    return _user_out(repository, _get_user_in_scope(repository, user_id, current))
+    user = _get_user_in_scope(repository, user_id, current)
+    return UserAdministrationService(db).present_users([user])[0]
 
 
 @router.post(
     "",
-    response_model=UserOut,
+    response_model=UserCreated,
     responses=api_error_responses(
         403,
         409,
@@ -108,6 +95,22 @@ def update_user(
     repository = UserRepository(db)
     _get_user_in_scope(repository, user_id, current)
     return UserAdministrationService(db).update_profile(user_id, payload, current.id)
+
+
+@router.post(
+    "/{user_id}/email-verification",
+    status_code=204,
+    responses=api_error_responses(403, 404, 409, 429, descriptions={429: "请等待一分钟后重试"}),
+)
+def invite_user_email(
+    user_id: int,
+    payload: UserEmailInvitation,
+    db: Session = Depends(get_db),
+    current: User = Depends(require_permission("sys.user.edit")),
+) -> Response:
+    require_all_data_scope(current, db)
+    UserAdministrationService(db).invite_email(user_id, payload.revision, current.id)
+    return Response(status_code=204)
 
 
 @router.patch(

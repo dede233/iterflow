@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
   replace: vi.fn(),
-  query: { from: 'profile' as string | undefined },
+  query: { from: 'profile' as string | undefined, redirect: undefined as string | undefined },
   auth: { mustChangePassword: false },
   changePassword: vi.fn(),
   success: vi.fn(),
@@ -56,6 +56,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   mocks.auth.mustChangePassword = false
   mocks.query.from = 'profile'
+  mocks.query.redirect = undefined
   mocks.changePassword.mockImplementation(async () => { mocks.auth.mustChangePassword = false })
 })
 
@@ -84,5 +85,15 @@ describe('change password contexts', () => {
     const wrapper = view()
     await submitValidPassword(wrapper)
     expect(mocks.replace).toHaveBeenCalledWith('/')
+  })
+
+  it.each([
+    ['/profile#mail-notifications', '/profile#mail-notifications'],
+    ['//outside.example.test/profile', '/'],
+  ])('keeps only a safe destination after initial password change (%s)', async (redirect, destination) => {
+    mocks.auth.mustChangePassword = true
+    mocks.query.redirect = redirect
+    await submitValidPassword(view())
+    expect(mocks.replace).toHaveBeenCalledWith(destination)
   })
 })

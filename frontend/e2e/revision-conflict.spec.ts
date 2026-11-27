@@ -60,7 +60,7 @@ async function mockApi(context: BrowserContext, actorId: number, state: { feedba
 }
 
 function editTitle(page: import('@playwright/test').Page) {
-  return page.getByRole('dialog', { name: '编辑反馈' }).locator('.el-form-item').filter({ hasText: '标题' }).locator('input')
+  return page.getByRole('dialog', { name: '编辑反馈' }).getByRole('textbox', { name: '标题', exact: true })
 }
 
 test('two editors keep the stale draft until B explicitly reloads the server version', async ({ browser }) => {

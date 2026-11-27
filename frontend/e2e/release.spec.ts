@@ -30,11 +30,10 @@ test('production Web login, first password change and feedback creation', async 
   await expect(page.getByRole('heading', { name: '反馈中心' })).toBeVisible()
   await page.goto('/#/feedbacks/new')
   const title = `发布验收反馈-${Date.now()}`
-  await page.locator('.el-form-item').filter({ hasText: '标题' }).locator('input').fill(title)
+  const titleField = page.getByRole('textbox', { name: /^\*?标题$/ })
+  await titleField.fill(title)
   await page.getByRole('textbox', { name: '详细描述', exact: true }).fill('生产构建浏览器验收反馈')
-  await page.locator('.el-form-item').filter({ hasText: '反馈接收人' }).locator('.el-select__wrapper').click()
-  await page.getByRole('option').first().click()
-  await page.keyboard.press('Escape')
+  await selectPerson(page, page.locator('.el-form-item').filter({ hasText: '反馈接收人' }), '系统管理员', titleField)
   await page.getByRole('button', { name: '提交', exact: true }).click()
   await expect(page).toHaveURL(/\/#\/feedbacks\/\d+$/)
   await page.goto('/#/feedbacks')
@@ -123,11 +122,10 @@ test('Phase 7 real restricted users: presence, conflict, publish, notification a
     await login(admin, adminName, adminPassword)
     const title = `Phase 7 browser chain ${suffix}`
     await submit.goto('/#/feedbacks/new')
-    await submit.locator('.el-form-item').filter({ hasText: '标题' }).locator('input').fill(title)
+    const titleField = submit.getByRole('textbox', { name: /^\*?标题$/ })
+    await titleField.fill(title)
     await submit.getByRole('textbox', { name: '详细描述', exact: true }).fill('Real isolated PostgreSQL browser acceptance')
-    await submit.locator('.el-form-item').filter({ hasText: '反馈接收人' }).getByRole('combobox').fill(`P7 A ${suffix}`)
-    await submit.getByRole('option', { name: `P7 A ${suffix}`, exact: true }).click()
-    await submit.keyboard.press('Escape')
+    await selectPerson(submit, submit.locator('.el-form-item').filter({ hasText: '反馈接收人' }), `P7 A ${suffix}`, titleField)
     const created = submit.waitForResponse(r => r.url().endsWith('/api/v1/feedbacks') && r.request().method() === 'POST')
     await submit.getByRole('button', { name: '提交', exact: true }).click()
     const feedback = await (await created).json()
@@ -482,17 +480,24 @@ test('Phase 7 real restricted users: presence, conflict, publish, notification a
     expect(repeated.status()).toBe(409)
 
     const followupTitle = `线上使用反馈 ${suffix}`
+    const followupDescription = '正常使用后发现仍可改善的情况。'
     await reviewCard(pageA).getByRole('button', { name: followupLabel, exact: true }).click()
     const followupDialog = pageA.getByRole('dialog', { name: followupLabel, exact: true })
-    const followupTitleField = followupDialog.locator('.el-form-item').filter({ hasText: '标题' }).getByRole('textbox')
+    const followupTitleField = followupDialog.getByRole('textbox', { name: /^\*?标题$/ })
     await followupTitleField.fill(followupTitle)
-    await followupDialog.locator('.el-form-item').filter({ hasText: '详细描述' }).getByRole('textbox').fill('正常使用后发现仍可改善的情况。')
+    await followupDialog.getByRole('textbox', { name: '详细描述', exact: true }).fill(followupDescription)
     await selectPerson(pageA, followupDialog.locator('.el-form-item').filter({ hasText: '反馈接收人' }), `P7 B ${suffix}`, followupTitleField)
     const createdFollowup = post(pageA, `${reviewPath}/feedbacks`)
     await followupDialog.getByRole('button', { name: '提交', exact: true }).click()
     const followupResponse = await createdFollowup
     expect(followupResponse.status()).toBe(200)
-    expect(followupResponse.request().postDataJSON()).toMatchObject({ revision: recordedReview.revision, title: followupTitle, recipient_ids: [b.id] })
+    expect(followupResponse.request().postDataJSON()).toMatchObject({
+      revision: recordedReview.revision,
+      title: followupTitle,
+      description: `<p>${followupDescription}</p>`,
+      description_format: 'HTML',
+      recipient_ids: [b.id],
+    })
     const followup = await followupResponse.json()
     expect(followup).toMatchObject({ status: 'NEW', main_requirement_id: null, submitter_id: a.id })
     const feedbackPath = `/feedbacks/${followup.id}`

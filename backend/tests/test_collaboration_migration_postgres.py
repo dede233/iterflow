@@ -103,10 +103,15 @@ def test_collaboration_existing_postgres_upgrade(monkeypatch, collision):
             command.check(cfg)
             with engine.connect() as db:
                 assert db.scalar(text("SELECT version_num FROM alembic_version")) == (
-                    "0019_online_review"
+                    "0029_ops_role_defaults"
                 )
             with Session(engine) as db:
-                assert set(db.scalars(select(Role.code))) == {"DEVELOPER", "DESIGNER"}
+                assert set(db.scalars(select(Role.code))) == {
+                    "DEVELOPER",
+                    "DESIGNER",
+                    "AD_PRODUCTION_CREATOR",
+                    "AD_PRODUCTION_COMPLETER",
+                }
         with Session(engine) as db:
             user = db.get(User, uid)
             assert user.password_hash == digest and not user.must_change_password

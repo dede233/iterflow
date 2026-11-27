@@ -2,8 +2,16 @@ import type { RoleUpdatePayload } from '@/api/roles'
 import type { PermissionItem, RoleItem } from '@/types/system'
 
 export interface PermissionGroup {
+  key: string
   name: string
   permissions: PermissionItem[]
+}
+
+interface PermissionSection {
+  key: string
+  name: string
+  nested: boolean
+  groups: PermissionGroup[]
 }
 
 export interface RoleBasicForm {
@@ -13,14 +21,28 @@ export interface RoleBasicForm {
   enabled: boolean
 }
 
-export function groupPermissions(permissions: PermissionItem[]): PermissionGroup[] {
-  const grouped = new Map<string, PermissionItem[]>()
+export function groupPermissions(permissions: PermissionItem[]): PermissionSection[] {
+  const sections = new Map<string, PermissionSection>()
+  const groups = new Map<string, PermissionGroup>()
   for (const permission of permissions) {
-    const items = grouped.get(permission.group) ?? []
-    items.push(permission)
-    grouped.set(permission.group, items)
+    const parent = permission.parent_group || null
+    const name = parent ?? permission.group
+    const sectionKey = parent ? `parent:${name}` : `group:${name}`
+    let section = sections.get(sectionKey)
+    if (!section) {
+      section = { key: sectionKey, name, nested: Boolean(parent), groups: [] }
+      sections.set(sectionKey, section)
+    }
+    const groupKey = JSON.stringify([parent, permission.group])
+    let group = groups.get(groupKey)
+    if (!group) {
+      group = { key: groupKey, name: permission.group, permissions: [] }
+      groups.set(groupKey, group)
+      section.groups.push(group)
+    }
+    group.permissions.push(permission)
   }
-  return [...grouped].map(([name, items]) => ({ name, permissions: items }))
+  return [...sections.values()]
 }
 
 export function setPermissionGroupSelection(

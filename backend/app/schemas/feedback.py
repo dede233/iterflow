@@ -28,6 +28,8 @@ class FeedbackCreate(BaseModel):
     system_id: int | None = None
     module_id: int | None = None
     description: str = Field(min_length=2)
+    description_format: Literal["PLAIN", "HTML"] = "PLAIN"
+    description_images: dict[str, str] = Field(default_factory=dict, max_length=12, repr=False)
     expected_result: str | None = None
     actual_result: str | None = None
     reproduce_steps: str | None = None
@@ -41,6 +43,8 @@ class FeedbackUpdate(BaseModel):
     system_id: int | None = None
     module_id: int | None = None
     description: str | None = Field(default=None, min_length=2)
+    description_format: Literal["PLAIN", "HTML"] = "PLAIN"
+    description_images: dict[str, str] = Field(default_factory=dict, max_length=12, repr=False)
     expected_result: str | None = None
     actual_result: str | None = None
     reproduce_steps: str | None = None
@@ -78,6 +82,7 @@ class FeedbackOut(BaseModel):
     module_id: int | None
     submitter_id: int
     description: str
+    description_format: Literal["PLAIN", "HTML"] = "PLAIN"
     expected_result: str | None
     actual_result: str | None
     reproduce_steps: str | None

@@ -22,12 +22,15 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy import Enum as SAEnum
+from sqlalchemy.dialects.mysql import VARCHAR as MYSQL_VARCHAR
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, column_property, mapped_column
 
 from app.core.database import Base, engine
 from app.core.db_types import ExactIdentifier, UTCDateTime
 from app.models.enums import (
+    AdProductionKind,
+    AdProductionStatus,
     DataScope,
     FeedbackStatus,
     FeedbackType,
@@ -345,6 +348,9 @@ class Feedback(Base, AuditMixin):
     module_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("sys_business_module.id"))
     submitter_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("sys_user.id"), index=True)
     description: Mapped[str] = mapped_column(Text)
+    description_format: Mapped[str] = mapped_column(
+        String(8), default="PLAIN", server_default="PLAIN"
+    )
     expected_result: Mapped[str | None] = mapped_column(Text)
     actual_result: Mapped[str | None] = mapped_column(Text)
     reproduce_steps: Mapped[str | None] = mapped_column(Text)
@@ -588,6 +594,68 @@ class AttachmentRelation(Base):
     )
 
 
+class AdProduction(Base, AuditMixin):
+    __tablename__ = "ops_ad_production"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    work_date: Mapped[date] = mapped_column(Date)
+    title: Mapped[str | None] = mapped_column(String(200))
+    due_at: Mapped[datetime | None] = mapped_column(timestamp_type())
+    content: Mapped[str] = mapped_column(Text)
+    content_format: Mapped[str] = mapped_column(String(8), default="PLAIN", server_default="PLAIN")
+    issuer: Mapped[str] = mapped_column(String(100))
+    created_by: Mapped[int] = mapped_column(BigInteger)
+    receiver_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        ForeignKey("sys_user.id", name="fk_ad_production_receiver", ondelete="RESTRICT"),
+    )
+    completed_by_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        ForeignKey("sys_user.id", name="fk_ad_production_completed_by", ondelete="RESTRICT"),
+    )
+    status: Mapped[AdProductionStatus] = mapped_column(
+        SAEnum(
+            AdProductionStatus,
+            name="ad_production_status",
+            native_enum=False,
+            create_constraint=True,
+            validate_strings=True,
+            length=16,
+        ),
+        default=AdProductionStatus.NOT_STARTED,
+        server_default=AdProductionStatus.NOT_STARTED.value,
+    )
+    kind: Mapped[AdProductionKind] = mapped_column(
+        SAEnum(
+            AdProductionKind,
+            name="ad_production_kind",
+            native_enum=False,
+            create_constraint=True,
+            validate_strings=True,
+            length=16,
+        ),
+        default=AdProductionKind.MATERIAL,
+        server_default=AdProductionKind.MATERIAL.value,
+    )
+    processing_result: Mapped[str | None] = mapped_column(Text)
+    __table_args__ = (
+        CheckConstraint(
+            "(kind = 'MATERIAL' AND processing_result IS NULL) OR "
+            "(kind = 'MERCHANT_AD' AND ("
+            "(status = 'COMPLETED' AND completed_by_id IS NOT NULL "
+            "AND processing_result IS NOT NULL "
+            "AND char_length(processing_result) BETWEEN 1 AND 4000) "
+            "OR (status IN ('NOT_STARTED', 'IN_PROGRESS') AND processing_result IS NULL)))",
+            name="ck_ad_production_kind_workflow",
+        ).ddl_if(dialect="postgresql"),
+        Index("ix_ad_production_kind_created_at_id", "kind", "created_at", "id"),
+        Index("ix_ad_production_created_at_id", "created_at", "id"),
+        Index("ix_ad_production_work_date_id", "work_date", "id"),
+        Index("ix_ad_production_creator_work_date_id", "created_by", "work_date", "id"),
+        Index("ix_ad_production_receiver_work_date_id", "receiver_id", "work_date", "id"),
+        Index("ix_ad_production_completed_by_id", "completed_by_id"),
+    )
+
+
 class Comment(Base, AuditMixin):
     __tablename__ = "rd_comment"
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
@@ -633,6 +701,29 @@ class MailPreference(Base):
     notice_acknowledged_at: Mapped[datetime | None] = mapped_column(timestamp_type())
 
 
+class WecomPreference(Base):
+    __tablename__ = "sys_wecom_preference"
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("sys_user.id"), primary_key=True)
+    revision: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    mode: Mapped[str] = mapped_column(String(16), default="OFF", server_default="OFF")
+    corp_id: Mapped[str | None] = mapped_column(
+        String(128).with_variant(
+            MYSQL_VARCHAR(128, charset="utf8mb4", collation="utf8mb4_bin"), "mysql"
+        )
+    )
+    member_user_id: Mapped[str | None] = mapped_column(
+        String(64).with_variant(MYSQL_VARCHAR(64, charset="ascii", collation="ascii_bin"), "mysql")
+    )
+    member_key: Mapped[str | None] = mapped_column(
+        String(64).with_variant(MYSQL_VARCHAR(64, charset="ascii", collation="ascii_bin"), "mysql")
+    )
+    binding_id: Mapped[str | None] = mapped_column(String(36))
+    eligible_since: Mapped[datetime | None] = mapped_column(timestamp_type())
+    __table_args__ = (
+        UniqueConstraint("corp_id", "member_key", name="uq_wecom_preference_member_key"),
+    )
+
+
 class NotificationDelivery(Base):
     __tablename__ = "sys_notification_delivery"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
@@ -644,6 +735,7 @@ class NotificationDelivery(Base):
     next_attempt_at: Mapped[datetime] = mapped_column(timestamp_type(), default=utcnow, index=True)
     last_error: Mapped[str | None] = mapped_column(String(64))
     queued_email: Mapped[str | None] = mapped_column(String(254))
+    queued_wecom_binding_id: Mapped[str | None] = mapped_column(String(36))
     created_at: Mapped[datetime] = mapped_column(timestamp_type(), default=utcnow)
     __table_args__ = (
         UniqueConstraint("event_id", "user_id", "channel", name="uq_delivery_event_user_channel"),

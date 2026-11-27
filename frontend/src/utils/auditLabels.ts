@@ -1,4 +1,5 @@
 export const auditEntityLabels: Record<string, string> = {
+  AD_PRODUCTION: '物料制作',
   ANNOUNCEMENT: '更新公告',
   FEEDBACK: '反馈',
   REQUIREMENT: '需求',

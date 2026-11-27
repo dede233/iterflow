@@ -10,6 +10,7 @@ from uuid import uuid4
 import pytest
 from alembic.config import Config
 from fastapi.testclient import TestClient
+from ops_production_permissions_acceptance import seed_collaboration_fixture
 from sqlalchemy import create_engine, event, func, select, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session, sessionmaker
@@ -30,7 +31,6 @@ from test_v1_e2e_postgres import (
 )
 
 from alembic import command
-from app.cli.seed import seed_database
 from app.core import database
 from app.core.config import get_settings
 from app.core.security import create_access_token
@@ -67,7 +67,7 @@ TEST_VERSION = "5.7.44-log" if PORTABLE else "5.7.44"
 
 
 @pytest.fixture
-def mysql_api(monkeypatch, tmp_path):
+def mysql_api(monkeypatch, tmp_path, request):
     url = make_url(os.environ["DATABASE_URL"])
     assert url.drivername == "mysql+pymysql"
     assert url.host == "127.0.0.1" and url.port == TEST_PORT, "local dedicated container only"
@@ -91,9 +91,13 @@ def mysql_api(monkeypatch, tmp_path):
     )
     event.listen(engine, "connect", database.configure_mysql)
     try:
-        command.upgrade(Config(str(BACKEND / "alembic-mysql.ini")), "head")
         with Session(engine) as session:
-            seed_database(session, username="test-admin", password="Fresh-test-password-57!")
+            seed_collaboration_fixture(
+                session,
+                username="test-admin",
+                password="Fresh-test-password-57!",
+                fresh=getattr(request, "param", None) == "fresh",
+            )
             assert session.scalar(select(func.count(User.id))) == 1
             for model in (Feedback, Requirement, Version, Release, Notification):
                 assert session.scalar(select(func.count(model.id))) == 0
@@ -1094,7 +1098,7 @@ def test_mysql_restart_and_isolated_backup_restore(mysql_api, monkeypatch, tmp_p
                     "WHERE trigger_schema=DATABASE()"
                 )
             )
-            assert restored_triggers == 113
+            assert restored_triggers == 119
         with Session(restore_engine) as session:
             assert session.get(Requirement, ids["requirement"]).current_version_id == ids["version"]
             assert session.get(Feedback, ids["feedback"]).main_requirement_id == ids["requirement"]
@@ -1194,7 +1198,7 @@ def test_mysql_preflight_requires_empty_or_verified_schema(mysql_api):
 
     with mysql_api[1].connect() as connection:
         result = validate_mysql(connection)
-        assert result["table_count"] == 36
+        assert result["table_count"] == 38
         with pytest.raises(RuntimeError, match="empty"):
             validate_mysql(connection, empty=True)
         connection.execute(text("DROP TRIGGER domain_sys_user_insert"))
@@ -1302,7 +1306,7 @@ def test_mysql_runtime_principal_cannot_remove_database_protection(mysql_api, mo
     event.listen(runtime, "connect", database.configure_mysql)
     try:
         with runtime.connect() as connection:
-            assert validate_mysql(connection, inspect_triggers=False)["table_count"] == 36
+            assert validate_mysql(connection, inspect_triggers=False)["table_count"] == 38
             with pytest.raises(DBAPIError):
                 connection.execute(text("DROP TRIGGER domain_sys_user_insert"))
             with pytest.raises(DBAPIError):
@@ -1524,7 +1528,7 @@ def test_mysql_upgrade_legacy_0001_preserves_full_keys(monkeypatch):
         monkeypatch.setattr(migrate, "engine", engine)
         migrate.main()
         with engine.connect() as c:
-            assert validate_mysql(c)["table_count"] == 36
+            assert validate_mysql(c)["table_count"] == 38
         with Session(engine) as session:
             assert set(session.scalars(select(FileObject.storage_key))) == set(keys)
     finally:

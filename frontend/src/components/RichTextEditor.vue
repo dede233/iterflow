@@ -6,7 +6,15 @@ import { rememberImage, forgetImage, pendingImage } from '@/utils/requirementIma
 import StarterKit from '@tiptap/starter-kit'
 import { richTextPlainText, safeRichTextLink, sanitizeRichText } from '@/utils/richText'
 
-const props = withDefaults(defineProps<{ modelValue: string; requirementId?: number; announcementId?: number; disabled?: boolean; label?: string }>(), { disabled: false, label: '需求描述' })
+const props = withDefaults(defineProps<{
+  modelValue: string
+  requirementId?: number
+  announcementId?: number
+  feedbackId?: number
+  adProductionId?: number
+  disabled?: boolean
+  label?: string
+}>(), { disabled: false, label: '需求描述' })
 const emit = defineEmits<{ 'update:modelValue': [value: string]; blur: [] }>()
 const linkOpen = ref(false)
 const linkUrl = ref('')
@@ -18,6 +26,8 @@ const imageError = ref('')
 const owned = new Set<string>()
 provide('editorRequirementId', () => props.requirementId)
 provide('editorAnnouncementId', () => props.announcementId)
+provide('editorFeedbackId', () => props.feedbackId)
+provide('editorAdProductionId', () => props.adProductionId)
 onBeforeUnmount(() => owned.forEach(forgetImage))
 const picture = Node.create({
   name: 'requirementImage', group: 'block', atom: true,
@@ -26,7 +36,7 @@ const picture = Node.create({
   renderHTML: ({ HTMLAttributes }) => ['img', HTMLAttributes],
   addNodeView: () => VueNodeViewRenderer(EditorImageNode),
 })
-function insertImages(files: File[]) {
+function insertImages(files: File[], preserveSelectedText = false) {
   const instance = editor.value
   if (!instance || props.disabled) return
   imageError.value = ''
@@ -49,13 +59,13 @@ function insertImages(files: File[]) {
   })
   const selection = instance.state.selection
   const chain = instance.chain().focus()
-  if (selection.$from.nodeAfter?.type.name === 'requirementImage' && !selection.empty)
+  if (!selection.empty && (preserveSelectedText || selection.$from.nodeAfter?.type.name === 'requirementImage'))
     chain.insertContentAt(selection.to, nodes).run()
   else chain.insertContent(nodes).run()
 }
 function choosePictures(event: Event) {
   const input = event.target as HTMLInputElement
-  if (input.files?.length) insertImages(Array.from(input.files))
+  if (input.files?.length) insertImages(Array.from(input.files), true)
   input.value = ''
 }
 const editor = useEditor({

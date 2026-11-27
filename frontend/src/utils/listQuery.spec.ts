@@ -23,6 +23,13 @@ describe('applied list query contract', () => {
     expect(parseListQuery('/feedbacks', { page: '1', page_size: '20', system_id: '0', module_id: '-3', status: null })).toEqual({})
     expect(parseListQuery('/requirements', { page: '02', keyword: '  a  ' })).toEqual({ page: '2', keyword: 'a' })
   })
+  it('keeps one-sided ad production dates and enforces the ad search contract', () => {
+    expect(parseListQuery('/ad-productions', { status: 'SHIPPING', date_from: '2026-11-23', keyword: '  客服  ' }))
+      .toEqual({ status: 'SHIPPING', date_from: '2026-11-23', keyword: '客服' })
+    expect(parseListQuery('/ad-productions', { date_to: '2026-11-24' })).toEqual({ date_to: '2026-11-24' })
+    expect(parseListQuery('/ad-productions', { date_from: '2026-11-25', date_to: '2026-11-24', keyword: '字'.repeat(101) }))
+      .toEqual({})
+  })
   it.each([
     ['/versions', { planned_release_from: '2026-10-01' }],
     ['/admin/audits', { time_from: '2026-10-01T00:00:00Z' }],

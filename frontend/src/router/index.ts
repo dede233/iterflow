@@ -1,8 +1,11 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import AppLayout from '@/layouts/AppLayout.vue'
+import { AD_PRODUCTION_PERMISSIONS } from '@/constants/adProduction'
 import { useAuthStore } from '@/stores/auth'
 import { pinia } from '@/stores/pinia'
 import { safeInternalRedirect } from '@/auth/redirect'
+
+const adProductionView = () => import('@/views/ad-production/AdProductionListView.vue')
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -44,6 +47,8 @@ export const router = createRouter({
         { path: 'versions/:id', name: 'version-detail', component: () => import('@/views/version/VersionDetailView.vue'), meta: { permission: 'rd.version.view' } },
         { path: 'releases', name: 'release-list', component: () => import('@/views/release/ReleaseListView.vue'), meta: { permission: 'rd.release.view' } },
         { path: 'releases/:id', name: 'release-detail', component: () => import('@/views/release/ReleaseDetailView.vue'), meta: { permission: 'rd.release.view' } },
+        { path: 'ad-productions', name: 'ad-production-list', component: adProductionView, props: { kind: 'MATERIAL' }, meta: { permission: AD_PRODUCTION_PERMISSIONS.MATERIAL.view } },
+        { path: 'merchant-ads', name: 'merchant-ad-list', component: adProductionView, props: { kind: 'MERCHANT_AD' }, meta: { permission: AD_PRODUCTION_PERMISSIONS.MERCHANT_AD.view } },
         { path: 'announcements', name: 'announcements', component: () => import('@/views/announcement/AnnouncementView.vue') },
         { path: 'announcements/:id', name: 'announcement-detail', component: () => import('@/views/announcement/AnnouncementView.vue') },
         { path: 'notifications', name: 'notifications', component: () => import('@/views/notification/NotificationCenterView.vue') },
@@ -82,6 +87,10 @@ router.beforeEach(async (to) => {
   }
   if (auth.mustChangePassword && !to.meta.allowPasswordChangeRequired) {
     return { name: 'change-password', query: to.fullPath === '/' ? {} : { redirect: to.fullPath } }
+  }
+  if (to.name === 'dashboard' && !auth.hasPermission('dashboard.view')) {
+    if (auth.hasPermission(AD_PRODUCTION_PERMISSIONS.MATERIAL.view)) return { name: 'ad-production-list' }
+    if (auth.hasPermission(AD_PRODUCTION_PERMISSIONS.MERCHANT_AD.view)) return { name: 'merchant-ad-list' }
   }
   if (to.meta.permission && !auth.hasPermission(to.meta.permission)) {
     return { name: 'forbidden' }

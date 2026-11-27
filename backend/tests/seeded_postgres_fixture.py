@@ -1,15 +1,12 @@
 import os
-from pathlib import Path
 from uuid import uuid4
 
 import pytest
-from alembic.config import Config
 from fastapi.testclient import TestClient
+from ops_production_permissions_acceptance import seed_collaboration_fixture
 from sqlalchemy import create_engine, select, text
 from sqlalchemy.orm import Session, sessionmaker
 
-from alembic import command
-from app.cli.seed import seed_database
 from app.core import database
 from app.core.config import get_settings
 from app.core.security import create_access_token
@@ -23,7 +20,7 @@ class RedactedHeaders(dict):
 
 
 @pytest.fixture
-def collaboration_pg(monkeypatch, tmp_path):
+def collaboration_pg(monkeypatch, tmp_path, request):
     url = os.environ.get("ITERFLOW_TEST_POSTGRES_URL")
     if not url:
         pytest.fail("Real PostgreSQL required for collaboration acceptance")
@@ -37,9 +34,13 @@ def collaboration_pg(monkeypatch, tmp_path):
     get_settings.cache_clear()
     engine = create_engine(url, connect_args={"options": f"-csearch_path={schema}"}, pool_size=8)
     try:
-        command.upgrade(Config(str(Path(__file__).parents[1] / "alembic.ini")), "head")
         with Session(engine) as db:
-            seed_database(db, username="collaboration-admin", password="Fresh-admin-password!")
+            seed_collaboration_fixture(
+                db,
+                username="collaboration-admin",
+                password="Fresh-admin-password!",
+                fresh=getattr(request, "param", None) == "fresh",
+            )
             user = db.scalar(select(User).where(User.username == "collaboration-admin"))
             user.must_change_password = False
             db.commit()

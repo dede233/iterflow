@@ -49,13 +49,15 @@ class _TextExtractor(HTMLParser):
         self.parts.append(data)
 
 
-def sanitize_requirement_description(value: str, format: str) -> str:
+def sanitize_editor_content(
+    value: str, format: str, *, label: str, min_chars: int = 2, max_chars: int | None = None
+) -> str:
     if format not in {"PLAIN", "HTML"}:
-        raise ValueError("不支持的需求描述格式")
+        raise ValueError(f"不支持的{label}格式")
     if "\x00" in value:
-        raise ValueError("需求描述不能包含空字符")
+        raise ValueError(f"{label}不能包含空字符")
     if len(value) > MAX_DESCRIPTION_LENGTH:
-        raise ValueError("需求描述不能超过 100000 个字符")
+        raise ValueError(f"{label}不能超过 100000 个字符")
     result = value if format == "PLAIN" else CLEANER.clean(value)
     if format == "HTML":
         # Keep only our source-less file references. Never accept remote URLs or inline data.
@@ -70,8 +72,14 @@ def sanitize_requirement_description(value: str, format: str) -> str:
     visible_characters = [
         c for c in visible if not c.isspace() and unicodedata.category(c) not in {"Cc", "Cf"}
     ]
-    if len(visible_characters) < 2:
-        raise ValueError("需求描述至少需要 2 个文字字符")
+    if len(visible_characters) < min_chars:
+        raise ValueError(f"{label}至少需要 {min_chars} 个文字字符")
+    if max_chars is not None and len(visible) > max_chars:
+        raise ValueError(f"{label}不能超过 {max_chars} 个字符")
     if len(result.encode("utf-8")) > MAX_DESCRIPTION_BYTES:
-        raise ValueError("需求描述内容过长, 请精简文字或格式")
+        raise ValueError(f"{label}内容过长, 请精简文字或格式")
     return result
+
+
+def sanitize_requirement_description(value: str, format: str) -> str:
+    return sanitize_editor_content(value, format, label="需求描述")

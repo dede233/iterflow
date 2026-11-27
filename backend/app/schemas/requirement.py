@@ -89,6 +89,13 @@ class RequirementAssigneeChange(BaseModel):
 
 class RequirementOut(BaseModel):
     release_frozen: bool = Field(default=False, title="首次发布内容已冻结")
+    can_edit_as_creator: bool | None = Field(
+        default=None,
+        title="创建人可编辑",
+        description=(
+            "需求详情根据登录人、需求当前状态和冻结状态返回。其他响应不计算此能力，值为 null。"  # noqa: RUF001
+        ),
+    )
     system_name: str | None = None
     current_handlers: list[PersonOption] = Field(default_factory=list)
     model_config = ConfigDict(from_attributes=True)

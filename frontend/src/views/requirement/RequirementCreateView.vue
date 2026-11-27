@@ -16,7 +16,7 @@ import SectionCard from '@/components/ui/SectionCard.vue'
 import type { Feedback, RequirementCreatePayload } from '@/types/domain'
 
 type FeedbackConversion = {
-  source: Pick<Feedback, 'title' | 'description' | 'system_id' | 'system_name'>
+  source: Pick<Feedback, 'id' | 'title' | 'description' | 'description_format' | 'system_id' | 'system_name'>
   confirmPeople: Person[]
   allowed: boolean
   error: string
@@ -48,12 +48,15 @@ const developerOptions = reactive(new Map<number, Person>())
 const acceptanceOptions = computed(() => [...developerOptions.values()].filter(person => roles.ACCEPT.includes(person.id)))
 const developersToAdd = computed(() => roles.DEVELOP.filter(id => !roles.ACCEPT.includes(id)))
 const includesPrefilledConfirmer = computed(() => props.conversion?.confirmPeople.some(person => roles.CONFIRM.includes(person.id)))
+const sourceFeedback = props.conversion?.source
 const form = reactive({
   system_id: null as number | null,
-  title: props.conversion?.source.title ?? '',
+  title: sourceFeedback?.title ?? '',
   requirement_type: 'FEATURE',
   priority: 'P2' as RequirementCreatePayload['priority'],
-  description: props.conversion ? plainTextToHtml(props.conversion.source.description) : '',
+  description: sourceFeedback
+    ? (sourceFeedback.description_format === 'HTML' ? sourceFeedback.description : plainTextToHtml(sourceFeedback.description))
+    : '',
   acceptance_criteria: '',
 })
 const inheritedSystemId = computed(() => props.conversion?.source.system_id ?? null)
@@ -151,7 +154,7 @@ async function submit(): Promise<void> {
         </el-form-item>
         <el-form-item label="需求描述" required class="span-2" data-field="description" :error="errors.description">
           <template #label><span>需求描述</span><el-button class="expand-writing" link :disabled="saving" @click="toggleExpanded">{{ expanded ? '收起编辑' : (props.embedded ? '全屏编辑' : '展开编辑') }}</el-button></template>
-          <RichTextEditor v-model="form.description" :disabled="saving" label="需求描述" />
+          <RichTextEditor v-model="form.description" :feedback-id="conversion?.source.id" :disabled="saving" label="需求描述" />
         </el-form-item>
         <el-form-item label="验收标准" class="span-2">
           <el-input v-model="form.acceptance_criteria" type="textarea" :rows="3" />

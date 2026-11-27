@@ -3,7 +3,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import AppError, ConflictError, NotFoundError
+from app.core.exceptions import AppError, ConflictError, NotFoundError, PermissionDenied
 from app.core.ids import next_business_no
 from app.models.entities import Requirement, RequirementParticipant, Version
 from app.models.enums import (
@@ -133,12 +133,29 @@ class RequirementService:
         return item
 
     def update(
-        self, requirement_id: int, payload: RequirementUpdate, operator_id: int
+        self,
+        requirement_id: int,
+        payload: RequirementUpdate,
+        operator_id: int,
+        *,
+        creator_only: bool = False,
     ) -> Requirement:
         current = self.repo.get(requirement_id)
         if not current:
             raise NotFoundError("需求不存在")
+        if creator_only and current.created_by != operator_id:
+            raise PermissionDenied("仅需求创建人本人可编辑该需求")
         WorkflowService(self.db).lock(current)
+        if current.deleted_at is not None:
+            raise NotFoundError("需求不存在")
+        if creator_only:
+            if current.revision != payload.revision:
+                raise ConflictError(
+                    "该需求已被其他用户修改，请刷新后重试",  # noqa: RUF001
+                    revision_conflict_data(current),
+                )
+            if current.status != RequirementStatus.DRAFT:
+                raise PermissionDenied("创建人仅可编辑待确认的需求")
         values = payload.model_dump(
             exclude_unset=True, exclude={"revision", "owner_id", "description_images"}
         ) | {"updated_by": operator_id}

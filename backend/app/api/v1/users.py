@@ -22,6 +22,20 @@ from app.services.user_administration_service import UserAdministrationService
 
 router = APIRouter(prefix="/users", tags=["users"])
 
+ROLE_SELECTION_VALIDATION_RESPONSE = {
+    "description": "参数无效、角色不存在、角色停用或尝试新增分配历史制作角色。",
+    "content": {
+        "application/json": {
+            "schema": {
+                "anyOf": [
+                    {"$ref": "#/components/schemas/HTTPValidationError"},
+                    {"$ref": "#/components/schemas/ErrorResponse"},
+                ],
+            },
+        },
+    },
+}
+
 
 def _get_user_in_scope(repository: UserRepository, user_id: int, current: User) -> User:
     data_scope = repository.data_scope(current.id)
@@ -69,11 +83,14 @@ def get_user(
 @router.post(
     "",
     response_model=UserCreated,
-    responses=api_error_responses(
-        403,
-        409,
-        descriptions={403: "授予 SUPER_ADMIN 角色需要当前操作人是有效的超级管理员。"},
-    ),
+    responses={
+        **api_error_responses(
+            403,
+            409,
+            descriptions={403: "授予 SUPER_ADMIN 角色需要当前操作人是有效的超级管理员。"},
+        ),
+        422: ROLE_SELECTION_VALIDATION_RESPONSE,
+    },
 )
 def create_user(
     payload: UserCreate,
@@ -139,15 +156,18 @@ def set_status(
 @router.put(
     "/{user_id}/roles",
     response_model=UserOut,
-    responses=api_error_responses(
-        404,
-        403,
-        409,
-        descriptions={
-            403: "授予或撤销 SUPER_ADMIN 角色需要当前操作人是有效的超级管理员。",
-            409: "不能移除最后一个有效的超级管理员。",
-        },
-    ),
+    responses={
+        **api_error_responses(
+            404,
+            403,
+            409,
+            descriptions={
+                403: "授予或撤销 SUPER_ADMIN 角色需要当前操作人是有效的超级管理员。",
+                409: "不能移除最后一个有效的超级管理员。",
+            },
+        ),
+        422: ROLE_SELECTION_VALIDATION_RESPONSE,
+    },
 )
 def update_user_roles(
     user_id: int,

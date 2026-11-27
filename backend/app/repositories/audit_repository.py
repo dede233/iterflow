@@ -1,10 +1,20 @@
+from collections.abc import Collection
 from datetime import datetime
 
 from sqlalchemy import and_, false, func, or_, select, true
 from sqlalchemy.orm import Session
 
-from app.models.entities import Feedback, OperationLog, Release, Requirement, User, Version
-from app.models.enums import DataScope
+from app.models.entities import (
+    AdProduction,
+    Feedback,
+    OperationLog,
+    Release,
+    Requirement,
+    User,
+    Version,
+)
+from app.models.enums import AdProductionKind, DataScope
+from app.repositories.ad_production_repository import AD_PRODUCTION_ENTITY, AdProductionRepository
 from app.repositories.requirement_repository import RequirementRepository
 
 
@@ -32,6 +42,7 @@ class AuditRepository:
         user_id: int,
         data_scope: DataScope,
         entity_types: set[str],
+        ad_production_kinds: Collection[AdProductionKind] = (),
     ):
         """Build an allow-list predicate for records the caller may inspect."""
 
@@ -70,6 +81,17 @@ class AuditRepository:
             release_ids = select(Release.id).where(Release.version_id.in_(version_ids))
             branches.append(
                 and_(OperationLog.entity_type == "RELEASE", OperationLog.entity_id.in_(release_ids))
+            )
+
+        if AD_PRODUCTION_ENTITY in entity_types and ad_production_kinds:
+            predicate = AdProductionRepository.scope_criterion(
+                user_id, data_scope, ad_production_kinds
+            )
+            branches.append(
+                and_(
+                    OperationLog.entity_type == AD_PRODUCTION_ENTITY,
+                    OperationLog.entity_id.in_(select(AdProduction.id).where(predicate)),
+                )
             )
 
         # User and authentication records refer to a User id.  A self-scoped
@@ -161,6 +183,7 @@ class AuditRepository:
         user_id: int,
         data_scope: DataScope,
         entity_types: set[str],
+        ad_production_kinds: Collection[AdProductionKind],
         page: int,
         size: int,
         entity_type: str | None = None,
@@ -172,7 +195,10 @@ class AuditRepository:
     ) -> tuple[list[tuple[OperationLog, User | None]], int]:
         criteria = [
             self._visibility_criteria(
-                user_id=user_id, data_scope=data_scope, entity_types=entity_types
+                user_id=user_id,
+                data_scope=data_scope,
+                entity_types=entity_types,
+                ad_production_kinds=ad_production_kinds,
             ),
             *self._filters(
                 entity_type=entity_type,
@@ -201,6 +227,7 @@ class AuditRepository:
         user_id: int,
         data_scope: DataScope,
         entity_types: set[str],
+        ad_production_kinds: Collection[AdProductionKind],
     ) -> tuple[OperationLog, User | None] | None:
         row = self.db.execute(
             select(OperationLog, User)
@@ -208,7 +235,10 @@ class AuditRepository:
             .where(
                 OperationLog.id == audit_id,
                 self._visibility_criteria(
-                    user_id=user_id, data_scope=data_scope, entity_types=entity_types
+                    user_id=user_id,
+                    data_scope=data_scope,
+                    entity_types=entity_types,
+                    ad_production_kinds=ad_production_kinds,
                 ),
             )
         ).one_or_none()

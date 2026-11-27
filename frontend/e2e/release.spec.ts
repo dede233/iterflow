@@ -31,7 +31,7 @@ test('production Web login, first password change and feedback creation', async 
   await page.goto('/#/feedbacks/new')
   const title = `发布验收反馈-${Date.now()}`
   await page.locator('.el-form-item').filter({ hasText: '标题' }).locator('input').fill(title)
-  await page.locator('.el-form-item').filter({ hasText: '详细描述' }).locator('textarea').fill('生产构建浏览器验收反馈')
+  await page.getByRole('textbox', { name: '详细描述', exact: true }).fill('生产构建浏览器验收反馈')
   await page.locator('.el-form-item').filter({ hasText: '反馈接收人' }).locator('.el-select__wrapper').click()
   await page.getByRole('option').first().click()
   await page.keyboard.press('Escape')
@@ -124,7 +124,7 @@ test('Phase 7 real restricted users: presence, conflict, publish, notification a
     const title = `Phase 7 browser chain ${suffix}`
     await submit.goto('/#/feedbacks/new')
     await submit.locator('.el-form-item').filter({ hasText: '标题' }).locator('input').fill(title)
-    await submit.locator('.el-form-item').filter({ hasText: '详细描述' }).locator('textarea').fill('Real isolated PostgreSQL browser acceptance')
+    await submit.getByRole('textbox', { name: '详细描述', exact: true }).fill('Real isolated PostgreSQL browser acceptance')
     await submit.locator('.el-form-item').filter({ hasText: '反馈接收人' }).getByRole('combobox').fill(`P7 A ${suffix}`)
     await submit.getByRole('option', { name: `P7 A ${suffix}`, exact: true }).click()
     await submit.keyboard.press('Escape')

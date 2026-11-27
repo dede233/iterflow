@@ -24,7 +24,7 @@ async function fixture(page: Page, status: Feedback['status'], {
 } = {}) {
   const feedback: Feedback = {
     id: 1, feedback_no: 'FB-NEXT', title, feedback_type: 'OTHER', urgency: 'NORMAL',
-    status, description, submitter_id: 1, submitter_display_name: '指定接收人', system_id: unbound ? null : 1, system_name: unbound ? null : '系统甲', module_id: null,
+    status, description, description_format: 'PLAIN', submitter_id: 1, submitter_display_name: '指定接收人', system_id: unbound ? null : 1, system_name: unbound ? null : '系统甲', module_id: null,
     expected_result: null, actual_result: null, reproduce_steps: null, main_requirement_id: null, duplicate_of_id: null,
     revision: 4, created_at: timestamp, updated_at: timestamp, updated_by: 1,
   }

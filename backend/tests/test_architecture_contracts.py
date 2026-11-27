@@ -8,7 +8,7 @@ from app.services.permission_catalog import PermissionCatalog
 APP_DIR = Path(__file__).resolve().parents[1] / "app"
 API_V1_DIR = APP_DIR / "api" / "v1"
 PERMISSION_CODE = re.compile(
-    r"^(?:dashboard\.view|(?:rd|sys)\.[a-z][a-z0-9_-]*\.[a-z][a-z0-9_.-]*)$"
+    r"^(?:dashboard\.view|(?:rd|ops|sys)\.[a-z][a-z0-9_-]*\.[a-z][a-z0-9_.-]*)$"
 )
 FORBIDDEN_SQL_IMPORTS = {"select", "update", "delete", "func"}
 FORBIDDEN_DB_CALLS = {"execute", "scalar", "scalars", "commit", "flush"}

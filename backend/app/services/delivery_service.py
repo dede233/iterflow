@@ -6,11 +6,12 @@ from email.message import EmailMessage
 from html import escape
 from urllib.parse import urlsplit
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from app.core.config import get_settings
+from app.core.config import Settings, get_settings
 from app.core.exceptions import ConflictError, NotFoundError
+from app.core.wecom import WecomDeliveryError, send_wecom
 from app.models.entities import (
     CollaborationEvent,
     Feedback,
@@ -21,6 +22,7 @@ from app.models.entities import (
     RequirementParticipant,
     User,
     Version,
+    WecomPreference,
 )
 from app.models.enums import NotificationType, UserStatus
 from app.repositories.feedback_repository import FeedbackRepository
@@ -182,7 +184,23 @@ class DeliveryService:
             return bool(person and person.active)
         return False
 
+    def _wecom_eligible(
+        self, event: CollaborationEvent, pref: WecomPreference, settings: Settings
+    ) -> bool:
+        return bool(
+            event.entity_type in {"FEEDBACK", "REQUIREMENT"}
+            and event.action != "VERIFY_EMAIL"
+            and bool(settings.wecom_corp_id)
+            and pref.corp_id == settings.wecom_corp_id
+            and pref.member_user_id
+            and pref.binding_id
+            and pref.eligible_since
+            and aware(event.created_at) >= aware(pref.eligible_since)
+            and (pref.mode == "ALL" or (pref.mode == "TASKS" and self.is_task(event, pref.user_id)))
+        )
+
     def expand(self, limit: int = 100) -> int:
+        settings = get_settings()
         events = list(
             self.db.scalars(
                 select(CollaborationEvent)
@@ -208,6 +226,21 @@ class DeliveryService:
                             event_id=event.id, user_id=uid, channel=channel, queued_email=email
                         )
                     )
+                if settings.wecom_enabled and event.action != "VERIFY_EMAIL":
+                    wecom_pref = self.db.get(WecomPreference, uid)
+                    if (
+                        wecom_pref
+                        and self._wecom_eligible(event, wecom_pref, settings)
+                        and self.authorized(event, user)
+                    ):
+                        self.db.add(
+                            NotificationDelivery(
+                                event_id=event.id,
+                                user_id=uid,
+                                channel="WECOM",
+                                queued_wecom_binding_id=wecom_pref.binding_id,
+                            )
+                        )
             event.processed_at = datetime.now(UTC)
         self.db.commit()
         return len(events)
@@ -369,12 +402,59 @@ class DeliveryService:
         title = f"{kind} #{event.entity_id} · {label}"
         return title, title + "。请登录查看当前进度。"
 
+    @staticmethod
+    def _schedule_retry(row: NotificationDelivery, now: datetime) -> None:
+        row.next_attempt_at = now + timedelta(seconds=min(3600, 30 * 2**row.attempts))
+        if row.attempts >= 5:
+            row.status = "FAILED"
+
+    def _deliver_wecom(
+        self, row: NotificationDelivery, event: CollaborationEvent, settings: Settings
+    ) -> None:
+        # Hold the user then preference lock through the send, matching changes to the binding.
+        pref = self.db.get(
+            WecomPreference, row.user_id, with_for_update=True, populate_existing=True
+        )
+        member = pref.member_user_id if pref else None
+        allowlist = settings.wecom_member_allowlist
+        if not settings.wecom_enabled:
+            row.status, row.last_error = "SKIPPED", "WECOM_DISABLED"
+        elif (
+            not pref
+            or not member
+            or not self._wecom_eligible(event, pref, settings)
+            or pref.binding_id != row.queued_wecom_binding_id
+        ):
+            row.status, row.last_error = "SKIPPED", "WECOM_PREFERENCE_OR_BINDING_CHANGED"
+        elif (settings.app_env != "production" or allowlist) and member not in allowlist:
+            row.status, row.last_error = "SKIPPED", "WECOM_NOT_ALLOWLISTED"
+        elif aware(row.next_attempt_at) <= datetime.now(UTC):
+            row.status, row.last_error = "UNCERTAIN", "WECOM_LEASE_EXPIRED"
+        else:
+            description, _ = self._text(event)
+            path = "feedbacks" if event.entity_type == "FEEDBACK" else "requirements"
+            detail_url = (
+                f"{settings.app_public_url.rstrip('/')}/#/{path}/{event.entity_id}"
+                f"?notification={row.id}"
+            )
+            try:
+                send_wecom(settings, member, description, detail_url)
+                row.status, row.last_error = "SENT", None
+            except WecomDeliveryError as exc:
+                row.status, row.last_error = exc.status, exc.code
+                if row.status == "RETRY":
+                    self._schedule_retry(row, datetime.now(UTC))
+
     def deliver_one(self) -> bool:
         now = datetime.now(UTC)
         row = self.db.scalar(
             select(NotificationDelivery)
             .where(
-                NotificationDelivery.status.in_(["PENDING", "RETRY", "UNCERTAIN", "SENDING"]),
+                or_(
+                    NotificationDelivery.status.in_(["PENDING", "RETRY", "SENDING"]),
+                    (NotificationDelivery.status == "UNCERTAIN")
+                    & (NotificationDelivery.channel != "WECOM"),
+                ),
                 NotificationDelivery.next_attempt_at <= now,
             )
             .order_by(NotificationDelivery.next_attempt_at, NotificationDelivery.id)
@@ -384,6 +464,11 @@ class DeliveryService:
         if row is None:
             self.db.rollback()
             return False
+        if row.channel == "WECOM" and row.status == "SENDING":
+            # The worker may have handed the message to WeCom before losing its lease.
+            row.status, row.last_error = "UNCERTAIN", "WECOM_LEASE_EXPIRED"
+            self.db.commit()
+            return True
         if row.attempts >= 5:
             row.status = "FAILED"
             row.last_error = "RETRY_LIMIT"
@@ -393,17 +478,21 @@ class DeliveryService:
         row.attempts += 1
         row.next_attempt_at = now + timedelta(minutes=5)
         row_id = row.id
-        self.db.commit()  # Durable lease survives a worker crash before or after SMTP.
+        claimed_attempt = row.attempts
+        self.db.commit()  # Durable lease survives a worker crash during external sends.
         row = self.db.scalar(
             select(NotificationDelivery).where(NotificationDelivery.id == row_id).with_for_update()
         )
         assert row is not None
         self.db.expire_all()
+        if row.channel == "WECOM" and (row.status != "SENDING" or row.attempts != claimed_attempt):
+            self.db.rollback()
+            return True
         event = self.db.get(CollaborationEvent, row.event_id)
         user = self.db.get(
             User,
             row.user_id,
-            with_for_update=row.channel == "EMAIL",
+            with_for_update=row.channel in {"EMAIL", "WECOM"},
             populate_existing=True,
         )
         if not event or not user or not self.authorized(event, user):
@@ -440,6 +529,10 @@ class DeliveryService:
             self.db.commit()
             return True
         settings = get_settings()
+        if row.channel == "WECOM":
+            self._deliver_wecom(row, event, settings)
+            self.db.commit()
+            return True
         # Match email changes/unbinding's user -> preference lock order. Keep the
         # account locked until SMTP finishes so a completed unbind cannot be raced.
         pref = self.db.get(MailPreference, user.id, with_for_update=True, populate_existing=True)
@@ -491,9 +584,7 @@ class DeliveryService:
             row.status = "RETRY"
             row.last_error = "SMTP_CONNECTION_ERROR"
         if row.status in {"RETRY", "UNCERTAIN"}:
-            row.next_attempt_at = now + timedelta(seconds=min(3600, 30 * 2**row.attempts))
-            if row.attempts >= 5:
-                row.status = "FAILED"
+            self._schedule_retry(row, now)
         self.db.commit()
         return True
 
@@ -517,7 +608,7 @@ class DeliveryService:
     def retry(self, delivery_id: str, attempts: int):
         row = self.db.scalar(
             select(NotificationDelivery)
-            .where(NotificationDelivery.id == delivery_id)
+            .where(NotificationDelivery.id == delivery_id, NotificationDelivery.channel == "EMAIL")
             .with_for_update()
         )
         if row is None:

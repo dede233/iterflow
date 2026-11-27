@@ -46,3 +46,9 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON `iterflow`.`rd_release_batch_target` TO 
 
 -- Published requirement follow-up feedback (mysql57_0017).
 GRANT SELECT, INSERT ON `iterflow`.`rd_requirement_online_feedback` TO 'iterflow_runtime'@'APP_HOST';
+
+-- WeCom member bindings and notification preferences (mysql57_0018).
+GRANT SELECT, INSERT, UPDATE ON `iterflow`.`sys_wecom_preference` TO 'iterflow_runtime'@'APP_HOST';
+
+-- Material production records (mysql57_0019).
+GRANT SELECT, INSERT, UPDATE ON `iterflow`.`ops_ad_production` TO 'iterflow_runtime'@'APP_HOST';

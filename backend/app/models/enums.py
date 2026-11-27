@@ -118,6 +118,18 @@ class ReleaseResult(StrEnum):
     SUCCESS = "SUCCESS"
 
 
+class AdProductionStatus(StrEnum):
+    NOT_STARTED = "NOT_STARTED"
+    IN_PROGRESS = "IN_PROGRESS"
+    SHIPPING = "SHIPPING"
+    COMPLETED = "COMPLETED"
+
+
+class AdProductionKind(StrEnum):
+    MATERIAL = "MATERIAL"
+    MERCHANT_AD = "MERCHANT_AD"
+
+
 class StorageDriver(StrEnum):
     LOCAL = "LOCAL"
     S3 = "S3"

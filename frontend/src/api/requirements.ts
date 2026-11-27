@@ -30,8 +30,8 @@ export const getOnlineReview = (id: number, page = 1) =>
 export const confirmOnlineReview = (id: number, payload: components['schemas']['OnlineReviewConfirm']) =>
   api.post<components['schemas']['OnlineReviewConfirmation']>(`/requirements/${id}/online-review/confirm`, payload, onlineReviewWriteOptions).then((r) => r.data)
 
-export const createOnlineReviewFeedback = (id: number, payload: components['schemas']['OnlineReviewFeedbackCreate']) =>
-  api.post<Feedback>(`/requirements/${id}/online-review/feedbacks`, payload, onlineReviewWriteOptions).then((r) => r.data)
+export const createOnlineReviewFeedback = async (id: number, payload: components['schemas']['OnlineReviewFeedbackCreate']) =>
+  api.post<Feedback>(`/requirements/${id}/online-review/feedbacks`, await withDescriptionImages(payload), onlineReviewWriteOptions).then((r) => r.data)
 
 export const createRequirement = async (payload: RequirementCreatePayload) =>
   api.post<Requirement>('/requirements', await withDescriptionImages(payload)).then((r) => r.data)

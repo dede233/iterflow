@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.api.v1 import (
+    ad_productions,
     announcements,
     audits,
     auth,
@@ -20,10 +21,12 @@ from app.api.v1 import (
     target_releases,
     users,
     versions,
+    wecom,
 )
 
 api_router = APIRouter()
 for module in (
+    ad_productions,
     # Static filter paths must precede /requirements/{requirement_id}/participants.
     filter_options,
     target_releases,
@@ -39,6 +42,7 @@ for module in (
     releases,
     notifications,
     mail,
+    wecom,
     systems,
     editing,
     users,

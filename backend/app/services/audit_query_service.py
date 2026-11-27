@@ -4,8 +4,10 @@ from typing import ClassVar
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import NotFoundError, PermissionDenied
+from app.domain.ad_production_permissions import viewable_ad_production_kinds
 from app.models.entities import OperationLog, User
-from app.models.enums import DataScope
+from app.models.enums import AdProductionKind
+from app.repositories.ad_production_repository import AD_PRODUCTION_ENTITY
 from app.repositories.audit_repository import AuditRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.audit import AuditOperatorOut, AuditOut
@@ -36,9 +38,8 @@ class AuditQueryService:
         self.repo = AuditRepository(db)
         self.user_repo = UserRepository(db)
 
-    def _visible_entity_types(self, user: User) -> tuple[set[str], DataScope]:
+    def _visible_entities(self, user: User) -> tuple[set[str], set[AdProductionKind]]:
         permission_codes = self.user_repo.permission_codes(user.id)
-        data_scope = self.user_repo.data_scope(user.id)
         visible = {
             entity_type
             for entity_type, required_permission in self.ENTITY_VIEW_PERMISSIONS.items()
@@ -48,12 +49,15 @@ class AuditQueryService:
         }
         if not self.user_repo.can_manage_announcements(user.id):
             visible.discard("ANNOUNCEMENT")
-        return visible, data_scope
+        ad_production_kinds = viewable_ad_production_kinds(permission_codes)
+        if ad_production_kinds:
+            visible.add(AD_PRODUCTION_ENTITY)
+        return visible, ad_production_kinds
 
     def _validate_entity_filter(self, entity_type: str | None, visible_types: set[str]) -> None:
         if entity_type is None:
             return
-        if entity_type not in self.ENTITY_VIEW_PERMISSIONS:
+        if entity_type != AD_PRODUCTION_ENTITY and entity_type not in self.ENTITY_VIEW_PERMISSIONS:
             raise NotFoundError("审计实体类型不存在")
         if entity_type not in visible_types:
             raise PermissionDenied("无权查看该业务对象的审计记录")
@@ -92,12 +96,13 @@ class AuditQueryService:
         time_from: datetime | None = None,
         time_to: datetime | None = None,
     ) -> tuple[list[AuditOut], int]:
-        visible_types, data_scope = self._visible_entity_types(user)
+        visible_types, ad_production_kinds = self._visible_entities(user)
         self._validate_entity_filter(entity_type, visible_types)
         rows, total = self.repo.list_scoped(
             user_id=user.id,
-            data_scope=data_scope,
+            data_scope=self.user_repo.data_scope(user.id),
             entity_types=visible_types,
+            ad_production_kinds=ad_production_kinds,
             page=page,
             size=size,
             entity_type=entity_type,
@@ -110,12 +115,13 @@ class AuditQueryService:
         return [self._serialize(item, operator) for item, operator in rows], total
 
     def get(self, audit_id: int, user: User) -> AuditOut:
-        visible_types, data_scope = self._visible_entity_types(user)
+        visible_types, ad_production_kinds = self._visible_entities(user)
         row = self.repo.get_scoped(
             audit_id,
             user_id=user.id,
-            data_scope=data_scope,
+            data_scope=self.user_repo.data_scope(user.id),
             entity_types=visible_types,
+            ad_production_kinds=ad_production_kinds,
         )
         if row is None:
             raise NotFoundError("审计记录不存在")

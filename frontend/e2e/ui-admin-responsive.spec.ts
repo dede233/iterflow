@@ -72,6 +72,53 @@ test('admin lists fit the five release viewports', async ({ page }) => {
   expect(errors).toEqual([])
 })
 
+test('operations permission subgroups can be expanded and saved independently', async ({ page }, testInfo) => {
+  const operationsPermissions = [
+    { id: 21, code: 'ops.ad_production.view', name: '查看物料制作', group: '物料制作' },
+    { id: 22, code: 'ops.ad_production.create', name: '新建物料制作', group: '物料制作' },
+    { id: 31, code: 'ops.merchant_ad.view', name: '查看商家广告', group: '商家广告' },
+    { id: 32, code: 'ops.merchant_ad.create', name: '新建商家广告', group: '商家广告' },
+  ].map(item => ({ ...permission, ...item, parent_group: '运营协作' }))
+  await page.route('**/api/v1/roles/permissions', route => route.fulfill({ json: [permission, ...operationsPermissions] }))
+  await page.route(`**/api/v1/roles/${role.id}/permissions`, route => route.fulfill({ json: {
+    ...role, ...route.request().postDataJSON(), revision: role.revision + 1,
+  } }))
+
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/#/admin/roles')
+  await page.getByRole('button', { name: '配置权限', exact: true }).click()
+  const drawer = page.getByRole('dialog', { name: '配置权限 · 项目管理员' })
+  const operations = drawer.getByRole('region', { name: '运营协作', exact: true })
+  await expect(operations.getByRole('heading', { name: '运营协作', exact: true })).toHaveCount(1)
+  const material = operations.getByRole('group', { name: '物料制作 权限' })
+  const merchant = operations.getByRole('group', { name: '商家广告 权限' })
+  const materialAll = operations.getByRole('checkbox', { name: '物料制作 全选' })
+  const merchantAll = operations.getByRole('checkbox', { name: '商家广告 全选' })
+  await expect(material).toBeVisible()
+  await expect(merchant).toBeVisible()
+  await operations.getByRole('button', { name: /商家广告.*全选/ }).press('Enter')
+  await expect(merchant).toBeHidden()
+  await expect(material).toBeVisible()
+  await materialAll.press('Space')
+  await expect(materialAll).toBeChecked()
+  await expect(material).toBeVisible()
+  await expect(merchantAll).not.toBeChecked()
+  await expect(drawer.getByText('已选择 3 / 5 项权限')).toBeVisible()
+  await expect(drawer.getByRole('checkbox', { name: '用户管理 全选' })).toBeChecked()
+  await operations.getByRole('button', { name: /商家广告.*全选/ }).press('Enter')
+  await expect(merchant).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath('operations-permissions-desktop.png'), animations: 'disabled' })
+
+  await page.setViewportSize({ width: 375, height: 812 })
+  await expect(drawer).toBeVisible()
+  await expect.poll(() => drawer.locator('.el-drawer__body').evaluate(element => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(1)
+  await page.screenshot({ path: testInfo.outputPath('operations-permissions-mobile.png'), animations: 'disabled' })
+  const save = page.waitForRequest(request => request.method() === 'PUT' && new URL(request.url()).pathname === `/api/v1/roles/${role.id}/permissions`)
+  await drawer.getByRole('button', { name: '保存权限' }).click()
+  expect((await save).postDataJSON()).toEqual({ permission_ids: [11, 21, 22], revision: role.revision })
+  await expect(drawer).toBeHidden()
+})
+
 test('mobile admin filters and read-only audit detail remain usable', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 900 })
   await page.goto('/#/admin/audits')

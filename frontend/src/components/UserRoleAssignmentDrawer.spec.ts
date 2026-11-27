@@ -1,5 +1,7 @@
 import { createSSRApp, defineComponent, h } from 'vue'
 import { renderToString } from '@vue/server-renderer'
+import { mount } from '@vue/test-utils'
+import { ElCheckbox, ElCheckboxGroup } from 'element-plus'
 import { describe, expect, it } from 'vitest'
 import UserRoleAssignmentDrawer from '@/components/UserRoleAssignmentDrawer.vue'
 import type { RoleItem, UserItem } from '@/types/system'
@@ -25,6 +27,7 @@ const roles: RoleItem[] = [
     data_scope: 'ALL',
     enabled: true,
     is_system: true,
+    assignable: true,
     revision: 1,
     permission_ids: [],
   },
@@ -35,6 +38,7 @@ const roles: RoleItem[] = [
     data_scope: 'SELF',
     enabled: true,
     is_system: true,
+    assignable: true,
     revision: 1,
     permission_ids: [],
   },
@@ -45,6 +49,7 @@ const roles: RoleItem[] = [
     data_scope: 'SELF',
     enabled: false,
     is_system: false,
+    assignable: true,
     revision: 1,
     permission_ids: [],
   },
@@ -89,5 +94,49 @@ describe('user role assignment drawer', () => {
     expect(html).not.toContain('只有超级管理员可以授予或撤销超级管理员角色')
     expect(html).toContain('data-disabled="false"')
     expect(html).toContain('保存角色')
+  })
+
+  it('preserves existing historical roles on save and supports removing them', async () => {
+    const assignedRole: RoleItem = {
+      ...roles[2], id: 4, code: 'LEGACY_DESIGNER', name: '历史设计角色', assignable: false,
+    }
+    const unassignedRole: RoleItem = {
+      ...assignedRole, id: 5, code: 'LEGACY_OPERATOR', name: '历史运营角色', enabled: true,
+    }
+    const wrapper = mount(UserRoleAssignmentDrawer, {
+      props: {
+        modelValue: true,
+        user: { ...user, role_ids: [1, 2, 4] },
+        roles: [...roles, assignedRole, unassignedRole],
+        operatorIsSuperAdmin: false,
+      },
+      global: {
+        components: {
+          'el-drawer': PassThrough,
+          'el-alert': PassThrough,
+          'el-checkbox-group': ElCheckboxGroup,
+          'el-checkbox': ElCheckbox,
+          'el-tag': PassThrough,
+          'el-button': { template: '<button><slot /></button>' },
+        },
+      },
+    })
+    expect(wrapper.text()).not.toContain(unassignedRole.name)
+    const historicalOption = wrapper.findAll('.role-option').find((option) => option.text().includes(assignedRole.name))!
+    const historicalCheckbox = historicalOption.get<HTMLInputElement>('input[type="checkbox"]')
+    const saveButton = wrapper.findAll('button').find((button) => button.text() === '保存角色')!
+
+    expect(historicalOption.text()).toContain('历史角色')
+    expect(historicalCheckbox.element.checked).toBe(true)
+    await saveButton.trigger('click')
+    expect(wrapper.emitted('save')).toEqual([[[1, 2, 4]]])
+
+    await historicalCheckbox.setValue(false)
+    await saveButton.trigger('click')
+    expect(wrapper.emitted('save')).toEqual([[[1, 2, 4]], [[1, 2]]])
+
+    await wrapper.setProps({ user })
+    expect(wrapper.text()).not.toContain(assignedRole.name)
+    wrapper.unmount()
   })
 })

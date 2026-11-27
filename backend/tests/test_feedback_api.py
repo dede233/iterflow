@@ -8,7 +8,7 @@ import pytest
 import yaml
 from conftest import assert_revision_conflict, resolve_openapi_ref
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, event, select
+from sqlalchemy import create_engine, delete, event, select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -257,6 +257,82 @@ def test_create_list_detail_and_optimistic_update(feedback_api):
     )
     assert stale.status_code == 409
     assert stale.json()["data"]["current_revision"] == 2
+
+
+def test_submitter_without_edit_permission_can_only_edit_own_new_feedback(feedback_api):
+    client, session, headers, ids = feedback_api
+    created = _create(client, headers["alice"], title="待处理反馈")
+    path = f"/api/v1/feedbacks/{created['id']}"
+    session.execute(
+        delete(RolePermission).where(
+            RolePermission.role_id.in_(
+                select(Role.id).where(Role.code.in_(("MEMBER", "PRODUCT_MANAGER")))
+            ),
+            RolePermission.permission_id
+            == select(Permission.id).where(Permission.code == "rd.feedback.edit").scalar_subquery(),
+        )
+    )
+    session.commit()
+
+    content = {"title": "提交人补充反馈", "revision": created["revision"]}
+    hidden = client.patch(path, headers=headers["bob"], json=content)
+    assert hidden.status_code == 404, hidden.text
+    visible = client.get(path, headers=headers["pm"])
+    assert visible.status_code == 200, visible.text
+    forbidden = client.patch(path, headers=headers["pm"], json=content)
+    assert forbidden.status_code == 403, forbidden.text
+
+    for method, route, body in (
+        ("PATCH", f"{path}/status", {"status": "CLOSED", "reason": "申请关闭"}),
+        ("PUT", f"{path}/recipients", {"recipient_ids": [ids["cs"]]}),
+        ("DELETE", path, {"reason": "申请删除"}),
+    ):
+        rejected = client.request(
+            method, route, headers=headers["alice"], json={**body, "revision": created["revision"]}
+        )
+        assert rejected.status_code == 403, rejected.text
+
+    saved = client.patch(path, headers=headers["alice"], json=content)
+    assert saved.status_code == 200, saved.text
+    current = saved.json()
+    assert current["status"] == "NEW"
+    assert current["title"] == content["title"]
+    assert current["revision"] == created["revision"] + 1
+    assert_revision_conflict(
+        client.patch(path, headers=headers["alice"], json=content),
+        revision=current["revision"],
+        updated_by=ids["alice"],
+    )
+    log = session.scalars(
+        select(OperationLog).where(
+            OperationLog.entity_type == "FEEDBACK",
+            OperationLog.entity_id == created["id"],
+            OperationLog.action == "UPDATE",
+        )
+    ).one()
+    assert log.operator_id == ids["alice"]
+    assert log.before_data == {"title": created["title"]}
+    assert log.after_data == {"title": content["title"]}
+
+    accepted = _status(client, headers["cs"], created["id"], current["revision"], "ACCEPTED")
+    assert accepted.status_code == 200, accepted.text
+    assert accepted.json()["status"] == "ACCEPTED"
+    latest_revision = accepted.json()["revision"]
+    assert_revision_conflict(
+        client.patch(
+            path, headers=headers["alice"], json={**content, "revision": current["revision"]}
+        ),
+        revision=latest_revision,
+        updated_by=ids["cs"],
+    )
+    next_edit = {"title": "受理后更新反馈", "revision": latest_revision}
+    rejected = client.patch(path, headers=headers["alice"], json=next_edit)
+    assert rejected.status_code == 403, rejected.text
+
+    edited = client.patch(path, headers=headers["cs"], json=next_edit)
+    assert edited.status_code == 200, edited.text
+    assert edited.json()["title"] == next_edit["title"]
+    assert edited.json()["revision"] == latest_revision + 1
 
 
 def test_two_users_feedback_revision_contract_across_update_status_and_convert(feedback_api):

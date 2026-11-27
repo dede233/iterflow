@@ -148,8 +148,8 @@ for (const width of [375, 1440]) {
 
     await card.getByRole('button', { name: feedbackLabel, exact: true }).click()
     const form = page.getByRole('dialog', { name: feedbackLabel, exact: true })
-    const title = form.locator('.el-form-item').filter({ hasText: '标题' }).getByRole('textbox')
-    const description = form.locator('.el-form-item').filter({ hasText: '详细描述' }).getByRole('textbox')
+    const title = form.getByRole('textbox', { name: /^\*?标题$/ })
+    const description = form.getByRole('textbox', { name: '详细描述', exact: true })
     const recipients = form.locator('.el-form-item').filter({ hasText: '反馈接收人' })
     const submit = form.getByRole('button', { name: '提交', exact: true })
     await expect(form).toContainText('REQ-ONLINE')
@@ -161,14 +161,14 @@ for (const width of [375, 1440]) {
     await recipients.locator('.el-select__wrapper').click()
     await page.getByRole('option', { name: recipient.display_name, exact: true }).click()
     await description.click()
-    await form.locator('input[type="file"]').setInputFiles({ name: attachmentName, mimeType: 'text/plain', buffer: Buffer.from('mock online review attachment') })
+    await form.locator('.el-upload input[type="file"]').setInputFiles({ name: attachmentName, mimeType: 'text/plain', buffer: Buffer.from('mock online review attachment') })
     await submit.click()
     const refreshFeedback = form.getByRole('button', { name: '刷新需求信息', exact: true })
     await expect(refreshFeedback).toBeVisible()
     await refreshFeedback.click()
     await expect(refreshFeedback).toHaveCount(0)
     await expect(title).toHaveValue(followupTitle)
-    await expect(description).toHaveValue('复核已发布功能时发现新的情况。')
+    await expect(description).toHaveText('复核已发布功能时发现新的情况。')
     await expect(recipients).toContainText(recipient.display_name)
     await expect(form.getByText(attachmentName, { exact: true })).toBeVisible()
     expect(audit.creates).toHaveLength(1)
@@ -184,8 +184,8 @@ for (const width of [375, 1440]) {
     await expect(card.getByText('共 11 条', { exact: true })).toBeVisible()
     await expect(card).toContainText('待处理')
     expect(audit.creates).toMatchObject([
-      { revision: 6, title: followupTitle, feedback_type: 'SYSTEM_ISSUE', description: '复核已发布功能时发现新的情况。', recipient_ids: [2] },
-      { revision: 7, title: followupTitle, feedback_type: 'SYSTEM_ISSUE', description: '复核已发布功能时发现新的情况。', recipient_ids: [2] },
+      { revision: 6, title: followupTitle, feedback_type: 'SYSTEM_ISSUE', description: '<p>复核已发布功能时发现新的情况。</p>', description_format: 'HTML', recipient_ids: [2] },
+      { revision: 7, title: followupTitle, feedback_type: 'SYSTEM_ISSUE', description: '<p>复核已发布功能时发现新的情况。</p>', description_format: 'HTML', recipient_ids: [2] },
     ])
     expect(audit.attachments).toHaveLength(1)
     expect(audit.attachments[0]).toContain(`filename="${attachmentName}"`)

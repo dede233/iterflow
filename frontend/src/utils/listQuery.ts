@@ -1,4 +1,5 @@
 import type { LocationQuery } from 'vue-router'
+import { AD_PRODUCTION_STATUSES, MERCHANT_AD_STATUSES } from '@/constants/adProduction'
 import { FEEDBACK_STATUSES, FEEDBACK_TYPES, FEEDBACK_URGENCIES } from '@/constants/feedback'
 import { REQUIREMENT_PRIORITIES, REQUIREMENT_STATUSES } from '@/constants/requirement'
 import { VERSION_STATUSES } from '@/constants/version'
@@ -8,6 +9,10 @@ type Rule = (value: string) => string | undefined
 const positive: Rule = value => /^\d+$/.test(value) && Number.isSafeInteger(Number(value)) && Number(value) > 0 ? String(Number(value)) : undefined
 const enumeration = (values: readonly { value: string }[]): Rule => value => values.some(option => option.value === value) ? value : undefined
 const keyword: Rule = value => value.trim() && value.trim().length <= 200 ? value.trim() : undefined
+const shortKeyword: Rule = value => {
+  const trimmed = value.trim()
+  return trimmed && Array.from(trimmed).length <= 100 ? trimmed : undefined
+}
 const day: Rule = value => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return undefined
   const date = new Date(`${value}T00:00:00Z`)
@@ -25,6 +30,8 @@ const schemas: Record<string, Record<string, Rule>> = {
   '/requirements': { system_id: positive, page, page_size: size, keyword, status: enumeration(REQUIREMENT_STATUSES), priority: enumeration(REQUIREMENT_PRIORITIES), source: enumeration([{ value: 'DIRECT' }, { value: 'FEEDBACK' }]), current_version_id: positive, participant_id: positive, participant_role: enumeration(['CONFIRM', 'DESIGN', 'DEVELOP', 'ACCEPT'].map(value => ({ value }))) },
   '/versions': { system_id: positive, page, page_size: size, keyword, status: enumeration(VERSION_STATUSES), owner_id: positive, planned_release_from: day, planned_release_to: day },
   '/releases': { page, page_size: size, version_id: positive, date_from: day, date_to: day },
+  '/ad-productions': { page, page_size: size, keyword: shortKeyword, status: enumeration(AD_PRODUCTION_STATUSES), date_from: day, date_to: day },
+  '/merchant-ads': { page, page_size: size, keyword: shortKeyword, status: enumeration(MERCHANT_AD_STATUSES), date_from: day, date_to: day },
   '/admin/audits': { page, size, entity_type: enumeration(auditEntityOptions), entity_id: positive, action: enumeration(auditActionOptions), operator_id: positive, time_from: instant, time_to: instant },
 }
 
@@ -37,10 +44,19 @@ export function parseListQuery(path: string, query: LocationQuery | Record<strin
     const valid = rule(String(raw))
     if (valid !== undefined) result[key] = valid
   }
-  for (const [from, to] of [['planned_release_from', 'planned_release_to'], ['date_from', 'date_to'], ['time_from', 'time_to']]) {
-    if (!!result[from!] !== !!result[to!] || (result[from!] && result[to!] && result[from!]! > result[to!]!)) { delete result[from!]; delete result[to!] }
+  const dateBounds = [
+    ['planned_release_from', 'planned_release_to', true],
+    ['date_from', 'date_to', !['/ad-productions', '/merchant-ads'].includes(path)],
+    ['time_from', 'time_to', true],
+  ] as const
+  for (const [from, to, requirePair] of dateBounds) {
+    const start = result[from]
+    const end = result[to]
+    if ((requirePair && Boolean(start) !== Boolean(end)) || (start && end && start > end)) {
+      delete result[from]
+      delete result[to]
+    }
   }
-  // UI range pickers require both endpoints; never apply an invisible half-range.
   return result
 }
 export const serializeListQuery = parseListQuery

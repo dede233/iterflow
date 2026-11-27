@@ -43,7 +43,7 @@ async function load(): Promise<void> {
   failed.value = false
   try {
     const [roles, availablePermissions] = await Promise.all([listRoles(), listPermissions()])
-    rows.value = roles
+    rows.value = roles.filter((role) => role.assignable !== false)
     permissions.value = availablePermissions
   } catch {
     failed.value = true

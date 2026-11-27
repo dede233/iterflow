@@ -22,6 +22,7 @@ from app.core.mysql_preflight import validate_mysql
             {"SELECT", "INSERT", "UPDATE", "DELETE"},
         ),
         (("rd_requirement_online_feedback",), {"SELECT", "INSERT"}),
+        (("ops_ad_production",), {"SELECT", "INSERT", "UPDATE"}),
     ],
 )
 def test_runtime_template_covers_new_tables(mysql_api, new_tables, expected_privileges):

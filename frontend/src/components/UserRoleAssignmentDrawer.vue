@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { isSuperAdminRole } from '@/components/userRoleAssignment'
+import { isAssignableRole, isSuperAdminRole } from '@/components/userRoleAssignment'
 import type { RoleItem, UserItem } from '@/types/system'
 
 const props = defineProps<{
@@ -17,7 +17,9 @@ const emit = defineEmits<{
 }>()
 
 const selectedRoleIds = ref<number[]>([])
-const enabledRoles = computed(() => props.roles.filter((role) => role.enabled))
+const availableRoles = computed(() => props.roles.filter((role) =>
+  isAssignableRole(role) || (role.assignable === false && props.user?.role_ids?.includes(role.id)),
+))
 
 watch(
   [() => props.modelValue, () => props.user],
@@ -53,11 +55,11 @@ function save(): void {
         :closable="false"
       />
       <div class="assignment-summary" aria-live="polite">
-        已选择 {{ selectedRoleIds.length }} / {{ enabledRoles.length }} 个角色
+        已选择 {{ selectedRoleIds.length }} / {{ availableRoles.length }} 个角色
       </div>
       <el-checkbox-group v-model="selectedRoleIds" class="role-list" aria-label="用户角色">
         <el-checkbox
-          v-for="role in enabledRoles"
+          v-for="role in availableRoles"
           :key="role.id"
           :value="role.id"
           :disabled="isSuperAdminRole(role) && !operatorIsSuperAdmin"
@@ -68,6 +70,9 @@ function save(): void {
             <code>{{ role.code }}</code>
             <el-tag v-if="isSuperAdminRole(role)" type="danger" size="small" effect="light">
               超级管理员 / 高风险
+            </el-tag>
+            <el-tag v-if="role.assignable === false" type="info" size="small" effect="light">
+              历史角色
             </el-tag>
           </span>
         </el-checkbox>

@@ -210,7 +210,65 @@ def exercise_targets(fixture, scenario, monkeypatch):
                 with pytest.raises(DBAPIError), engine.begin() as conn:
                     conn.execute(text(f"UPDATE {table} SET platform='ALIPAY_MINI_PROGRAM'"))
             command.upgrade(cfg, "head")
-            assert snapshot() == before
+            after = snapshot()
+            old_audit = before.pop("sys_operation_log")
+            new_audit = after.pop("sys_operation_log")
+            assert after == before
+            assert new_audit[: len(old_audit)] == old_audit
+            extra_audit = new_audit[len(old_audit) :]
+            names_audit = [row for row in extra_audit if row["action"] == "ROLE_UPDATE"]
+            grants_audit = [row for row in extra_audit if row["action"] == "ROLE_PERMISSION_UPDATE"]
+            assert len(names_audit) == 4
+            assert {(row["request_id"], row["after_data"]["code"]) for row in names_audit} == {
+                (f"migration-material-production-names-v1{suffix}", role_code)
+                for suffix in ("-downgrade", "")
+                for role_code in ("AD_PRODUCTION_CREATOR", "AD_PRODUCTION_COMPLETER")
+            }
+            catalog_grants = {
+                "SUPER_ADMIN": {"view", "create", "edit"},
+                "DESIGNER": {"view", "edit"},
+                "AD_PRODUCTION_CREATOR": {"view", "create"},
+                "AD_PRODUCTION_COMPLETER": {"view", "edit"},
+            }
+            default_grants = {
+                "CUSTOMER_SERVICE_OPERATIONS": {
+                    f"ops.{area}.{action}"
+                    for area in ("ad_production", "merchant_ad")
+                    for action in ("view", "create")
+                },
+                "DESIGNER": {"ops.ad_production.create", "ops.merchant_ad.create"},
+            }
+            with Session(engine) as db:
+                roles = dict(db.execute(select(Role.id, Role.code)).all())
+                permissions = dict(db.execute(select(Permission.id, Permission.code)).all())
+            expected_grants = {
+                "migration-ops-production-permissions-v1": {
+                    code: {f"ops.merchant_ad.{action}" for action in actions}
+                    for code, actions in catalog_grants.items()
+                },
+                "migration-ops-role-defaults-v1": default_grants,
+            }
+            assert len(grants_audit) == 12 and len(extra_audit) == 16
+            assert {(row["request_id"], roles[row["entity_id"]]) for row in grants_audit} == {
+                (f"{request_id}{suffix}", code)
+                for request_id, grants in expected_grants.items()
+                for suffix in ("-downgrade", "")
+                for code in grants
+            }
+            for row in grants_audit:
+                old_ids = set(row["before_data"]["permission_ids"])
+                new_ids = set(row["after_data"]["permission_ids"])
+                if row["request_id"].endswith("-downgrade"):
+                    assert new_ids < old_ids
+                else:
+                    assert old_ids < new_ids
+                request_id = row["request_id"].removesuffix("-downgrade")
+                assert {permissions[pid] for pid in old_ids ^ new_ids} == expected_grants[
+                    request_id
+                ][roles[row["entity_id"]]]
+            assert all(
+                row["entity_type"] == "ROLE" and row["operator_id"] is None for row in extra_audit
+            )
             assert request("GET", f"/systems/{system_id}/release-targets") == directory
         for target in (targets[0], targets[2]):
             result = request(
@@ -226,6 +284,23 @@ def exercise_targets(fixture, scenario, monkeypatch):
             assert result["platform"] == "ALIPAY_MINI_PROGRAM"
         with pytest.raises(RuntimeError, match="Alipay target history exists"):
             command.downgrade(cfg, previous)
+        if mysql:
+            # MySQL keeps the committed newer downgrades when the Alipay guard refuses.
+            with engine.connect() as conn:
+                assert (
+                    conn.scalar(text("SELECT version_num FROM alembic_version")) == "mysql57_0016"
+                )
+                assert validate_mysql(conn, allow_legacy=True)["table_count"] == 35
+                alipay_ids = set(
+                    conn.scalars(
+                        text(
+                            "SELECT id FROM sys_release_target "
+                            "WHERE platform='ALIPAY_MINI_PROGRAM' AND app_id='2026000000000001'"
+                        )
+                    )
+                )
+                assert alipay_ids == {targets[0]["id"], targets[2]["id"]}
+            command.upgrade(cfg, "head")
         if scenario == "alipay":
             publish(first)
         prior_release = snapshot()["rd_release"]
@@ -259,7 +334,7 @@ def exercise_targets(fixture, scenario, monkeypatch):
         command.upgrade(cfg, "head")
         if mysql:
             with engine.connect() as conn:
-                assert validate_mysql(conn)["table_count"] == 36
+                assert validate_mysql(conn)["table_count"] == 38
         else:
             command.check(cfg)
         return
@@ -283,7 +358,7 @@ def exercise_targets(fixture, scenario, monkeypatch):
             assert not after.pop("release_frozen") and after == before
         if mysql:
             with engine.connect() as conn:
-                assert validate_mysql(conn)["table_count"] == 36
+                assert validate_mysql(conn)["table_count"] == 38
         else:
             command.check(cfg)
         return

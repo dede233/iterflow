@@ -54,16 +54,34 @@ const permissions: PermissionItem[] = [
 
 describe('permission assignment behavior', () => {
   it('groups permissions and supports selecting or clearing one module', () => {
-    const groups = groupPermissions(permissions)
-    expect(groups.map((group) => group.name)).toEqual([
+    const sections = groupPermissions(permissions)
+    expect(sections.map((section) => section.name)).toEqual([
       'Feedback / 反馈',
       'Role / 角色权限',
       'User / 用户管理',
     ])
+    expect(sections.every((section) => !section.nested)).toBe(true)
 
-    const selected = setPermissionGroupSelection([], groups[0], true)
+    const [feedback] = sections[0].groups
+    const selected = setPermissionGroupSelection([], feedback, true)
     expect(selected).toEqual([1, 2])
-    expect(setPermissionGroupSelection([1, 2, 3], groups[0], false)).toEqual([3])
+    expect(setPermissionGroupSelection([1, 2, 3], feedback, false)).toEqual([3])
+  })
+
+  it('keeps each operations subgroup independently selectable under one parent', () => {
+    const sections = groupPermissions([
+      permissions[0],
+      { ...permissions[0], id: 5, code: 'ops.ad_production.view', group: '物料制作', parent_group: '运营协作' },
+      { ...permissions[0], id: 6, code: 'ops.merchant_ad.view', group: '商家广告', parent_group: '运营协作' },
+      { ...permissions[0], id: 7, code: 'ops.ad_production.create', group: '物料制作', parent_group: '运营协作' },
+    ])
+    expect(sections.map((section) => section.name)).toEqual(['Feedback / 反馈', '运营协作'])
+    expect(sections[1].nested).toBe(true)
+    const [material, merchant] = sections[1].groups
+    expect(material.name).toBe('物料制作')
+    expect(merchant.name).toBe('商家广告')
+    expect(setPermissionGroupSelection([1, 6], material, true)).toEqual([1, 6, 5, 7])
+    expect(setPermissionGroupSelection([1, 5, 6, 7], merchant, false)).toEqual([1, 5, 7])
   })
 
   it('confirms only newly added sensitive permissions', async () => {
@@ -106,6 +124,7 @@ describe('permission assignment behavior', () => {
       data_scope: 'ALL',
       enabled: true,
       is_system: false,
+      assignable: true,
       revision: 9,
       permission_ids: [1],
     }

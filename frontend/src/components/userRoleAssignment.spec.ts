@@ -5,6 +5,7 @@ import {
   canLoadRoleDefinitions,
   canOperatorChangeUserStatus,
   findSuperAdminRole,
+  isAssignableRole,
   isCurrentUserSuperAdmin,
   isSuperAdminRole,
   isUserSuperAdmin,
@@ -21,6 +22,7 @@ const roles: RoleItem[] = [
     data_scope: 'ALL',
     enabled: true,
     is_system: true,
+    assignable: true,
     revision: 1,
     permission_ids: [],
   },
@@ -31,6 +33,7 @@ const roles: RoleItem[] = [
     data_scope: 'ALL',
     enabled: true,
     is_system: false,
+    assignable: true,
     revision: 1,
     permission_ids: [],
   },
@@ -66,6 +69,13 @@ function currentUser(roleIds: number[]): CurrentUser {
 }
 
 describe('user role assignment security UX', () => {
+  it('allows selecting enabled roles except when the API marks them historical', () => {
+    const role = roles[1]
+    expect(isAssignableRole(role)).toBe(true)
+    expect(isAssignableRole({ ...role, assignable: false })).toBe(false)
+    expect(isAssignableRole({ ...role, enabled: false })).toBe(false)
+  })
+
   it('recognizes SUPER_ADMIN only from the enabled system role relation', () => {
     expect(findSuperAdminRole(roles)?.id).toBe(1)
     expect(isSuperAdminRole(roles[0])).toBe(true)

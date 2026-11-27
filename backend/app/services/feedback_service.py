@@ -1,7 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import AppError, ConflictError, NotFoundError
+from app.core.exceptions import AppError, ConflictError, NotFoundError, PermissionDenied
 from app.core.ids import next_business_no
 from app.models.entities import (
     AttachmentRelation,
@@ -35,6 +35,9 @@ from app.services.audit_service import AuditService
 from app.services.collaboration_service import CollaborationService
 from app.services.requirement_images import bind_images
 from app.services.revision_conflict import revision_conflict_data
+from app.services.rich_text import sanitize_editor_content
+
+FEEDBACK_IMAGE_ENTITY = "FEEDBACK_IMAGE"
 
 # Frozen Feedback state machine (V1.5). Keys are the current status; values are
 # the human-settable target statuses. Feedback is an external-input record, not
@@ -64,6 +67,13 @@ _REASON_REQUIRED: set[ManualFeedbackStatus] = {
     ManualFeedbackStatus.CLOSED,
     ManualFeedbackStatus.NEW,  # reopen
 }
+
+
+def _clean_description(description: str, format: str) -> str:
+    try:
+        return sanitize_editor_content(description, format, label="反馈描述")
+    except ValueError as exc:
+        raise AppError(42265, str(exc), 422) from exc
 
 
 class FeedbackService:
@@ -181,57 +191,109 @@ class FeedbackService:
 
     def create(self, payload: FeedbackCreate, operator_id: int, *, commit: bool = True) -> Feedback:
         self._validate_system_module(payload.system_id, payload.module_id)
+        description = _clean_description(payload.description, payload.description_format)
         item = Feedback(
             feedback_no=next_business_no(self.db, Feedback, Feedback.feedback_no, "FB"),
             submitter_id=operator_id,
             created_by=operator_id,
             updated_by=operator_id,
-            **payload.model_dump(exclude={"recipient_ids"}),
+            description=description,
+            **payload.model_dump(exclude={"recipient_ids", "description", "description_images"}),
         )
-        self.db.add(item)
-        self.db.flush()
-        if payload.recipient_ids is not None:
+        try:
+            self.db.add(item)
+            self.db.flush()
             CollaborationService(self.db).set_recipients(item, payload.recipient_ids, operator_id)
-        self.audit.log("FEEDBACK", item.id, "CREATE", after={"feedback_no": item.feedback_no})
+            item.description = bind_images(
+                self.db,
+                item.id,
+                operator_id,
+                item.description,
+                item.description_format,
+                payload.description_images,
+                entity_type=FEEDBACK_IMAGE_ENTITY,
+            )
+            self.audit.log("FEEDBACK", item.id, "CREATE", after={"feedback_no": item.feedback_no})
+            if commit:
+                self.db.commit()
+        except Exception:
+            if commit:
+                self.db.rollback()
+            raise
         if commit:
-            self.db.commit()
             self.db.refresh(item)
         return item
 
-    def update(self, feedback_id: int, payload: FeedbackUpdate, operator_id: int) -> Feedback:
+    def _lock_at_revision(self, item: Feedback, revision: int) -> None:
+        self.db.refresh(item, with_for_update=True)
+        if item.deleted_at is not None:
+            raise NotFoundError("反馈不存在")
+        if item.revision != revision:
+            raise ConflictError("该反馈已被其他用户修改", revision_conflict_data(item))
+
+    def update(
+        self,
+        feedback_id: int,
+        payload: FeedbackUpdate,
+        operator_id: int,
+        *,
+        creator_only: bool = False,
+    ) -> Feedback:
         current = self.repo.get(feedback_id)
         if not current:
             raise NotFoundError("反馈不存在")
-        values = payload.model_dump(exclude_unset=True, exclude={"revision"})
-        # Validate the resulting (system, module) pair, merging the patch with
-        # the stored values so a partial edit can't leave an invalid pairing.
-        effective_system = values.get("system_id", current.system_id)
-        effective_module = values.get("module_id", current.module_id)
-        if "system_id" in values or "module_id" in values:
-            self._validate_system_module(effective_system, effective_module)
-        # Snapshot the real old values of the fields being changed *before* the
-        # atomic UPDATE (synchronize_session mutates this in-session object).
-        changed_fields = [key for key in values if key != "updated_by"]
-        before_values = {key: getattr(current, key) for key in changed_fields}
-        after_values = {key: values[key] for key in changed_fields}
-        values["updated_by"] = operator_id
-        if not self.repo.update_with_revision(feedback_id, payload.revision, values):
-            self.db.expire_all()
-            latest = self.repo.get(feedback_id)
-            if not latest:
-                raise NotFoundError("反馈不存在")
-            raise ConflictError(
-                "该反馈已被其他用户修改",
-                revision_conflict_data(latest),
+        if creator_only and current.submitter_id != operator_id:
+            raise PermissionDenied("仅反馈提交人本人可编辑该反馈")
+        values = payload.model_dump(exclude_unset=True, exclude={"revision", "description_images"})
+        try:
+            if creator_only:
+                self._lock_at_revision(current, payload.revision)
+                if current.status != FeedbackStatus.NEW:
+                    raise PermissionDenied("提交人仅可编辑待处理的反馈")
+            if payload.description is None and (
+                "description_format" in values or payload.description_images
+            ):
+                raise AppError(42265, "修改描述格式或上传正文图片时须提交反馈描述", 422)
+            if payload.description_images and not creator_only:
+                self._lock_at_revision(current, payload.revision)
+            # Validate the effective system/module pair after applying the partial update.
+            if "system_id" in values or "module_id" in values:
+                self._validate_system_module(
+                    values.get("system_id", current.system_id),
+                    values.get("module_id", current.module_id),
+                )
+            description_format = values.get("description_format", current.description_format)
+            if payload.description is not None and (
+                payload.description != current.description
+                or description_format != current.description_format
+                or payload.description_images
+            ):
+                values["description"] = bind_images(
+                    self.db,
+                    feedback_id,
+                    operator_id,
+                    _clean_description(payload.description, description_format),
+                    description_format,
+                    payload.description_images,
+                    entity_type=FEEDBACK_IMAGE_ENTITY,
+                )
+            # Snapshot the old values before the CAS mutates the in-session object.
+            before_values = {key: getattr(current, key) for key in values}
+            after_values = dict(values)
+            values["updated_by"] = operator_id
+            if not self.repo.update_with_revision(feedback_id, payload.revision, values):
+                self.db.expire_all()
+                latest = self.repo.get(feedback_id)
+                if not latest:
+                    raise NotFoundError("反馈不存在")
+                raise ConflictError("该反馈已被其他用户修改", revision_conflict_data(latest))
+            self.audit.log(
+                "FEEDBACK", feedback_id, "UPDATE", before=before_values, after=after_values
             )
-        self.audit.log(
-            "FEEDBACK",
-            feedback_id,
-            "UPDATE",
-            before=before_values,
-            after=after_values,
-        )
-        self.db.commit()
+            self.db.commit()
+        except Exception:
+            self.db.rollback()
+            raise
         updated = self.repo.get(feedback_id)
         assert updated is not None
         return updated
@@ -345,6 +407,23 @@ class FeedbackService:
         attaches to an existing (scoped-visible) requirement. The link, status
         update, optional acceptance, audit and events commit together.
         """
+        try:
+            target = self._convert(feedback_id, payload, operator_id, viewer_scope, viewer_id)
+            self.db.commit()
+        except Exception:
+            self.db.rollback()
+            raise
+        self.db.refresh(target)
+        return target
+
+    def _convert(
+        self,
+        feedback_id: int,
+        payload: FeedbackConvertRequest,
+        operator_id: int,
+        viewer_scope: DataScope,
+        viewer_id: int,
+    ) -> Requirement:
         feedback = self.db.scalar(
             select(Feedback)
             .where(Feedback.id == feedback_id, Feedback.deleted_at.is_(None))
@@ -416,6 +495,7 @@ class FeedbackService:
                 target.description,
                 target.description_format,
                 payload.description_images,
+                source=(FEEDBACK_IMAGE_ENTITY, feedback.id),
             )
             for person in payload.participants:
                 self.db.add(RequirementParticipant(requirement_id=target.id, **person.model_dump()))
@@ -500,8 +580,6 @@ class FeedbackService:
         )
         if payload.type is FeedbackConvertType.CREATE_NEW:
             collaboration.requirement_event(target, "CREATED", operator_id)
-        self.db.commit()
-        self.db.refresh(target)
         return target
 
     def linked_feedbacks(

@@ -8,6 +8,7 @@ from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import AppError, ConflictError, NotFoundError
+from app.domain.role_assignment import is_historical_ad_production_role
 from app.models.entities import Role, RolePermission
 from app.repositories.role_repository import RoleRepository
 from app.schemas.role import (
@@ -32,11 +33,16 @@ class RoleManagementService:
 
     def _out(self, role: Role) -> RoleOut:
         return RoleOut.model_validate(role).model_copy(
-            update={"permission_ids": self.repo.permission_ids(role.id)}
+            update={
+                "assignable": not is_historical_ad_production_role(
+                    role.code, is_system=role.is_system
+                ),
+                "permission_ids": self.repo.permission_ids(role.id),
+            }
         )
 
     def _snapshot(self, role: Role) -> dict[str, Any]:
-        return self._out(role).model_dump(mode="json")
+        return self._out(role).model_dump(mode="json", exclude={"assignable"})
 
     def _role_or_404(self, role_id: int) -> Role:
         role = self.repo.get(role_id)

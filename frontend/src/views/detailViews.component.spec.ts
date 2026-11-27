@@ -147,6 +147,7 @@ const feedback: Feedback = {
   module_id: null,
   submitter_id: 4,
   description: '反馈描述',
+  description_format: 'PLAIN',
   expected_result: null,
   actual_result: null,
   reproduce_steps: null,
@@ -157,6 +158,9 @@ const feedback: Feedback = {
   updated_by: null,
   revision: 1,
 }
+
+const ownNewFeedback: Feedback = { ...feedback, status: 'NEW', submitter_id: 1 }
+const ownDraftRequirement: Requirement = { ...requirement, status: 'DRAFT', can_edit_as_creator: true }
 
 const elementStub = { template: '<div><slot /><slot name="footer" /></div>' }
 const stubs = {
@@ -434,7 +438,9 @@ describe('detail views enforce permission-aware loading in mounted components', 
     { name: 'Feedback', component: FeedbackDetailView, permission: 'rd.feedback.edit', update: mocks.updateFeedback, get: mocks.getFeedback, initial: feedback, field: '反馈标题', server: '服务器反馈' },
     { name: 'Requirement', component: RequirementDetailView, permission: 'rd.requirement.edit', update: mocks.updateRequirement, get: mocks.getRequirement, initial: requirement, field: '需求标题', server: '服务器需求' },
     { name: 'Version', component: VersionDetailView, permission: 'rd.version.edit', update: mocks.updateVersion, get: mocks.getVersion, initial: version, field: '1.5.0', server: '服务器版本' },
-  ])('$name preserves local input and presence through revision conflict until explicit reload', async ({ name, component, permission, update, get, initial, field, server }) => {
+    { name: 'Feedback creator', component: FeedbackDetailView, permission: 'rd.feedback.view', update: mocks.updateFeedback, get: mocks.getFeedback, initial: ownNewFeedback, field: '反馈标题', server: '服务器反馈', presence: false },
+    { name: 'Requirement creator', component: RequirementDetailView, permission: 'rd.requirement.view', update: mocks.updateRequirement, get: mocks.getRequirement, initial: ownDraftRequirement, field: '需求标题', server: '服务器需求', presence: false },
+  ])('$name preserves local input through revision conflict until explicit reload', async ({ name, component, permission, update, get, initial, field, server, presence = true }) => {
     permissionSet(permission)
     const latest = { ...initial, ...(name === 'Version' ? { name: server } : { title: server }), revision: 2, updated_by: 8, updated_at: '2026-09-29T01:00:00Z' }
     get.mockResolvedValueOnce(initial).mockResolvedValue(latest)
@@ -473,7 +479,9 @@ describe('detail views enforce permission-aware loading in mounted components', 
     await flushPromises()
     expect(update).toHaveBeenLastCalledWith(initial.id, expect.objectContaining({ revision: 2 }))
     expect(wrapper.emitted('updated')).toEqual([[]])
-    expect(mocks.endEditing).toHaveBeenCalledOnce()
+    expect(wrapper.findAll('button').some((button) => button.text() === '编辑')).toBe(true)
+    expect(mocks.startEditing).toHaveBeenCalledTimes(presence ? 1 : 0)
+    expect(mocks.endEditing).toHaveBeenCalledTimes(presence ? 1 : 0)
     wrapper.unmount()
   })
 
@@ -523,6 +531,35 @@ describe('detail views enforce permission-aware loading in mounted components', 
     expect(mocks.startEditing).not.toHaveBeenCalled()
     wrapper.unmount()
     expect(mocks.endEditing).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    { name: 'Feedback submitter', component: FeedbackDetailView, permission: 'rd.feedback.view', get: mocks.getFeedback, item: ownNewFeedback, actions: ['删除', '调整人员', '标记重复', '无法复现', '关闭', '受理并转需求', '转需求'] },
+    { name: 'Requirement creator', component: RequirementDetailView, permission: 'rd.requirement.view', get: mocks.getRequirement, item: ownDraftRequirement, actions: ['删除', '设置需求确认人', '确认当前内容', '创建版本'] },
+  ])('offers $name content editing without exposing other mutations', async ({ component, permission, get, item, actions }) => {
+    permissionSet(permission)
+    get.mockResolvedValue(item)
+    const wrapper = mount(component, { global: { stubs, directives: { loading: {} } } })
+    await flushPromises()
+    const buttons = wrapper.findAll('button').map((button) => button.text())
+    expect(buttons).toContain('编辑')
+    for (const action of actions) expect(buttons).not.toContain(action)
+    wrapper.unmount()
+  })
+
+  it.each([
+    { name: 'someone else’s new feedback', component: FeedbackDetailView, permission: 'rd.feedback.view', get: mocks.getFeedback, item: { ...ownNewFeedback, submitter_id: 4 } },
+    { name: 'their accepted feedback', component: FeedbackDetailView, permission: 'rd.feedback.view', get: mocks.getFeedback, item: { ...ownNewFeedback, status: 'ACCEPTED' } },
+    { name: 'their new feedback without read permission', component: FeedbackDetailView, permission: 'rd.feedback.create', get: mocks.getFeedback, item: ownNewFeedback },
+    { name: 'a draft requirement absent creator eligibility', component: RequirementDetailView, permission: 'rd.requirement.view', get: mocks.getRequirement, item: { ...ownDraftRequirement, can_edit_as_creator: false } },
+    { name: 'a draft requirement with a null creator eligibility', component: RequirementDetailView, permission: 'rd.requirement.view', get: mocks.getRequirement, item: { ...ownDraftRequirement, can_edit_as_creator: null } },
+  ])('hides the editor for $name', async ({ component, permission, get, item }) => {
+    permissionSet(permission)
+    get.mockResolvedValue(item)
+    const wrapper = mount(component, { global: { stubs, directives: { loading: {} } } })
+    await flushPromises()
+    expect(wrapper.findAll('button').some((button) => button.text() === '编辑')).toBe(false)
+    wrapper.unmount()
   })
 
   it('shows linked Feedback only when the mounted Requirement viewer has Feedback read permission', async () => {

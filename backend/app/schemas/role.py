@@ -15,6 +15,7 @@ class RoleOut(BaseModel):
     data_scope: DataScope
     enabled: bool
     is_system: bool
+    assignable: bool = True
     revision: int
     permission_ids: list[int] = Field(default_factory=list)
 
@@ -26,6 +27,7 @@ class PermissionOut(BaseModel):
     name: str
     category: str
     group: str
+    parent_group: str | None = None
     sensitive: bool
     deprecated: bool
     replacement_code: str | None

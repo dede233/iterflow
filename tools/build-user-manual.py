@@ -11,13 +11,47 @@ from pathlib import Path
 from docx import Document
 from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.opc.constants import RELATIONSHIP_TYPE
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Inches, Pt, RGBColor
 
 
 def plain(text):
-    return re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r"\1", text).replace("`", "")
+    return (
+        re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r"\1", text)
+        .replace("`", "")
+        .replace("**", "")
+    )
+
+
+def add_inline(paragraph, text):
+    pattern = re.compile(r"\[([^\]]+)\]\(([^)]+)\)|\*\*(.+?)\*\*|`([^`]+)`")
+    cursor = 0
+    for match in pattern.finditer(text):
+        if cursor < match.start():
+            paragraph.add_run(text[cursor : match.start()])
+        label, target, bold, code = match.groups()
+        if label and target.startswith(("https://", "http://")):
+            link = OxmlElement("w:hyperlink")
+            link.set(
+                qn("r:id"),
+                paragraph.part.relate_to(
+                    target, RELATIONSHIP_TYPE.HYPERLINK, is_external=True
+                ),
+            )
+            run = paragraph.add_run(plain(label))
+            run.font.color.rgb = RGBColor.from_string("24558A")
+            run.underline = True
+            link.append(run._r)
+            paragraph._p.append(link)
+        elif bold:
+            paragraph.add_run(plain(bold)).bold = True
+        else:
+            paragraph.add_run(plain(label or code))
+        cursor = match.end()
+    if cursor < len(text):
+        paragraph.add_run(text[cursor:])
 
 
 def build(source, output):
@@ -26,11 +60,10 @@ def build(source, output):
     section.page_width, section.page_height = Inches(8.5), Inches(11)
     section.top_margin = section.bottom_margin = Inches(0.7)
     section.left_margin = section.right_margin = Inches(0.8)
-    for name, size, bold in (
-        ("Normal", 11, False),
-        ("Title", 25, True),
-        ("Heading 1", 17, True),
-        ("List Number", 11, False),
+    for name, size, leading, bold in (
+        ("Normal", 11, 17.5, False),
+        ("Title", 25, 34, True),
+        ("Heading 1", 17, 24, True),
     ):
         style = doc.styles[name]
         style.font.name = "Arial"
@@ -42,8 +75,8 @@ def build(source, output):
             if "theme" in attr.lower():
                 del fonts.attrib[attr]
         fonts.set(qn("w:eastAsia"), "Arial Unicode MS")
-        style.paragraph_format.space_after = Pt(8)
-        style.paragraph_format.line_spacing = 1.2
+        style.paragraph_format.space_after = Pt(7)
+        style.paragraph_format.line_spacing = Pt(leading)
         for border in style.element.xpath("./w:pPr/w:pBdr"):
             border.getparent().remove(border)
     doc.styles["Heading 1"].paragraph_format.space_before = Pt(14)
@@ -108,7 +141,7 @@ def build(source, output):
                         props.append(shading)
                     for paragraph in cell.paragraphs:
                         paragraph.paragraph_format.space_after = Pt(2)
-                        paragraph.paragraph_format.line_spacing = 1.15
+                        paragraph.paragraph_format.line_spacing = Pt(15)
                         for run in paragraph.runs:
                             run.font.size = Pt(10)
                             run.font.bold = row_index == 0
@@ -119,9 +152,15 @@ def build(source, output):
         elif line.startswith("## "):
             doc.add_heading(plain(line[3:]), 1)
         elif line.strip():
-            # Keep the explicit fifteen-step numbering identical to the source.
-            paragraph = doc.add_paragraph(plain(line))
+            paragraph = doc.add_paragraph()
             paragraph.paragraph_format.widow_control = True
+            if re.match(r"^(?:\d+\.|[-*]) ", line):
+                paragraph.paragraph_format.left_indent = Inches(0.25)
+                paragraph.paragraph_format.first_line_indent = Inches(-0.25)
+                paragraph.paragraph_format.tab_stops.add_tab_stop(Inches(0.25))
+                prefix, line = line.split(" ", 1)
+                paragraph.add_run(("•" if prefix in ("-", "*") else prefix) + "\t")
+            add_inline(paragraph, line)
         i += 1
     output.parent.mkdir(parents=True, exist_ok=True)
     doc.save(output)

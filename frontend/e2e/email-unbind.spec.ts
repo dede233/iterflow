@@ -54,7 +54,7 @@ for (const width of [375, 768, 1440]) {
       await expect(dialog).toBeHidden()
       await expect(page.getByText('通知邮箱已取消绑定，站内通知仍可正常使用。')).toBeVisible()
       await expect(page.getByRole('button', { name: '取消绑定', exact: true })).toHaveCount(0)
-      await expect(page.getByRole('textbox', { name: '通知邮箱', exact: true })).toHaveValue('')
+      await expect(page.getByLabel('通知邮箱', { exact: true })).toHaveValue('')
       await expect(page.getByRole('button', { name: '发送验证码', exact: true })).toBeDisabled()
       await expect(page.getByText('old@example.test', { exact: true })).toHaveCount(0)
       expect(server.writes).toEqual([5])
@@ -62,7 +62,7 @@ for (const width of [375, 768, 1440]) {
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
       await page.reload()
       await expect(page.getByRole('button', { name: '取消绑定', exact: true })).toHaveCount(0)
-      await expect(page.getByRole('textbox', { name: '通知邮箱', exact: true })).toHaveValue('')
+      await expect(page.getByLabel('通知邮箱', { exact: true })).toHaveValue('')
       expect(server.writes).toEqual([5])
     })
   }

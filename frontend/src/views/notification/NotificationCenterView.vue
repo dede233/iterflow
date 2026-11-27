@@ -19,7 +19,7 @@ const failed = ref(false)
 const notifications = useNotificationsStore()
 
 function notificationIcon(entityType: string | null): string {
-  return ({ FEEDBACK: 'feedback', REQUIREMENT: 'requirement', VERSION: 'version', RELEASE: 'release' } as Record<string, string>)[entityType ?? ''] ?? 'bell'
+  return ({ FEEDBACK: 'feedback', REQUIREMENT: 'requirement', VERSION: 'version', RELEASE: 'release', AD_PRODUCTION: 'megaphone' } as Record<string, string>)[entityType ?? ''] ?? 'bell'
 }
 
 function notificationTarget(notification: NotificationItem): string | null {
@@ -35,6 +35,9 @@ function notificationTarget(notification: NotificationItem): string | null {
       return `/requirements/${notification.entity_id}`
     case 'VERSION':
       return `/versions/${notification.entity_id}`
+    case 'AD_PRODUCTION':
+      return Number.isSafeInteger(notification.entity_id) && notification.entity_id > 0
+        ? `/merchant-ads?record_id=${notification.entity_id}` : null
     default:
       return null
   }
@@ -90,7 +93,7 @@ onMounted(() => {
 
 <template>
   <section class="page">
-    <PageHeader title="通知中心" description="查看与你有关的反馈、需求和版本动态。" eyebrow="工作台">
+    <PageHeader title="通知中心" description="查看与你有关的协作动态。" eyebrow="工作台">
       <template #actions>
         <span class="unread-count">{{ notifications.unreadCount }} 条未读</span>
         <el-button v-if="notifications.unreadCount > 0" :loading="notifications.markingAllRead" :disabled="pendingId !== null || notifications.loading" @click="readAll">全部已读</el-button>

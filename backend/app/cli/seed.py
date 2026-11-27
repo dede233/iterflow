@@ -9,6 +9,19 @@ from app.core.security import hash_password
 from app.models.entities import Permission, Role, RolePermission, User, UserRole
 from app.models.enums import DataScope
 
+MATERIAL_PRODUCTION_PERMISSIONS = {
+    "ops.ad_production.view": "查看物料制作",
+    "ops.ad_production.create": "发布物料制作",
+    "ops.ad_production.edit": "编辑物料制作",
+}
+MERCHANT_AD_PERMISSIONS = {
+    "ops.merchant_ad.view": "查看商家广告",
+    "ops.merchant_ad.create": "发布商家广告",
+    "ops.merchant_ad.edit": "编辑商家广告",
+}
+OPS_PRODUCTION_PERMISSIONS = {**MATERIAL_PRODUCTION_PERMISSIONS, **MERCHANT_AD_PERMISSIONS}
+OPS_PRESET_ROLE_CODES = {"CUSTOMER_SERVICE_OPERATIONS", "DESIGNER"}
+
 PERMISSIONS = {
     "dashboard.view": "首页查看",
     "rd.feedback.view": "反馈查看",
@@ -26,6 +39,7 @@ PERMISSIONS = {
     "rd.version.status": "版本状态",
     "rd.version.publish": "发布版本",
     "rd.release.view": "发布记录查看",
+    **OPS_PRODUCTION_PERMISSIONS,
     "sys.user.view": "用户查看",
     "sys.user.create": "创建用户",
     "sys.user.edit": "编辑用户基本信息",
@@ -79,6 +93,10 @@ BASE_ROLES = {
                 "rd.requirement.view",
                 "rd.version.view",
                 "rd.release.view",
+                "ops.ad_production.view",
+                "ops.ad_production.create",
+                "ops.merchant_ad.view",
+                "ops.merchant_ad.create",
             }
         ),
     ),
@@ -169,6 +187,7 @@ BASE_ROLES = {
                 "rd.requirement.status",
                 "rd.version.view",
                 "rd.release.view",
+                *OPS_PRODUCTION_PERMISSIONS,
             }
         ),
     ),
@@ -195,7 +214,7 @@ def seed_database(db: Session, *, username: str, password: str | None) -> None:
             permission = Permission(code=code, name=name)
             db.add(permission)
             permissions[code] = permission
-        else:
+        elif code not in OPS_PRODUCTION_PERMISSIONS:
             permission.name = name
     db.flush()
 
@@ -213,7 +232,7 @@ def seed_database(db: Session, *, username: str, password: str | None) -> None:
             )
             db.add(role)
             roles[code] = role
-        else:
+        elif code not in OPS_PRESET_ROLE_CODES:
             role.name = definition.name
             role.data_scope = definition.data_scope
             role.enabled = True
@@ -225,6 +244,8 @@ def seed_database(db: Session, *, username: str, password: str | None) -> None:
     }
     for code, definition in BASE_ROLES.items():
         role = roles[code]
+        if code in OPS_PRESET_ROLE_CODES and (not role.is_system or not role.enabled):
+            continue
         for permission_code in definition.permissions:
             permission = permissions[permission_code]
             pair = (role.id, permission.id)

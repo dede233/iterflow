@@ -41,9 +41,290 @@
     {
       "name": "announcements",
       "description": "迭程产品更新公告、草稿管理与账号已读记录"
+    },
+    {
+      "name": "ad-productions",
+      "description": "商家广告和物料制作的需求、进度和图片"
     }
   ],
   "schemas": {
+    "AdProductionKind": {
+      "title": "制作需求类型",
+      "description": "分别对应物料制作和商家广告。"
+    },
+    "AdProductionCreateForm": {
+      "title": "AdProductionCreateForm",
+      "properties": {
+        "kind": {
+          "title": "需求类型",
+          "description": "默认物料制作。发布后类型固定。"
+        },
+        "work_date": {
+          "title": "原制作日期",
+          "description": "旧客户端可提交。默认使用创建时间的 UTC 日期。",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "content": {
+          "title": "需求内容",
+          "description": "纯文本限 3000 字，富文本按可见文字计算 3000 字上限。"
+        },
+        "issuer": {
+          "title": "原下发人",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "status": {
+          "title": "状态"
+        },
+        "images": {
+          "title": "新图片",
+          "items": {}
+        },
+        "content_format": {
+          "title": "正文格式"
+        },
+        "content_images": {
+          "title": "新正文图片",
+          "description": "各图片的文件名传入编辑器中对应的 local-UUID 引用。单张限 4 MiB，本次新增正文图片合计限 8 MiB。",
+          "items": {}
+        },
+        "receiver_id": {
+          "title": "需求接收人 ID",
+          "description": "发布时必选。必须为启用的设计人员或制作需求完成人。"
+        },
+        "completed_by_id": {
+          "title": "实际完成人 ID",
+          "description": "实际完成人 ID，仅在已完成状态可设置，必须为可用的设计人员。0 表示清除。",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "title": {
+          "title": "标题"
+        },
+        "due_at": {
+          "title": "截止时间",
+          "description": "可选。ISO 8601 时间需包含时区。",
+          "anyOf": [
+            {},
+            {}
+          ]
+        }
+      }
+    },
+    "AdProductionOut": {
+      "title": "AdProductionOut",
+      "properties": {
+        "kind": {
+          "title": "需求类型"
+        },
+        "processing_result": {
+          "title": "处理结果",
+          "description": "商家广告完成时登记的实际处理结果。",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "id": {
+          "title": "制作需求 ID"
+        },
+        "work_date": {
+          "title": "原制作日期"
+        },
+        "content": {
+          "title": "需求内容"
+        },
+        "issuer": {
+          "title": "原下发人"
+        },
+        "status": {
+          "title": "状态"
+        },
+        "created_by": {
+          "title": "创建人 ID"
+        },
+        "created_at": {
+          "title": "发布时间"
+        },
+        "updated_at": {
+          "title": "更新时间"
+        },
+        "revision": {
+          "title": "修订号"
+        },
+        "images": {
+          "title": "图片",
+          "items": {}
+        },
+        "content_format": {
+          "title": "正文格式"
+        },
+        "receiver_id": {
+          "title": "需求接收人 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "receiver_display_name": {
+          "title": "接单人姓名",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "completed_by_id": {
+          "title": "实际完成人 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "completed_by_display_name": {
+          "title": "实际完成人姓名",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "title": {
+          "title": "标题",
+          "anyOf": [
+            {
+              "title": "标题"
+            },
+            {}
+          ]
+        },
+        "due_at": {
+          "title": "截止时间",
+          "description": "可选。ISO 8601 时间需包含时区。",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "publisher_display_name": {
+          "title": "需求发布人",
+          "description": "根据实际创建记录的账号读取显示名称。",
+          "anyOf": [
+            {},
+            {}
+          ]
+        }
+      }
+    },
+    "AdProductionPage": {
+      "title": "AdProductionPage",
+      "properties": {
+        "items": {
+          "title": "制作记录",
+          "items": {}
+        },
+        "page": {
+          "title": "当前页"
+        },
+        "page_size": {
+          "title": "每页条数"
+        },
+        "total": {
+          "title": "可见记录总数"
+        }
+      }
+    },
+    "AdProductionStatus": {
+      "title": "制作状态",
+      "description": "物料制作显示未开始、进行中、邮寄中、已完成。商家广告显示未处理、处理中、已处理。"
+    },
+    "AdProductionUpdateForm": {
+      "title": "AdProductionUpdateForm",
+      "properties": {
+        "processing_result": {
+          "title": "处理结果",
+          "description": "商家广告确认完成时填写，最多 4000 字。",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "work_date": {
+          "title": "原制作日期"
+        },
+        "content": {
+          "title": "需求内容",
+          "description": "纯文本限 3000 字，富文本按可见文字计算 3000 字上限。"
+        },
+        "issuer": {
+          "title": "原下发人"
+        },
+        "status": {
+          "title": "状态"
+        },
+        "images": {
+          "title": "新图片",
+          "items": {}
+        },
+        "revision": {
+          "title": "修订号"
+        },
+        "remove_image_ids": {
+          "title": "移除图片 ID",
+          "items": {}
+        },
+        "content_format": {
+          "title": "正文格式"
+        },
+        "content_images": {
+          "title": "新正文图片",
+          "description": "各图片的文件名传入编辑器中对应的 local-UUID 引用。单张限 4 MiB，本次新增正文图片合计限 8 MiB。",
+          "items": {}
+        },
+        "receiver_id": {
+          "title": "需求接收人 ID",
+          "description": "接单人 ID，必须为可用的设计人员。0 表示清除。",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "completed_by_id": {
+          "title": "实际完成人 ID",
+          "description": "实际完成人 ID，仅在已完成状态可设置，必须为可用的设计人员。0 表示清除。",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "title": {
+          "title": "标题",
+          "anyOf": [
+            {
+              "title": "标题"
+            },
+            {}
+          ]
+        },
+        "due_at": {
+          "title": "截止时间",
+          "description": "可选。ISO 8601 时间需包含时区。",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "clear_due_at": {
+          "title": "清除截止时间",
+          "description": "与提交新的截止时间互斥。均省略时保留原截止时间。"
+        }
+      }
+    },
     "AddRequirementRequest": {
       "title": "AddRequirementRequest",
       "properties": {
@@ -1337,6 +1618,13 @@
         "recipient_ids": {
           "title": "反馈接收人",
           "items": {}
+        },
+        "description_format": {
+          "title": "正文格式"
+        },
+        "description_images": {
+          "title": "新增正文图片",
+          "additionalProperties": {}
         }
       }
     },
@@ -1456,6 +1744,9 @@
         "revision": {
           "title": "修订号",
           "description": "对象的乐观锁修订号；写入时提交最后读取的修订号。"
+        },
+        "description_format": {
+          "title": "正文格式"
         }
       }
     },
@@ -1592,6 +1883,14 @@
         "revision": {
           "title": "修订号",
           "description": "对象的乐观锁修订号；写入时提交最后读取的修订号。"
+        },
+        "description_format": {
+          "title": "正文格式",
+          "description": "省略时沿用记录的格式。更新此字段时须一并提交详细描述。"
+        },
+        "description_images": {
+          "title": "新增正文图片",
+          "additionalProperties": {}
         }
       }
     },
@@ -1954,6 +2253,13 @@
         },
         "revision": {
           "title": "需求修订号"
+        },
+        "description_format": {
+          "title": "正文格式"
+        },
+        "description_images": {
+          "title": "新增正文图片",
+          "additionalProperties": {}
         }
       }
     },
@@ -2072,6 +2378,13 @@
         },
         "group": {
           "title": "权限分组"
+        },
+        "parent_group": {
+          "title": "上级权限分组",
+          "anyOf": [
+            {},
+            {}
+          ]
         },
         "sensitive": {
           "title": "是否为敏感权限"
@@ -2867,6 +3180,14 @@
         "release_frozen": {
           "title": "首次发布内容已冻结"
         },
+        "can_edit_as_creator": {
+          "title": "创建人可编辑",
+          "description": "需求详情根据登录人、需求当前状态和冻结状态返回。其他响应不计算此能力，值为 null。",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
         "system_name": {
           "title": "所属业务系统名称",
           "anyOf": [
@@ -3179,6 +3500,10 @@
         },
         "is_system": {
           "title": "是否为系统角色"
+        },
+        "assignable": {
+          "title": "是否可分配",
+          "description": "是否允许将该角色新增分配给账号，已有分配可以保留或移除。"
         },
         "revision": {
           "title": "修订号",
@@ -4039,9 +4364,153 @@
           "items": {}
         }
       }
+    },
+    "WecomBindingChange": {
+      "title": "WecomBindingChange",
+      "properties": {
+        "revision": {
+          "title": "修订号"
+        },
+        "member_user_id": {
+          "title": "企业微信成员 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        }
+      }
+    },
+    "WecomPreferenceChange": {
+      "title": "WecomPreferenceChange",
+      "properties": {
+        "revision": {
+          "title": "修订号"
+        },
+        "mode": {
+          "title": "企业微信通知偏好"
+        }
+      }
+    },
+    "WecomPreferencesOut": {
+      "title": "WecomPreferencesOut",
+      "properties": {
+        "revision": {
+          "title": "修订号"
+        },
+        "member_user_id": {
+          "title": "企业微信成员 ID",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "mode": {
+          "title": "企业微信通知偏好"
+        },
+        "enabled": {
+          "title": "企业微信通知是否启用"
+        }
+      }
+    },
+    "AdProductionDesignerOption": {
+      "title": "AdProductionDesignerOption",
+      "properties": {
+        "id": {
+          "title": "设计人员 ID"
+        },
+        "display_name": {
+          "title": "设计人员显示名称"
+        }
+      }
+    },
+    "AdProductionStatusChange": {
+      "title": "AdProductionStatusChange",
+      "properties": {
+        "processing_result": {
+          "title": "处理结果",
+          "description": "商家广告确认完成时填写，最多 4000 字。",
+          "anyOf": [
+            {},
+            {}
+          ]
+        },
+        "revision": {
+          "title": "修订号"
+        },
+        "status": {
+          "title": "状态"
+        },
+        "completed_by_id": {
+          "title": "实际完成人 ID",
+          "description": "仅在已完成状态设置，0 表示清除。",
+          "anyOf": [
+            {},
+            {}
+          ]
+        }
+      }
     }
   },
   "paths": {
+    "/ad-productions": {
+      "get": {
+        "tags": [
+          "ad-productions"
+        ],
+        "summary": "制作需求列表",
+        "description": "需要所选类型的查看权限。省略类型时查询物料制作。按发布时间降序分页，可按标题、正文、状态或日期筛选。列表和总数采用同一 DataScope。"
+      },
+      "post": {
+        "tags": [
+          "ad-productions"
+        ],
+        "summary": "发布制作需求",
+        "description": "需要发布类型对应的查看和发布权限。发布须填写标题、需求内容并指定有效接收人，截止时间可选。实际发布时间和发布人由服务端记录。物料制作新建时标记为已完成另需编辑权限。记录、图片和审计一并保存。"
+      }
+    },
+    "/ad-productions/designer-options": {
+      "get": {
+        "tags": [
+          "ad-productions"
+        ],
+        "summary": "物料制作设计人员选项",
+        "description": "需要对应类型的制作需求查看权限。返回启用的设计人员或制作需求完成人，且须具备该类型的查看与编辑权限。同一账号只返回一次。"
+      }
+    },
+    "/ad-productions/{ad_id}": {
+      "get": {
+        "tags": [
+          "ad-productions"
+        ],
+        "summary": "查看制作需求",
+        "description": "需要记录所属类型的查看权限和该记录的 DataScope。"
+      },
+      "patch": {
+        "tags": [
+          "ad-productions"
+        ],
+        "summary": "编辑制作需求",
+        "description": "需要记录所属类型的查看和编辑权限，以及相应的 DataScope。用 revision 校验并发，原子更新工作内容、状态和图片。"
+      }
+    },
+    "/ad-productions/{ad_id}/status": {
+      "patch": {
+        "tags": [
+          "ad-productions"
+        ],
+        "summary": "更新制作需求状态",
+        "description": "需要记录所属类型的查看和编辑权限，以及相应的数据范围。仅更改状态与实际完成人，需要当前 revision；写入审计。"
+      }
+    },
+    "/ad-productions/{ad_id}/images/{file_id}": {
+      "get": {
+        "tags": [
+          "ad-productions"
+        ],
+        "summary": "预览物料制作图片",
+        "description": "需要记录所属类型的查看权限和该记录的 DataScope。图片必须当前关联到该记录。"
+      }
+    },
     "/requirements/filter-options/participants": {
       "get": {
         "tags": [
@@ -4413,7 +4882,7 @@
           "Feedback"
         ],
         "summary": "编辑反馈",
-        "description": "需要反馈编辑权限、数据范围和最新 revision；旧 revision 返回 409。CLOSED 仍可编辑保存，但保存不会重开；再次提交需另行重开到 NEW，填写非空原因，保留原编号与历史。"
+        "description": "需要反馈编辑权限，或由有反馈查看权限的提交人编辑本人仍处于 NEW 的反馈。均需符合数据范围并提交最新 revision；旧 revision 返回 409。已有编辑权限的人员可以编辑 CLOSED 反馈，保存不改变状态。"
       }
     },
     "/feedbacks/{feedback_id}/status": {
@@ -4533,7 +5002,8 @@
         "tags": [
           "Requirement"
         ],
-        "summary": "编辑需求"
+        "summary": "编辑需求",
+        "description": "需要需求编辑权限，或由有需求查看权限的创建人编辑本人仍处于 DRAFT 的需求。均需符合数据范围和冻结规则，并提交最新 revision；旧 revision 返回 409。"
       }
     },
     "/requirements/{requirement_id}/images/{file_id}": {
@@ -4769,6 +5239,34 @@
         "summary": "标记通知已读"
       }
     },
+    "/me/wecom-preferences": {
+      "get": {
+        "tags": [
+          "Notification"
+        ],
+        "summary": "查看个人企业微信通知设置"
+      },
+      "put": {
+        "tags": [
+          "Notification"
+        ],
+        "summary": "调整个人企业微信通知偏好"
+      }
+    },
+    "/users/{user_id}/wecom-binding": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "查看企业微信成员绑定"
+      },
+      "put": {
+        "tags": [
+          "System"
+        ],
+        "summary": "更新企业微信成员绑定"
+      }
+    },
     "/me/mail-preferences": {
       "get": {
         "tags": [
@@ -4972,7 +5470,7 @@
           "System"
         ],
         "summary": "分配用户角色",
-        "description": "仅 ALL 数据范围的用户管理权限可执行；凭 revision 乐观锁更新。"
+        "description": "仅 ALL 数据范围的用户管理权限可执行；凭 revision 乐观锁更新。历史制作角色已有分配可保留或移除。"
       }
     },
     "/roles": {
@@ -5084,6 +5582,24 @@
         ],
         "summary": "原子编辑小程序品牌及平台",
         "description": "沿用 sys.system.manage 和 ALL 数据范围；以业务系统锁序列化，一次原子保存品牌下微信/支付宝平台。编辑须提交全部成员 ID/revision；平台停用保留历史，不重写快照或发布记录。编码前缀不超过57字符，平台编码使用 _WX/_ALIPAY 后缀。"
+      }
+    },
+    "/feedbacks/{feedback_id}/images/{file_id}": {
+      "get": {
+        "tags": [
+          "Feedback"
+        ],
+        "summary": "读取反馈正文中的图片",
+        "description": "先校验记录的数据范围和查看权限，再读取属于这条记录正文的图片。"
+      }
+    },
+    "/ad-productions/{ad_id}/content-images/{file_id}": {
+      "get": {
+        "tags": [
+          "ad-productions"
+        ],
+        "summary": "读取物料制作正文中的图片",
+        "description": "先校验记录所属类型的查看权限和数据范围，再读取该记录正文的图片。"
       }
     }
   }

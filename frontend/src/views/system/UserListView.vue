@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { createUser, listUsers, sendUserEmailVerification, updateUser, updateUserRoles, updateUserStatus } from '@/api/users'
 import { listRoles } from '@/api/roles'
+import EmailSuggestionInput from '@/components/ui/EmailSuggestionInput.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
@@ -10,11 +11,13 @@ import ErrorState from '@/components/ui/ErrorState.vue'
 import StatusTag from '@/components/StatusTag.vue'
 import { useResponsive } from '@/composables/useResponsive'
 import UserRoleAssignmentDrawer from '@/components/UserRoleAssignmentDrawer.vue'
+import UserWecomBindingDialog from '@/components/UserWecomBindingDialog.vue'
 import {
   buildUserBasicUpdatePayload,
   buildUserRoleUpdateRequest,
   canLoadRoleDefinitions,
   canOperatorChangeUserStatus,
+  isAssignableRole,
   isCurrentUserSuperAdmin,
   isSuperAdminRole,
   statusConfirmationMessage,
@@ -36,19 +39,30 @@ const loading = ref(false)
 const failed = ref(false)
 const dialogVisible = ref(false)
 const editingUser = ref<UserItem | null>(null)
+const customPassword = ref<string | null>(null)
 const saving = ref(false)
 const roleDrawerVisible = ref(false)
 const roleUser = ref<UserItem | null>(null)
 const roleSaving = ref(false)
+const wecomUser = ref<UserItem | null>(null)
+const wecomDialogVisible = ref(false)
 const verificationSending = reactive(new Set<number>())
 let loadSequence = 0
 const form = reactive({
   username: '',
   display_name: '',
-  email: '' as string | null,
+  email: '',
   mobile: '' as string | null,
-  password: '',
   role_ids: [] as number[],
+})
+const initialPassword = computed({
+  get() {
+    const username = form.username.trim()
+    return customPassword.value ?? (username ? `${username}123` : '')
+  },
+  set(password: string) {
+    customPassword.value = password
+  },
 })
 const hasAllScope = computed(() => auth.user?.data_scope === 'ALL')
 const canReadRoleDefinitions = computed(
@@ -59,7 +73,8 @@ const canCreateUsers = computed(() => hasAllScope.value && can('sys.user.create'
 const canEditUsers = computed(() => can('sys.user.edit'))
 const canChangeUserStatus = computed(() => hasAllScope.value && can('sys.user.status'))
 const operatorIsSuperAdmin = computed(() => isCurrentUserSuperAdmin(auth.user, roles.value))
-const canSendVerification = computed(() => hasAllScope.value && canEditUsers.value && operatorIsSuperAdmin.value)
+const canManageUserContacts = computed(() => hasAllScope.value && canEditUsers.value && operatorIsSuperAdmin.value)
+const assignableRoles = computed(() => roles.value.filter(isAssignableRole))
 
 type VerificationStatus = UserItem['email_verification_status']
 const verificationLabels: Record<VerificationStatus, { label: string; type: string }> = {
@@ -86,7 +101,7 @@ async function load(): Promise<void> {
     if (sequence !== loadSequence) return
     rows.value = users.items
     total.value = users.total
-    roles.value = roleDefinitions.filter((role) => role.enabled)
+    roles.value = roleDefinitions.filter((role) => role.enabled || role.assignable === false)
   } catch {
     if (sequence === loadSequence) failed.value = true
   } finally {
@@ -100,7 +115,8 @@ function changePage(nextPage: number): void {
 }
 
 function resetForm(): void {
-  Object.assign(form, { username: '', display_name: '', email: '', mobile: '', password: '', role_ids: [] })
+  Object.assign(form, { username: '', display_name: '', email: '', mobile: '', role_ids: [] })
+  customPassword.value = null
 }
 
 function openCreate(): void {
@@ -116,7 +132,6 @@ function openEdit(user: UserItem): void {
     display_name: user.display_name,
     email: user.email ?? '',
     mobile: user.mobile ?? '',
-    password: '',
     role_ids: [],
   })
   dialogVisible.value = true
@@ -127,24 +142,37 @@ function openRoles(user: UserItem): void {
   roleDrawerVisible.value = true
 }
 
+function openWecomBinding(user: UserItem): void {
+  if (!canManageUserContacts.value || wecomUser.value) return
+  wecomUser.value = user
+  wecomDialogVisible.value = true
+}
+
 async function save(): Promise<void> {
+  const username = form.username.trim()
+  if (!editingUser.value && Array.from(initialPassword.value).length < 8) {
+    ElMessage.warning(customPassword.value === null && username
+      ? '默认密码不足 8 个字符，请手动设置至少 8 个字符的初始密码。'
+      : '初始密码至少需要 8 个字符。')
+    return
+  }
   saving.value = true
   try {
-    const email = form.email?.trim() || null
+    const email = form.email.trim() || null
     const mobile = form.mobile?.trim() || null
     if (!editingUser.value) {
       const created = await createUser({
-        username: form.username.trim(),
+        username,
         display_name: form.display_name.trim(),
         email,
         mobile,
-        password: form.password,
+        password: initialPassword.value,
         role_ids: form.role_ids,
       })
       if (created.verification_invitation === 'QUEUED') {
         ElMessage.success('用户已创建，验证邮件已排队。')
       } else if (created.verification_invitation === 'FAILED') {
-        ElMessage.warning(canSendVerification.value
+        ElMessage.warning(canManageUserContacts.value
           ? '用户已创建，验证邮件入队失败。可在用户列表重新发送。'
           : '用户已创建，验证邮件入队失败。请联系超级管理员重新发送。')
       } else if (created.verification_invitation === 'SKIPPED' && email) {
@@ -198,7 +226,7 @@ function mayChangeStatus(user: UserItem): boolean {
 
 function maySendVerification(user: UserItem): boolean {
   const status = verificationStatus(user)
-  return canSendVerification.value && user.status === 'ACTIVE' && status !== 'NO_EMAIL' && status !== 'VERIFIED'
+  return canManageUserContacts.value && user.status === 'ACTIVE' && status !== 'NO_EMAIL' && status !== 'VERIFIED'
 }
 
 async function sendVerification(user: UserItem): Promise<void> {
@@ -290,14 +318,17 @@ onMounted(load)
           <StatusTag :status="scope.row.status" :label="scope.row.status === 'ACTIVE' ? '启用' : '停用'" />
         </template>
       </el-table-column>
-      <el-table-column v-if="canEditUsers || canAssignUserRoles || canChangeUserStatus" label="操作" :width="canSendVerification ? 290 : 240" fixed="right">
+      <el-table-column v-if="canEditUsers || canAssignUserRoles || canChangeUserStatus" label="操作" :width="canManageUserContacts ? 290 : 240" fixed="right">
         <template #default="scope">
-          <el-button v-if="canEditUsers" link type="primary" @click="openEdit(scope.row)">编辑</el-button>
-          <el-button v-if="canAssignUserRoles" link type="primary" @click="openRoles(scope.row)">配置角色</el-button>
-          <el-button v-if="mayChangeStatus(scope.row)" link :type="scope.row.status === 'ACTIVE' ? 'danger' : 'success'" @click="toggleStatus(scope.row)">
-            {{ scope.row.status === 'ACTIVE' ? '停用' : '启用' }}
-          </el-button>
-          <el-button v-if="maySendVerification(scope.row)" link type="primary" :loading="verificationSending.has(scope.row.id)" @click="sendVerification(scope.row)">发送验证邮件</el-button>
+          <div class="user-table-actions">
+            <el-button v-if="canEditUsers" link type="primary" @click="openEdit(scope.row)">编辑</el-button>
+            <el-button v-if="canAssignUserRoles" link type="primary" @click="openRoles(scope.row)">配置角色</el-button>
+            <el-button v-if="mayChangeStatus(scope.row)" link :type="scope.row.status === 'ACTIVE' ? 'danger' : 'success'" @click="toggleStatus(scope.row)">
+              {{ scope.row.status === 'ACTIVE' ? '停用' : '启用' }}
+            </el-button>
+            <el-button v-if="maySendVerification(scope.row)" link type="primary" :loading="verificationSending.has(scope.row.id)" @click="sendVerification(scope.row)">发送验证邮件</el-button>
+            <el-button v-if="canManageUserContacts" link type="primary" @click="openWecomBinding(scope.row)">企业微信绑定</el-button>
+          </div>
         </template>
       </el-table-column>
       <template #empty><EmptyState description="暂无用户" compact /></template>
@@ -324,13 +355,14 @@ onMounted(load)
           <el-button v-if="canAssignUserRoles" @click="openRoles(user)">配置角色</el-button>
           <el-button v-if="mayChangeStatus(user)" :type="user.status === 'ACTIVE' ? 'danger' : 'success'" plain @click="toggleStatus(user)">{{ user.status === 'ACTIVE' ? '停用' : '启用' }}</el-button>
           <el-button v-if="maySendVerification(user)" type="primary" plain :loading="verificationSending.has(user.id)" @click="sendVerification(user)">发送验证邮件</el-button>
+          <el-button v-if="canManageUserContacts" @click="openWecomBinding(user)">企业微信绑定</el-button>
         </div>
       </article>
       <EmptyState v-if="!loading && !rows.length" description="暂无用户" compact />
     </div>
     </SectionCard>
 
-    <el-dialog v-model="dialogVisible" :title="editingUser ? '编辑用户基本资料' : '创建用户'" class="user-dialog" width="min(560px, 92vw)" destroy-on-close>
+    <el-dialog v-model="dialogVisible" :title="editingUser ? '编辑用户基本资料' : '创建用户'" class="user-dialog" width="min(560px, 92vw)" destroy-on-close @closed="resetForm">
       <el-form class="user-form" label-position="top" @submit.prevent="save">
         <el-row :gutter="16">
           <el-col :xs="24" :sm="12">
@@ -344,8 +376,8 @@ onMounted(load)
             </el-form-item>
           </el-col>
           <el-col :xs="24" :sm="12">
-            <el-form-item label="邮箱">
-              <el-input v-model="form.email" type="email" autocomplete="email" />
+            <el-form-item label="邮箱" for="user-account-email">
+              <EmailSuggestionInput id="user-account-email" v-model="form.email" :maxlength="255" />
             </el-form-item>
           </el-col>
           <el-col :xs="24" :sm="12">
@@ -355,12 +387,12 @@ onMounted(load)
           </el-col>
         </el-row>
         <el-form-item v-if="!editingUser" label="初始密码" required>
-          <el-input v-model="form.password" type="password" show-password autocomplete="new-password" />
+          <el-input v-model="initialPassword" type="password" show-password autocomplete="new-password" />
         </el-form-item>
         <el-form-item v-if="!editingUser && canAssignUserRoles" label="初始角色">
           <el-checkbox-group v-model="form.role_ids" class="create-role-list">
             <el-checkbox
-              v-for="role in roles"
+              v-for="role in assignableRoles"
               :key="role.id"
               :value="role.id"
               :disabled="isSuperAdminRole(role) && !operatorIsSuperAdmin"
@@ -386,6 +418,12 @@ onMounted(load)
       :operator-is-super-admin="operatorIsSuperAdmin"
       :saving="roleSaving"
       @save="saveRoles"
+    />
+    <UserWecomBindingDialog
+      v-if="canManageUserContacts && wecomUser"
+      v-model="wecomDialogVisible"
+      :user="wecomUser"
+      @closed="wecomUser = null"
     />
   </section>
 </template>
@@ -422,6 +460,8 @@ onMounted(load)
 .create-role-list :deep(.el-tag) { margin: 0; }
 .user-pagination { margin-top: 0; }
 .user-email { margin-bottom: 2px; overflow-wrap: anywhere; }
+.user-table-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 12px; }
+.user-table-actions :deep(.el-button + .el-button) { margin-left: 0; }
 .user-cards { display: grid; gap: 10px; padding: var(--if-space-4); }
 .user-card { min-width: 0; padding: 14px; background: var(--if-bg-surface); border: 1px solid var(--if-border); border-radius: var(--if-radius); }
 .user-card__head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 12px; }

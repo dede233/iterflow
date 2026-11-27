@@ -11,7 +11,7 @@ export function feedbackConflictSummary(item: Feedback): ConflictSummaryRow[] {
     { label: '反馈类型', value: feedbackTypeLabel[item.feedback_type] ?? item.feedback_type },
     { label: '紧急程度', value: feedbackUrgencyLabel[item.urgency] ?? item.urgency },
     { label: '状态', value: feedbackStatusLabel[item.status] ?? item.status },
-    { label: '详细描述', value: item.description },
+    { label: '详细描述', value: item.description_format === 'HTML' ? richTextPlainText(item.description) : item.description },
   ]
 }
 

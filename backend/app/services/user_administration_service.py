@@ -1,3 +1,4 @@
+from collections.abc import Collection
 from datetime import UTC, datetime
 
 from sqlalchemy import delete, update
@@ -7,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.exceptions import AppError, ConflictError, NotFoundError, PermissionDenied
 from app.core.security import hash_password
+from app.domain.role_assignment import is_historical_ad_production_role
 from app.models.entities import MailPreference, Role, User, UserRole
 from app.models.enums import UserStatus
 from app.repositories.user_repository import UserRepository
@@ -105,16 +107,26 @@ class UserAdministrationService:
             raise NotFoundError("用户不存在")
         return user
 
-    def _validate_role_ids(self, role_ids: list[int]) -> dict[int, Role]:
+    def _validate_role_ids(
+        self, role_ids: list[int], existing_role_ids: Collection[int] = ()
+    ) -> None:
         roles = self.users.roles_by_ids(role_ids)
-        by_id = {role.id: role for role in roles}
-        missing_ids = sorted(set(role_ids) - set(by_id))
+        missing_ids = sorted(set(role_ids) - {role.id for role in roles})
         if missing_ids:
             raise AppError(42202, "包含不存在的角色", 422, {"role_ids": missing_ids})
-        disabled_ids = sorted(role.id for role in roles if not role.enabled)
+        historical_ids = {
+            role.id
+            for role in roles
+            if is_historical_ad_production_role(role.code, is_system=role.is_system)
+        }
+        disabled_ids = sorted(
+            role.id for role in roles if not role.enabled and role.id not in historical_ids
+        )
         if disabled_ids:
             raise AppError(42203, "不能分配已禁用的角色", 422, {"role_ids": disabled_ids})
-        return by_id
+        new_historical_ids = sorted(historical_ids.difference(existing_role_ids))
+        if new_historical_ids:
+            raise AppError(42204, "不能新增分配历史角色", 422, {"role_ids": new_historical_ids})
 
     def _ensure_operator_is_effective_super_admin(
         self, operator_id: int, super_admin_role: Role
@@ -226,9 +238,9 @@ class UserAdministrationService:
     def update_roles(self, user_id: int, payload: UserRoleUpdate, operator_id: int) -> UserOut:
         super_admin_role = self._lock_super_admin_role()
         user = self._user_or_404(user_id)
-        self._validate_role_ids(payload.role_ids)
-
         before_role_ids = self.users.role_ids(user_id)
+        self._validate_role_ids(payload.role_ids, before_role_ids)
+
         had_super_admin = super_admin_role.id in before_role_ids
         will_have_super_admin = super_admin_role.id in payload.role_ids
         changes_super_admin = had_super_admin != will_have_super_admin
@@ -252,8 +264,16 @@ class UserAdministrationService:
         ):
             raise self._user_conflict(user_id, "用户角色已被其他用户修改")
 
-        self.db.execute(delete(UserRole).where(UserRole.user_id == user_id))
-        for role_id in payload.role_ids:
+        previous_ids = set(before_role_ids)
+        requested_ids = set(payload.role_ids)
+        removed_ids = previous_ids - requested_ids
+        if removed_ids:
+            self.db.execute(
+                delete(UserRole).where(
+                    UserRole.user_id == user_id, UserRole.role_id.in_(removed_ids)
+                )
+            )
+        for role_id in requested_ids - previous_ids:
             self.db.add(UserRole(user_id=user_id, role_id=role_id))
         self.db.flush()
         after_role_ids = self.users.role_ids(user_id)

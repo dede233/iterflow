@@ -70,7 +70,17 @@ for (const width of [1440, 375]) {
     if (embedded) await page.getByRole('button', { name: '提交反馈', exact: true }).click()
     const form = embedded ? page.getByRole('dialog', { name: '提交反馈', exact: true }) : page.locator('main')
     await form.getByRole('textbox', { name: /标题$/ }).fill('不选择模块的新反馈')
-    await form.getByRole('textbox', { name: /详细描述$/ }).fill('只选择业务系统并提交')
+    const description = form.getByRole('textbox', { name: '详细描述', exact: true })
+    await description.fill('只选择业务系统并提交')
+    const attachInline = width === 1440 && embedded
+    if (attachInline) {
+      await description.press('ControlOrMeta+A')
+      await form.getByRole('button', { name: '加粗', exact: true }).click()
+      await form.locator('.rich-text-editor input[type=file]').setInputFiles({
+        name: 'screenshot.png', mimeType: 'image/png',
+        buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/aGQAAAAASUVORK5CYII=', 'base64'),
+      })
+    }
     const system = form.locator('.el-form-item').filter({ hasText: '所属系统' })
     await system.locator('.el-select').click()
     await page.getByRole('option', { name: '系统甲', exact: true }).click()
@@ -83,7 +93,11 @@ for (const width of [1440, 375]) {
     await page.screenshot({ path: info.outputPath('create-system-only.png'), fullPage: true })
     await form.getByRole('button', { name: '提交', exact: true }).click()
     await expect.poll(() => data.writes.length).toBe(1)
-    expect(data.writes[0]).toMatchObject({ system_id: 1, recipient_ids: [1] })
+    expect(data.writes[0]).toMatchObject({ system_id: 1, recipient_ids: [1], description_format: 'HTML' })
+    if (attachInline) {
+      expect(data.writes[0].description).toContain('<strong>只选择业务系统并提交</strong>')
+      expect(Object.values(data.writes[0].description_images)).toEqual([expect.stringMatching(/^data:image\/png;base64,/)])
+    }
     expect(data.writes[0]).not.toHaveProperty('module_id')
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true)
     expect(data.errors).toEqual([]); expect(data.unexpected).toEqual([])

@@ -61,6 +61,7 @@ declare module 'vue' {
     ElTableColumn: typeof import('element-plus/es')['ElTableColumn']
     ElTag: typeof import('element-plus/es')['ElTag']
     ElUpload: typeof import('element-plus/es')['ElUpload']
+    EmailSuggestionInput: typeof import('./src/components/ui/EmailSuggestionInput.vue')['default']
     EmptyState: typeof import('./src/components/ui/EmptyState.vue')['default']
     ErrorState: typeof import('./src/components/ui/ErrorState.vue')['default']
     InfoGrid: typeof import('./src/components/ui/InfoGrid.vue')['default']
@@ -94,7 +95,9 @@ declare module 'vue' {
     StatusTag: typeof import('./src/components/StatusTag.vue')['default']
     TargetReleaseRecords: typeof import('./src/components/TargetReleaseRecords.vue')['default']
     UserRoleAssignmentDrawer: typeof import('./src/components/UserRoleAssignmentDrawer.vue')['default']
+    UserWecomBindingDialog: typeof import('./src/components/UserWecomBindingDialog.vue')['default']
     VersionReleaseBatches: typeof import('./src/components/VersionReleaseBatches.vue')['default']
+    WecomPreferences: typeof import('./src/components/WecomPreferences.vue')['default']
   }
   export interface GlobalDirectives {
     vLoading: typeof import('element-plus/es')['ElLoadingDirective']

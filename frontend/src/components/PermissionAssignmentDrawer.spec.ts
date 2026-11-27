@@ -47,6 +47,28 @@ const permissions: PermissionItem[] = [
     deprecated: true,
     replacement_code: 'sys.role.manage',
   },
+  {
+    id: 4,
+    code: 'ops.ad_production.view',
+    name: '查看物料制作',
+    category: 'MENU',
+    group: '物料制作',
+    parent_group: '运营协作',
+    sensitive: false,
+    deprecated: false,
+    replacement_code: null,
+  },
+  {
+    id: 5,
+    code: 'ops.merchant_ad.view',
+    name: '查看商家广告',
+    category: 'MENU',
+    group: '商家广告',
+    parent_group: '运营协作',
+    sensitive: false,
+    deprecated: false,
+    replacement_code: null,
+  },
 ]
 
 function role(isSystem: boolean): RoleItem {
@@ -57,6 +79,7 @@ function role(isSystem: boolean): RoleItem {
     data_scope: 'ALL',
     enabled: true,
     is_system: isSystem,
+    assignable: true,
     revision: 3,
     permission_ids: [1, 2, 3],
   }
@@ -93,6 +116,18 @@ describe('permission assignment drawer', () => {
     expect(html).toContain('sys.role.manage')
     expect(html).toContain('高风险')
     expect(html).toContain('保存权限')
+  })
+
+  it('renders one labelled operations section with both subgroup controls', async () => {
+    const html = await renderDrawer(role(false))
+    const doc = new DOMParser().parseFromString(html, 'text/html')
+    const sections = doc.querySelectorAll('section[aria-labelledby]')
+    expect(sections).toHaveLength(1)
+    const section = sections[0]
+    expect(doc.getElementById(section.getAttribute('aria-labelledby')!)?.textContent).toBe('运营协作')
+    expect(section.querySelector('[aria-label="物料制作 权限"]')?.textContent).toContain('ops.ad_production.view')
+    expect(section.querySelector('[aria-label="商家广告 权限"]')?.textContent).toContain('ops.merchant_ad.view')
+    expect(section.textContent).not.toContain('rd.feedback.view')
   })
 
   it('renders system-role permissions read-only', async () => {

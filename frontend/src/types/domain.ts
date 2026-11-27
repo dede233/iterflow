@@ -4,9 +4,11 @@ type Schema<Name extends keyof components['schemas']> = components['schemas'][Na
 export type Feedback = Schema<'FeedbackOut'>
 export type FeedbackPage = Schema<'FeedbackPage'>
 export type FeedbackListParams = NonNullable<paths['/feedbacks']['get']['parameters']['query']>
-export type FeedbackCreatePayload = Schema<'FeedbackCreate'>
+type OptionalDescriptionFormat<T extends { description_format: string }> =
+  Omit<T, 'description_format'> & Partial<Pick<T, 'description_format'>>
+export type FeedbackCreatePayload = OptionalDescriptionFormat<Schema<'FeedbackCreate'>>
 export type PriorityValue = Schema<'Priority'>
-export type FeedbackUpdatePayload = Schema<'FeedbackUpdate'>
+export type FeedbackUpdatePayload = OptionalDescriptionFormat<Schema<'FeedbackUpdate'>>
 export type FeedbackStatusChangePayload = Schema<'FeedbackStatusChange'>
 type FeedbackConvertRequest = Schema<'FeedbackConvertRequest'>
 export type ConvertFeedbackPayload = Omit<FeedbackConvertRequest, 'accept_on_convert'> & Partial<Pick<FeedbackConvertRequest, 'accept_on_convert'>>

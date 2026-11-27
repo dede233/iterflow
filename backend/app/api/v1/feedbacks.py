@@ -4,10 +4,15 @@ from fastapi import APIRouter, BackgroundTasks, Depends, File, Query, UploadFile
 from fastapi.responses import Response, StreamingResponse
 from sqlalchemy.orm import Session
 
-from app.api.deps import ensure_all_permissions, require_all_permissions, require_permission
+from app.api.deps import (
+    ensure_all_permissions,
+    require_all_permissions,
+    require_any_permission,
+    require_permission,
+)
 from app.api.openapi import api_error_responses, api_revision_conflict_responses
 from app.core.database import get_db
-from app.core.exceptions import NotFoundError
+from app.core.exceptions import NotFoundError, PermissionDenied
 from app.models.entities import Feedback, Requirement, User
 from app.models.enums import FeedbackConvertType, FeedbackStatus, FeedbackType, FeedbackUrgency
 from app.repositories.feedback_repository import FeedbackRepository
@@ -34,8 +39,9 @@ from app.schemas.requirement import RequirementOut
 from app.services.comment_service import CommentService
 from app.services.entity_actions_service import EntityActionsService
 from app.services.entity_activity_service import EntityActivityService
-from app.services.feedback_service import FeedbackService
+from app.services.feedback_service import FEEDBACK_IMAGE_ENTITY, FeedbackService
 from app.services.file_service import MAX_UPLOAD_SIZE, FileService, validate_upload
+from app.services.requirement_images import EXTENSIONS
 
 router = APIRouter(prefix="/feedbacks", tags=["feedbacks"])
 
@@ -142,20 +148,67 @@ def get_feedback(
     return FeedbackService(db).to_output(_scoped_feedback_or_404(db, user, feedback_id))
 
 
+@router.get(
+    "/{feedback_id}/images/{file_id}",
+    response_class=StreamingResponse,
+    operation_id="feedback_image",
+    responses={
+        200: {"content": {media: {} for media in EXTENSIONS}},
+        **api_error_responses(404),
+    },
+)
+def get_feedback_description_image(
+    feedback_id: int,
+    file_id: int,
+    background: BackgroundTasks,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("rd.feedback.view")),
+) -> StreamingResponse:
+    _scoped_feedback_or_404(db, user, feedback_id)
+    item, stream = FileService(db).open_authorized_attachment(
+        file_id, entity_type=FEEDBACK_IMAGE_ENTITY, entity_id=feedback_id
+    )
+    if item.mime_type not in EXTENSIONS:
+        stream.close()
+        raise NotFoundError("图片不存在")
+    background.add_task(stream.close)
+    return StreamingResponse(
+        stream,
+        media_type=item.mime_type,
+        background=background,
+        headers={
+            "Content-Disposition": "inline",
+            "Cache-Control": "private, no-store",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
+
+
 @router.patch(
     "/{feedback_id}",
     response_model=FeedbackOut,
     responses=api_revision_conflict_responses(404, 409),
+    description=(
+        "需要反馈编辑权限，或由有反馈查看权限的提交人编辑本人仍处于 NEW 的反馈。"  # noqa: RUF001
+        "均需符合数据范围并提交最新 revision；旧 revision 返回 409。"  # noqa: RUF001
+        "已有编辑权限的人员可以编辑 CLOSED 反馈，保存不改变状态。"  # noqa: RUF001
+    ),
 )
 def update_feedback(
     feedback_id: int,
     payload: FeedbackUpdate,
     db: Session = Depends(get_db),
-    user: User = Depends(require_permission("rd.feedback.edit")),
+    user: User = Depends(require_any_permission("rd.feedback.edit", "rd.feedback.view")),
 ):
     _scoped_feedback_or_404(db, user, feedback_id)
+    permissions = UserRepository(db).permission_codes(user.id)
+    creator_only = permissions.isdisjoint(("*", "rd.feedback.edit"))
+    if creator_only and "rd.feedback.view" not in permissions:
+        raise PermissionDenied()
     service = FeedbackService(db)
-    return service.to_output(service.update(feedback_id, payload, user.id))
+    return service.to_output(
+        service.update(feedback_id, payload, user.id, creator_only=creator_only)
+    )
 
 
 @router.patch(

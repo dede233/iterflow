@@ -6,6 +6,7 @@ import AnnouncementNotice from '@/components/AnnouncementNotice.vue'
 import { useAnnouncementsStore } from '@/stores/announcements'
 import MailSetupNotice from '@/components/MailSetupNotice.vue'
 import AppIcon from '@/components/ui/AppIcon.vue'
+import { AD_PRODUCTION_PERMISSIONS } from '@/constants/adProduction'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationsStore } from '@/stores/notifications'
 import { useNotificationFreshness } from '@/composables/useNotificationFreshness'
@@ -37,6 +38,13 @@ const groups = computed<NavigationGroup[]>(() => [
       { to: '/', label: '首页', icon: 'home', permission: 'dashboard.view' },
       { to: '/notifications', label: '通知中心', icon: 'bell' },
       { to: '/announcements', label: '更新公告', icon: 'release' },
+    ],
+  },
+  {
+    label: '运营协作',
+    items: [
+      { to: '/ad-productions', label: '物料制作', icon: 'image', permission: AD_PRODUCTION_PERMISSIONS.MATERIAL.view },
+      { to: '/merchant-ads', label: '商家广告', icon: 'megaphone', permission: AD_PRODUCTION_PERMISSIONS.MERCHANT_AD.view },
     ],
   },
   {
@@ -72,7 +80,12 @@ const visibleGroups = computed(() =>
     .map((group) => ({ ...group, items: group.items.filter((item) => can(item.permission, item.requiresAllScope) && (!item.requiresApiDocsAccess || auth.canViewApiDocs)) }))
     .filter((group) => group.items.length),
 )
+const operationsItems = computed(() => visibleGroups.value.find(group => group.label === '运营协作')?.items ?? [])
 const initial = computed(() => (auth.user?.display_name || auth.user?.username || '?').slice(0, 1).toUpperCase())
+
+function openMobileSection(path: string): void {
+  void router.push(path)
+}
 
 async function logout(): Promise<void> {
   await auth.logout()
@@ -131,7 +144,21 @@ async function logout(): Promise<void> {
       <router-link class="mobile-brand" :to="auth.hasPermission('dashboard.view') ? '/' : '/profile'" :aria-label="auth.hasPermission('dashboard.view') ? '返回首页' : '个人中心'">
         <span class="brand-mark">迭</span><span class="brand-text"><strong>迭程</strong> IterFlow</span>
       </router-link>
-      <router-link to="/announcements" style="margin-left:auto;font-size:13px">更新公告<span v-if="announcements.unreadCount" aria-label="有未读更新公告"> ·</span></router-link>
+      <nav class="mobile-header-links" aria-label="扩展导航">
+        <el-dropdown v-if="operationsItems.length" trigger="click" placement="bottom-end" @command="openMobileSection">
+          <button type="button" class="operations-menu-trigger">
+            运营协作 <AppIcon name="chevron" :size="14" />
+          </button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item v-for="item in operationsItems" :key="item.to" :command="item.to" class="operations-menu-item">
+                <AppIcon :name="item.icon" :size="16" />{{ item.label }}
+              </el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
+        <router-link to="/announcements">更新公告<span v-if="announcements.unreadCount" aria-label="有未读更新公告"> ·</span></router-link>
+      </nav>
     </header>
 
     <main class="content">
@@ -380,6 +407,14 @@ async function logout(): Promise<void> {
   height: 28px;
   font-size: 14px;
 }
+
+.mobile-header-links { display: flex; gap: 12px; margin-inline-start: auto; }
+.mobile-header-links a { display: inline-flex; align-items: center; min-height: 44px; min-width: 44px; font-size: 13px; white-space: nowrap; }
+.mobile-header-links a.router-link-active { font-weight: 600; }
+.mobile-header-links a:focus-visible { outline: 2px solid var(--if-brand-400); outline-offset: 2px; }
+.operations-menu-trigger { display: inline-flex; align-items: center; gap: 3px; min-height: 44px; padding: 0; border: 0; background: none; color: var(--if-text-1); font: inherit; font-size: 13px; white-space: nowrap; cursor: pointer; }
+.operations-menu-trigger svg { transform: rotate(90deg); }
+.operations-menu-item { min-height: 44px; gap: 8px; }
 
 @media (max-width: 767px) {
   .content {

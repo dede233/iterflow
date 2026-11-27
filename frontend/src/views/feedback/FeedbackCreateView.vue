@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { onBeforeRouteLeave, useRouter } from 'vue-router'
 import { useUnsavedChanges } from '@/composables/useUnsavedChanges'
@@ -12,9 +12,12 @@ import { FEEDBACK_TYPES, FEEDBACK_URGENCIES } from '@/constants/feedback'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import PeopleSelector from '@/components/PeopleSelector.vue'
-import type { BusinessSystemItem } from '@/types/domain'
+import type { BusinessSystemItem, FeedbackCreatePayload } from '@/types/domain'
 import { isRevisionConflict } from '@/types/revisionConflict'
 import { actionErrorMessage } from '@/utils/actionError'
+import { richTextPlainText } from '@/utils/richText'
+
+const RichTextEditor = defineAsyncComponent(() => import('@/components/RichTextEditor.vue'))
 
 const router = useRouter()
 const props = withDefaults(defineProps<{
@@ -84,7 +87,7 @@ async function submit(): Promise<void> {
       ElMessage.warning('标题至少需要 2 个字符')
       return
     }
-    if (form.description.trim().length < 2) {
+    if (Array.from(richTextPlainText(form.description)).length < 2) {
       ElMessage.warning('详细描述至少需要 2 个字符')
       return
     }
@@ -103,9 +106,10 @@ async function submit(): Promise<void> {
         urgency: form.urgency,
         system_id: form.system_id ?? null,
         description: form.description.trim(),
+        description_format: 'HTML',
         recipient_ids: recipientIds.value,
         reproduce_steps: form.reproduce_steps.trim() || null,
-      }
+      } satisfies FeedbackCreatePayload
       const created = props.onlineReview
         ? await createOnlineReviewFeedback(props.onlineReview.id, { ...payload, revision: sourceRevision.value })
         : await createFeedback(payload)
@@ -163,7 +167,7 @@ onMounted(async () => {
           <el-input v-model="form.title" maxlength="200" show-word-limit />
         </el-form-item>
         <el-form-item label="详细描述" required>
-          <el-input v-model="form.description" type="textarea" :rows="6" />
+          <RichTextEditor v-model="form.description" :disabled="busy" label="详细描述" />
         </el-form-item>
         <div class="form-grid">
         <el-form-item label="反馈类型" required>

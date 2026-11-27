@@ -10,6 +10,7 @@ class PermissionGroupDefinition:
     prefix: str
     label: str
     order: int
+    parent_label: str | None = None
 
 
 class PermissionCatalog:
@@ -21,6 +22,8 @@ class PermissionCatalog:
         PermissionGroupDefinition("rd.requirement", "Requirement / 需求", 20),
         PermissionGroupDefinition("rd.version", "Version / 版本", 30),
         PermissionGroupDefinition("rd.release", "Release / 发布", 40),
+        PermissionGroupDefinition("ops.merchant_ad", "商家广告", 45, "运营协作"),
+        PermissionGroupDefinition("ops.ad_production", "物料制作", 46, "运营协作"),
         PermissionGroupDefinition("sys.user", "User / 用户管理", 50),
         PermissionGroupDefinition("sys.role", "Role / 角色权限", 60),
         PermissionGroupDefinition("sys.audit", "Audit / 审计", 70),
@@ -64,6 +67,7 @@ class PermissionCatalog:
             name=permission.name,
             category=permission.category,
             group=group.label,
+            parent_group=group.parent_label,
             sensitive=permission.code in cls.SENSITIVE_CODES,
             deprecated=replacement_code is not None,
             replacement_code=replacement_code,

@@ -87,6 +87,46 @@ def test_seed_creates_v15_roles_permissions_and_is_idempotent(
 
     roles = {role.code: role for role in seed_session.scalars(select(Role)).all()}
     assert V15_FIXED_ROLE_CODES.issubset(roles)
+    assert {"AD_PRODUCTION_CREATOR", "AD_PRODUCTION_COMPLETER"}.isdisjoint(roles)
+    permissions = {
+        permission.code: permission for permission in seed_session.scalars(select(Permission))
+    }
+    assert {
+        code: permission.name
+        for code, permission in permissions.items()
+        if code.startswith(("ops.ad_production.", "ops.merchant_ad."))
+    } == {
+        "ops.ad_production.view": "查看物料制作",
+        "ops.ad_production.create": "发布物料制作",
+        "ops.ad_production.edit": "编辑物料制作",
+        "ops.merchant_ad.view": "查看商家广告",
+        "ops.merchant_ad.create": "发布商家广告",
+        "ops.merchant_ad.edit": "编辑商家广告",
+    }
+    ops_permissions = {
+        permission.id: code
+        for code, permission in permissions.items()
+        if code.startswith(("ops.ad_production.", "ops.merchant_ad."))
+    }
+    expected_ops_grants = {
+        "CUSTOMER_SERVICE_OPERATIONS": {
+            "ops.ad_production.view",
+            "ops.ad_production.create",
+            "ops.merchant_ad.view",
+            "ops.merchant_ad.create",
+        },
+        "DESIGNER": set(ops_permissions.values()),
+        "SUPER_ADMIN": set(ops_permissions.values()),
+    }
+    for code, role in roles.items():
+        grants = seed_session.scalars(
+            select(RolePermission.permission_id).where(RolePermission.role_id == role.id)
+        )
+        assert {
+            ops_permissions[permission_id]
+            for permission_id in grants
+            if permission_id in ops_permissions
+        } == expected_ops_grants.get(code, set())
     # Frozen V1.5 data-scope matrix. Customer-service and product owners process
     # the shared feedback pool and therefore hold ALL scope; the rest stay SELF.
     for code, expected_scope in EXPECTED_ROLE_SCOPES.items():
@@ -96,16 +136,21 @@ def test_seed_creates_v15_roles_permissions_and_is_idempotent(
     customer_service = seed.BASE_ROLES["CUSTOMER_SERVICE_OPERATIONS"]
     assert customer_service.name == "客服/运营"
     assert customer_service.data_scope is DataScope.ALL
-    assert customer_service.permissions == {
-        "dashboard.view",
-        "rd.feedback.view",
-        "rd.feedback.create",
-        "rd.feedback.edit",
-        "rd.requirement.view",
-        "rd.version.view",
-        "rd.release.view",
-    }
+    assert (
+        customer_service.permissions
+        == {
+            "dashboard.view",
+            "rd.feedback.view",
+            "rd.feedback.create",
+            "rd.feedback.edit",
+            "rd.requirement.view",
+            "rd.version.view",
+            "rd.release.view",
+        }
+        | expected_ops_grants["CUSTOMER_SERVICE_OPERATIONS"]
+    )
     assert "rd.feedback.convert" not in customer_service.permissions
+    assert roles["DESIGNER"].data_scope is DataScope.SELF
 
     admin = seed_session.scalar(select(User).where(User.username == "admin"))
     assert admin is not None
@@ -119,6 +164,15 @@ def test_seed_creates_v15_roles_permissions_and_is_idempotent(
         .where(RolePermission.role_id == roles["SUPER_ADMIN"].id)
     )
     assert super_admin_permission_count == len(seed.PERMISSIONS)
+
+    designer = roles["DESIGNER"]
+    designer.name = "现场设计"
+    designer.data_scope = DataScope.TEAM
+    permissions["ops.ad_production.edit"].name = "现场进度维护"
+    seed_session.commit()
+    seed.seed_database(seed_session, username="admin", password=None)
+    assert designer.name == "现场设计" and designer.data_scope is DataScope.TEAM
+    assert permissions["ops.ad_production.edit"].name == "现场进度维护"
 
 
 def test_seed_repairs_existing_admin_role_and_missing_links(
@@ -163,3 +217,59 @@ def test_seed_refuses_missing_or_short_bootstrap_password(seed_session: Session)
     with pytest.raises(ValueError, match="8-128"):
         seed.seed_database(seed_session, username="fresh-admin", password="short")
     assert _count(seed_session, User) == 0
+
+
+def test_seed_preserves_legacy_roles_grants_and_assignments(seed_session: Session) -> None:
+    admin = User(username="admin", display_name="现有账号", password_hash="existing-password-hash")
+    creator = Role(
+        code="AD_PRODUCTION_CREATOR",
+        name="现场发布人",
+        data_scope=DataScope.TEAM,
+        is_system=True,
+        enabled=False,
+        revision=5,
+    )
+    completer = Role(code="AD_PRODUCTION_COMPLETER", name="既有自定义角色", is_system=False)
+    permission = Permission(code="ops.ad_production.view", name="查看物料制作")
+    seed_session.add_all([admin, creator, completer, permission])
+    seed_session.flush()
+    seed_session.add_all(
+        [
+            RolePermission(role_id=creator.id, permission_id=permission.id),
+            UserRole(user_id=admin.id, role_id=creator.id),
+            UserRole(user_id=admin.id, role_id=completer.id),
+        ]
+    )
+    seed_session.commit()
+
+    seed.seed_database(seed_session, username="admin", password=None)
+
+    assert creator.name == "现场发布人" and creator.data_scope is DataScope.TEAM
+    assert creator.is_system and not creator.enabled and creator.revision == 5
+    assert completer.name == "既有自定义角色" and not completer.is_system
+    assert all(seed_session.get(UserRole, (admin.id, role.id)) for role in (creator, completer))
+    links = select(RolePermission.permission_id)
+    assert set(seed_session.scalars(links.where(RolePermission.role_id == creator.id))) == {
+        permission.id
+    }
+    assert not set(seed_session.scalars(links.where(RolePermission.role_id == completer.id)))
+
+
+def test_seed_preserves_ineligible_ops_presets(
+    seed_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(seed, "hash_password", lambda _password: "hashed-initial-password")
+    custom = Role(code="CUSTOMER_SERVICE_OPERATIONS", name="客服自定义", is_system=False)
+    disabled = Role(code="DESIGNER", name="停用设计", is_system=True, enabled=False)
+    seed_session.add_all([custom, disabled])
+    seed_session.commit()
+
+    seed.seed_database(seed_session, username="admin", password="initial-password")
+
+    assert custom.name == "客服自定义" and not custom.is_system and custom.enabled
+    assert disabled.name == "停用设计" and disabled.is_system and not disabled.enabled
+    assert not seed_session.scalar(
+        select(RolePermission.permission_id).where(
+            RolePermission.role_id.in_((custom.id, disabled.id))
+        )
+    )

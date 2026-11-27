@@ -19,11 +19,11 @@ export const listFeedbacks = (params: FeedbackListParams = {}) =>
 export const getFeedback = (id: number) =>
   api.get<Feedback>(`/feedbacks/${id}`).then((r) => r.data)
 
-export const createFeedback = (payload: FeedbackCreatePayload) =>
-  api.post<Feedback>('/feedbacks', payload).then((r) => r.data)
+export const createFeedback = async (payload: FeedbackCreatePayload) =>
+  api.post<Feedback>('/feedbacks', await withDescriptionImages(payload)).then((r) => r.data)
 
-export const updateFeedback = (id: number, payload: FeedbackUpdatePayload) =>
-  api.patch<Feedback>(`/feedbacks/${id}`, payload, { skipRevisionConflictAlert: true }).then((r) => r.data)
+export const updateFeedback = async (id: number, payload: FeedbackUpdatePayload) =>
+  api.patch<Feedback>(`/feedbacks/${id}`, await withDescriptionImages(payload), { skipRevisionConflictAlert: true }).then((r) => r.data)
 
 export const changeFeedbackStatus = (id: number, payload: FeedbackStatusChangePayload) =>
   api.patch<Feedback>(`/feedbacks/${id}/status`, payload, { skipRevisionConflictAlert: true, skipForbiddenAlert: true }).then((r) => r.data)

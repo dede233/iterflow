@@ -25,6 +25,7 @@ def bind_images(
     uploads: dict[str, str],
     *,
     entity_type: str = IMAGE_ENTITY,
+    source: tuple[str, int] | None = None,
 ) -> str:
     refs = set(IMAGE_REFERENCE.findall(description)) if description_format == "HTML" else set()
     if len(refs) > 12 or {key for key in refs if key.startswith("local-")} != set(uploads):
@@ -36,8 +37,16 @@ def bind_images(
     total = 0
     for key in sorted(refs):
         if key not in uploads:
-            if not repository.get_attached_to_entity(int(key), entity_type, requirement_id):
+            file_id = int(key)
+            if repository.get_attached_to_entity(file_id, entity_type, requirement_id):
+                continue
+            if source is None or not repository.get_attached_to_entity(file_id, *source):
                 raise AppError(42265, "图片不属于此内容。请重新插入", 422)
+            db.add(
+                AttachmentRelation(
+                    entity_type=entity_type, entity_id=requirement_id, file_id=file_id
+                )
+            )
             continue
         header, _, encoded = uploads[key].partition(",")
         mime = header.removeprefix("data:").removesuffix(";base64")

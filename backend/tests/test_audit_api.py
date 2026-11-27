@@ -12,6 +12,7 @@ from app.core.database import get_db
 from app.core.security import create_access_token
 from app.main import app
 from app.models.entities import (
+    AdProduction,
     CollaborationEvent,
     Feedback,
     FeedbackRecipient,
@@ -68,6 +69,7 @@ def audit_api(tmp_path: Path) -> Iterator[AuditFixture]:
         ReleaseBatchTarget.__table__,
         Release.__table__,
         OperationLog.__table__,
+        AdProduction.__table__,
     )
     for table in tables:
         table.create(engine)

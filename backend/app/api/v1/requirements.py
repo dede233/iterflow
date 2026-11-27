@@ -4,10 +4,15 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
-from app.api.deps import ensure_all_permissions, require_all_permissions, require_permission
+from app.api.deps import (
+    ensure_all_permissions,
+    require_all_permissions,
+    require_any_permission,
+    require_permission,
+)
 from app.api.openapi import api_error_responses, api_revision_conflict_responses
 from app.core.database import get_db
-from app.core.exceptions import NotFoundError
+from app.core.exceptions import NotFoundError, PermissionDenied
 from app.models.entities import Requirement, User
 from app.models.enums import Priority, RequirementSource, RequirementStatus
 from app.repositories.requirement_repository import RequirementRepository
@@ -155,7 +160,14 @@ def get_requirement(
     db: Session = Depends(get_db),
     user: User = Depends(require_permission("rd.requirement.view")),
 ):
-    return _scoped_requirement_or_404(db, user, requirement_id)
+    item = _scoped_requirement_or_404(db, user, requirement_id)
+    output = RequirementOut.model_validate(item)
+    output.can_edit_as_creator = (
+        item.created_by == user.id
+        and output.status == RequirementStatus.DRAFT
+        and not output.release_frozen
+    )
+    return output
 
 
 @router.get(
@@ -267,15 +279,25 @@ def create_online_review_feedback(
     "/{requirement_id}",
     response_model=RequirementOut,
     responses=api_revision_conflict_responses(404, 409),
+    description=(
+        "需要需求编辑权限，或由有需求查看权限的创建人编辑本人仍处于 DRAFT 的需求。"  # noqa: RUF001
+        "均需符合数据范围和冻结规则，并提交最新 revision；旧 revision 返回 409。"  # noqa: RUF001
+    ),
 )
 def update_requirement(
     requirement_id: int,
     payload: RequirementUpdate,
     db: Session = Depends(get_db),
-    user: User = Depends(require_permission("rd.requirement.edit")),
+    user: User = Depends(require_any_permission("rd.requirement.edit", "rd.requirement.view")),
 ):
     _scoped_requirement_or_404(db, user, requirement_id)
-    return RequirementService(db).update(requirement_id, payload, user.id)
+    permissions = UserRepository(db).permission_codes(user.id)
+    creator_only = permissions.isdisjoint(("*", "rd.requirement.edit"))
+    if creator_only and "rd.requirement.view" not in permissions:
+        raise PermissionDenied()
+    return RequirementService(db).update(
+        requirement_id, payload, user.id, creator_only=creator_only
+    )
 
 
 @router.patch(

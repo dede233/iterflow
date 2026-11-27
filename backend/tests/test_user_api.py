@@ -299,6 +299,88 @@ def test_user_role_assignment_uses_revision_and_validates_roles(user_api):
     assert audit.after_data["role_ids"] == [ids["member_role"]]
 
 
+@pytest.mark.parametrize(
+    ("role_code", "enabled"),
+    [("AD_PRODUCTION_CREATOR", True), ("AD_PRODUCTION_COMPLETER", False)],
+)
+def test_historical_ad_production_role_can_only_be_retained_or_removed(
+    user_api: UserApiFixture, role_code: str, enabled: bool
+):
+    client, session, headers, ids = user_api
+    role = Role(code=role_code, name="历史广告制作角色", is_system=True, enabled=enabled)
+    session.add(role)
+    session.flush()
+    session.add(UserRole(user_id=ids["member"], role_id=role.id))
+    session.commit()
+
+    selectable_roles = client.get("/api/v1/roles", headers=headers)
+    assert selectable_roles.status_code == 200
+    by_id = {item["id"]: item for item in selectable_roles.json()}
+    assert by_id[role.id]["name"] == role.name
+    assert by_id[role.id]["enabled"] is enabled
+    assert by_id[role.id]["assignable"] is False
+    assert by_id[ids["member_role"]]["assignable"] is True
+    assert by_id[ids["disabled_role"]]["assignable"] is True
+    detail = client.get(f"/api/v1/roles/{role.id}", headers=headers)
+    assert detail.status_code == 200
+    assert detail.json()["assignable"] is False
+
+    created = client.post(
+        "/api/v1/users",
+        headers=headers,
+        json={
+            "username": "historical-role-new-user",
+            "display_name": "New User",
+            "password": "not-a-real-password",
+            "role_ids": [ids["member_role"], role.id],
+        },
+    )
+    assert created.status_code == 422
+    assert created.json()["code"] == 42204
+    assert created.json()["data"] == {"role_ids": [role.id]}
+    assert UserRepository(session).by_username("historical-role-new-user") is None
+
+    member_url = f"/api/v1/users/{ids['member']}/roles"
+    retained = client.put(
+        member_url, headers=headers, json={"role_ids": [ids["member_role"], role.id], "revision": 1}
+    )
+    assert retained.status_code == 200
+    assert retained.json()["role_ids"] == [ids["member_role"], role.id]
+    assert retained.json()["revision"] == 2
+
+    stale = client.put(
+        member_url, headers=headers, json={"role_ids": [ids["member_role"]], "revision": 1}
+    )
+    assert_revision_conflict(stale, revision=2, updated_by=ids["admin"])
+
+    removed = client.put(
+        member_url, headers=headers, json={"role_ids": [ids["member_role"]], "revision": 2}
+    )
+    assert removed.status_code == 200
+    assert removed.json()["role_ids"] == [ids["member_role"]]
+    assert removed.json()["revision"] == 3
+
+    reassigned = client.put(
+        member_url, headers=headers, json={"role_ids": [ids["member_role"], role.id], "revision": 3}
+    )
+    assert reassigned.status_code == 422
+    assert reassigned.json()["code"] == 42204
+    assert reassigned.json()["data"] == {"role_ids": [role.id]}
+    current = client.get(f"/api/v1/users/{ids['member']}", headers=headers)
+    assert current.status_code == 200
+    assert current.json()["role_ids"] == [ids["member_role"]]
+    assert current.json()["revision"] == 3
+    audits = session.scalars(
+        select(OperationLog)
+        .where(OperationLog.entity_id == ids["member"], OperationLog.action == "ROLES_UPDATE")
+        .order_by(OperationLog.id)
+    ).all()
+    assert [audit.after_data["role_ids"] for audit in audits] == [
+        [ids["member_role"], role.id],
+        [ids["member_role"]],
+    ]
+
+
 def test_non_super_admin_cannot_grant_super_admin_to_self_or_others(user_api):
     client, session, _headers, ids = user_api
     manager_headers = {"Authorization": f"Bearer {create_access_token(ids['manager'])}"}

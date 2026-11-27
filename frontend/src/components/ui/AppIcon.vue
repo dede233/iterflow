@@ -7,6 +7,8 @@ const PATHS: Record<string, string> = {
   requirement: 'M6 3h9l4 4v14H6z M14 3v5h5 M9 13h7 M9 17h5',
   version: 'M12 3 3 8l9 5 9-5z M3 13l9 5 9-5',
   release: 'M5 19c3-1 4-4 4-4l-3-3s-3 1-4 4 M9 15l6-6c2-2 4-5 5-6-1 1-4 3-6 5l-6 6 M14 5l5 5',
+  megaphone: 'M4 9h5l10-4v14L9 15H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1z M9 9v6l2 5H7l-2-5 M22 10v4',
+  image: 'M4 4h16v16H4z M4 16l5-5 4 4 2-2 5 5 M15 9h.01',
   bell: 'M6 16V11a6 6 0 1 1 12 0v5l2 2H4z M10 21h4',
   audit: 'M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z M9 12l2 2 4-4',
   system: 'M3 3h8v8H3z M13 3h8v8h-8z M3 13h8v8H3z M13 13h8v8h-8z',

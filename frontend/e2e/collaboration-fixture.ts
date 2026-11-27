@@ -11,6 +11,7 @@ export async function mockReadPanels(route: Route): Promise<boolean> {
   else if (/\/versions\/\d+\/release-targets$/.test(path)) data = []
   else if (path === '/api/v1/announcements/notice') data = { unread_count: 0, latest: null, important: null }
   else if (path === '/api/v1/systems/options') data = [{ id: 1, name: '系统甲' }]
+  else if (path === '/api/v1/me/wecom-preferences') data = { revision: 0, mode: 'OFF', member_user_id: null, enabled: false }
   else return false
   await route.fulfill({ status: 200, json: data })
   return true

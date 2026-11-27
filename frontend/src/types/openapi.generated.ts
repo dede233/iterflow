@@ -4,6 +4,114 @@
  */
 
 export interface paths {
+    "/ad-productions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 制作需求列表
+         * @description 需要所选类型的查看权限。省略类型时查询物料制作。按发布时间降序分页，可按标题、正文、状态或日期筛选。列表和总数采用同一 DataScope。
+         */
+        get: operations["list_ad_productions"];
+        put?: never;
+        /**
+         * 发布制作需求
+         * @description 需要发布类型对应的查看和发布权限。发布须填写标题、需求内容并指定有效接收人，截止时间可选。实际发布时间和发布人由服务端记录。物料制作新建时标记为已完成另需编辑权限。记录、图片和审计一并保存。
+         */
+        post: operations["create_ad_production"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ad-productions/designer-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 物料制作设计人员选项
+         * @description 需要对应类型的制作需求查看权限。返回启用的设计人员或制作需求完成人，且须具备该类型的查看与编辑权限。同一账号只返回一次。
+         */
+        get: operations["list_ad_production_designers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ad-productions/{ad_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查看制作需求
+         * @description 需要记录所属类型的查看权限和该记录的 DataScope。
+         */
+        get: operations["get_ad_production"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * 编辑制作需求
+         * @description 需要记录所属类型的查看和编辑权限，以及相应的 DataScope。用 revision 校验并发，原子更新工作内容、状态和图片。
+         */
+        patch: operations["update_ad_production"];
+        trace?: never;
+    };
+    "/ad-productions/{ad_id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * 更新制作需求状态
+         * @description 需要记录所属类型的查看和编辑权限，以及相应的数据范围。仅更改状态与实际完成人，需要当前 revision；写入审计。
+         */
+        patch: operations["update_ad_production_status"];
+        trace?: never;
+    };
+    "/ad-productions/{ad_id}/images/{file_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 预览物料制作图片
+         * @description 需要记录所属类型的查看权限和该记录的 DataScope。图片必须当前关联到该记录。
+         */
+        get: operations["ad_production_image"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/requirements/filter-options/participants": {
         parameters: {
             query?: never;
@@ -707,7 +815,7 @@ export interface paths {
         head?: never;
         /**
          * 编辑反馈
-         * @description 需要反馈编辑权限、数据范围和最新 revision；旧 revision 返回 409。CLOSED 仍可编辑保存，但保存不会重开；再次提交需另行重开到 NEW，填写非空原因，保留原编号与历史。
+         * @description 需要反馈编辑权限，或由有反馈查看权限的提交人编辑本人仍处于 NEW 的反馈。均需符合数据范围并提交最新 revision；旧 revision 返回 409。已有编辑权限的人员可以编辑 CLOSED 反馈，保存不改变状态。
          */
         patch: operations["update_feedback_api_v1_feedbacks__feedback_id__patch"];
         trace?: never;
@@ -913,7 +1021,10 @@ export interface paths {
         delete: operations["delete_requirement_api_v1_requirements__requirement_id__delete"];
         options?: never;
         head?: never;
-        /** 编辑需求 */
+        /**
+         * 编辑需求
+         * @description 需要需求编辑权限，或由有需求查看权限的创建人编辑本人仍处于 DRAFT 的需求。均需符合数据范围和冻结规则，并提交最新 revision；旧 revision 返回 409。
+         */
         patch: operations["update_requirement_api_v1_requirements__requirement_id__patch"];
         trace?: never;
     };
@@ -1397,6 +1508,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/wecom-preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 查看个人企业微信通知设置 */
+        get: operations["get_wecom_preferences"];
+        /** 调整个人企业微信通知偏好 */
+        put: operations["change_wecom_preferences"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/{user_id}/wecom-binding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 查看企业微信成员绑定 */
+        get: operations["get_user_wecom_binding"];
+        /** 更新企业微信成员绑定 */
+        put: operations["change_user_wecom_binding"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/me/mail-preferences": {
         parameters: {
             query?: never;
@@ -1790,7 +1937,7 @@ export interface paths {
         get?: never;
         /**
          * 分配用户角色
-         * @description 仅 ALL 数据范围的用户管理权限可执行；凭 revision 乐观锁更新。
+         * @description 仅 ALL 数据范围的用户管理权限可执行；凭 revision 乐观锁更新。历史制作角色已有分配可保留或移除。
          */
         put: operations["update_user_roles_api_v1_users__user_id__roles_put"];
         post?: never;
@@ -2012,10 +2159,259 @@ export interface paths {
         patch: operations["update_mini_program_target_api_v1_systems_mini_program_targets__target_id__patch"];
         trace?: never;
     };
+    "/feedbacks/{feedback_id}/images/{file_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 读取反馈正文中的图片
+         * @description 先校验记录的数据范围和查看权限，再读取属于这条记录正文的图片。
+         */
+        get: operations["feedback_image"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ad-productions/{ad_id}/content-images/{file_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 读取物料制作正文中的图片
+         * @description 先校验记录所属类型的查看权限和数据范围，再读取该记录正文的图片。
+         */
+        get: operations["ad_production_content_image"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * 制作需求类型
+         * @description 分别对应物料制作和商家广告。
+         * @enum {string}
+         */
+        AdProductionKind: "MATERIAL" | "MERCHANT_AD";
+        /** AdProductionCreateForm */
+        AdProductionCreateForm: {
+            /**
+             * 需求类型
+             * @description 默认物料制作。发布后类型固定。
+             * @default MATERIAL
+             */
+            kind: components["schemas"]["AdProductionKind"];
+            /**
+             * 原制作日期
+             * @description 旧客户端可提交。默认使用创建时间的 UTC 日期。
+             */
+            work_date?: string | null;
+            /**
+             * 需求内容
+             * @description 纯文本限 3000 字，富文本按可见文字计算 3000 字上限。
+             */
+            content: string;
+            /** 原下发人 */
+            issuer?: string | null;
+            /**
+             * 状态
+             * @default NOT_STARTED
+             */
+            status: components["schemas"]["AdProductionStatus"];
+            /** 新图片 */
+            images?: string[];
+            /**
+             * 正文格式
+             * @default PLAIN
+             * @enum {string}
+             */
+            content_format: "PLAIN" | "HTML";
+            /**
+             * 新正文图片
+             * @description 各图片的文件名传入编辑器中对应的 local-UUID 引用。单张限 4 MiB，本次新增正文图片合计限 8 MiB。
+             */
+            content_images?: string[];
+            /**
+             * 需求接收人 ID
+             * @description 发布时必选。必须为启用的设计人员或制作需求完成人。
+             */
+            receiver_id: number;
+            /**
+             * 实际完成人 ID
+             * @description 实际完成人 ID，仅在已完成状态可设置，必须为可用的设计人员。0 表示清除。
+             */
+            completed_by_id?: number | null;
+            /** 标题 */
+            title: string;
+            /**
+             * 截止时间
+             * @description 可选。ISO 8601 时间需包含时区。
+             */
+            due_at?: string | null;
+        };
+        /** AdProductionOut */
+        AdProductionOut: {
+            /**
+             * 需求类型
+             * @default MATERIAL
+             */
+            kind: components["schemas"]["AdProductionKind"];
+            /**
+             * 处理结果
+             * @description 商家广告完成时登记的实际处理结果。
+             */
+            processing_result?: string | null;
+            /** 制作需求 ID */
+            id: number;
+            /**
+             * 原制作日期
+             * Format: date
+             */
+            work_date: string;
+            /** 需求内容 */
+            content: string;
+            /** 原下发人 */
+            issuer: string;
+            /** 状态 */
+            status: components["schemas"]["AdProductionStatus"];
+            /** 创建人 ID */
+            created_by: number;
+            /**
+             * 发布时间
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * 更新时间
+             * Format: date-time
+             */
+            updated_at: string;
+            /** 修订号 */
+            revision: number;
+            /** 图片 */
+            images: components["schemas"]["AttachmentOut"][];
+            /**
+             * 正文格式
+             * @default PLAIN
+             * @enum {string}
+             */
+            content_format: "PLAIN" | "HTML";
+            /** 需求接收人 ID */
+            receiver_id?: number | null;
+            /** 接单人姓名 */
+            receiver_display_name?: string | null;
+            /** 实际完成人 ID */
+            completed_by_id?: number | null;
+            /** 实际完成人姓名 */
+            completed_by_display_name?: string | null;
+            /** 标题 */
+            title?: string | null;
+            /**
+             * 截止时间
+             * @description 可选。ISO 8601 时间需包含时区。
+             */
+            due_at?: string | null;
+            /**
+             * 需求发布人
+             * @description 根据实际创建记录的账号读取显示名称。
+             */
+            publisher_display_name?: string | null;
+        };
+        /** AdProductionPage */
+        AdProductionPage: {
+            /** 制作记录 */
+            items: components["schemas"]["AdProductionOut"][];
+            /** 当前页 */
+            page: number;
+            /** 每页条数 */
+            page_size: number;
+            /** 可见记录总数 */
+            total: number;
+        };
+        /**
+         * 制作状态
+         * @description 物料制作显示未开始、进行中、邮寄中、已完成。商家广告显示未处理、处理中、已处理。
+         * @enum {string}
+         */
+        AdProductionStatus: "NOT_STARTED" | "IN_PROGRESS" | "SHIPPING" | "COMPLETED";
+        /** AdProductionUpdateForm */
+        AdProductionUpdateForm: {
+            /**
+             * 处理结果
+             * @description 商家广告确认完成时填写，最多 4000 字。
+             */
+            processing_result?: string | null;
+            /**
+             * 原制作日期
+             * Format: date
+             */
+            work_date: string;
+            /**
+             * 需求内容
+             * @description 纯文本限 3000 字，富文本按可见文字计算 3000 字上限。
+             */
+            content: string;
+            /** 原下发人 */
+            issuer: string;
+            /** 状态 */
+            status: components["schemas"]["AdProductionStatus"];
+            /** 新图片 */
+            images?: string[];
+            /** 修订号 */
+            revision: number;
+            /** 移除图片 ID */
+            remove_image_ids?: number[];
+            /**
+             * 正文格式
+             * @default PLAIN
+             * @enum {string}
+             */
+            content_format: "PLAIN" | "HTML";
+            /**
+             * 新正文图片
+             * @description 各图片的文件名传入编辑器中对应的 local-UUID 引用。单张限 4 MiB，本次新增正文图片合计限 8 MiB。
+             */
+            content_images?: string[];
+            /**
+             * 需求接收人 ID
+             * @description 接单人 ID，必须为可用的设计人员。0 表示清除。
+             */
+            receiver_id?: number | null;
+            /**
+             * 实际完成人 ID
+             * @description 实际完成人 ID，仅在已完成状态可设置，必须为可用的设计人员。0 表示清除。
+             */
+            completed_by_id?: number | null;
+            /** 标题 */
+            title?: string | null;
+            /**
+             * 截止时间
+             * @description 可选。ISO 8601 时间需包含时区。
+             */
+            due_at?: string | null;
+            /**
+             * 清除截止时间
+             * @description 与提交新的截止时间互斥。均省略时保留原截止时间。
+             * @default false
+             */
+            clear_due_at: boolean;
+        };
         /** AddRequirementRequest */
         AddRequirementRequest: {
             /** 需求 ID */
@@ -2884,6 +3280,16 @@ export interface components {
             reproduce_steps?: string | null;
             /** 反馈接收人 */
             recipient_ids: number[];
+            /**
+             * 正文格式
+             * @default PLAIN
+             * @enum {string}
+             */
+            description_format: "PLAIN" | "HTML";
+            /** 新增正文图片 */
+            description_images?: {
+                [key: string]: string;
+            };
         };
         /** FeedbackOut */
         FeedbackOut: {
@@ -2949,6 +3355,12 @@ export interface components {
              * @description 对象的乐观锁修订号；写入时提交最后读取的修订号。
              */
             revision: number;
+            /**
+             * 正文格式
+             * @default PLAIN
+             * @enum {string}
+             */
+            description_format: "PLAIN" | "HTML";
         };
         /** FeedbackPage */
         FeedbackPage: {
@@ -3019,6 +3431,17 @@ export interface components {
              * @description 对象的乐观锁修订号；写入时提交最后读取的修订号。
              */
             revision: number;
+            /**
+             * 正文格式
+             * @description 省略时沿用记录的格式。更新此字段时须一并提交详细描述。
+             * @default PLAIN
+             * @enum {string}
+             */
+            description_format: "PLAIN" | "HTML";
+            /** 新增正文图片 */
+            description_images?: {
+                [key: string]: string;
+            };
         };
         /**
          * FeedbackUrgency
@@ -3265,6 +3688,16 @@ export interface components {
             recipient_ids: number[];
             /** 需求修订号 */
             revision: number;
+            /**
+             * 正文格式
+             * @default PLAIN
+             * @enum {string}
+             */
+            description_format: "PLAIN" | "HTML";
+            /** 新增正文图片 */
+            description_images?: {
+                [key: string]: string;
+            };
         };
         /** OnlineReviewFeedbackItem */
         OnlineReviewFeedbackItem: {
@@ -3348,6 +3781,8 @@ export interface components {
             category: string;
             /** 权限分组 */
             group: string;
+            /** 上级权限分组 */
+            parent_group?: string | null;
             /** 是否为敏感权限 */
             sensitive: boolean;
             /** 是否已弃用 */
@@ -3853,6 +4288,11 @@ export interface components {
              * @default false
              */
             release_frozen: boolean;
+            /**
+             * 创建人可编辑
+             * @description 需求详情根据登录人、需求当前状态和冻结状态返回。其他响应不计算此能力，值为 null。
+             */
+            can_edit_as_creator?: boolean | null;
             /** 所属业务系统名称 */
             system_name?: string | null;
             /** 当前待处理人 */
@@ -4051,6 +4491,12 @@ export interface components {
             enabled: boolean;
             /** 是否为系统角色 */
             is_system: boolean;
+            /**
+             * 是否可分配
+             * @description 是否允许将该角色新增分配给账号，已有分配可以保留或移除。
+             * @default true
+             */
+            assignable: boolean;
             /**
              * 修订号
              * @description 对象的乐观锁修订号；写入时提交最后读取的修订号。
@@ -4578,6 +5024,61 @@ export interface components {
             /** 编辑时的完整平台成员与修订号 */
             members: components["schemas"]["TargetMemberRevision"][];
         };
+        /** WecomBindingChange */
+        WecomBindingChange: {
+            /** 修订号 */
+            revision: number;
+            /** 企业微信成员 ID */
+            member_user_id: string | null;
+        };
+        /** WecomPreferenceChange */
+        WecomPreferenceChange: {
+            /** 修订号 */
+            revision: number;
+            /**
+             * 企业微信通知偏好
+             * @enum {string}
+             */
+            mode: "OFF" | "TASKS" | "ALL";
+        };
+        /** WecomPreferencesOut */
+        WecomPreferencesOut: {
+            /** 修订号 */
+            revision: number;
+            /** 企业微信成员 ID */
+            member_user_id: string | null;
+            /**
+             * 企业微信通知偏好
+             * @enum {string}
+             */
+            mode: "OFF" | "TASKS" | "ALL";
+            /** 企业微信通知是否启用 */
+            enabled: boolean;
+        };
+        /** AdProductionDesignerOption */
+        AdProductionDesignerOption: {
+            /** 设计人员 ID */
+            id: number;
+            /** 设计人员显示名称 */
+            display_name: string;
+        };
+        /** AdProductionStatusChange */
+        AdProductionStatusChange: {
+            /**
+             * 处理结果
+             * @description 商家广告确认完成时填写，最多 4000 字。
+             */
+            processing_result?: string | null;
+            /** 修订号 */
+            revision: number;
+            /** 状态 */
+            status: components["schemas"]["AdProductionStatus"];
+            /**
+             * 实际完成人 ID
+             * @description 仅在已完成状态设置，0 表示清除。
+             */
+            completed_by_id?: number | null;
+        };
     };
     responses: never;
     parameters: never;
@@ -4587,6 +5088,424 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    list_ad_productions: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number;
+                keyword?: string | null;
+                kind?: components["schemas"]["AdProductionKind"];
+                status?: components["schemas"]["AdProductionStatus"] | null;
+                date_from?: string | null;
+                date_to?: string | null;
+                published_from?: string | null;
+                published_before?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdProductionPage"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 请求参数或业务数据无效 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    create_ad_production: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["AdProductionCreateForm"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdProductionOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 请求参数或业务数据无效 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_ad_production_designers: {
+        parameters: {
+            query?: {
+                kind?: components["schemas"]["AdProductionKind"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdProductionDesignerOption"][];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 请求参数或业务数据无效 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_ad_production: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ad_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdProductionOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 请求参数或业务数据无效 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    update_ad_production: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ad_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["AdProductionUpdateForm"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdProductionOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description revision CAS 冲突 (40910) 或该操作的业务冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 请求参数或业务数据无效 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    update_ad_production_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ad_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdProductionStatusChange"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdProductionOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description revision CAS 冲突 (40910) 或该操作的业务冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 请求参数或业务数据无效 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    ad_production_image: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ad_id: number;
+                file_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": unknown;
+                    "image/jpeg": unknown;
+                    "image/webp": unknown;
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 请求参数或业务数据无效 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     requirements_filter_options_participants_get: {
         parameters: {
             query?: {
@@ -9799,6 +10718,233 @@ export interface operations {
             };
         };
     };
+    get_wecom_preferences: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WecomPreferencesOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    change_wecom_preferences: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WecomPreferenceChange"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WecomPreferencesOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 绑定、偏好或 revision 冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_user_wecom_binding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WecomPreferencesOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    change_user_wecom_binding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WecomBindingChange"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WecomPreferencesOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 绑定、偏好或 revision 冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_mail_preferences: {
         parameters: {
             query?: never;
@@ -10825,13 +11971,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description 参数无效、角色不存在、角色停用或尝试新增分配历史制作角色。 */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["HTTPValidationError"] | components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -11174,13 +12320,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description 参数无效、角色不存在、角色停用或尝试新增分配历史制作角色。 */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["HTTPValidationError"] | components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -11965,6 +13111,128 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    feedback_image: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                feedback_id: number;
+                file_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": unknown;
+                    "image/jpeg": unknown;
+                    "image/webp": unknown;
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ad_production_content_image: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ad_id: number;
+                file_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": unknown;
+                    "image/jpeg": unknown;
+                    "image/webp": unknown;
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 请求参数或业务数据无效 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

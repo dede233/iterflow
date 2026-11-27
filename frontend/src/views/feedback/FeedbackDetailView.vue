@@ -3,7 +3,7 @@ import BusinessSystemAttribution from '@/components/BusinessSystemAttribution.vu
 import RecentEntityActivity from '@/components/RecentEntityActivity.vue'
 import DeleteEntityButton from '@/components/DeleteEntityButton.vue'
 import CollaborationPeople from '@/components/CollaborationPeople.vue'
-import { computed, onMounted, onScopeDispose, reactive, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, onMounted, onScopeDispose, reactive, ref, shallowRef, watch } from 'vue'
 import { ElMessage, type UploadRequestOptions } from 'element-plus'
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
 import {
@@ -39,6 +39,7 @@ import SectionCard from '@/components/ui/SectionCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
 import RevisionConflictDialog from '@/components/RevisionConflictDialog.vue'
+import RichTextContent from '@/components/RichTextContent.vue'
 import RequirementCreateView from '@/views/requirement/RequirementCreateView.vue'
 import { useResponsive } from '@/composables/useResponsive'
 import {
@@ -62,6 +63,10 @@ import type {
 } from '@/types/domain'
 import { formatLocalDateTime } from '@/utils/dates'
 import { feedbackConflictSummary } from '@/utils/revisionSummaries'
+import { plainTextToHtml, richTextPlainText } from '@/utils/richText'
+import { isRevisionConflict } from '@/types/revisionConflict'
+
+const RichTextEditor = defineAsyncComponent(() => import('@/components/RichTextEditor.vue'))
 
 const props = defineProps<{ embedded?: boolean; embeddedId?: number }>()
 const emit = defineEmits<{ updated: []; close: [] }>()
@@ -84,6 +89,9 @@ const comments = ref<CommentItem[]>([])
 const systems = ref<BusinessSystemItem[]>([])
 const canReadSystems = computed(() => can(['sys.system.view', 'sys.system.manage']))
 const canEdit = computed(() => can('rd.feedback.edit') && item.value?.status !== 'ONLINE')
+const canEditContent = computed(() => !!item.value && (canEdit.value || (
+  can('rd.feedback.view') && item.value.status === 'NEW' && item.value.submitter_id === auth.user?.id
+)))
 const collaboration = ref<FeedbackCollaboration | null>(null)
 const currentCollaboration = computed(() => collaboration.value?.revision === item.value?.revision ? collaboration.value : null)
 const delegatedAcceptance = computed(() => !!currentCollaboration.value?.recipients.length && !currentCollaboration.value.recipients.some(p => p.id === auth.user?.id))
@@ -408,6 +416,13 @@ async function submitStatus(): Promise<void> {
 // --- edit dialog ---
 const editDialog = ref(false)
 const editSubmitting = ref(false)
+const editBaseline = shallowRef<Feedback | null>(null)
+const editError = ref('')
+const editBaselineDescription = computed(() => {
+  const source = editBaseline.value
+  if (!source) return ''
+  return source.description_format === 'HTML' ? source.description : plainTextToHtml(source.description)
+})
 const editForm = reactive({
   title: '',
   feedback_type: '' as FeedbackUpdatePayload['feedback_type'],
@@ -418,19 +433,21 @@ const editForm = reactive({
 })
 
 function openEdit(): void {
-  if (!item.value || !canEdit.value) return
+  if (!item.value || !canEditContent.value) return
   fillEditForm(item.value)
   editDialog.value = true
-  void startPresence()
+  if (canEdit.value || can('rd.feedback.convert')) void startPresence()
 }
 
 function fillEditForm(latest: Feedback): void {
+  editBaseline.value = latest
+  editError.value = ''
   Object.assign(editForm, {
     title: latest.title,
     feedback_type: latest.feedback_type,
     urgency: latest.urgency,
     system_id: latest.system_id ?? null,
-    description: latest.description,
+    description: editBaselineDescription.value,
     reproduce_steps: latest.reproduce_steps ?? '',
   })
 }
@@ -440,26 +457,34 @@ watch(editDialog, (open) => {
 })
 
 async function submitEdit(): Promise<void> {
-  if (!item.value) return
+  const original = editBaseline.value
+  if (!original || !canEditContent.value || editSubmitting.value || conflict.visible) return
+  const descriptionChanged = editForm.description !== editBaselineDescription.value
+  if (descriptionChanged && Array.from(richTextPlainText(editForm.description)).length < 2) {
+    editError.value = '详细描述至少需要 2 个字符'
+    return
+  }
+  editError.value = ''
   editSubmitting.value = true
   try {
-    await updateFeedback(item.value.id, {
+    await updateFeedback(original.id, {
       title: editForm.title.trim(),
       feedback_type: editForm.feedback_type,
       urgency: editForm.urgency,
       // Preserve historical modules on ordinary edits; clear only when changing system.
-      ...(editForm.system_id !== (item.value.system_id ?? null)
+      ...(editForm.system_id !== (original.system_id ?? null)
         ? { system_id: editForm.system_id, module_id: null } : {}),
-      description: editForm.description.trim(),
+      ...(descriptionChanged ? { description: editForm.description.trim(), description_format: 'HTML' } : {}),
       reproduce_steps: editForm.reproduce_steps.trim() || null,
-      revision: item.value.revision,
+      revision: original.revision,
     })
     emit('updated')
     ElMessage.success('反馈已更新')
     editDialog.value = false
     await load()
   } catch (error) {
-    await showConflict(error, item.value.revision, fillEditForm)
+    await showConflict(error, original.revision, fillEditForm)
+    if (!isRevisionConflict(error)) editError.value = actionErrorMessage(error)
   } finally {
     editSubmitting.value = false
   }
@@ -545,7 +570,7 @@ onMounted(async () => {
         </template>
         <template #actions>
           <RouterLink v-if="!props.embedded" class="back-link" :to="backTo">返回列表</RouterLink>
-          <el-button v-if="canEdit" @click="openEdit">编辑</el-button>
+          <el-button v-if="canEditContent" @click="openEdit">编辑</el-button>
           <DeleteEntityButton v-if="canEdit && item.status === 'NEW' && !item.main_requirement_id" kind="feedbacks" :id="item.id" :revision="item.revision" :title="item.title" @refresh="load" @deleted="onDeleted" />
           <template v-if="!isAccepted">
             <el-button v-if="canAcceptAndConvert" type="primary" @click="openConvert('accept')">受理并转需求</el-button>
@@ -623,7 +648,7 @@ onMounted(async () => {
             {{ feedbackUrgencyLabel[item.urgency] ?? item.urgency }}
           </el-descriptions-item>
           <el-descriptions-item label="详细描述" :span="isMobile ? 1 : 2">
-            <div class="multiline">{{ item.description }}</div>
+            <RichTextContent :feedback-id="item.id" :content="item.description" :format="item.description_format" />
           </el-descriptions-item>
           <el-descriptions-item v-if="item.expected_result" label="历史补充 · 期望结果" :span="isMobile ? 1 : 2">
             <div class="multiline">{{ item.expected_result }}</div>
@@ -730,12 +755,20 @@ onMounted(async () => {
     />
 
     <!-- edit dialog -->
-    <el-dialog v-model="editDialog" title="编辑反馈" width="min(560px, 92vw)" destroy-on-close>
+    <el-dialog
+      v-model="editDialog"
+      title="编辑反馈"
+      width="min(560px, 92vw)"
+      destroy-on-close
+      :close-on-click-modal="!editSubmitting"
+      :close-on-press-escape="!editSubmitting"
+      :show-close="!editSubmitting"
+    >
       <el-alert v-if="existingEditor" type="warning" :closable="false" show-icon class="presence-alert">
         <template #title>{{ existingEditor.display_name }} 正在编辑此反馈</template>
         你仍可继续编辑；如数据已变化，保存时会通过 revision 冲突保护避免静默覆盖。
       </el-alert>
-      <el-form label-position="top" @submit.prevent="submitEdit">
+      <el-form label-position="top" :disabled="editSubmitting" @submit.prevent="submitEdit">
         <el-form-item label="反馈类型">
           <el-select v-model="editForm.feedback_type" style="width: 100%">
             <el-option v-for="t in FEEDBACK_TYPES" :key="t.value" :label="t.label" :value="t.value" />
@@ -764,15 +797,22 @@ onMounted(async () => {
           </el-form-item>
         </template>
         <el-form-item label="详细描述">
-          <el-input v-model="editForm.description" type="textarea" :rows="5" />
+          <RichTextEditor
+            :key="editBaseline?.revision"
+            v-model="editForm.description"
+            :feedback-id="editBaseline?.id"
+            :disabled="editSubmitting"
+            label="详细描述"
+          />
         </el-form-item>
         <el-form-item label="复现步骤">
           <el-input v-model="editForm.reproduce_steps" type="textarea" :rows="3" />
         </el-form-item>
+        <p v-if="editError" class="edit-error" role="alert">{{ editError }}</p>
       </el-form>
       <template #footer>
-        <el-button @click="editDialog = false">取消</el-button>
-        <el-button type="primary" :loading="editSubmitting" @click="submitEdit">保存</el-button>
+        <el-button :disabled="editSubmitting" @click="editDialog = false">取消</el-button>
+        <el-button type="primary" :loading="editSubmitting" :disabled="!canEditContent" @click="submitEdit">保存</el-button>
       </template>
     </el-dialog>
 
@@ -877,7 +917,7 @@ onMounted(async () => {
   border-width: 0 1.5px 1.5px 0;
   transform: translateY(-2px) rotate(45deg);
 }
-.convert-error { color: var(--if-danger-fg); overflow-wrap: anywhere; }
+.convert-error, .edit-error { color: var(--if-danger-fg); overflow-wrap: anywhere; }
 .acceptance-hint { margin: var(--if-space-3) 0; color: var(--if-text-2); }
 .convert-mode { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--if-space-3); margin-top: var(--if-space-2); }
 .detail-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(250px, 300px); align-items: start; gap: var(--if-space-4); }

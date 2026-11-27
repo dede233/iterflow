@@ -1,0 +1,6 @@
+from feedback_ad_rich_text_acceptance import exercise_feedback_ad_rich_text
+from seeded_postgres_fixture import collaboration_pg as collaboration_pg
+
+
+def test_feedback_ad_rich_text_postgres(collaboration_pg):
+    exercise_feedback_ad_rich_text(collaboration_pg)

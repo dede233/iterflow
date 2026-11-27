@@ -116,6 +116,7 @@ def grant_runtime_table_access(schema):
             "alembic_version": "SELECT",
             "iterflow_file_key_node": "SELECT",
             "rd_requirement_online_feedback": "SELECT, INSERT",
+            "ops_ad_production": "SELECT, INSERT, UPDATE",
         }.get(table, "SELECT, INSERT, UPDATE, DELETE")
         sql(f"GRANT {rights} ON `{schema}`.`{table}` TO %s@'%%'", (runtime_user,))
 
@@ -267,7 +268,7 @@ def restore_package(stage, dump, files, headers, requirement_id, file_id, system
             "SELECT COUNT(*) FROM information_schema.triggers WHERE trigger_schema=%s",
             (restored,),
         )[0][0]
-        assert restored_triggers == 113
+        assert restored_triggers == 119
         dc("stop", "api", "notification-worker")
         post_dump = dc(
             "--profile", "ops", "run", "--rm", "-T", "client", stdout=subprocess.PIPE

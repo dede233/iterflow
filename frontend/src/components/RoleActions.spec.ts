@@ -18,6 +18,7 @@ function role(isSystem: boolean): RoleItem {
     data_scope: isSystem ? 'ALL' : 'SELF',
     enabled: true,
     is_system: isSystem,
+    assignable: true,
     revision: 1,
     permission_ids: [],
   }

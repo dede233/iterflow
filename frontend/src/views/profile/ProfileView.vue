@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import MailPreferences from '@/components/MailPreferences.vue'
+import WecomPreferences from '@/components/WecomPreferences.vue'
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
@@ -40,6 +41,7 @@ async function logout(): Promise<void> {
       </div>
     </SectionCard>
     <MailPreferences />
+    <WecomPreferences />
   </div>
 </template>
 

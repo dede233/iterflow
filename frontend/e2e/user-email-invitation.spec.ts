@@ -33,6 +33,7 @@ async function mockAdministration(page: Page, operator = superAdmin, invitation:
   ]
   const olderAccount = account(21)
   const writes: unknown[] = []
+  const creations: unknown[] = []
   const requestedPages: number[] = []
   let blocked = false
   await page.addInitScript(() => {
@@ -53,10 +54,12 @@ async function mockAdministration(page: Page, operator = superAdmin, invitation:
         return route.fulfill({ json: [{ id: 1, code: 'SUPER_ADMIN', name: '超级管理员', enabled: true, is_system: true }] })
       case '/api/v1/users': {
         if (request.method() === 'POST') {
+          const body = request.postDataJSON()
+          creations.push(body)
           const created = account(22, {
-            username: request.postDataJSON().username,
-            email: request.postDataJSON().email,
-            display_name: request.postDataJSON().display_name,
+            username: body.username,
+            email: body.email,
+            display_name: body.display_name,
             email_verification_status: invitation === 'QUEUED' ? 'PENDING' : 'UNVERIFIED',
           })
           rows.unshift(created)
@@ -87,7 +90,7 @@ async function mockAdministration(page: Page, operator = superAdmin, invitation:
     if (await mockReadPanels(route)) return
     throw new Error(`Unexpected API request: ${request.method()} ${pathname}`)
   })
-  return { writes, requestedPages, changeEmail: () => { olderAccount.revision++; olderAccount.email = 'updated@example.test' } }
+  return { writes, creations, requestedPages, changeEmail: () => { olderAccount.revision++; olderAccount.email = 'updated@example.test' } }
 }
 
 const sendButtonName = '发送验证邮件'
@@ -136,20 +139,61 @@ test('still shows verification status for an editor without the SUPER_ADMIN role
 
 for (const invitation of ['QUEUED', 'FAILED'] as const) {
   test(`account creation reports the ${invitation} verification invitation independently`, async ({ page }) => {
-    await mockAdministration(page, superAdmin, invitation)
+    await page.setViewportSize({ width: invitation === 'QUEUED' ? 1440 : 375, height: 900 })
+    const server = await mockAdministration(page, superAdmin, invitation)
     await page.goto('/#/system/users')
-    await page.getByRole('button', { name: '创建用户', exact: true }).click()
+    const create = page.getByRole('button', { name: '创建用户', exact: true })
+    await create.click()
     const dialog = page.getByRole('dialog', { name: '创建用户' })
-    await dialog.getByLabel('用户名').fill('new-user')
+    const username = dialog.getByLabel('用户名')
+    const password = dialog.getByLabel('初始密码')
+    const save = dialog.getByRole('button', { name: '保存', exact: true })
+    await expect(password).toHaveValue('')
     await dialog.getByLabel('显示名称').fill('新同事')
-    await dialog.getByLabel('邮箱').fill('new-user@example.test')
-    await dialog.getByLabel('初始密码').fill('synthetic-password')
-    await dialog.getByRole('button', { name: '保存', exact: true }).click()
+    const email = dialog.getByLabel('邮箱', { exact: true })
+    const expectedEmail = invitation === 'QUEUED' ? 'new-user@qq.com' : 'new-user@example.test'
+    if (invitation === 'QUEUED') {
+      await email.fill('new-user@q')
+      const option = page.getByRole('option', { name: expectedEmail, exact: true })
+      await expect(option).toBeVisible()
+      await email.press('Escape')
+      await expect(option).toBeHidden()
+      await expect(dialog).toBeVisible()
+      await email.fill('new-user')
+      await option.click()
+      await expect(email).toHaveValue(expectedEmail)
+      expect(server.creations).toEqual([])
+    } else {
+      await email.fill(expectedEmail)
+    }
+    const expectedPassword = invitation === 'QUEUED' ? 'new-user123' : 'synthetic-password'
+    if (invitation === 'QUEUED') {
+      await username.fill('first-user')
+      await expect(password).toHaveValue('first-user123')
+      await username.clear()
+      await expect(password).toHaveValue('')
+    } else {
+      await username.fill('tiny')
+      await expect(password).toHaveValue('tiny123')
+      await save.click()
+      await expect(page.getByText('默认密码不足 8 个字符，请手动设置至少 8 个字符的初始密码。')).toBeVisible()
+      expect(server.creations).toEqual([])
+      await password.fill(expectedPassword)
+    }
+    await username.fill(' new-user ')
+    await expect(password).toHaveValue(expectedPassword)
+    await save.click()
     await expect(dialog).toBeHidden()
     await expect(page.getByText('新同事', { exact: true })).toBeVisible()
+    expect(server.creations).toMatchObject([{ username: 'new-user', password: expectedPassword, email: expectedEmail }])
     await expect(page.getByText(invitation === 'QUEUED'
       ? '用户已创建，验证邮件已排队。'
       : '用户已创建，验证邮件入队失败。可在用户列表重新发送。')).toBeVisible()
+    await create.click()
+    await expect(username).toHaveValue('')
+    await expect(password).toHaveValue('')
+    await username.fill('another-user')
+    await expect(password).toHaveValue('another-user123')
   })
 }
 

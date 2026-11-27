@@ -1,8 +1,9 @@
 """Read-only deployment checks; never proves an untested server compatible."""
 
-from sqlalchemy import inspect, text
+from sqlalchemy import BigInteger, inspect, text
+from sqlalchemy.dialects.mysql import DATETIME, VARCHAR
 
-CURRENT_MYSQL_HEAD = "mysql57_0017"
+CURRENT_MYSQL_HEAD = "mysql57_0027"
 
 
 def validate_mysql(
@@ -108,19 +109,32 @@ def validate_mysql(
                     "mysql57_0014",
                     "mysql57_0015",
                     "mysql57_0016",
+                    "mysql57_0017",
+                    "mysql57_0018",
+                    "mysql57_0019",
+                    "mysql57_0020",
+                    "mysql57_0021",
+                    "mysql57_0022",
+                    "mysql57_0023",
+                    "mysql57_0024",
+                    "mysql57_0025",
+                    "mysql57_0026",
                 }
             )
         ):
             raise RuntimeError("MySQL Alembic head is missing or unsupported")
-        issue4_heads = {
-            "mysql57_0012",
-            "mysql57_0013",
-            "mysql57_0014",
-            "mysql57_0015",
-            "mysql57_0016",
-            CURRENT_MYSQL_HEAD,
-        }
-        target_release_heads = {"mysql57_0015", "mysql57_0016", CURRENT_MYSQL_HEAD}
+        ad_production_kind_heads = {"mysql57_0025", "mysql57_0026", CURRENT_MYSQL_HEAD}
+        ad_production_publication_heads = {"mysql57_0023", "mysql57_0024"}
+        ad_production_publication_heads |= ad_production_kind_heads
+        ad_production_people_heads = {"mysql57_0021", "mysql57_0022"} | (
+            ad_production_publication_heads
+        )
+        rich_text_heads = {"mysql57_0020"} | ad_production_people_heads
+        ad_production_heads = {"mysql57_0019"} | rich_text_heads
+        wecom_heads = {"mysql57_0018"} | ad_production_heads
+        online_review_heads = {"mysql57_0017"} | wecom_heads
+        target_release_heads = {"mysql57_0015", "mysql57_0016"} | online_review_heads
+        issue4_heads = {"mysql57_0012", "mysql57_0013", "mysql57_0014"} | target_release_heads
         if head in issue4_heads | {"mysql57_0011"} and "notice_acknowledged_at" not in {
             c["name"] for c in inspect(connection).get_columns("sys_mail_preference")
         }:
@@ -153,7 +167,11 @@ def validate_mysql(
             business_tables -= {"sys_announcement", "sys_announcement_read"}
         if head not in target_release_heads:
             business_tables -= {"sys_release_target", "rd_release_batch", "rd_release_batch_target"}
-        if head != CURRENT_MYSQL_HEAD:
+        if head not in wecom_heads:
+            business_tables.remove("sys_wecom_preference")
+        if head not in ad_production_heads:
+            business_tables.remove("ops_ad_production")
+        if head not in online_review_heads:
             business_tables.remove("rd_requirement_online_feedback")
         if legacy:
             business_tables -= {
@@ -174,7 +192,7 @@ def validate_mysql(
                 "Initialized schema table set differs from the MySQL baseline; "
                 "check migrations and runtime table grants"
             )
-        if head == CURRENT_MYSQL_HEAD:
+        if head in online_review_heads:
             table = "rd_requirement_online_feedback"
             inspector = inspect(connection)
             if inspector.get_pk_constraint(table)["constrained_columns"] != ["feedback_id"]:
@@ -196,6 +214,108 @@ def validate_mysql(
                 (("requirement_id",), "rd_requirement", ("id",)),
             }:
                 raise RuntimeError("Online feedback provenance foreign keys are missing")
+        if head in wecom_heads:
+            inspector = inspect(connection)
+            if "queued_wecom_binding_id" not in {
+                column["name"] for column in inspector.get_columns("sys_notification_delivery")
+            }:
+                raise RuntimeError("WeCom delivery binding snapshot column is missing")
+            if not any(
+                index["name"] == "uq_wecom_preference_member_key"
+                and index["unique"]
+                and index["column_names"] == ["corp_id", "member_key"]
+                for index in inspector.get_indexes("sys_wecom_preference")
+            ):
+                raise RuntimeError("WeCom member binding uniqueness is missing")
+        if head in ad_production_heads:
+            inspector = inspect(connection)
+            table = "ops_ad_production"
+            columns = {column["name"]: column for column in inspector.get_columns(table)}
+            required = {
+                "id",
+                "work_date",
+                "content",
+                "issuer",
+                "status",
+                "created_at",
+                "created_by",
+                "updated_at",
+                "revision",
+            }
+            if "updated_by" not in columns or any(
+                column not in columns or columns[column]["nullable"] for column in required
+            ):
+                raise RuntimeError("Ad production record columns are missing or nullable")
+            if inspector.get_pk_constraint(table)["constrained_columns"] != ["id"]:
+                raise RuntimeError("Ad production primary key is missing")
+            indexes = {tuple(index["column_names"]) for index in inspector.get_indexes(table)}
+            if not {("work_date", "id"), ("created_by", "work_date", "id")} <= indexes:
+                raise RuntimeError("Ad production listing indexes are missing")
+            if head in ad_production_people_heads:
+                people = {"receiver_id", "completed_by_id"}
+                if any(
+                    column not in columns
+                    or not columns[column]["nullable"]
+                    or not isinstance(columns[column]["type"], BigInteger)
+                    for column in people
+                ):
+                    raise RuntimeError("Nullable ad production person IDs are missing or invalid")
+                if not {("receiver_id", "work_date", "id"), ("completed_by_id",)} <= indexes:
+                    raise RuntimeError("Ad production person indexes are missing")
+                user_references = {
+                    fk["constrained_columns"][0]
+                    for fk in inspector.get_foreign_keys(table)
+                    if len(fk["constrained_columns"]) == 1
+                    and fk["referred_table"] == "sys_user"
+                    and fk["referred_columns"] == ["id"]
+                    and fk["options"].get("ondelete") in (None, "RESTRICT", "NO ACTION")
+                }
+                if not people <= user_references:
+                    raise RuntimeError("Ad production person foreign keys are missing or invalid")
+            if head in ad_production_publication_heads:
+                title = columns.get("title")
+                due_at = columns.get("due_at")
+                if (
+                    title is None
+                    or not title["nullable"]
+                    or not isinstance(title["type"], VARCHAR)
+                    or title["type"].length != 200
+                    or due_at is None
+                    or not due_at["nullable"]
+                    or not isinstance(due_at["type"], DATETIME)
+                    or due_at["type"].fsp != 6
+                ):
+                    raise RuntimeError("Ad production publication columns are missing or invalid")
+                if ("created_at", "id") not in indexes:
+                    raise RuntimeError("Ad production publication listing index is missing")
+        if head in ad_production_kind_heads:
+            table = "ops_ad_production"
+            columns = {column["name"]: column for column in inspector.get_columns(table)}
+            kind = columns.get("kind")
+            result = columns.get("processing_result")
+            if (
+                kind is None
+                or kind["nullable"]
+                or not isinstance(kind["type"], VARCHAR)
+                or kind["type"].length != 16
+                or str(kind["default"]).strip("'\"") != "MATERIAL"
+                or result is None
+                or not result["nullable"]
+            ):
+                raise RuntimeError("Production request kind or processing result is invalid")
+            indexes = {tuple(index["column_names"]) for index in inspector.get_indexes(table)}
+            if ("kind", "created_at", "id") not in indexes:
+                raise RuntimeError("Production request kind listing index is missing")
+        if head in rich_text_heads:
+            for table, field in (
+                ("rd_feedback", "description_format"),
+                ("ops_ad_production", "content_format"),
+            ):
+                if not any(
+                    column["name"] == field and not column["nullable"]
+                    for column in inspector.get_columns(table)
+                ):
+                    raise RuntimeError(f"Rich text format column is missing or nullable on {table}")
         if head in target_release_heads:
             if "release_frozen" not in {
                 c["name"] for c in inspect(connection).get_columns("rd_version")
@@ -253,6 +373,20 @@ def validate_mysql(
                 }
             if not expected <= triggers:
                 raise RuntimeError("Required database integrity/domain triggers are missing")
+            if head in ad_production_kind_heads:
+                rules = connection.scalars(
+                    text(
+                        "SELECT action_statement FROM information_schema.triggers "
+                        "WHERE trigger_schema=DATABASE() AND trigger_name IN "
+                        "('domain_ops_ad_production_insert','domain_ops_ad_production_update')"
+                    )
+                ).all()
+                if len(rules) != 2 or any(
+                    "NEW.kind" not in rule or "NEW.processing_result" not in rule for rule in rules
+                ):
+                    raise RuntimeError(
+                        "Production request kind and result domain rules are missing"
+                    )
             if (
                 portable
                 and connection.scalar(

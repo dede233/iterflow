@@ -306,7 +306,7 @@ def exercise_online_review_migration(fixture):
     path = "alembic-mysql.ini" if mysql else "alembic.ini"
     cfg = Config(str(Path(__file__).resolve().parents[1] / path))
     previous = "mysql57_0016" if mysql else "0018_alipay_targets"
-    head = "mysql57_0017" if mysql else "0019_online_review"
+    head = "mysql57_0027" if mysql else "0029_ops_role_defaults"
     table = RequirementOnlineFeedback.__tablename__
     command.downgrade(cfg, previous)
     assert table not in inspect(engine).get_table_names()
@@ -333,5 +333,6 @@ def exercise_online_review_migration(fixture):
     with pytest.raises(RuntimeError, match="Online feedback history exists"):
         command.downgrade(cfg, previous)
     with Session(engine) as db:
-        assert db.scalar(text("SELECT version_num FROM alembic_version")) == head
+        expected_head = "mysql57_0017" if mysql else head
+        assert db.scalar(text("SELECT version_num FROM alembic_version")) == expected_head
         assert db.get(RequirementOnlineFeedback, fid).requirement_id == rid

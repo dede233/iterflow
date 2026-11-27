@@ -23,6 +23,7 @@ import ProfileView from '@/views/profile/ProfileView.vue'
 
 const stubs = {
   MailPreferences: true,
+  WecomPreferences: true,
   'el-card': { template: '<section><slot name="header" /><slot /></section>' },
   'el-button': { template: '<button @click="$emit(\'click\')"><slot /></button>', emits: ['click'] },
 }

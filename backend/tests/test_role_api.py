@@ -424,6 +424,11 @@ def test_permission_catalog_returns_every_permission_as_read_only_metadata(
     assert by_code["rd.version.publish"]["group"] == "Version / 版本"
     assert by_code["sys.user.role.assign"]["group"] == "User / 用户管理"
     assert by_code["sys.file.download"]["group"] == "File / 文件"
+    assert by_code["dashboard.view"]["parent_group"] is None
+    for group, prefix in (("商家广告", "ops.merchant_ad"), ("物料制作", "ops.ad_production")):
+        for action in ("view", "create", "edit"):
+            permission = by_code[f"{prefix}.{action}"]
+            assert (permission["parent_group"], permission["group"]) == ("运营协作", group)
     assert {
         item["code"] for item in catalog if item["sensitive"]
     } == PermissionCatalog.SENSITIVE_CODES

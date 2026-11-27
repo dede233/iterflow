@@ -76,6 +76,7 @@ const loading = ref(false)
 const activityRefresh = ref(0)
 const failed = ref(false)
 const canEdit = computed(() => !item.value?.release_frozen && can('rd.requirement.edit') && item.value?.status !== 'ONLINE')
+const canEditContent = computed(() => !!item.value && (canEdit.value || item.value.can_edit_as_creator === true))
 const canViewFeedbacks = computed(() => can('rd.feedback.view'))
 const canCreateVersion = computed(() => !!item.value && !item.value.current_version_id && !['ONLINE', 'CANCELED'].includes(item.value.status) && ['rd.version.create', 'rd.version.edit', 'rd.version.view', 'rd.requirement.view'].every(permission => can(permission)))
 const createVersionDialog = ref(false)
@@ -188,11 +189,11 @@ watch(() => editForm.title, () => { if (editErrors.title) editErrors.title = edi
 watch(() => editForm.description, () => { if (editErrors.description) editErrors.description = editValidationMessage('description') })
 
 function openEdit(): void {
-  if (!item.value || !canEdit.value) return
+  if (!item.value || !canEditContent.value) return
   fillEditForm(item.value)
   editExpanded.value = false
   editDialog.value = true
-  void startPresence()
+  if (canEdit.value || can('rd.requirement.status')) void startPresence()
 }
 
 function fillEditForm(latest: Requirement): void {
@@ -216,7 +217,7 @@ watch(editDialog, (open) => {
 })
 
 async function submitEdit(): Promise<void> {
-  if (!item.value || !canEdit.value || editSubmitting.value) return
+  if (!item.value || !canEditContent.value || editSubmitting.value) return
   editErrors.title = editValidationMessage('title')
   editErrors.description = editValidationMessage('description')
   const firstError = editErrors.title ? 'title' : editErrors.description ? 'description' : null
@@ -297,7 +298,7 @@ onMounted(load)
         </template>
         <template #actions>
         <RouterLink v-if="!props.embedded" class="back-link" :to="backTo">返回列表</RouterLink>
-        <el-button v-if="canEdit" @click="openEdit">编辑</el-button>
+        <el-button v-if="canEditContent" @click="openEdit">编辑</el-button>
         <el-button v-if="canCreateVersion" @click="createVersionDialog = true">创建版本</el-button>
         <DeleteEntityButton v-if="canEdit && item.status === 'DRAFT' && !item.current_version_id && item.source === 'DIRECT'" kind="requirements" :id="item.id" :revision="item.revision" :title="item.title" @refresh="load" @deleted="onDeleted" />
 
@@ -415,7 +416,7 @@ onMounted(load)
       </div>
       <template #footer>
         <el-button :disabled="editSubmitting" @click="requestClose">取消</el-button>
-        <el-button type="primary" :loading="editSubmitting" @click="submitEdit">保存</el-button>
+        <el-button type="primary" :loading="editSubmitting" :disabled="!canEditContent" @click="submitEdit">保存</el-button>
       </template>
     </el-dialog>
   </section>

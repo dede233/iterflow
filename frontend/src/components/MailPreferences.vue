@@ -4,6 +4,7 @@ import { api } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import { actionErrorMessage } from '@/utils/actionError'
 import type { components } from '@/types/openapi.generated'
+import EmailSuggestionInput from './ui/EmailSuggestionInput.vue'
 import SectionCard from './ui/SectionCard.vue'
 type Preferences = components['schemas']['MailPreferencesOut']
 type Delivery = components['schemas']['DeliveryOut']
@@ -18,8 +19,10 @@ const deliveries = ref<Delivery[]>([]), page = ref(1), deliveriesOpen = ref(fals
 const admin = computed(() => auth.canViewApiDocs && auth.hasPermission('sys.user.edit'))
 const identity = computed(() => `${auth.user?.id}:${auth.accessToken}:${auth.permissionCodes.join(',')}`)
 let sequence = 0
+let deliverySequence = 0
 async function load() {
-  const request = ++sequence; failed.value = false; busy.value = false; item.value = null; deliveries.value = []; deliveriesOpen.value = false; reverifying.value = false; unbindDialog.value = false; unbindRevision.value = null; unbindError.value = ''; unbindConflict.value = false; message.value = ''
+  const request = ++sequence; failed.value = false; busy.value = false; item.value = null; reverifying.value = false; unbindDialog.value = false; unbindRevision.value = null; unbindError.value = ''; unbindConflict.value = false; message.value = ''
+  deliveries.value = []; page.value = 1; deliveriesOpen.value = false; deliveryFailed.value = false
   if (!auth.user) return
   try { const { data } = await api.get<Preferences>('/me/mail-preferences'); if (request !== sequence) return; item.value = data; mode.value = data.mode; email.value = data.pending_email || data.email || ''; code.value = '' }
   catch { if (request === sequence) failed.value = true }
@@ -60,15 +63,31 @@ async function unbind() {
   } finally { if (request === sequence) busy.value = false }
 }
 async function loadDeliveries() {
-  const request = sequence; deliveryFailed.value = false; deliveriesOpen.value = true
-  try { const { data } = await api.get<Delivery[]>('/admin/mail-deliveries', { params: { page: page.value } }); if (request === sequence && admin.value) deliveries.value = data }
-  catch { if (request === sequence) deliveryFailed.value = true }
+  if (!admin.value) return
+  const request = ++deliverySequence
+  const session = sequence
+  deliveryFailed.value = false
+  try {
+    const { data } = await api.get<Delivery[]>('/admin/mail-deliveries', { params: { page: page.value } })
+    if (session === sequence && request === deliverySequence && admin.value) deliveries.value = data
+  } catch {
+    if (session === sequence && request === deliverySequence && admin.value) deliveryFailed.value = true
+  }
+}
+async function toggleDeliveries() {
+  deliveriesOpen.value = !deliveriesOpen.value
+  if (deliveriesOpen.value) await loadDeliveries()
 }
 async function retry(row: Delivery) {
+  if (!admin.value || busy.value) return
+  const request = sequence
   busy.value = true
-  try { await api.post(`/admin/mail-deliveries/${row.id}/retry`, { attempts: row.attempts }); await loadDeliveries() }
+  try {
+    await api.post(`/admin/mail-deliveries/${row.id}/retry`, { attempts: row.attempts })
+    if (request === sequence && deliveriesOpen.value) await loadDeliveries()
+  }
   catch { /* No automatic replay. */ }
-  finally { busy.value = false }
+  finally { if (request === sequence) busy.value = false }
 }
 const statusLabels: Record<string, string> = { PENDING: '待发送', SENDING: '发送中', RETRY: '等待重试', UNCERTAIN: '结果不确定，等待重试', FAILED: '发送失败', SKIPPED: '已跳过', SENT: '已发送' }
 </script>
@@ -82,7 +101,9 @@ const statusLabels: Record<string, string> = { PENDING: '待发送', SENDING: '�
       <p>当前邮箱：{{ item.email || '未设置' }} · {{ item.verified ? '已验证' : '未验证，不发送进度邮件' }}</p>
       <p>默认仅发送待办与上线；验证后启用所选偏好，不补发历史进度。修改邮箱需重新验证。</p>
       <template v-if="showVerification">
-        <el-form-item label="通知邮箱"><el-input v-model="email" type="email" autocomplete="email" maxlength="254" /></el-form-item>
+        <el-form-item label="通知邮箱" for="notification-email">
+          <EmailSuggestionInput id="notification-email" v-model="email" />
+        </el-form-item>
         <p v-if="item.pending_email">待验证地址：{{ item.pending_email }}</p>
         <el-form-item label="六位验证码" for="mail-verification-code">
           <div class="verification-row">
@@ -111,8 +132,19 @@ const statusLabels: Record<string, string> = { PENDING: '待发送', SENDING: '�
       </template>
     </el-dialog>
     <template v-if="admin">
-      <el-divider /><el-button @click="loadDeliveries">查看邮件投递记录</el-button>
-      <div v-if="deliveriesOpen" class="mail-deliveries"><p v-if="deliveryFailed">投递记录加载失败，请重试。</p><p v-for="row in deliveries" :key="row.id">用户 #{{ row.user_id }} · {{ statusLabels[row.status] || row.status }} · 尝试 {{ row.attempts }} 次 · {{ row.last_error || '-' }} <el-button v-if="row.status === 'FAILED'" :loading="busy" @click="retry(row)">重新投递</el-button></p><el-button :disabled="page <= 1" @click="page--; loadDeliveries()">上一页</el-button><el-button :disabled="deliveries.length < 50" @click="page++; loadDeliveries()">下一页</el-button></div>
+      <el-divider />
+      <el-button :aria-expanded="deliveriesOpen" aria-controls="mail-delivery-records" @click="toggleDeliveries">
+        {{ deliveriesOpen ? '收起邮件投递记录' : '查看邮件投递记录' }}
+      </el-button>
+      <div v-show="deliveriesOpen" id="mail-delivery-records" class="mail-deliveries">
+        <p v-if="deliveryFailed" role="alert">投递记录加载失败，请重试。 <el-button link type="primary" @click="loadDeliveries">重试</el-button></p>
+        <p v-for="row in deliveries" :key="row.id">
+          用户 #{{ row.user_id }} · {{ statusLabels[row.status] || row.status }} · 尝试 {{ row.attempts }} 次 · {{ row.last_error || '-' }}
+          <el-button v-if="row.status === 'FAILED'" :loading="busy" @click="retry(row)">重新投递</el-button>
+        </p>
+        <el-button :disabled="page <= 1" @click="page--; loadDeliveries()">上一页</el-button>
+        <el-button :disabled="deliveries.length < 50" @click="page++; loadDeliveries()">下一页</el-button>
+      </div>
     </template>
   </SectionCard>
 </template>

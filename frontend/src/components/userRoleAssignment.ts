@@ -28,6 +28,10 @@ export function isSuperAdminRole(role: RoleItem): boolean {
   return role.is_system && role.code === 'SUPER_ADMIN'
 }
 
+export function isAssignableRole(role: RoleItem): boolean {
+  return role.enabled && role.assignable !== false
+}
+
 export function findSuperAdminRole(roles: RoleItem[]): RoleItem | undefined {
   return roles.find(isSuperAdminRole)
 }

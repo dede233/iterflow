@@ -6,7 +6,7 @@ import pytest
 import yaml
 from conftest import assert_revision_conflict, resolve_openapi_ref
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, event, func, select, update
+from sqlalchemy import create_engine, delete, event, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -298,6 +298,104 @@ def test_requirement_crud_and_optimistic_lock(req_api):
     )
     assert stale.status_code == 409
     assert stale.json()["data"]["current_revision"] == 2
+
+
+def test_creator_without_edit_permission_can_only_edit_own_draft_requirement(req_api):
+    client, session, headers, ids = req_api
+    participants = [
+        {"user_id": ids["boss"], "role": role} for role in ("CONFIRM", "DEVELOP", "ACCEPT")
+    ]
+    created = _create_req(client, headers["alice"], participants=participants)
+    assert created["can_edit_as_creator"] is None
+    path = f"/api/v1/requirements/{created['id']}"
+    session.execute(
+        delete(RolePermission).where(
+            RolePermission.role_id
+            == select(Role.id).where(Role.code == "SELFROLE").scalar_subquery(),
+            RolePermission.permission_id.in_(
+                select(Permission.id).where(
+                    Permission.code.in_(("rd.requirement.edit", "rd.requirement.status"))
+                )
+            ),
+        )
+    )
+    session.commit()
+
+    body = {"description": "创建人补充需求说明", "revision": created["revision"]}
+    hidden = client.patch(path, headers=headers["bob"], json=body)
+    assert hidden.status_code == 404, hidden.text
+    for actor, editable in (("alice", True), ("reader", False)):
+        detail = client.get(path, headers=headers[actor])
+        assert detail.status_code == 200, detail.text
+        assert detail.json()["can_edit_as_creator"] is editable
+    forbidden = client.patch(path, headers=headers["reader"], json=body)
+    assert forbidden.status_code == 403, forbidden.text
+    listed = client.get("/api/v1/requirements", headers=headers["alice"])
+    assert listed.status_code == 200, listed.text
+    assert listed.json()["items"][0]["can_edit_as_creator"] is None
+
+    for method, route, payload in (
+        ("PATCH", f"{path}/status", {"status": "CONFIRMED"}),
+        ("PUT", f"{path}/participants", {"participants": participants}),
+        ("DELETE", path, {"reason": "申请删除"}),
+    ):
+        rejected = client.request(
+            method,
+            route,
+            headers=headers["alice"],
+            json={**payload, "revision": created["revision"]},
+        )
+        assert rejected.status_code == 403, rejected.text
+
+    saved = client.patch(path, headers=headers["alice"], json=body)
+    assert saved.status_code == 200, saved.text
+    current = saved.json()
+    assert current["can_edit_as_creator"] is None
+    assert current["status"] == "DRAFT"
+    assert current["description"] == body["description"]
+    assert current["revision"] == created["revision"] + 1
+    assert_revision_conflict(
+        client.patch(path, headers=headers["alice"], json=body),
+        revision=current["revision"],
+        updated_by=ids["alice"],
+    )
+    log = session.scalars(
+        select(OperationLog).where(
+            OperationLog.entity_type == "REQUIREMENT",
+            OperationLog.entity_id == created["id"],
+            OperationLog.action == "UPDATE",
+        )
+    ).one()
+    assert log.operator_id == ids["alice"]
+    assert log.before_data["description"] == created["description"]
+    assert log.after_data["description"] == body["description"]
+
+    confirmed = client.patch(
+        f"{path}/status",
+        headers=headers["boss"],
+        json={"status": "CONFIRMED", "revision": current["revision"]},
+    )
+    assert confirmed.status_code == 200, confirmed.text
+    assert confirmed.json()["status"] == "CONFIRMED"
+    latest_revision = confirmed.json()["revision"]
+    detail = client.get(path, headers=headers["alice"])
+    assert detail.status_code == 200, detail.text
+    assert detail.json()["can_edit_as_creator"] is False
+    assert_revision_conflict(
+        client.patch(
+            path, headers=headers["alice"], json={**body, "revision": current["revision"]}
+        ),
+        revision=latest_revision,
+        updated_by=ids["boss"],
+    )
+    next_edit = {"title": "确认后更新需求", "revision": latest_revision}
+    rejected = client.patch(path, headers=headers["alice"], json=next_edit)
+    assert rejected.status_code == 403, rejected.text
+
+    edited = client.patch(path, headers=headers["boss"], json=next_edit)
+    assert edited.status_code == 200, edited.text
+    assert edited.json()["title"] == next_edit["title"]
+    assert edited.json()["revision"] == latest_revision + 1
 
 
 def test_two_users_requirement_update_and_status_revision_contract(req_api):
@@ -795,6 +893,71 @@ def test_converter_without_requirement_view_can_create_but_not_link(req_api):
     )
     create = client.post(path, headers=headers["converter"], json=payload)
     assert create.status_code == 200, create.text
+
+
+def test_converter_can_edit_their_draft_with_view_permission_until_frozen(req_api):
+    client, session, headers, ids = req_api
+    feedback = _create_feedback(client, headers["alice"])
+    actor = headers["converter"]
+    fields = {
+        "requirement_type": "FEATURE",
+        "description": "由反馈整理的内容",
+        "participants": [{"role": "CONFIRM", "user_id": ids["boss"]}],
+    }
+    converted = client.post(
+        f"/api/v1/feedbacks/{feedback['id']}/convert",
+        headers=actor,
+        json={
+            **fields,
+            "type": "CREATE_NEW",
+            "revision": feedback["revision"],
+            "requirement_title": "反馈转换生成的需求",
+        },
+    )
+    assert converted.status_code == 200, converted.text
+    created = converted.json()
+    assert created["source"] == "FEEDBACK"
+    assert created["status"] == "DRAFT"
+    assert created["can_edit_as_creator"] is None
+    item = session.get(Requirement, created["id"])
+    assert item.created_by == ids["converter"]
+
+    path = f"/api/v1/requirements/{created['id']}"
+    body = {"title": "转换人补充需求标题", "revision": created["revision"]}
+    forbidden = client.patch(path, headers=actor, json=body)
+    assert forbidden.status_code == 403, forbidden.text
+
+    reader_role_id = session.scalar(select(Role.id).where(Role.code == "REQUIREMENT_READER"))
+    session.add(UserRole(user_id=ids["converter"], role_id=reader_role_id))
+    session.commit()
+    direct_create = client.post(
+        "/api/v1/requirements", headers=actor, json={**fields, "title": "尝试直接创建"}
+    )
+    assert direct_create.status_code == 403, direct_create.text
+    detail = client.get(path, headers=actor)
+    assert detail.status_code == 200, detail.text
+    assert detail.json()["can_edit_as_creator"] is True
+    saved = client.patch(path, headers=actor, json=body)
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["title"] == body["title"]
+    assert saved.json()["revision"] == created["revision"] + 1
+
+    version = Version(id=1, version_no="1.0.0", name="历史冻结版本", release_frozen=True)
+    session.add(version)
+    item.current_version_id = version.id
+    session.commit()
+    session.expire_all()
+    detail = client.get(path, headers=actor)
+    assert detail.status_code == 200, detail.text
+    assert detail.json()["release_frozen"] is True
+    assert detail.json()["can_edit_as_creator"] is False
+    frozen = client.patch(
+        path,
+        headers=actor,
+        json={"title": "尝试编辑冻结需求", "revision": saved.json()["revision"]},
+    )
+    assert frozen.status_code == 409, frozen.text
+    assert frozen.json()["code"] == 40986
 
 
 def test_accept_and_convert_requires_in_scope_current_new_feedback_and_eligible_actor(req_api):

@@ -36,6 +36,7 @@ CLOSED            -> NEW        (重开; 需 reason)
 - 历史已受理反馈可继续通过转需求完成关联。保留独立受理接口以兼容既有调用，工作台的新受理入口使用联合操作。批量页面引导逐条打开反馈详情受理并转需求。
 - `REQUIREMENT_LINKED` 仅由 Feedback→Requirement 转换事务产生（Phase 4）。
 - `ONLINE` 只能由 Version 成功发布事务自动产生，普通状态接口任何情况下都不能设置。
+- 有反馈查看权限的提交人可修改本人处于 `NEW`（待处理）的反馈内容。反馈进入后续状态后，仅按既有编辑权限处理。
 - 所有写操作提交 `revision`，旧 `revision` 返回 409（乐观锁，禁止静默覆盖）。
 
 ## Requirement
@@ -48,6 +49,7 @@ DRAFT（待确认） -> CONFIRMED（待开发） -> DEVELOPING（开发中） ->
 旁路：CONFIRMED/DEVELOPING/TESTING 可进入 PAUSED；DRAFT/CONFIRMED/PAUSED 可按规则取消。
 
 - `ONLINE` 只能由成功发布事务自动产生，普通状态接口禁止设置。
+- 有需求查看权限的创建人可修改本人未冻结且处于 `DRAFT`（待确认）的需求内容。反馈转出新需求时，实际执行转换的账号是需求创建人。需求进入后续阶段后，仅按既有编辑权限处理。
 - `DONE -> DEVELOPING` 仅在所属 Version 尚未发布时允许，必须填写原因并写审计日志。
 
 2026-10-31 用户明确选择新方案：取消逐人开发完成确认。任一有权限的开发参与人可提交验收，指定验收人确认 DONE；原开发确认接口下线，原确认时间保留历史表与迁移步骤快照，不再参与 DONE/发布门禁。主状态 PLANNED/DESIGNING 都映射到 CONFIRMED，原 DESIGNING 保留为 IN_PROGRESS 设计子进度；不伪造确认/验收人员。

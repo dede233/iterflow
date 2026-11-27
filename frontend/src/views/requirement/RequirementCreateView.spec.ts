@@ -32,12 +32,19 @@ afterEach(() => { wrappers.splice(0).forEach(wrapper => wrapper.unmount()); vi.r
 it('shows persistent field errors, focuses the first invalid input, and clears errors when corrected', async () => {
   const wrapper = view(); await flushPromises()
   await wrapper.get('form').trigger('submit'); await flushPromises()
-  await vi.waitFor(() => expect(wrapper.text()).toContain('标题至少需要 2 个字符'))
-  expect(wrapper.text()).toContain('需求描述至少需要 2 个字符')
-  expect(document.activeElement).toBe(wrapper.get('[data-field="title"] input').element)
+  const title = wrapper.get('[data-field="title"]')
+  const description = wrapper.get('[data-field="description"]')
+  await vi.waitFor(() => {
+    expect(title.text()).toContain('标题至少需要 2 个字符')
+    expect(description.text()).toContain('需求描述至少需要 2 个字符')
+    expect(document.activeElement).toBe(title.get('input').element)
+  })
   expect(mocks.create).not.toHaveBeenCalled()
   await valid(wrapper); await flushPromises()
-  await vi.waitFor(() => expect(wrapper.text()).not.toContain('至少需要 2 个字符'))
+  await vi.waitFor(() => {
+    expect(title.text()).not.toContain('标题至少需要 2 个字符')
+    expect(description.text()).not.toContain('需求描述至少需要 2 个字符')
+  })
 })
 it('requires a confirmer and sends only the selected required role when delivery personnel are empty', async () => {
   mocks.create.mockResolvedValue({ id: 41 })

@@ -753,6 +753,9 @@ def test_mysql_publish_rolls_back_after_all_business_updates(mysql_api, monkeypa
 
     client, engine, _, headers = mysql_api
     ids = ready(mysql_api)
+    audit_query = select(OperationLog.__table__).order_by(OperationLog.id)
+    with Session(engine) as session:
+        audit_before_publish = session.execute(audit_query).all()
     original = AuditService.log
 
     def fail_after_updates(self, entity_type, entity_id, action, **kwargs):
@@ -777,8 +780,9 @@ def test_mysql_publish_rolls_back_after_all_business_updates(mysql_api, monkeypa
         assert session.get(Feedback, ids["feedback"]).status == "REQUIREMENT_LINKED"
         for model in (Version, Requirement, Feedback):
             assert session.get(model, ids[model.__name__.lower()]).revision == 1
-        for model in (Release, Notification, OperationLog):
+        for model in (Release, Notification):
             assert session.scalar(select(func.count(model.id))) == 0
+        assert session.execute(audit_query).all() == audit_before_publish
 
 
 @pytest.mark.parametrize(

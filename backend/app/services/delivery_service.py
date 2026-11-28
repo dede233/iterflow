@@ -26,6 +26,7 @@ from app.models.entities import (
 )
 from app.models.enums import NotificationType, UserStatus
 from app.repositories.feedback_repository import FeedbackRepository
+from app.repositories.mail_delivery_repository import MailDeliveryRepository
 from app.repositories.requirement_repository import RequirementRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.mail import DeliveryOut
@@ -112,9 +113,8 @@ class DeliveryService:
             return event.entity_id == user.id
         repo = UserRepository(self.db)
         kind = event.entity_type.lower()
-        if f"rd.{kind}.view" not in repo.permission_codes(
-            user.id
-        ) and "*" not in repo.permission_codes(user.id):
+        permissions = repo.permission_codes(user.id)
+        if f"rd.{kind}.view" not in permissions and "*" not in permissions:
             return False
         scope = repo.data_scope(user.id)
         if kind == "feedback":
@@ -245,12 +245,19 @@ class DeliveryService:
         self.db.commit()
         return len(events)
 
-    def _message(self, event: CollaborationEvent, delivery: NotificationDelivery, email: str):
+    def _message(
+        self,
+        event: CollaborationEvent,
+        delivery: NotificationDelivery,
+        email: str,
+        resend_generation: int | None = None,
+    ):
         settings = get_settings()
         message = EmailMessage()
         message["From"] = settings.smtp_from
         message["To"] = email
-        message["Message-ID"] = f"<{delivery.id}@iterflow.notifications>"
+        generation = f".resend-{resend_generation}" if resend_generation is not None else ""
+        message["Message-ID"] = f"<{delivery.id}{generation}@iterflow.notifications>"
         if event.action == "VERIFY_EMAIL":
             code = verification_code(event.id)
             public_url = urlsplit(settings.app_public_url)
@@ -445,6 +452,38 @@ class DeliveryService:
                 if row.status == "RETRY":
                     self._schedule_retry(row, datetime.now(UTC))
 
+    def email_target(
+        self,
+        row: NotificationDelivery,
+        event: CollaborationEvent,
+        user: User,
+        pref: MailPreference | None,
+        settings: Settings,
+        now: datetime,
+    ) -> tuple[str | None, str | None]:
+        if event.action == "VERIFY_EMAIL":
+            email = pref.pending_email if pref else None
+            eligible = current_email_challenge_id(pref, user.revision, now) == event.id
+        else:
+            email = user.email
+            verified_at = current_email_verified_at(email, pref)
+            eligible = (
+                pref is not None
+                and pref.mode != "OFF"
+                and verified_at is not None
+                and aware(event.created_at) >= aware(verified_at)
+                and (pref.mode == "ALL" or self.is_task(event, user.id))
+            )
+        if not eligible or not email or email != row.queued_email:
+            return None, "PREFERENCE_OR_EMAIL_CHANGED"
+        if not settings.smtp_enabled:
+            return None, "SMTP_DISABLED"
+        if settings.app_env != "production" and email.lower() not in {
+            item.strip().lower() for item in settings.smtp_allowlist.split(",")
+        }:
+            return None, "NOT_ALLOWLISTED"
+        return email, None
+
     def deliver_one(self) -> bool:
         now = datetime.now(UTC)
         row = self.db.scalar(
@@ -476,7 +515,8 @@ class DeliveryService:
             return True
         row.status = "SENDING"
         row.attempts += 1
-        row.next_attempt_at = now + timedelta(minutes=5)
+        claimed_until = now + timedelta(minutes=5)
+        row.next_attempt_at = claimed_until
         row_id = row.id
         claimed_attempt = row.attempts
         self.db.commit()  # Durable lease survives a worker crash during external sends.
@@ -485,7 +525,11 @@ class DeliveryService:
         )
         assert row is not None
         self.db.expire_all()
-        if row.channel == "WECOM" and (row.status != "SENDING" or row.attempts != claimed_attempt):
+        if row.channel in {"EMAIL", "WECOM"} and (
+            row.status != "SENDING"
+            or row.attempts != claimed_attempt
+            or aware(row.next_attempt_at) != claimed_until
+        ):
             self.db.rollback()
             return True
         event = self.db.get(CollaborationEvent, row.event_id)
@@ -536,39 +580,23 @@ class DeliveryService:
         # Match email changes/unbinding's user -> preference lock order. Keep the
         # account locked until SMTP finishes so a completed unbind cannot be raced.
         pref = self.db.get(MailPreference, user.id, with_for_update=True, populate_existing=True)
-        email = user.email
-        verified_at = current_email_verified_at(email, pref)
-        eligible = bool(
-            pref
-            and pref.mode != "OFF"
-            and verified_at is not None
-            and aware(event.created_at) >= aware(verified_at)
-            and (pref.mode == "ALL" or self.is_task(event, user.id))
-        )
-        if event.action == "VERIFY_EMAIL":
-            email = pref.pending_email if pref else None
-            eligible = current_email_challenge_id(pref, user.revision, now) == event.id
-        if not eligible or not email or email != row.queued_email:
-            row.status = "SKIPPED"
-            row.last_error = "PREFERENCE_OR_EMAIL_CHANGED"
-            self.db.commit()
-            return True
-        if not settings.smtp_enabled:
+        generation = MailDeliveryRepository(self.db).message_generation(row.id)
+        now = datetime.now(UTC)
+        email, error = self.email_target(row, event, user, pref, settings, now)
+        if error == "SMTP_DISABLED":
             row.status = "RETRY"
-            row.last_error = "SMTP_DISABLED"
+            row.last_error = error
             row.attempts -= 1
             row.next_attempt_at = now + timedelta(minutes=5)
             self.db.commit()
             return True
-        if settings.app_env != "production" and email.lower() not in {
-            x.strip().lower() for x in settings.smtp_allowlist.split(",")
-        }:
+        if email is None:
             row.status = "SKIPPED"
-            row.last_error = "NOT_ALLOWLISTED"
+            row.last_error = error
             self.db.commit()
             return True
         try:
-            send_smtp(self._message(event, row, email), email)
+            send_smtp(self._message(event, row, email, generation), email)
             row.status = "SENT"
             row.last_error = None
         except (TimeoutError, smtplib.SMTPServerDisconnected):
@@ -606,11 +634,7 @@ class DeliveryService:
         return rows
 
     def retry(self, delivery_id: str, attempts: int):
-        row = self.db.scalar(
-            select(NotificationDelivery)
-            .where(NotificationDelivery.id == delivery_id, NotificationDelivery.channel == "EMAIL")
-            .with_for_update()
-        )
+        row = MailDeliveryRepository(self.db).lock_email_delivery(delivery_id)
         if row is None:
             raise NotFoundError("投递记录不存在")
         if row.status != "FAILED" or row.attempts != attempts:

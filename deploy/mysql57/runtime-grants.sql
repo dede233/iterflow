@@ -51,4 +51,5 @@ GRANT SELECT, INSERT ON `iterflow`.`rd_requirement_online_feedback` TO 'iterflow
 GRANT SELECT, INSERT, UPDATE ON `iterflow`.`sys_wecom_preference` TO 'iterflow_runtime'@'APP_HOST';
 
 -- Material production records (mysql57_0019).
+GRANT SELECT, INSERT, DELETE ON `iterflow`.`ops_ad_production_cc_user` TO 'iterflow_runtime'@'APP_HOST';
 GRANT SELECT, INSERT, UPDATE ON `iterflow`.`ops_ad_production` TO 'iterflow_runtime'@'APP_HOST';

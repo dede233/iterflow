@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { createUser, listUsers, sendUserEmailVerification, updateUser, updateUserRoles, updateUserStatus } from '@/api/users'
 import { listRoles } from '@/api/roles'
+import { getWecomPreferences } from '@/api/wecom'
 import EmailSuggestionInput from '@/components/ui/EmailSuggestionInput.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import SectionCard from '@/components/ui/SectionCard.vue'
@@ -44,6 +45,7 @@ const saving = ref(false)
 const roleDrawerVisible = ref(false)
 const roleUser = ref<UserItem | null>(null)
 const roleSaving = ref(false)
+const wecomEnabled = ref(false)
 const wecomUser = ref<UserItem | null>(null)
 const wecomDialogVisible = ref(false)
 const verificationSending = reactive(new Set<number>())
@@ -74,6 +76,7 @@ const canEditUsers = computed(() => can('sys.user.edit'))
 const canChangeUserStatus = computed(() => hasAllScope.value && can('sys.user.status'))
 const operatorIsSuperAdmin = computed(() => isCurrentUserSuperAdmin(auth.user, roles.value))
 const canManageUserContacts = computed(() => hasAllScope.value && canEditUsers.value && operatorIsSuperAdmin.value)
+const canManageWecomBindings = computed(() => canManageUserContacts.value && wecomEnabled.value)
 const assignableRoles = computed(() => roles.value.filter(isAssignableRole))
 
 type VerificationStatus = UserItem['email_verification_status']
@@ -143,7 +146,7 @@ function openRoles(user: UserItem): void {
 }
 
 function openWecomBinding(user: UserItem): void {
-  if (!canManageUserContacts.value || wecomUser.value) return
+  if (!canManageWecomBindings.value || wecomUser.value) return
   wecomUser.value = user
   wecomDialogVisible.value = true
 }
@@ -277,6 +280,16 @@ function roleNames(user: UserItem): string {
   return labels.length ? labels.join('、') : '未分配'
 }
 
+watch(canManageUserContacts, async (canManage, _, onCleanup) => {
+  wecomEnabled.value = false
+  if (!canManage) return
+
+  let active = true
+  onCleanup(() => { active = false })
+  const preferences = await getWecomPreferences().catch(() => undefined)
+  if (active) wecomEnabled.value = preferences?.enabled === true
+}, { immediate: true })
+
 onMounted(load)
 </script>
 
@@ -318,7 +331,7 @@ onMounted(load)
           <StatusTag :status="scope.row.status" :label="scope.row.status === 'ACTIVE' ? '启用' : '停用'" />
         </template>
       </el-table-column>
-      <el-table-column v-if="canEditUsers || canAssignUserRoles || canChangeUserStatus" label="操作" :width="canManageUserContacts ? 290 : 240" fixed="right">
+      <el-table-column v-if="canEditUsers || canAssignUserRoles || canChangeUserStatus" label="操作" :width="canManageWecomBindings ? 290 : 240" fixed="right">
         <template #default="scope">
           <div class="user-table-actions">
             <el-button v-if="canEditUsers" link type="primary" @click="openEdit(scope.row)">编辑</el-button>
@@ -327,7 +340,7 @@ onMounted(load)
               {{ scope.row.status === 'ACTIVE' ? '停用' : '启用' }}
             </el-button>
             <el-button v-if="maySendVerification(scope.row)" link type="primary" :loading="verificationSending.has(scope.row.id)" @click="sendVerification(scope.row)">发送验证邮件</el-button>
-            <el-button v-if="canManageUserContacts" link type="primary" @click="openWecomBinding(scope.row)">企业微信绑定</el-button>
+            <el-button v-if="canManageWecomBindings" link type="primary" @click="openWecomBinding(scope.row)">企业微信绑定</el-button>
           </div>
         </template>
       </el-table-column>
@@ -355,7 +368,7 @@ onMounted(load)
           <el-button v-if="canAssignUserRoles" @click="openRoles(user)">配置角色</el-button>
           <el-button v-if="mayChangeStatus(user)" :type="user.status === 'ACTIVE' ? 'danger' : 'success'" plain @click="toggleStatus(user)">{{ user.status === 'ACTIVE' ? '停用' : '启用' }}</el-button>
           <el-button v-if="maySendVerification(user)" type="primary" plain :loading="verificationSending.has(user.id)" @click="sendVerification(user)">发送验证邮件</el-button>
-          <el-button v-if="canManageUserContacts" @click="openWecomBinding(user)">企业微信绑定</el-button>
+          <el-button v-if="canManageWecomBindings" @click="openWecomBinding(user)">企业微信绑定</el-button>
         </div>
       </article>
       <EmptyState v-if="!loading && !rows.length" description="暂无用户" compact />
@@ -420,7 +433,7 @@ onMounted(load)
       @save="saveRoles"
     />
     <UserWecomBindingDialog
-      v-if="canManageUserContacts && wecomUser"
+      v-if="canManageWecomBindings && wecomUser"
       v-model="wecomDialogVisible"
       :user="wecomUser"
       @closed="wecomUser = null"

@@ -30,10 +30,13 @@ class AuditRepository:
         self.db = db
 
     @staticmethod
-    def _scoped_version_ids(user_id: int):
-        return select(Version.id).where(
-            or_(Version.owner_id == user_id, Version.created_by == user_id)
-        )
+    def _version_ids(user_id: int, all_scope: bool, *, active_entities_only: bool):
+        query = select(Version.id)
+        if not all_scope:
+            query = query.where(or_(Version.owner_id == user_id, Version.created_by == user_id))
+        if active_entities_only:
+            query = query.where(Version.deleted_at.is_(None))
+        return query
 
     @classmethod
     def _visibility_criteria(
@@ -43,6 +46,7 @@ class AuditRepository:
         data_scope: DataScope,
         entity_types: set[str],
         ad_production_kinds: Collection[AdProductionKind] = (),
+        active_entities_only: bool = False,
     ):
         """Build an allow-list predicate for records the caller may inspect."""
 
@@ -51,6 +55,8 @@ class AuditRepository:
 
         if "FEEDBACK" in entity_types:
             predicate = true() if all_scope else Feedback.submitter_id == user_id
+            if active_entities_only:
+                predicate = and_(predicate, Feedback.deleted_at.is_(None))
             branches.append(
                 and_(
                     OperationLog.entity_type == "FEEDBACK",
@@ -60,6 +66,8 @@ class AuditRepository:
 
         if "REQUIREMENT" in entity_types:
             predicate = true() if all_scope else RequirementRepository.self_criterion(user_id)
+            if active_entities_only:
+                predicate = and_(predicate, Requirement.deleted_at.is_(None))
             branches.append(
                 and_(
                     OperationLog.entity_type == "REQUIREMENT",
@@ -68,7 +76,9 @@ class AuditRepository:
             )
 
         if "VERSION" in entity_types:
-            version_ids = select(Version.id) if all_scope else cls._scoped_version_ids(user_id)
+            version_ids = cls._version_ids(
+                user_id, all_scope, active_entities_only=active_entities_only
+            )
             branches.append(
                 and_(
                     OperationLog.entity_type == "VERSION",
@@ -77,7 +87,9 @@ class AuditRepository:
             )
 
         if "RELEASE" in entity_types:
-            version_ids = select(Version.id) if all_scope else cls._scoped_version_ids(user_id)
+            version_ids = cls._version_ids(
+                user_id, all_scope, active_entities_only=active_entities_only
+            )
             release_ids = select(Release.id).where(Release.version_id.in_(version_ids))
             branches.append(
                 and_(OperationLog.entity_type == "RELEASE", OperationLog.entity_id.in_(release_ids))
@@ -156,7 +168,10 @@ class AuditRepository:
                 select(OperationLog)
                 .where(
                     self._visibility_criteria(
-                        user_id=user_id, data_scope=data_scope, entity_types=entity_types
+                        user_id=user_id,
+                        data_scope=data_scope,
+                        entity_types=entity_types,
+                        active_entities_only=True,
                     )
                 )
                 .order_by(OperationLog.created_at.desc(), OperationLog.id.desc())

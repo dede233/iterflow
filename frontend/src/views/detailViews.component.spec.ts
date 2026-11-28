@@ -100,6 +100,7 @@ vi.mock('@/api/feedbacks', () => ({
 import VersionDetailView from '@/views/version/VersionDetailView.vue'
 import RequirementDetailView from '@/views/requirement/RequirementDetailView.vue'
 import FeedbackDetailView from '@/views/feedback/FeedbackDetailView.vue'
+import EntityLifecycleMenu from '@/components/EntityLifecycleMenu.vue'
 
 const version: VersionItem = {
   id: 7,
@@ -545,6 +546,30 @@ describe('detail views enforce permission-aware loading in mounted components', 
     expect(buttons).toContain('编辑')
     for (const action of actions) expect(buttons).not.toContain(action)
     wrapper.unmount()
+  })
+
+  it.each([
+    { component: FeedbackDetailView, permission: 'rd.feedback.view', get: mocks.getFeedback, item: ownNewFeedback, kind: 'feedbacks' },
+    { component: RequirementDetailView, permission: 'rd.requirement.view', get: mocks.getRequirement, item: ownDraftRequirement, kind: 'requirements' },
+    { component: VersionDetailView, permission: 'rd.version.view', get: mocks.getVersion, item: version, kind: 'versions' },
+  ])('uses server deletion eligibility and closes embedded $kind on success', async ({ component, permission, get, item, kind }) => {
+    permissionSet(permission)
+    const options = { props: { embedded: true, embeddedId: item.id }, global: { stubs, directives: { loading: {} } } }
+    get.mockResolvedValue({ ...item, can_delete: false })
+    const denied = mount(component, options)
+    await flushPromises()
+    expect(denied.findComponent(EntityLifecycleMenu).exists()).toBe(false)
+    denied.unmount()
+
+    get.mockResolvedValue({ ...item, can_delete: true })
+    const allowed = mount(component, options)
+    await flushPromises()
+    const menu = allowed.getComponent(EntityLifecycleMenu)
+    expect(menu.props('kind')).toBe(kind)
+    menu.vm.$emit('deleted')
+    expect(allowed.emitted('updated')).toEqual([[]])
+    expect(allowed.emitted('close')).toEqual([[]])
+    allowed.unmount()
   })
 
   it.each([

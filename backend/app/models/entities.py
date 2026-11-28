@@ -410,6 +410,11 @@ class Version(Base, AuditMixin):
         select(BusinessSystem.name).where(BusinessSystem.id == system_id).scalar_subquery()
     )
     __tablename__ = "rd_version"
+    deleted_at: Mapped[datetime | None] = mapped_column(timestamp_type())
+    deleted_by: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("sys_user.id", name="fk_rd_version_deleted_by")
+    )
+    delete_reason: Mapped[str | None] = mapped_column(String(500))
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     version_no: Mapped[str] = mapped_column(identifier_type(32), unique=True, index=True)
     name: Mapped[str] = mapped_column(String(100))
@@ -596,6 +601,11 @@ class AttachmentRelation(Base):
 
 class AdProduction(Base, AuditMixin):
     __tablename__ = "ops_ad_production"
+    deleted_at: Mapped[datetime | None] = mapped_column(timestamp_type())
+    deleted_by: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("sys_user.id", name="fk_ops_ad_production_deleted_by")
+    )
+    delete_reason: Mapped[str | None] = mapped_column(String(500))
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     work_date: Mapped[date] = mapped_column(Date)
     title: Mapped[str | None] = mapped_column(String(200))
@@ -644,7 +654,8 @@ class AdProduction(Base, AuditMixin):
             "(status = 'COMPLETED' AND completed_by_id IS NOT NULL "
             "AND processing_result IS NOT NULL "
             "AND char_length(processing_result) BETWEEN 1 AND 4000) "
-            "OR (status IN ('NOT_STARTED', 'IN_PROGRESS') AND processing_result IS NULL)))",
+            "OR (status IN ('NOT_STARTED', 'IN_PROGRESS', 'WITHDRAWN') "
+            "AND processing_result IS NULL)))",
             name="ck_ad_production_kind_workflow",
         ).ddl_if(dialect="postgresql"),
         Index("ix_ad_production_kind_created_at_id", "kind", "created_at", "id"),
@@ -654,6 +665,21 @@ class AdProduction(Base, AuditMixin):
         Index("ix_ad_production_receiver_work_date_id", "receiver_id", "work_date", "id"),
         Index("ix_ad_production_completed_by_id", "completed_by_id"),
     )
+
+
+class AdProductionCCUser(Base):
+    __tablename__ = "ops_ad_production_cc_user"
+    ad_production_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("ops_ad_production.id", name="fk_ad_production_cc_record", ondelete="RESTRICT"),
+        primary_key=True,
+    )
+    user_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("sys_user.id", name="fk_ad_production_cc_user", ondelete="RESTRICT"),
+        primary_key=True,
+    )
+    __table_args__ = (Index("ix_ad_production_cc_user_id", "user_id"),)
 
 
 class Comment(Base, AuditMixin):

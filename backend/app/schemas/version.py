@@ -119,6 +119,7 @@ class PublishVersionRequest(BaseModel):
 
 
 class VersionOut(BaseModel):
+    can_delete: bool = False
     release_frozen: bool = Field(default=False, title="首次发布内容已冻结")
     system_id: int | None
     system_name: str | None = None

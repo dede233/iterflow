@@ -7,7 +7,7 @@ import RequirementOnlineReview from './RequirementOnlineReview.vue'
 import { computed, defineAsyncComponent, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import RequirementNumber from '@/components/RequirementNumber.vue'
 import RichTextContent from '@/components/RichTextContent.vue'
-import DeleteEntityButton from '@/components/DeleteEntityButton.vue'
+import EntityLifecycleMenu from '@/components/EntityLifecycleMenu.vue'
 import { plainTextToHtml, richTextPlainText } from '@/utils/richText'
 const RichTextEditor = defineAsyncComponent(() => import('@/components/RichTextEditor.vue'))
 const VersionCreateView = defineAsyncComponent(() => import('@/views/version/VersionCreateView.vue'))
@@ -300,7 +300,7 @@ onMounted(load)
         <RouterLink v-if="!props.embedded" class="back-link" :to="backTo">返回列表</RouterLink>
         <el-button v-if="canEditContent" @click="openEdit">编辑</el-button>
         <el-button v-if="canCreateVersion" @click="createVersionDialog = true">创建版本</el-button>
-        <DeleteEntityButton v-if="canEdit && item.status === 'DRAFT' && !item.current_version_id && item.source === 'DIRECT'" kind="requirements" :id="item.id" :revision="item.revision" :title="item.title" @refresh="load" @deleted="onDeleted" />
+        <EntityLifecycleMenu v-if="item.can_delete === true" kind="requirements" :id="item.id" :record-number="item.requirement_no" :revision="item.revision" :title="item.title" @refresh="load" @deleted="onDeleted" />
 
         </template>
       </PageHeader>

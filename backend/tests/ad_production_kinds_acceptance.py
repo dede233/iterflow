@@ -10,6 +10,7 @@ from ad_production_acceptance import (
     form,
     publication_fields,
     user_with_role,
+    user_with_scope,
 )
 from alembic.config import Config
 from feedback_ad_rich_text_acceptance import IMAGE_KEY, RICH, stored_image_id
@@ -19,6 +20,7 @@ from sqlalchemy.orm import Session
 
 from alembic import command
 from app.models.entities import (
+    AdProduction,
     NotificationDelivery,
     OperationLog,
     Permission,
@@ -92,6 +94,219 @@ def exercise_ad_production_default_roles(api):
         assert client.get(f"{PATH}/{design_record['id']}", headers=operations).status_code == 200
 
 
+def exercise_ad_production_creator_correction(api):
+    client, engine, _, admin = api
+    with Session(engine) as session:
+        operations_role = session.scalar(
+            select(Role.id).where(Role.code == "CUSTOMER_SERVICE_OPERATIONS")
+        )
+    creator_id, creator = user_with_role(
+        client, engine, admin, name="correction_owner", role_id=operations_role
+    )
+    peer_id, peer = user_with_role(
+        client, engine, admin, name="correction_peer", role_id=operations_role
+    )
+    _, scoped_peer = user_with_scope(
+        client,
+        engine,
+        admin,
+        name="correction_scoped_peer",
+        permissions={
+            code
+            for code in MATERIAL_PERMISSIONS | MERCHANT_PERMISSIONS
+            if not code.endswith(".edit")
+        },
+    )
+    first_id, first = create_ad_receiver(client, engine, admin, name="correction_first_designer")
+    next_id, designer = create_ad_receiver(client, engine, admin, name="correction_next_designer")
+
+    def correct(record, headers=creator, *, images=(), inline=(), removals=(), **changes):
+        fields = {
+            key: record[key]
+            for key in ("work_date", "issuer", "status", "content_format", "content", "revision")
+        }
+        return client.patch(
+            f"{PATH}/{record['id']}",
+            headers=headers,
+            files=[*form({**fields, **changes}, *images, removals=removals), *inline],
+        )
+
+    def options(record, headers):
+        return client.get(f"{PATH}/cc-options", headers=headers, params={"ad_id": record["id"]})
+
+    def notices(record, headers):
+        reply = client.get("/api/v1/notifications", headers=headers)
+        assert reply.status_code == 200, reply.text
+        return [
+            item
+            for item in reply.json()
+            if item["entity_id"] == record["id"] and item["entity_type"].startswith("AD_PRODUCTION")
+        ]
+
+    for kind in (MATERIAL, MERCHANT):
+        submitted = client.post(
+            PATH,
+            headers=creator,
+            files=form(
+                publication_fields(first_id, kind=kind), ("incorrect.png", PNG, "image/png")
+            ),
+        )
+        assert submitted.status_code == 201, submitted.text
+        record = submitted.json()
+        detail = f"{PATH}/{record['id']}"
+        assert client.get(detail, headers=peer).status_code == 200
+        assert correct(record, peer, title="他人试图修改").status_code == 403
+        assert correct(record, scoped_peer, title="范围外修改").status_code == 404
+        assert peer_id in {item["id"] for item in options(record, creator).json()}
+        assert options(record, peer).status_code == 403
+        assert options(record, scoped_peer).status_code == 404
+        assert _status(client, creator, record, "IN_PROGRESS").status_code == 403
+        for changes in (
+            {"work_date": "2026-11-10"},
+            {"issuer": "冒用发布人"},
+            {"status": "IN_PROGRESS"},
+            {"completed_by_id": next_id},
+            {"processing_result": RESULT},
+        ):
+            assert correct(record, title="不应落库", **changes).status_code == 403
+        for invalid_receiver in (0, creator_id):
+            invalid = correct(record, receiver_id=invalid_receiver)
+            assert invalid.status_code == 422, invalid.text
+            assert invalid.json()["data"]["field"] == "receiver_id"
+        assert client.get(detail, headers=creator).json() == record
+
+        old_file = record["images"][0]["file_id"]
+        corrected = correct(
+            record,
+            title="更正设计标题",
+            content=RICH,
+            content_format="HTML",
+            due_at="2026-12-10T13:30:00+08:00",
+            receiver_id=next_id,
+            cc_user_ids=f"[{next_id}, {peer_id}]",
+            images=(("replacement.png", PNG, "image/png"),),
+            inline=(("content_images", (IMAGE_KEY, PNG, "image/png")),),
+            removals=(old_file,),
+        )
+        assert corrected.status_code == 200, corrected.text
+        updated = corrected.json()
+        assert updated["revision"] == record["revision"] + 1
+        assert updated["title"] == "更正设计标题" and updated["receiver_id"] == next_id
+        assert updated["due_at"].startswith("2026-12-10T05:30:00")
+        assert {item["id"] for item in updated["cc_users"]} == {next_id, peer_id}
+        for field in (
+            "created_at",
+            "created_by",
+            "issuer",
+            "kind",
+            "work_date",
+            "status",
+            "processing_result",
+            "completed_by_id",
+        ):
+            assert updated[field] == record[field]
+        assert client.get(detail, headers=first).status_code == 404
+        assert client.get(detail, headers=designer).json() == {**updated, "can_delete": False}
+        assert client.get(f"{detail}/images/{old_file}", headers=creator).status_code == 404
+        replacement_file = updated["images"][0]["file_id"]
+        assert updated["images"][0]["original_name"] == "replacement.png"
+        assert client.get(f"{detail}/images/{replacement_file}", headers=creator).content == PNG
+        inline_file = stored_image_id(updated["content"])
+        assert client.get(f"{detail}/content-images/{inline_file}", headers=creator).content == PNG
+        expected_notices = int(kind == MERCHANT)
+        assert len(_notices(client, first, record["id"])) == expected_notices
+        assignment = notices(record, designer)
+        assert len(assignment) == 1
+        assert assignment[0]["title"].startswith("新的商家广告" if kind == MERCHANT else "你被抄送")
+        assert len(notices(record, peer)) == 1
+        assert options(record, peer).status_code == 403
+
+        stale = correct(record, receiver_id=next_id, cc_user_ids="[]")
+        assert stale.status_code == 409, stale.text
+        assert stale.json()["data"]["current_revision"] == updated["revision"]
+        assert stale.json()["data"]["current_updated_by"] == creator_id
+        assert client.get(detail, headers=creator).json() == updated
+        started = _status(client, designer, updated, "IN_PROGRESS")
+        assert started.status_code == 200, started.text
+        active = started.json()
+        assert correct(active, receiver_id=first_id).status_code == 403
+        assert correct(active, receiver_id=0).status_code == 403
+        assert options(active, creator).status_code == 200
+        continued = correct(active, title="处理中的补充更正", clear_due_at=True, cc_user_ids="[]")
+        assert continued.status_code == 200, continued.text
+        active = continued.json()
+        assert active["status"] == "IN_PROGRESS" and active["due_at"] is None
+        assert active["receiver_id"] == next_id
+        assert active["cc_users"] == []
+        if kind == MATERIAL:
+            shipment = _status(client, designer, active, "SHIPPING")
+            assert shipment.status_code == 200, shipment.text
+            mailed = correct(shipment.json(), title="邮寄中的补充更正")
+            assert mailed.status_code == 200 and mailed.json()["status"] == "SHIPPING"
+            active = mailed.json()
+
+        receipt = {"completed_by_id": next_id}
+        if kind == MERCHANT:
+            receipt["processing_result"] = RESULT
+        completed = _status(client, designer, active, "COMPLETED", **receipt)
+        assert completed.status_code == 200, completed.text
+        finished = completed.json()
+        stale = correct(active, title="完成期间试图修改")
+        assert stale.status_code == 409, stale.text
+        assert stale.json()["data"]["current_revision"] == finished["revision"]
+        assert (
+            correct(finished, title="完成后试图修改", cc_user_ids=f"[{peer_id}]").status_code == 403
+        )
+        assert options(finished, creator).status_code == 403
+        assert client.get(detail, headers=creator).json() == finished
+        assert len(notices(record, designer)) == 2
+        assert len(notices(record, peer)) == 2
+        assert len(_notices(client, creator, record["id"])) == expected_notices
+
+        with Session(engine) as session:
+            audits = session.scalars(
+                select(OperationLog)
+                .where(
+                    OperationLog.entity_type == "AD_PRODUCTION",
+                    OperationLog.entity_id == record["id"],
+                    OperationLog.action == "UPDATE",
+                )
+                .order_by(OperationLog.id)
+            ).all()
+        assert [audit.operator_id for audit in audits] == [creator_id] * (
+            3 if kind == MATERIAL else 2
+        )
+        assert audits[0].before_data["receiver_id"] == first_id
+        assert audits[0].after_data["receiver_id"] == next_id
+        assert audits[0].before_data["image_ids"] == [old_file]
+        assert audits[0].after_data["image_ids"] == [replacement_file]
+        assert audits[0].before_data["cc_user_ids"] == []
+        assert audits[0].after_data["cc_user_ids"] == sorted([next_id, peer_id])
+        assert audits[1].after_data["cc_user_ids"] == []
+
+    historical = _issue(client, creator, first_id, status="IN_PROGRESS")
+    with Session(engine) as session:
+        row = session.get(AdProduction, historical["id"])
+        row.receiver_id = None
+        row.completed_by_id = first_id
+        row.issuer = "  历史发布人  "
+        row.content = "旧纯文本\r\n保留原始换行"
+        session.commit()
+    historical = client.get(f"{PATH}/{historical['id']}", headers=creator).json()
+    assert correct(historical, receiver_id=0).status_code == 403
+    amended = correct(historical, title="更正历史标题")
+    assert amended.status_code == 200, amended.text
+    for field in (
+        "receiver_id",
+        "completed_by_id",
+        "issuer",
+        "content",
+        "content_format",
+        "status",
+    ):
+        assert amended.json()[field] == historical[field]
+
+
 def exercise_ad_production_kinds(api):
     client, engine, _, admin = api
     with Session(engine) as session:
@@ -129,13 +344,16 @@ def exercise_ad_production_kinds(api):
     assert task["issuer"] == task["publisher_display_name"] == "design_merchant_publisher"
     assert task["revision"] == 1 and task["processing_result"] is None
 
+    receiver_view = {**task, "can_delete": False}
     assert client.get(PATH, headers=issuer).json()["items"] == [material]
-    assert client.get(PATH, headers=receiver, params={"kind": MERCHANT}).json()["items"] == [task]
+    assert client.get(PATH, headers=receiver, params={"kind": MERCHANT}).json()["items"] == [
+        receiver_view
+    ]
     assert client.get(PATH, headers=other, params={"kind": MERCHANT}).json()["total"] == 0
     assert client.get(PATH, headers=issuer, params={"kind": "OTHER"}).status_code == 422
     detail = f"{PATH}/{task['id']}"
     assert client.get(detail, headers=other).status_code == 404
-    assert client.get(detail, headers=receiver).json() == task
+    assert client.get(detail, headers=receiver).json() == receiver_view
     assert _status(client, other, task, "IN_PROGRESS").status_code == 404
     assert _status(client, issuer, task, "IN_PROGRESS").status_code == 403
     assert _status(client, receiver, task, "SHIPPING").status_code == 422
@@ -399,7 +617,10 @@ def exercise_ad_production_kind_permissions(api):
         assert client.get(detail, headers=allowed).json()["revision"] == 1
 
     merchant_detail = f"{PATH}/{merchant['id']}"
-    assert client.get(merchant_detail, headers=merchant_viewer).json() == merchant
+    assert client.get(merchant_detail, headers=merchant_viewer).json() == {
+        **merchant,
+        "can_delete": False,
+    }
     assert _status(client, merchant_viewer, merchant, "IN_PROGRESS").status_code == 403
     assert (
         client.patch(
@@ -524,4 +745,14 @@ def exercise_ad_production_kinds_migration(api):
             db.rollback()
     with pytest.raises(RuntimeError, match="downgrade refused"):
         command.downgrade(config, prior)
+    if mysql:
+        # MySQL has already committed the newer downgrades. Check the retained
+        # merchant row before restoring the schema required by the current API.
+        with engine.connect() as db:
+            assert db.scalar(text("SELECT version_num FROM alembic_version")) == "mysql57_0026"
+            assert db.execute(
+                text("SELECT kind, status, revision FROM ops_ad_production WHERE id = :id"),
+                {"id": task["id"]},
+            ).one() == (task["kind"], task["status"], task["revision"])
+        command.upgrade(config, "head")
     assert client.get(f"{PATH}/{task['id']}", headers=admin).json() == task

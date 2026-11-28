@@ -1,6 +1,7 @@
 import type { LocationQuery } from 'vue-router'
 import { AD_PRODUCTION_STATUSES, MERCHANT_AD_STATUSES } from '@/constants/adProduction'
 import { FEEDBACK_STATUSES, FEEDBACK_TYPES, FEEDBACK_URGENCIES } from '@/constants/feedback'
+import { MAIL_DELIVERY_KINDS, MAIL_DELIVERY_STATUSES } from '@/constants/mailDelivery'
 import { REQUIREMENT_PRIORITIES, REQUIREMENT_STATUSES } from '@/constants/requirement'
 import { VERSION_STATUSES } from '@/constants/version'
 import { auditActionOptions, auditEntityOptions } from '@/utils/auditLabels'
@@ -33,6 +34,7 @@ const schemas: Record<string, Record<string, Rule>> = {
   '/ad-productions': { page, page_size: size, keyword: shortKeyword, status: enumeration(AD_PRODUCTION_STATUSES), date_from: day, date_to: day },
   '/merchant-ads': { page, page_size: size, keyword: shortKeyword, status: enumeration(MERCHANT_AD_STATUSES), date_from: day, date_to: day },
   '/admin/audits': { page, size, entity_type: enumeration(auditEntityOptions), entity_id: positive, action: enumeration(auditActionOptions), operator_id: positive, time_from: instant, time_to: instant },
+  '/admin/mail-delivery-monitor': { page, kind: enumeration(MAIL_DELIVERY_KINDS), status: enumeration(MAIL_DELIVERY_STATUSES), user_id: positive },
 }
 
 /** Only applied, explicitly typed list fields may enter a URL. Arrays are invalid. */

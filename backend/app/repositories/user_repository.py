@@ -106,7 +106,7 @@ class UserRepository(BaseRepository[User]):
         ).all()
         return set(rows)
 
-    def can_manage_announcements(self, user_id: int) -> bool:
+    def has_enabled_builtin_super_admin_role(self, user_id: int) -> bool:
         return (
             self.db.scalar(
                 select(Role.id)
@@ -120,6 +120,15 @@ class UserRepository(BaseRepository[User]):
                 .limit(1)
             )
             is not None
+        )
+
+    def can_manage_announcements(self, user_id: int) -> bool:
+        return self.has_enabled_builtin_super_admin_role(user_id)
+
+    def can_view_mail_deliveries(self, user_id: int) -> bool:
+        return self.has_enabled_builtin_super_admin_role(user_id) or (
+            self.can_view_api_docs(user_id)
+            and not self.permission_codes(user_id).isdisjoint({"*", "sys.user.edit"})
         )
 
     def can_view_api_docs(self, user_id: int) -> bool:

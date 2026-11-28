@@ -149,7 +149,7 @@ def delete_requirement(
     requirement_id: int,
     payload: EntityDelete,
     db: Session = Depends(get_db),
-    user: User = Depends(require_permission("rd.requirement.edit")),
+    user: User = Depends(require_any_permission("rd.requirement.edit", "rd.requirement.view")),
 ):
     return EntityActionsService(db).delete("requirement", requirement_id, payload, user.id)
 
@@ -167,6 +167,7 @@ def get_requirement(
         and output.status == RequirementStatus.DRAFT
         and not output.release_frozen
     )
+    output.can_delete = EntityActionsService(db).can_delete(item, user.id)
     return output
 
 

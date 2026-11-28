@@ -37,9 +37,7 @@ class FilterOptionsRepository:
         return select(User.id, self._person_label().label("label")).where(User.id.in_(people))
 
     def owners(self, user_id: int, scope: DataScope):
-        versions = select(Version.owner_id)
-        if scope is not DataScope.ALL:
-            versions = versions.where(VersionRepository.self_criterion(user_id))
+        versions = select(Version.owner_id).where(*VersionRepository.scope_criteria(user_id, scope))
         return select(User.id, self._person_label().label("label")).where(User.id.in_(versions))
 
     def requirement_versions(self, user_id: int, scope: DataScope, can_view_versions: bool):
@@ -57,7 +55,9 @@ class FilterOptionsRepository:
             (readable, cast(Version.version_no, String).concat(" · ").concat(Version.name)),
             else_=literal("版本 #").concat(cast(Version.id, String)).concat("(无查看权限)"),
         )
-        return select(Version.id, label.label("label")).where(Version.id.in_(visible_versions))
+        return select(Version.id, label.label("label")).where(
+            Version.id.in_(visible_versions), Version.deleted_at.is_(None)
+        )
 
     def page(
         self,

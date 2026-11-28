@@ -4,7 +4,17 @@ from test_acceptance import mysql_api as mysql_api
 
 
 @pytest.mark.parametrize(
-    "scenario", ["batch", "rollback", "delete_race", "link_race", "convert_race", "version_race"]
+    "scenario",
+    [
+        "batch",
+        "rollback",
+        "delete_race",
+        "link_race",
+        "convert_race",
+        "version_race",
+        "version_delete_race",
+        "duplicate_history",
+    ],
 )
 def test_entity_actions_mysql(mysql_api, scenario, monkeypatch):
     exercise_actions(mysql_api, scenario, monkeypatch)

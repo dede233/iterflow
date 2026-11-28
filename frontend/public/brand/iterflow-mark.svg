@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">迭程 IterFlow</title>
+  <rect width="64" height="64" rx="15" fill="#2456dc"/>
+  <g transform="translate(8 0) skewX(-13)">
+    <path d="M12 22h9v26h-9z" fill="#fff"/>
+    <path d="M12 10h9v8h-9z" fill="#a9e6ff"/>
+    <path d="M26 16h27l-5 8H35v5h13l-5 8h-8v11h-9z" fill="#fff"/>
+  </g>
+</svg>

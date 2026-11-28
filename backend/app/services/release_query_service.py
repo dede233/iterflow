@@ -5,7 +5,6 @@ from sqlalchemy.orm import Session
 
 from app.core.exceptions import NotFoundError
 from app.models.entities import Release, User, Version
-from app.models.enums import DataScope
 from app.repositories.user_repository import UserRepository
 from app.repositories.version_repository import VersionRepository
 
@@ -27,7 +26,7 @@ class ReleaseQueryService:
         released_before: datetime | None = None,
     ) -> dict[str, object]:
         scope = UserRepository(self.db).data_scope(actor.id)
-        criteria = [] if scope is DataScope.ALL else [VersionRepository.self_criterion(actor.id)]
+        criteria = VersionRepository.scope_criteria(actor.id, scope)
         if version_id is not None:
             criteria.append(Release.version_id == version_id)
         if released_from is not None:
@@ -57,9 +56,7 @@ class ReleaseQueryService:
 
     def get_for_user(self, release_id: int, actor: User) -> Release:
         scope = UserRepository(self.db).data_scope(actor.id)
-        criteria = [Release.id == release_id]
-        if scope is not DataScope.ALL:
-            criteria.append(VersionRepository.self_criterion(actor.id))
+        criteria = [Release.id == release_id, *VersionRepository.scope_criteria(actor.id, scope)]
         release = self.db.scalar(
             select(Release).join(Version, Version.id == Release.version_id).where(*criteria)
         )

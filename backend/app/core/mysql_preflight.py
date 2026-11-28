@@ -3,7 +3,7 @@
 from sqlalchemy import BigInteger, inspect, text
 from sqlalchemy.dialects.mysql import DATETIME, VARCHAR
 
-CURRENT_MYSQL_HEAD = "mysql57_0027"
+CURRENT_MYSQL_HEAD = "mysql57_0029"
 
 
 def validate_mysql(
@@ -119,11 +119,19 @@ def validate_mysql(
                     "mysql57_0024",
                     "mysql57_0025",
                     "mysql57_0026",
+                    "mysql57_0027",
+                    "mysql57_0028",
                 }
             )
         ):
             raise RuntimeError("MySQL Alembic head is missing or unsupported")
-        ad_production_kind_heads = {"mysql57_0025", "mysql57_0026", CURRENT_MYSQL_HEAD}
+        ad_production_kind_heads = {
+            "mysql57_0025",
+            "mysql57_0026",
+            "mysql57_0027",
+            "mysql57_0028",
+            CURRENT_MYSQL_HEAD,
+        }
         ad_production_publication_heads = {"mysql57_0023", "mysql57_0024"}
         ad_production_publication_heads |= ad_production_kind_heads
         ad_production_people_heads = {"mysql57_0021", "mysql57_0022"} | (
@@ -169,6 +177,8 @@ def validate_mysql(
             business_tables -= {"sys_release_target", "rd_release_batch", "rd_release_batch_target"}
         if head not in wecom_heads:
             business_tables.remove("sys_wecom_preference")
+        if head not in {"mysql57_0028", CURRENT_MYSQL_HEAD}:
+            business_tables.discard("ops_ad_production_cc_user")
         if head not in ad_production_heads:
             business_tables.remove("ops_ad_production")
         if head not in online_review_heads:
@@ -192,6 +202,32 @@ def validate_mysql(
                 "Initialized schema table set differs from the MySQL baseline; "
                 "check migrations and runtime table grants"
             )
+        if head == CURRENT_MYSQL_HEAD:
+            for table in ("rd_version", "ops_ad_production"):
+                columns = {column["name"] for column in inspect(connection).get_columns(table)}
+                if not {"deleted_at", "deleted_by", "delete_reason"} <= columns:
+                    raise RuntimeError(f"Soft deletion columns missing from {table}")
+        if head in {"mysql57_0028", CURRENT_MYSQL_HEAD}:
+            inspector = inspect(connection)
+            table = "ops_ad_production_cc_user"
+            if inspector.get_pk_constraint(table)["constrained_columns"] != [
+                "ad_production_id",
+                "user_id",
+            ]:
+                raise RuntimeError("Ad production CC membership uniqueness is missing")
+            references = {
+                (
+                    tuple(fk["constrained_columns"]),
+                    fk["referred_table"],
+                    tuple(fk["referred_columns"]),
+                )
+                for fk in inspector.get_foreign_keys(table)
+            }
+            if references != {
+                (("ad_production_id",), "ops_ad_production", ("id",)),
+                (("user_id",), "sys_user", ("id",)),
+            }:
+                raise RuntimeError("Ad production CC membership foreign keys are missing")
         if head in online_review_heads:
             table = "rd_requirement_online_feedback"
             inspector = inspect(connection)
@@ -382,7 +418,10 @@ def validate_mysql(
                     )
                 ).all()
                 if len(rules) != 2 or any(
-                    "NEW.kind" not in rule or "NEW.processing_result" not in rule for rule in rules
+                    "NEW.kind" not in rule
+                    or "NEW.processing_result" not in rule
+                    or (head == CURRENT_MYSQL_HEAD and "WITHDRAWN" not in rule)
+                    for rule in rules
                 ):
                     raise RuntimeError(
                         "Production request kind and result domain rules are missing"

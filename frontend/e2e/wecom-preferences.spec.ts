@@ -16,8 +16,8 @@ const member: Operator = {
   data_scope: 'SELF', role_ids: [], permission_codes: [],
 }
 
-async function mockWecom(page: Page, operator: Operator) {
-  let preference: Preference = { revision: 0, mode: 'OFF', member_user_id: null, enabled: false }
+async function mockWecom(page: Page, operator: Operator, enabled = true) {
+  let preference: Preference = { revision: 0, mode: 'OFF', member_user_id: null, enabled }
   let bindingReads = 0
   const bindingWrites: BindingChange[] = []
   const preferenceWrites: PreferenceChange[] = []
@@ -80,6 +80,30 @@ async function mockWecom(page: Page, operator: Operator) {
 }
 
 for (const width of [375, 1440]) {
+  test(`hides disabled WeCom settings and bindings at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 820 })
+    const server = await mockWecom(page, administrator, false)
+    server.update({ member_user_id: 'member.test', mode: 'TASKS' })
+
+    await Promise.all([
+      page.waitForResponse('**/api/v1/me/wecom-preferences'),
+      page.goto('/#/profile'),
+    ])
+    await expect(page.getByRole('heading', { name: '邮件通知', exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '企业微信通知', exact: true })).toHaveCount(0)
+
+    await Promise.all([
+      page.waitForResponse('**/api/v1/me/wecom-preferences'),
+      page.goto('/#/system/users'),
+    ])
+    const edit = page.getByRole('button', { name: '编辑', exact: true })
+    await expect(edit).toBeVisible()
+    await expect(page.getByRole('button', { name: '企业微信绑定', exact: true })).toHaveCount(0)
+    if (width === 375) expect((await edit.boundingBox())?.height).toBeGreaterThanOrEqual(44)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width + 1)
+    expect(server.bindingReads()).toBe(0)
+  })
+
   test(`administrator can bind and unbind a member with revision protection at ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 820 })
     const server = await mockWecom(page, administrator)
@@ -134,7 +158,7 @@ for (const width of [375, 1440]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width + 1)
   })
 
-  test(`a bound member can save notification preferences at ${width}px while sending is disabled`, async ({ page }, testInfo) => {
+  test(`a bound member can save enabled notification preferences at ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 820 })
     const server = await mockWecom(page, member)
     await page.goto('/#/profile')
@@ -149,7 +173,6 @@ for (const width of [375, 1440]) {
     server.update({ member_user_id: 'member.test' })
     await page.reload()
     await expect(panel.getByText('已绑定', { exact: true })).toBeVisible()
-    await expect(panel.getByText('企业微信通知服务尚未启用。仍可保存接收偏好。')).toBeVisible()
     await panel.locator('.el-select__wrapper').click()
     await page.getByRole('option', { name: '仅待办与上线', exact: true }).click()
     server.update({ mode: 'ALL' })

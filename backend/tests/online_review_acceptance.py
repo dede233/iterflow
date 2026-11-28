@@ -306,7 +306,7 @@ def exercise_online_review_migration(fixture):
     path = "alembic-mysql.ini" if mysql else "alembic.ini"
     cfg = Config(str(Path(__file__).resolve().parents[1] / path))
     previous = "mysql57_0016" if mysql else "0018_alipay_targets"
-    head = "mysql57_0027" if mysql else "0029_ops_role_defaults"
+    head = "mysql57_0029" if mysql else "0031_production_version_deletion"
     table = RequirementOnlineFeedback.__tablename__
     command.downgrade(cfg, previous)
     assert table not in inspect(engine).get_table_names()

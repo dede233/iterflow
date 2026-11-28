@@ -17,6 +17,7 @@ from app.models.entities import (
     MailPreference,
     Notification,
     NotificationDelivery,
+    OperationLog,
     Permission,
     Role,
     RolePermission,
@@ -59,6 +60,7 @@ def worker(monkeypatch):
         MailPreference,
         WecomPreference,
         NotificationDelivery,
+        OperationLog,
         Notification,
     ):
         model.__table__.create(engine)

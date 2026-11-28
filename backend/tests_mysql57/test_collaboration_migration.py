@@ -129,9 +129,9 @@ def test_mysql_existing_upgrade_preserves_accounts_and_checks_role_collision(
                     == "2026-10-20T12:34:56+00:00"
                 )
             with engine.connect() as db:
-                assert db.scalar(text("SELECT version_num FROM alembic_version")) == "mysql57_0027"
-                assert db.scalar(count_triggers) == 119
-                assert validate_mysql(db)["table_count"] == 38
+                assert db.scalar(text("SELECT version_num FROM alembic_version")) == "mysql57_0029"
+                assert db.scalar(count_triggers) == 122
+                assert validate_mysql(db)["table_count"] == 39
             with Session(engine) as db:
                 assert set(db.scalars(select(Role.code))) == {
                     "DEVELOPER",

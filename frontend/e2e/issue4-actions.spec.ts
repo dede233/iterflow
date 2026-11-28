@@ -34,7 +34,10 @@ async function setup(page: Page, options: { feedback?: boolean; detail?: boolean
       [`/api/v1/${kind}`]: { items: rows.filter(r => !removed || r.id !== 1), total: removed ? 3 : 4, page: 1, page_size: 20 },
     }
     for (const row of rows) {
-      responses[`/api/v1/${kind}/${row.id}`] = row
+      responses[`/api/v1/${kind}/${row.id}`] = {
+        ...row,
+        can_delete: row.id === 1 && !options.readonly && ['NEW', 'DRAFT'].includes(row.status),
+      }
       responses[`/api/v1/requirements/${row.id}/workflow`] = { revision: row.revision, content_revision: 1, confirmed_revision: row.status === 'DRAFT' ? null : 1, needs_confirmation: row.status === 'DRAFT', legacy_completed: false, design_status: 'NOT_REQUIRED', paused_from: null, records: [] }
       responses[`/api/v1/requirements/${row.id}/participants`] = { revision: row.revision, participants: ['CONFIRM', 'DEVELOP', 'ACCEPT'].map(role => ({ role, user_id: row.id === 4 ? 4 : 1, display_name: '指定人员', active: true })) }
       responses[`/api/v1/requirements/${row.id}/feedbacks`] = []
@@ -137,8 +140,15 @@ for (const width of [375, 1440]) {
     test(`delete ${feedback ? 'feedback' : 'requirement'} requires reason and refresh after conflict ${width}px`, async ({ page }, info) => {
       await page.setViewportSize({ width, height: 900 })
       const audit = await setup(page, { feedback, detail: true, conflict: true })
-      await page.getByRole('button', { name: '删除', exact: true }).click()
-      let dialog = page.getByRole('dialog', { name: '确认删除', exact: true })
+      const more = page.getByRole('button', { name: '更多', exact: true })
+      await more.press('Enter')
+      await page.getByRole('menuitem', { name: '删除', exact: true }).press('Enter')
+      const dialog = page.getByRole('dialog', { name: '确认删除', exact: true })
+      await dialog.getByRole('button', { name: '取消', exact: true }).click()
+      await expect(dialog).toBeHidden()
+      await expect(more).toBeFocused()
+      await more.click()
+      await page.getByRole('menuitem', { name: '删除', exact: true }).click()
       await dialog.getByRole('button', { name: '确认删除', exact: true }).click()
       await expect(dialog.getByRole('alert')).toContainText('请填写删除原因')
       expect(audit.writes).toHaveLength(0)
@@ -150,8 +160,8 @@ for (const width of [375, 1440]) {
       await dialog.getByRole('button', { name: '刷新详情', exact: true }).click()
       await expect(dialog).toBeHidden()
       expect(audit.writes).toHaveLength(1)
-      await page.getByRole('button', { name: '删除', exact: true }).click()
-      dialog = page.getByRole('dialog', { name: '确认删除', exact: true })
+      await more.click()
+      await page.getByRole('menuitem', { name: '删除', exact: true }).click()
       await dialog.getByRole('textbox').fill('重新核对后确认删除')
       await page.screenshot({ path: info.outputPath('delete-confirm.png'), fullPage: true, animations: 'disabled' })
       await dialog.getByRole('button', { name: '确认删除', exact: true }).click()
@@ -249,7 +259,7 @@ for (const width of [375, 1440]) {
       await expect(page.getByRole('heading', { name: feedback ? '反馈中心' : '需求管理', exact: true })).toBeVisible()
       await expect(page.getByRole('button', { name: feedback ? '批量处理反馈' : '批量处理需求', exact: true })).toHaveCount(0)
       await page.goto(`/#/${feedback ? 'feedbacks' : 'requirements'}/1`)
-      await expect(page.getByRole('button', { name: '删除', exact: true })).toHaveCount(0)
+      await expect(page.getByRole('button', { name: '更多', exact: true })).toHaveCount(0)
       clean(audit)
     })
     test(`online ${feedback ? 'feedback' : 'requirement'} hides edit and delete ${width}px`, async ({ page }) => {
@@ -257,7 +267,7 @@ for (const width of [375, 1440]) {
       const audit = await setup(page, { feedback, detail: true, online: true })
       await expect(page.getByRole('heading', { name: '待处理记录1', exact: true })).toBeVisible()
       if (!feedback) await expect(page.getByRole('heading', { name: '线上效果确认', exact: true })).toBeVisible()
-      await expect(page.getByRole('button', { name: /^(编辑|删除|受理|受理并转需求|转需求|确认当前内容)$/ })).toHaveCount(0)
+      await expect(page.getByRole('button', { name: /^(编辑|更多|受理|受理并转需求|转需求|确认当前内容)$/ })).toHaveCount(0)
       clean(audit)
     })
   }

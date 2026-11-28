@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Query
 from fastapi.exceptions import RequestValidationError
 from sqlalchemy.orm import Session
 
-from app.api.deps import require_all_permissions, require_permission
+from app.api.deps import require_all_permissions, require_any_permission, require_permission
 from app.api.openapi import api_error_responses, api_revision_conflict_responses
 from app.core.database import get_db
 from app.core.exceptions import AppError, NotFoundError
@@ -14,7 +14,7 @@ from app.models.enums import VersionStatus
 from app.repositories.user_repository import UserRepository
 from app.repositories.version_repository import VersionRepository
 from app.schemas.audit import EntityActivityOut
-from app.schemas.entity_actions import BatchActionResponse
+from app.schemas.entity_actions import BatchActionResponse, EntityDelete, EntityDeleted
 from app.schemas.release import PublishCheckResult, PublishResult
 from app.schemas.version import (
     AddRequirementRequest,
@@ -129,7 +129,25 @@ def get_version(
     db: Session = Depends(get_db),
     user: User = Depends(require_permission("rd.version.view")),
 ):
-    return _version_output(_scoped_version_or_404(db, user, version_id))
+    item = _scoped_version_or_404(db, user, version_id)
+    return _version_output(item).model_copy(
+        update={"can_delete": VersionService(db).can_delete(item, user.id)}
+    )
+
+
+@router.delete(
+    "/{version_id}",
+    response_model=EntityDeleted,
+    responses=api_revision_conflict_responses(404, 409),
+    operation_id="delete_version",
+)
+def delete_version(
+    version_id: int,
+    payload: EntityDelete,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_any_permission("rd.version.create", "rd.version.edit")),
+):
+    return VersionService(db).delete(version_id, payload, user.id)
 
 
 @router.patch(

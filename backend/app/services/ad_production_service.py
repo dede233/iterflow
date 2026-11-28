@@ -1,3 +1,4 @@
+import json
 import re
 from base64 import b64encode
 from collections import defaultdict
@@ -17,11 +18,10 @@ from app.models.entities import (
     AdProduction,
     AttachmentRelation,
     FileObject,
-    Notification,
     User,
     utcnow,
 )
-from app.models.enums import AdProductionKind, AdProductionStatus, NotificationType
+from app.models.enums import AdProductionKind, AdProductionStatus
 from app.repositories.ad_production_repository import (
     AD_PRODUCTION_ENTITY,
     ARCHIVED_AD_PRODUCTION_ENTITY,
@@ -40,8 +40,11 @@ from app.schemas.ad_production import (
     AdProductionStatusChange,
     AdProductionUpdateForm,
     validate_plain_content,
+    validate_visible_text,
 )
+from app.schemas.entity_actions import EntityDelete, EntityDeleted
 from app.schemas.file import AttachmentOut
+from app.services.ad_production_notifications import AdProductionNotifications
 from app.services.audit_service import AuditService
 from app.services.file_service import FileService
 from app.services.requirement_images import bind_images
@@ -55,6 +58,7 @@ MAX_CONTENT_IMAGE_SIZE = 4 * 1024 * 1024
 MAX_NEW_CONTENT_IMAGES_SIZE = 8 * 1024 * 1024
 MAX_NEW_IMAGES_SIZE = 15 * 1024 * 1024
 TEMP_IMAGE_KEY = re.compile(r"local-[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}")
+WITHDRAWABLE_STATUSES = {AdProductionStatus.IN_PROGRESS, AdProductionStatus.SHIPPING}
 
 
 def _normalize_newlines(value: str) -> str:
@@ -74,29 +78,99 @@ class AdProductionService:
         if "*" not in permissions and not permissions.issuperset(codes):
             raise PermissionDenied()
 
-    def _get_scoped(self, ad_id: int, actor_id: int, *, for_update: bool = False) -> AdProduction:
+    def _get_readable(self, ad_id: int, actor_id: int) -> AdProduction:
+        kinds = viewable_ad_production_kinds(self.users.permission_codes(actor_id))
+        item = self.repo.get_readable(ad_id, actor_id, self.users.data_scope(actor_id), kinds)
+        if item is not None:
+            return item
+        if not kinds:
+            raise PermissionDenied()
+        raise NotFoundError("制作需求不存在")
+
+    def _get_editable(
+        self, ad_id: int, actor_id: int, *, lock: bool = False, allow_creator: bool = False
+    ) -> tuple[AdProduction, bool]:
         permissions = self.users.permission_codes(actor_id)
         kinds = viewable_ad_production_kinds(permissions)
         if not kinds:
             raise PermissionDenied()
         item = self.repo.get_scoped(
-            ad_id, actor_id, self.users.data_scope(actor_id), kinds, lock=for_update
+            ad_id, actor_id, self.users.data_scope(actor_id), kinds, lock=lock
         )
         if item is None:
             raise NotFoundError("制作需求不存在")
-        if (
-            for_update
-            and "*" not in permissions
-            and AD_PRODUCTION_PERMISSIONS[item.kind].edit not in permissions
+        codes = AD_PRODUCTION_PERMISSIONS[item.kind]
+        can_edit = "*" in permissions or codes.edit in permissions
+        if not can_edit and not (
+            allow_creator and item.created_by == actor_id and codes.create in permissions
         ):
             raise PermissionDenied()
-        return item
+        return item, can_edit
 
-    def _get_for_update(self, ad_id: int, actor_id: int, revision: int) -> AdProduction:
-        item = self._get_scoped(ad_id, actor_id, for_update=True)
+    def _get_for_update(
+        self, ad_id: int, actor_id: int, revision: int, *, allow_creator: bool = False
+    ) -> tuple[AdProduction, bool]:
+        item, can_edit = self._get_editable(ad_id, actor_id, lock=True, allow_creator=allow_creator)
+        self._require_revision(item, revision)
+        self._require_mutable(item)
+        return item, can_edit
+
+    @staticmethod
+    def _require_revision(item: AdProduction, revision: int) -> None:
         if item.revision != revision:
             raise ConflictError("制作需求已更新。请刷新重试", revision_conflict_data(item))
+
+    @staticmethod
+    def _require_mutable(item: AdProduction) -> None:
+        if item.status is AdProductionStatus.WITHDRAWN:
+            raise ConflictError("已撤回的制作需求不能修改")
+
+    @staticmethod
+    def _require_regular_status(status: AdProductionStatus) -> None:
+        if status is AdProductionStatus.WITHDRAWN:
+            raise AppError(42290, "请使用撤回操作", 422, {"field": "status"})
+
+    @staticmethod
+    def _is_authorized_publisher(item: AdProduction, actor_id: int, permissions: set[str]) -> bool:
+        codes = AD_PRODUCTION_PERMISSIONS[item.kind]
+        return item.created_by == actor_id and (
+            "*" in permissions or {codes.view, codes.create} <= permissions
+        )
+
+    def _lock_for_publisher_action(
+        self, ad_id: int, actor_id: int, payload: EntityDelete
+    ) -> AdProduction:
+        permissions = self.users.permission_codes(actor_id)
+        kinds = viewable_ad_production_kinds(permissions)
+        if not kinds:
+            raise PermissionDenied()
+        item = self.repo.get_scoped(
+            ad_id, actor_id, self.users.data_scope(actor_id), kinds, lock=True
+        )
+        if item is None:
+            raise NotFoundError("制作需求不存在")
+        if not self._is_authorized_publisher(item, actor_id, permissions):
+            raise PermissionDenied("只有持有发布权限的本人可以操作")
+        self._require_revision(item, payload.revision)
+        try:
+            validate_visible_text(payload.reason)
+        except ValueError as exc:
+            raise AppError(42290, "请填写有效原因", 422, {"field": "reason"}) from exc
         return item
+
+    def _publisher_actions(
+        self, actor_id: int, items: Iterable[AdProduction]
+    ) -> tuple[set[int], set[int]]:
+        permissions = self.users.permission_codes(actor_id)
+        pending = set()
+        withdrawable = set()
+        for item in items:
+            if self._is_authorized_publisher(item, actor_id, permissions):
+                if item.status is AdProductionStatus.NOT_STARTED:
+                    pending.add(item.id)
+                elif item.status in WITHDRAWABLE_STATUSES:
+                    withdrawable.add(item.id)
+        return pending - self.repo.processed_ids(pending), withdrawable
 
     def _update_with_revision(
         self, item: AdProduction, revision: int, actor_id: int, values: dict
@@ -118,7 +192,13 @@ class AdProductionService:
 
     @staticmethod
     def _output(
-        item: AdProduction, images: Iterable[FileObject], names: dict[int, str]
+        item: AdProduction,
+        images: Iterable[FileObject],
+        names: dict[int, str],
+        cc_users: Iterable[tuple[int, str]],
+        *,
+        can_delete: bool,
+        can_withdraw: bool,
     ) -> AdProductionOut:
         return AdProductionOut(
             id=item.id,
@@ -139,11 +219,17 @@ class AdProductionService:
             completed_by_display_name=(
                 names.get(item.completed_by_id) if item.completed_by_id is not None else None
             ),
+            cc_users=[
+                AdProductionDesignerOption(id=user_id, display_name=name)
+                for user_id, name in cc_users
+            ],
             created_by=item.created_by,
             publisher_display_name=names.get(item.created_by),
             created_at=item.created_at,
             updated_at=item.updated_at,
             revision=item.revision,
+            can_delete=can_delete,
+            can_withdraw=can_withdraw,
             images=[
                 AttachmentOut(
                     file_id=image.id,
@@ -155,6 +241,23 @@ class AdProductionService:
                 )
                 for image in images
             ],
+        )
+
+    def _output_for_actor(
+        self,
+        item: AdProduction,
+        images: Iterable[FileObject],
+        cc_users: Iterable[tuple[int, str]],
+        actor_id: int,
+    ) -> AdProductionOut:
+        deletable, withdrawable = self._publisher_actions(actor_id, [item])
+        return self._output(
+            item,
+            images,
+            self._people_names([item]),
+            cc_users,
+            can_delete=item.id in deletable,
+            can_withdraw=item.id in withdrawable,
         )
 
     @staticmethod
@@ -170,7 +273,9 @@ class AdProductionService:
         return values
 
     @classmethod
-    def _audit_snapshot(cls, item: AdProduction, images: Iterable[FileObject]) -> dict:
+    def _audit_snapshot(
+        cls, item: AdProduction, images: Iterable[FileObject], cc_user_ids: set[int]
+    ) -> dict:
         return {
             **cls._status_snapshot(item),
             "work_date": item.work_date.isoformat(),
@@ -180,6 +285,7 @@ class AdProductionService:
             "issuer": item.issuer,
             "due_at": item.due_at.isoformat() if item.due_at is not None else None,
             "receiver_id": item.receiver_id,
+            "cc_user_ids": sorted(cc_user_ids),
             "image_ids": [image.id for image in images],
         }
 
@@ -225,17 +331,32 @@ class AdProductionService:
         for relation, file in self.repo.active_images([item.id for item in items]):
             images_by_ad[relation.entity_id].append(file)
         names = self._people_names(items)
+        cc_users = self.repo.cc_users([item.id for item in items])
+        deletable, withdrawable = self._publisher_actions(actor.id, items)
         return AdProductionPage(
-            items=[self._output(item, images_by_ad[item.id], names) for item in items],
+            items=[
+                self._output(
+                    item,
+                    images_by_ad[item.id],
+                    names,
+                    cc_users.get(item.id, ()),
+                    can_delete=item.id in deletable,
+                    can_withdraw=item.id in withdrawable,
+                )
+                for item in items
+            ],
             page=page,
             page_size=page_size,
             total=total,
         )
 
     def get(self, ad_id: int, actor: User) -> AdProductionOut:
-        item = self._get_scoped(ad_id, actor.id)
-        return self._output(
-            item, (file for _, file in self.repo.active_images([ad_id])), self._people_names([item])
+        item = self._get_readable(ad_id, actor.id)
+        return self._output_for_actor(
+            item,
+            (file for _, file in self.repo.active_images([ad_id])),
+            self.repo.cc_users([ad_id]).get(ad_id, ()),
+            actor.id,
         )
 
     def designer_options(
@@ -247,10 +368,28 @@ class AdProductionService:
             for user_id, name in self.repo.active_designers(kind).items()
         ]
 
+    def cc_options(
+        self, actor: User, *, kind: AdProductionKind, ad_id: int | None, keyword: str | None
+    ) -> list[AdProductionDesignerOption]:
+        if ad_id is None:
+            codes = AD_PRODUCTION_PERMISSIONS[kind]
+            self._require_permissions(actor.id, codes.view, codes.create)
+        else:
+            item, can_edit = self._get_editable(ad_id, actor.id, allow_creator=True)
+            self._require_mutable(item)
+            if not can_edit:
+                self._require_creator_correction(item)
+        if keyword and "\x00" in keyword:
+            raise AppError(42290, "关键词不能包含空字符", 422)
+        return [
+            AdProductionDesignerOption(id=user_id, display_name=name)
+            for user_id, name in self.repo.active_cc_options((keyword or "").strip())
+        ]
+
     def open_image(
         self, ad_id: int, file_id: int, actor: User, *, inline: bool = False
     ) -> tuple[FileObject, BinaryIO]:
-        self._get_scoped(ad_id, actor.id)
+        self._get_readable(ad_id, actor.id)
         file, stream = self.files.open_authorized_attachment(
             file_id,
             entity_type=CONTENT_IMAGE_ENTITY if inline else AD_PRODUCTION_ENTITY,
@@ -381,13 +520,52 @@ class AdProductionService:
         for field, requested, current in fields:
             if requested is not None and (requested or None) != current:
                 changes[field] = requested or None
+        self._validate_people_changes(kind, changes)
+        return changes
 
+    def _validate_people_changes(
+        self, kind: AdProductionKind, changes: dict[str, int | None]
+    ) -> None:
         candidates = {user_id for user_id in changes.values() if user_id is not None}
         if candidates:
             eligible = self.repo.active_designers(kind, lock_user_ids=candidates)
             for field, user_id in changes.items():
                 if user_id is not None and user_id not in eligible:
                     raise AppError(42290, "请选择启用的设计人员", 422, {"field": field})
+
+    @staticmethod
+    def _require_creator_correction(item: AdProduction) -> None:
+        if item.status is AdProductionStatus.COMPLETED:
+            raise PermissionDenied("已完成的制作需求不能由发布人更正")
+
+    def _creator_people_changes(
+        self, item: AdProduction, payload: AdProductionUpdateForm
+    ) -> dict[str, int | None]:
+        self._require_creator_correction(item)
+        if (
+            payload.work_date != item.work_date
+            or payload.issuer != item.issuer.strip()
+            or payload.status is not item.status
+            or (
+                payload.completed_by_id is not None
+                and (payload.completed_by_id or None) != item.completed_by_id
+            )
+            or (
+                payload.processing_result is not None
+                and payload.processing_result != item.processing_result
+            )
+        ):
+            raise PermissionDenied("发布人更正时须保留原工作日期、发布人及处理信息")
+
+        receiver_id = payload.receiver_id
+        if receiver_id is None or receiver_id == item.receiver_id:
+            return {}
+        if item.status is not AdProductionStatus.NOT_STARTED:
+            raise PermissionDenied("开始处理后不能由发布人更换需求接收人")
+        if receiver_id == 0:
+            raise AppError(42290, "请选择需求接收人", 422, {"field": "receiver_id"})
+        changes: dict[str, int | None] = {"receiver_id": receiver_id}
+        self._validate_people_changes(item.kind, changes)
         return changes
 
     @staticmethod
@@ -421,30 +599,25 @@ class AdProductionService:
             raise AppError(42290, "请填写处理结果", 422, {"field": "processing_result"})
         return result
 
-    def _notify_merchant(self, item: AdProduction, user_id: int, title: str, content: str) -> None:
-        self.db.add(
-            Notification(
-                user_id=user_id,
-                type=NotificationType.SYSTEM,
-                title=title,
-                content=content,
-                entity_type=AD_PRODUCTION_ENTITY,
-                entity_id=item.id,
-            )
-        )
-
-    def _notify_merchant_completion(self, item: AdProduction, previous: AdProductionStatus) -> None:
-        if (
-            item.kind is AdProductionKind.MERCHANT_AD
-            and item.status is AdProductionStatus.COMPLETED
-            and previous is not AdProductionStatus.COMPLETED
+    def _cc_user_ids(self, value: str | None, current: set[int]) -> set[int]:
+        if value is None:
+            return current
+        field = {"field": "cc_user_ids"}
+        try:
+            ids = json.loads(value)
+        except (ValueError, RecursionError) as exc:
+            raise AppError(42290, "抄送账号必须为 JSON 数组", 422, field) from exc
+        if not isinstance(ids, list) or any(
+            type(user_id) is not int or not 1 <= user_id <= 2**63 - 1 for user_id in ids
         ):
-            self._notify_merchant(
-                item,
-                item.created_by,
-                "商家广告制作需求已完成",
-                "你发布的商家广告制作需求已完成。请查看处理结果。",
-            )
+            raise AppError(42290, "抄送账号必须为有效账号 ID 的 JSON 数组", 422, field)
+        requested = set(ids)
+        if len(requested) != len(ids):
+            raise AppError(42290, "抄送账号不能重复", 422, field)
+        added = requested - current
+        if self.repo.active_cc_user_ids(added, lock=True) != added:
+            raise AppError(42290, "请选择启用的抄送账号", 422, field)
+        return requested
 
     def create(self, payload: AdProductionCreateForm, actor: User) -> AdProductionOut:
         permissions = AD_PRODUCTION_PERMISSIONS[payload.kind]
@@ -455,6 +628,7 @@ class AdProductionService:
         ):
             required.append(permissions.edit)
         self._require_permissions(actor.id, *required)
+        self._require_regular_status(payload.status)
         if (
             payload.kind is AdProductionKind.MERCHANT_AD
             and payload.status is not AdProductionStatus.NOT_STARTED
@@ -469,6 +643,7 @@ class AdProductionService:
                 receiver_id=payload.receiver_id,
                 completed_by_id=payload.completed_by_id,
             )
+            cc_user_ids = self._cc_user_ids(payload.cc_user_ids, set())
             created_at = utcnow()
             publisher_name = actor.display_name.strip() or actor.username
             issuer = payload.issuer if payload.kind is AdProductionKind.MATERIAL else None
@@ -488,21 +663,21 @@ class AdProductionService:
             )
             self.db.add(item)
             self.db.flush()
+            self.repo.change_cc_users(item.id, added=cc_user_ids, removed=set())
             item.content = self._bind_content_images(
                 item.id, actor.id, content, payload.content_format, payload.content_images, uploads
             )
             images = self._store_images(item.id, actor.id, uploads)
-            output = self._output(item, images, self._people_names([item]))
             self.audit.log(
-                AD_PRODUCTION_ENTITY, item.id, "CREATE", after=self._audit_snapshot(item, images)
+                AD_PRODUCTION_ENTITY,
+                item.id,
+                "CREATE",
+                after=self._audit_snapshot(item, images, cc_user_ids),
             )
-            if item.kind is AdProductionKind.MERCHANT_AD:
-                self._notify_merchant(
-                    item,
-                    payload.receiver_id,
-                    "新的商家广告制作需求",
-                    "你收到了一条商家广告制作需求。请查看详情。",
-                )
+            AdProductionNotifications(self.db).queue(item, cc_user_ids, newly_added_ids=cc_user_ids)
+            output = self._output_for_actor(
+                item, images, self.repo.cc_users([item.id]).get(item.id, ()), actor.id
+            )
             self.db.commit()
         except Exception:
             self.db.rollback()
@@ -518,27 +693,47 @@ class AdProductionService:
         content_format_provided: bool,
     ) -> AdProductionOut:
         try:
-            item = self._get_for_update(ad_id, actor.id, payload.revision)
+            item, can_edit = self._get_for_update(
+                ad_id, actor.id, payload.revision, allow_creator=True
+            )
+            self._require_regular_status(payload.status)
             if payload.clear_due_at and payload.due_at is not None:
                 raise AppError(
                     42290, "设置与清除截止时间不能同时提交", 422, {"field": "clear_due_at"}
                 )
 
-            people = self._people_changes(
-                item.kind,
-                payload.status,
-                receiver_id=payload.receiver_id,
-                completed_by_id=payload.completed_by_id,
-                item=item,
-            )
             previous = item.status
-            result = self._processing_result(item, payload, people)
+            workflow_values = {}
+            if can_edit:
+                people = self._people_changes(
+                    item.kind,
+                    payload.status,
+                    receiver_id=payload.receiver_id,
+                    completed_by_id=payload.completed_by_id,
+                    item=item,
+                )
+                workflow_values = {
+                    "work_date": payload.work_date,
+                    "issuer": payload.issuer
+                    if item.kind is AdProductionKind.MATERIAL
+                    else item.issuer,
+                    "status": payload.status,
+                    "processing_result": self._processing_result(item, payload, people),
+                }
+            else:
+                people = self._creator_people_changes(item, payload)
+
+            current_cc_users = self.repo.cc_users([ad_id]).get(ad_id, ())
+            current_cc_ids = {user_id for user_id, _ in current_cc_users}
+            cc_user_ids = self._cc_user_ids(payload.cc_user_ids, current_cc_ids)
+            added_cc_ids = cc_user_ids - current_cc_ids
+            removed_cc_ids = current_cc_ids - cc_user_ids
             active = self.repo.active_images([ad_id])
             removed = set(payload.remove_image_ids)
             if not removed.issubset(file.id for _, file in active):
                 raise AppError(42293, "要移除的图片不属于当前记录", 422)
             uploads = self._read_images(payload.images, len(active) - len(removed))
-            before = self._audit_snapshot(item, (file for _, file in active))
+            before = self._audit_snapshot(item, (file for _, file in active), current_cc_ids)
 
             # Browsers can normalize newlines in scalar multipart fields.
             if (
@@ -558,12 +753,9 @@ class AdProductionService:
                     uploads,
                 )
             values = {
-                "work_date": payload.work_date,
                 "content": content,
                 "content_format": content_format,
-                "issuer": payload.issuer if item.kind is AdProductionKind.MATERIAL else item.issuer,
-                "status": payload.status,
-                "processing_result": result,
+                **workflow_values,
                 **people,
             }
             if payload.title is not None:
@@ -571,6 +763,7 @@ class AdProductionService:
             if payload.clear_due_at or payload.due_at is not None:
                 values["due_at"] = payload.due_at
             self._update_with_revision(item, payload.revision, actor.id, values)
+            self.repo.change_cc_users(ad_id, added=added_cc_ids, removed=removed_cc_ids)
 
             retained = []
             for relation, file in active:
@@ -582,15 +775,23 @@ class AdProductionService:
             added = self._store_images(ad_id, actor.id, uploads)
             self.db.refresh(item)
             images = [*retained, *added]
-            output = self._output(item, images, self._people_names([item]))
+            cc_users = self.repo.cc_users([ad_id]).get(ad_id, ())
             self.audit.log(
                 AD_PRODUCTION_ENTITY,
                 ad_id,
                 "UPDATE",
                 before=before,
-                after=self._audit_snapshot(item, images),
+                after=self._audit_snapshot(item, images, cc_user_ids),
             )
-            self._notify_merchant_completion(item, previous)
+            self.db.flush()
+            output = self._output_for_actor(item, images, cc_users, actor.id)
+            AdProductionNotifications(self.db).queue(
+                item,
+                cc_user_ids,
+                newly_added_ids=added_cc_ids,
+                previous_status=previous,
+                reassigned=not can_edit and "receiver_id" in people,
+            )
             self.db.commit()
         except Exception:
             self.db.rollback()
@@ -601,7 +802,8 @@ class AdProductionService:
         self, ad_id: int, payload: AdProductionStatusChange, actor: User
     ) -> AdProductionOut:
         try:
-            item = self._get_for_update(ad_id, actor.id, payload.revision)
+            item, _ = self._get_for_update(ad_id, actor.id, payload.revision)
+            self._require_regular_status(payload.status)
             people = self._people_changes(
                 item.kind, payload.status, completed_by_id=payload.completed_by_id, item=item
             )
@@ -615,11 +817,7 @@ class AdProductionService:
                 {"status": payload.status, "processing_result": result, **people},
             )
             self.db.refresh(item)
-            output = self._output(
-                item,
-                (file for _, file in self.repo.active_images([ad_id])),
-                self._people_names([item]),
-            )
+            cc_users = self.repo.cc_users([ad_id]).get(ad_id, ())
             self.audit.log(
                 AD_PRODUCTION_ENTITY,
                 ad_id,
@@ -627,7 +825,78 @@ class AdProductionService:
                 before=before,
                 after=self._status_snapshot(item),
             )
-            self._notify_merchant_completion(item, previous)
+            self.db.flush()
+            output = self._output_for_actor(
+                item, (file for _, file in self.repo.active_images([ad_id])), cc_users, actor.id
+            )
+            AdProductionNotifications(self.db).queue(
+                item, {user_id for user_id, _ in cc_users}, previous_status=previous
+            )
+            self.db.commit()
+        except Exception:
+            self.db.rollback()
+            raise
+        return output
+
+    def delete(self, ad_id: int, payload: EntityDelete, actor: User) -> EntityDeleted:
+        try:
+            item = self._lock_for_publisher_action(ad_id, actor.id, payload)
+            if (
+                item.status is not AdProductionStatus.NOT_STARTED
+                or self.repo.has_processing_history(ad_id)
+            ):
+                raise ConflictError("仅未开始且从未处理的制作需求可以删除")
+            deleted_at = utcnow()
+            before = self._status_snapshot(item)
+            self._update_with_revision(
+                item,
+                payload.revision,
+                actor.id,
+                {"deleted_at": deleted_at, "deleted_by": actor.id, "delete_reason": payload.reason},
+            )
+            self.audit.log(
+                AD_PRODUCTION_ENTITY,
+                ad_id,
+                "SOFT_DELETE",
+                before=before,
+                after={
+                    **self._status_snapshot(item),
+                    "deleted_at": deleted_at.isoformat(),
+                    "deleted_by": actor.id,
+                    "reason": payload.reason,
+                },
+            )
+            self.db.commit()
+        except Exception:
+            self.db.rollback()
+            raise
+        return EntityDeleted(id=ad_id, revision=payload.revision + 1)
+
+    def withdraw(self, ad_id: int, payload: EntityDelete, actor: User) -> AdProductionOut:
+        try:
+            item = self._lock_for_publisher_action(ad_id, actor.id, payload)
+            previous = item.status
+            if previous not in WITHDRAWABLE_STATUSES:
+                raise ConflictError("仅处理中或邮寄中的制作需求可以撤回")
+            before = self._status_snapshot(item)
+            self._update_with_revision(
+                item, payload.revision, actor.id, {"status": AdProductionStatus.WITHDRAWN}
+            )
+            self.db.refresh(item)
+            cc_users = self.repo.cc_users([ad_id]).get(ad_id, ())
+            self.audit.log(
+                AD_PRODUCTION_ENTITY,
+                ad_id,
+                "WITHDRAW",
+                before=before,
+                after={**self._status_snapshot(item), "reason": payload.reason},
+            )
+            AdProductionNotifications(self.db).queue(
+                item, {user_id for user_id, _ in cc_users}, previous_status=previous
+            )
+            output = self._output_for_actor(
+                item, (file for _, file in self.repo.active_images([ad_id])), cc_users, actor.id
+            )
             self.db.commit()
         except Exception:
             self.db.rollback()

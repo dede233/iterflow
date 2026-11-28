@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 from alembic.config import Config
+from alembic.script import ScriptDirectory
 from sqlalchemy import delete, select, text
 from sqlalchemy.engine import Connection
 from sqlalchemy.orm import Session
@@ -48,8 +49,8 @@ def _default_revisions(engine):
 
 
 def seed_collaboration_fixture(db, *, username, password, fresh):
-    config, previous, head = _default_revisions(db.get_bind())
-    command.upgrade(config, head if fresh else previous)
+    config, previous, _ = _default_revisions(db.get_bind())
+    command.upgrade(config, "head" if fresh else previous)
     seed_database(db, username=username, password=password)
     if fresh:
         return
@@ -65,7 +66,7 @@ def seed_collaboration_fixture(db, *, username, password, fresh):
             )
         )
     db.commit()
-    command.upgrade(config, head)
+    command.upgrade(config, "head")
 
 
 def _revisions(engine):
@@ -370,7 +371,8 @@ def exercise_ops_default_guards(api):
 
 def exercise_ops_defaults_fresh_seed(api):
     _, engine, _, _ = api
-    config, previous, head = _default_revisions(engine)
+    config, previous, _ = _default_revisions(engine)
+    head = ScriptDirectory.from_config(config).get_current_head()
     with Session(engine) as db:
         assert db.scalar(text("SELECT version_num FROM alembic_version")) == head
         permissions = {code: pid for code, (pid, _) in _catalog(db).items()}

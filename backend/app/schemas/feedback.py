@@ -68,6 +68,7 @@ class FeedbackStatusChange(BaseModel):
 
 
 class FeedbackOut(BaseModel):
+    can_delete: bool = False
     model_config = ConfigDict(from_attributes=True)
     submitter_display_name: str | None = None
     system_name: str | None = None

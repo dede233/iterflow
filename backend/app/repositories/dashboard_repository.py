@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import NamedTuple, cast
 
-from sqlalchemy import ColumnElement, func, or_, select
+from sqlalchemy import ColumnElement, func, select
 from sqlalchemy.orm import Session
 
 from app.domain.version_progress import effective_version_status_expression
@@ -68,12 +68,6 @@ class DashboardRepository:
             return [Requirement.deleted_at.is_(None)]
         return [Requirement.deleted_at.is_(None), RequirementRepository.self_criterion(user_id)]
 
-    @staticmethod
-    def _version_scope(user_id: int, data_scope: DataScope) -> list[ColumnElement[bool]]:
-        if data_scope is DataScope.ALL:
-            return []
-        return [or_(Version.owner_id == user_id, Version.created_by == user_id)]
-
     def feedback_status_counts(
         self, user_id: int, data_scope: DataScope
     ) -> dict[FeedbackStatus, int]:
@@ -99,7 +93,7 @@ class DashboardRepository:
     ) -> dict[VersionStatus, int]:
         progress = (
             select(Version.id, effective_version_status_expression().label("status"))
-            .where(*self._version_scope(user_id, data_scope))
+            .where(*VersionRepository.scope_criteria(user_id, data_scope))
             .subquery()
         )
         rows = self.db.execute(
@@ -113,7 +107,7 @@ class DashboardRepository:
         rows = self.db.execute(
             select(Version, effective_version_status_expression())
             .where(
-                *self._version_scope(user_id, data_scope),
+                *VersionRepository.scope_criteria(user_id, data_scope),
                 Version.status.in_(self.ACTIVE_VERSION_STATUSES),
             )
             .order_by(Version.updated_at.desc(), Version.id.desc())
@@ -128,7 +122,7 @@ class DashboardRepository:
                 select(func.count(Release.id))
                 .select_from(Release)
                 .join(Version, Version.id == Release.version_id)
-                .where(*self._version_scope(user_id, data_scope))
+                .where(*VersionRepository.scope_criteria(user_id, data_scope))
             )
             or 0
         )
@@ -146,7 +140,7 @@ class DashboardRepository:
                 Release.result,
             )
             .join(Version, Version.id == Release.version_id)
-            .where(*self._version_scope(user_id, data_scope))
+            .where(*VersionRepository.scope_criteria(user_id, data_scope))
             .order_by(Release.released_at.desc(), Release.id.desc())
             .limit(limit)
         ).all()

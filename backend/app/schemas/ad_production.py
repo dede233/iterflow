@@ -44,7 +44,7 @@ def _as_utc(value: datetime) -> datetime:
 AdProductionTimestamp = Annotated[OffsetISODatetime, AfterValidator(_as_utc)]
 
 
-def _validate_visible_text(value: str) -> str:
+def validate_visible_text(value: str) -> str:
     if "\x00" in value or not any(
         not char.isspace() and unicodedata.category(char) not in {"Cc", "Cf", "Mn", "Me"}
         for char in value
@@ -56,17 +56,17 @@ def _validate_visible_text(value: str) -> str:
 AdProductionTitle = Annotated[
     str,
     StringConstraints(strip_whitespace=True, min_length=1, max_length=200),
-    AfterValidator(_validate_visible_text),
+    AfterValidator(validate_visible_text),
 ]
 AdProductionIssuer = Annotated[
     str,
     StringConstraints(strip_whitespace=True, min_length=1, max_length=100),
-    AfterValidator(_validate_visible_text),
+    AfterValidator(validate_visible_text),
 ]
 AdProductionProcessingResult = Annotated[
     str,
     StringConstraints(strip_whitespace=True, min_length=1, max_length=4000),
-    AfterValidator(_validate_visible_text),
+    AfterValidator(validate_visible_text),
 ]
 
 
@@ -74,7 +74,7 @@ def validate_plain_content(value: str) -> str:
     value = value.strip()
     if len(value) > MAX_CONTENT_CHARACTERS:
         raise ValueError("工作内容不能超过 3000 个字符")
-    return _validate_visible_text(value)
+    return validate_visible_text(value)
 
 
 class AdProductionForm(BaseModel):
@@ -87,6 +87,11 @@ class AdProductionForm(BaseModel):
     status: AdProductionStatus
     receiver_id: int | None = Field(default=None, ge=0)
     completed_by_id: int | None = Field(default=None, ge=0)
+    cc_user_ids: str | None = Field(
+        default=None,
+        title="抄送账号",
+        description="JSON 数组字符串。元素为账号 ID。新增账号须启用。省略时保留现状。空数组清空。",
+    )
     images: list[UploadFile] = Field(default_factory=list, max_length=MAX_IMAGES)
     content_images: list[UploadFile] = Field(
         default_factory=list, max_length=MAX_CONTENT_IMAGES, repr=False
@@ -125,6 +130,11 @@ class AdProductionStatusChange(BaseModel):
         return value
 
 
+class AdProductionDesignerOption(BaseModel):
+    id: int
+    display_name: str
+
+
 class AdProductionOut(BaseModel):
     id: int
     work_date: date
@@ -140,18 +150,16 @@ class AdProductionOut(BaseModel):
     receiver_display_name: str | None = None
     completed_by_id: int | None = None
     completed_by_display_name: str | None = None
+    cc_users: list[AdProductionDesignerOption] = Field(title="抄送人")
     created_by: int
     publisher_display_name: str | None = None
     created_at: datetime
     updated_at: datetime
     revision: int
+    can_delete: bool = False
+    can_withdraw: bool = False
     images: list[AttachmentOut]
 
 
 class AdProductionPage(PageResult[AdProductionOut]):
     pass
-
-
-class AdProductionDesignerOption(BaseModel):
-    id: int
-    display_name: str

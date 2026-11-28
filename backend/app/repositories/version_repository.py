@@ -4,7 +4,7 @@ from sqlalchemy import ColumnElement, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.domain.version_progress import effective_version_status_expression
-from app.models.entities import Requirement, Version, VersionRequirement
+from app.models.entities import Release, ReleaseBatch, Requirement, Version, VersionRequirement
 from app.models.enums import DataScope, VersionStatus
 from app.repositories.base import BaseRepository
 from app.repositories.requirement_repository import RequirementRepository
@@ -23,7 +23,7 @@ class VersionRepository(BaseRepository[Version]):
     def get(self, entity_id: int) -> Version | None:
         row = self.db.execute(
             select(Version, effective_version_status_expression())
-            .where(Version.id == entity_id)
+            .where(Version.id == entity_id, Version.deleted_at.is_(None))
             .execution_options(populate_existing=True)
         ).first()
         return self.with_progress(*row) if row is not None else None
@@ -32,10 +32,17 @@ class VersionRepository(BaseRepository[Version]):
     def self_criterion(user_id: int):
         return or_(Version.owner_id == user_id, Version.created_by == user_id)
 
-    def get_scoped(self, entity_id: int, user_id: int, data_scope: DataScope) -> Version | None:
-        stmt = select(Version, effective_version_status_expression()).where(Version.id == entity_id)
+    @classmethod
+    def scope_criteria(cls, user_id: int, data_scope: DataScope) -> list[ColumnElement[bool]]:
+        criteria: list[ColumnElement[bool]] = [Version.deleted_at.is_(None)]
         if data_scope is not DataScope.ALL:
-            stmt = stmt.where(self.self_criterion(user_id))
+            criteria.append(cls.self_criterion(user_id))
+        return criteria
+
+    def get_scoped(self, entity_id: int, user_id: int, data_scope: DataScope) -> Version | None:
+        stmt = select(Version, effective_version_status_expression()).where(
+            Version.id == entity_id, *self.scope_criteria(user_id, data_scope)
+        )
         row = self.db.execute(stmt.execution_options(populate_existing=True)).first()
         return self.with_progress(*row) if row is not None else None
 
@@ -53,9 +60,7 @@ class VersionRepository(BaseRepository[Version]):
         planned_release_to: date | None = None,
         owner_id: int | None = None,
     ) -> tuple[list[Version], int]:
-        criteria: list[ColumnElement[bool]] = []
-        if data_scope is not DataScope.ALL:
-            criteria.append(self.self_criterion(user_id))
+        criteria = self.scope_criteria(user_id, data_scope)
         if system_id is not None:
             criteria.append(Version.system_id == system_id)
         if keyword and keyword.strip():
@@ -87,6 +92,26 @@ class VersionRepository(BaseRepository[Version]):
         ).all()
         items = [self.with_progress(*row) for row in rows]
         return items, total
+
+    def has_delete_references(self, version_id: int, *, lock: bool) -> bool:
+        queries = [
+            select(VersionRequirement.id).where(VersionRequirement.version_id == version_id),
+            select(Release.id).where(Release.version_id == version_id),
+            select(ReleaseBatch.id).where(ReleaseBatch.version_id == version_id),
+        ]
+        if self.db.get_bind().dialect.name != "mysql":
+            # MySQL derives this pointer from VersionRequirement. PostgreSQL
+            # also has a stored pointer that can survive in historical data.
+            queries.append(
+                select(Requirement.id).where(Requirement.current_version_id == version_id)
+            )
+        for query in queries:
+            query = query.limit(1)
+            if lock:
+                query = query.with_for_update()
+            if self.db.scalar(query) is not None:
+                return True
+        return False
 
     # ------------------------------------------------------------------ #
     # VersionRequirement relation queries (the relation model is the      #

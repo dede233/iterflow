@@ -2,14 +2,16 @@ from collections import defaultdict
 from collections.abc import Collection, Sequence
 from datetime import date, datetime
 
-from sqlalchemy import ColumnElement, and_, func, or_, select
+from sqlalchemy import ColumnElement, and_, delete, func, or_, select
 from sqlalchemy.orm import Session, aliased
 
 from app.domain.ad_production_permissions import AD_PRODUCTION_PERMISSIONS
 from app.models.entities import (
     AdProduction,
+    AdProductionCCUser,
     AttachmentRelation,
     FileObject,
+    OperationLog,
     Permission,
     Role,
     RolePermission,
@@ -98,6 +100,77 @@ class AdProductionRepository(BaseRepository[AdProduction]):
         rows = self.db.execute(select(User.id, User.display_name).where(User.id.in_(user_ids)))
         return {user_id: name for user_id, name in rows}
 
+    def active_cc_options(self, keyword: str) -> list[tuple[int, str]]:
+        stmt = (
+            select(User.id, User.display_name)
+            .where(User.status == UserStatus.ACTIVE)
+            .order_by(User.display_name, User.id)
+            .limit(50)
+        )
+        if keyword:
+            stmt = stmt.where(User.display_name.icontains(keyword, autoescape=True))
+        return [(user_id, name) for user_id, name in self.db.execute(stmt)]
+
+    def active_cc_user_ids(self, user_ids: Collection[int], *, lock: bool = False) -> set[int]:
+        if not user_ids:
+            return set()
+        stmt = select(User.id).where(User.id.in_(user_ids), User.status == UserStatus.ACTIVE)
+        if lock:
+            stmt = stmt.order_by(User.id).with_for_update(read=True)
+        return set(self.db.scalars(stmt))
+
+    def cc_users(self, ad_ids: Sequence[int]) -> dict[int, list[tuple[int, str]]]:
+        if not ad_ids:
+            return {}
+        rows = self.db.execute(
+            select(AdProductionCCUser.ad_production_id, User.id, User.display_name)
+            .join(User, User.id == AdProductionCCUser.user_id)
+            .where(AdProductionCCUser.ad_production_id.in_(ad_ids))
+            .order_by(AdProductionCCUser.ad_production_id, AdProductionCCUser.user_id)
+        )
+        people: dict[int, list[tuple[int, str]]] = defaultdict(list)
+        for ad_id, user_id, display_name in rows:
+            people[ad_id].append((user_id, display_name))
+        return dict(people)
+
+    def change_cc_users(self, ad_id: int, *, added: set[int], removed: set[int]) -> None:
+        if removed:
+            self.db.execute(
+                delete(AdProductionCCUser).where(
+                    AdProductionCCUser.ad_production_id == ad_id,
+                    AdProductionCCUser.user_id.in_(removed),
+                )
+            )
+        if added:
+            self.db.add_all(
+                AdProductionCCUser(ad_production_id=ad_id, user_id=user_id)
+                for user_id in sorted(added)
+            )
+            self.db.flush()
+
+    def get_readable(
+        self,
+        ad_id: int,
+        user_id: int,
+        data_scope: DataScope,
+        kinds: Collection[AdProductionKind],
+    ) -> AdProduction | None:
+        copied = (
+            select(AdProductionCCUser.ad_production_id)
+            .where(
+                AdProductionCCUser.ad_production_id == AdProduction.id,
+                AdProductionCCUser.user_id == user_id,
+            )
+            .exists()
+        )
+        return self.db.scalar(
+            select(AdProduction).where(
+                AdProduction.id == ad_id,
+                AdProduction.deleted_at.is_(None),
+                or_(self.scope_criterion(user_id, data_scope, kinds), copied),
+            )
+        )
+
     def get_scoped(
         self,
         ad_id: int,
@@ -108,7 +181,9 @@ class AdProductionRepository(BaseRepository[AdProduction]):
         lock: bool = False,
     ) -> AdProduction | None:
         stmt = select(AdProduction).where(
-            AdProduction.id == ad_id, self.scope_criterion(user_id, data_scope, kinds)
+            AdProduction.id == ad_id,
+            AdProduction.deleted_at.is_(None),
+            self.scope_criterion(user_id, data_scope, kinds),
         )
         if lock:
             stmt = stmt.with_for_update().execution_options(populate_existing=True)
@@ -129,7 +204,10 @@ class AdProductionRepository(BaseRepository[AdProduction]):
         published_from: datetime | None,
         published_before: datetime | None,
     ) -> tuple[list[AdProduction], int]:
-        criteria = [self.scope_criterion(user_id, data_scope, (kind,))]
+        criteria = [
+            AdProduction.deleted_at.is_(None),
+            self.scope_criterion(user_id, data_scope, (kind,)),
+        ]
         if keyword:
             criteria.append(
                 or_(
@@ -161,6 +239,38 @@ class AdProductionRepository(BaseRepository[AdProduction]):
             .limit(page_size)
         ).all()
         return list(items), total
+
+    @staticmethod
+    def _processing_history(ad_ids: Collection[int]):
+        started_statuses = tuple(
+            status.value
+            for status in AdProductionStatus
+            if status is not AdProductionStatus.NOT_STARTED
+        )
+        return select(OperationLog.entity_id).where(
+            OperationLog.entity_type == AD_PRODUCTION_ENTITY,
+            OperationLog.entity_id.in_(ad_ids),
+            OperationLog.action.in_(("CREATE", "UPDATE", "STATUS_CHANGE", "WITHDRAW")),
+            or_(
+                OperationLog.before_data["status"].as_string().in_(started_statuses),
+                OperationLog.after_data["status"].as_string().in_(started_statuses),
+            ),
+        )
+
+    def processed_ids(self, ad_ids: Collection[int]) -> set[int]:
+        if not ad_ids:
+            return set()
+        return {
+            ad_id
+            for ad_id in self.db.scalars(self._processing_history(ad_ids).distinct())
+            if ad_id is not None
+        }
+
+    def has_processing_history(self, ad_id: int) -> bool:
+        # The caller holds the production row lock. A locking read also sees the
+        # latest audit entries under MySQL REPEATABLE READ.
+        statement = self._processing_history((ad_id,)).limit(1).with_for_update()
+        return self.db.scalar(statement) is not None
 
     def active_images(self, ad_ids: Sequence[int]) -> list[tuple[AttachmentRelation, FileObject]]:
         if not ad_ids:

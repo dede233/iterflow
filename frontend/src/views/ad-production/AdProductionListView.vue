@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, reactive, ref, shallowRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getAdProduction, listAdProductions, type AdProduction } from '@/api/adProductions'
+import EntityLifecycleMenu from '@/components/EntityLifecycleMenu.vue'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
@@ -10,19 +11,20 @@ import ListFilterPanel from '@/components/ui/ListFilterPanel.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import StatusTag from '@/components/StatusTag.vue'
-import RichTextContent from '@/components/RichTextContent.vue'
 import { useListQuery } from '@/composables/useListQuery'
 import { usePermission } from '@/composables/usePermission'
 import { useResponsive } from '@/composables/useResponsive'
 import { AD_PRODUCTION_LABELS, AD_PRODUCTION_PERMISSIONS, AD_PRODUCTION_PUBLISHER_LABEL, AD_PRODUCTION_STATUSES, MERCHANT_AD_STATUSES, adProductionStatusDisplay, type AdProductionKind, type AdProductionStatus } from '@/constants/adProduction'
+import { useAuthStore } from '@/stores/auth'
 import { formatLocalDateTime } from '@/utils/dates'
+import AdProductionDetail from './AdProductionDetail.vue'
 import AdProductionEditor from './AdProductionEditor.vue'
-import AdProductionImage from './AdProductionImage.vue'
 import { adProductionTitle, designerName, publisherName } from './adProductionDisplay'
 
 const props = defineProps<{ kind: AdProductionKind }>()
 const route = useRoute()
 const router = useRouter()
+const auth = useAuthStore()
 const labels = computed(() => AD_PRODUCTION_LABELS[props.kind])
 const isMerchantAd = computed(() => props.kind === 'MERCHANT_AD')
 const statusOptions = computed(() => isMerchantAd.value ? MERCHANT_AD_STATUSES : AD_PRODUCTION_STATUSES)
@@ -49,6 +51,18 @@ let listSequence = 0
 
 function matchesKind(record: AdProduction): boolean {
   return (record.kind ?? 'MATERIAL') === props.kind
+}
+
+function canChangeRecordStatus(record: AdProduction): boolean {
+  const user = auth.user
+  return record.status !== 'WITHDRAWN' && canEdit.value && !!user && (
+    user.data_scope === 'ALL' || [record.created_by, record.receiver_id, record.completed_by_id].includes(user.id)
+  )
+}
+
+function canEditRecord(record: AdProduction): boolean {
+  return canChangeRecordStatus(record) ||
+    (canCreate.value && record.created_by === auth.user?.id && !['COMPLETED', 'WITHDRAWN'].includes(record.status))
 }
 
 function parseStatus(value: string | undefined): AdProductionStatus | undefined {
@@ -130,10 +144,11 @@ const selected = ref<{ id: number; edit: boolean } | null>(null)
 const detailOpen = ref(false)
 const detailLoading = ref(false)
 const detailFailed = ref(false)
+const detailActionError = ref('')
 const editorOpen = ref(false)
 const editorStatusOnly = ref(false)
+const editorAuthorOnly = ref(false)
 const editorRecord = shallowRef<AdProduction | null>(null)
-const status = computed(() => record.value ? adProductionStatusDisplay(props.kind, record.value.status) : null)
 const linkedRecordId = computed(() => {
   const value = route.path === path ? route.query.record_id : null
   if (typeof value !== 'string' || !/^\d+$/.test(value)) return null
@@ -143,12 +158,15 @@ const linkedRecordId = computed(() => {
 let detailRequest: AbortController | undefined
 
 function openEditor(value: AdProduction | null, statusOnly = false): void {
-  if (value ? !canEdit.value : !canCreate.value || loading.value || listKindMismatch.value) return
+  if (value) {
+    if (statusOnly ? !canChangeRecordStatus(value) : !canEditRecord(value)) return
+  } else if (!canCreate.value || loading.value || listKindMismatch.value) return
   if (!statusOnly) {
     detailOpen.value = false
     resetDetail()
   }
   editorStatusOnly.value = statusOnly
+  editorAuthorOnly.value = value !== null && !canChangeRecordStatus(value)
   editorRecord.value = value
   editorOpen.value = true
 }
@@ -159,6 +177,7 @@ function resetDetail(): void {
   record.value = null
   detailLoading.value = false
   detailFailed.value = false
+  detailActionError.value = ''
 }
 
 function closeDetail(): void {
@@ -184,8 +203,9 @@ async function loadDetail(): Promise<void> {
       detailFailed.value = true
       return
     }
-    if (target.edit) openEditor(result)
-    else record.value = result
+    if (!target.edit) record.value = result
+    else if (canEditRecord(result)) openEditor(result)
+    else showUnavailableEdit(result)
   } catch {
     if (!request.signal.aborted) detailFailed.value = true
   } finally {
@@ -200,10 +220,41 @@ function openRecord(id: number, edit = false): void {
   void loadDetail()
 }
 
+function showUnavailableEdit(value: AdProduction): void {
+  selected.value = { id: value.id, edit: false }
+  record.value = value
+  detailActionError.value = value.status === 'WITHDRAWN'
+    ? '该需求已撤回，无法继续修改。'
+    : value.status === 'COMPLETED' ? '该需求已完成，无法继续修改。' : '当前账号无权修改该需求。'
+  detailOpen.value = true
+  void loadList()
+}
+
 function afterSave(saved: AdProduction): void {
   if (editorStatusOnly.value) record.value = saved
   editorOpen.value = false
   void loadList()
+}
+
+function afterDelete(): void {
+  detailOpen.value = false
+  void loadList()
+}
+
+function afterWithdraw(updated: AdProduction): void {
+  record.value = updated
+  void loadList()
+}
+
+function afterReload(latest: AdProduction): void {
+  const canContinue = editorAuthorOnly.value ? canEditRecord(latest) : canChangeRecordStatus(latest)
+  if (!canContinue) {
+    editorOpen.value = false
+    showUnavailableEdit(latest)
+    return
+  }
+  if (editorStatusOnly.value) record.value = latest
+  if (editorAuthorOnly.value) void loadList()
 }
 
 watch(linkedRecordId, (id, previous) => {
@@ -304,10 +355,10 @@ onBeforeUnmount(() => detailRequest?.abort())
         <el-table-column label="图片" width="72">
           <template #default="{ row }"><span class="image-count">{{ row.images.length ? `${row.images.length} 张` : '—' }}</span></template>
         </el-table-column>
-        <el-table-column label="操作" fixed="right" :width="canEdit ? 116 : 90">
+        <el-table-column label="操作" fixed="right" :width="canEdit || canCreate ? 116 : 90">
           <template #default="{ row }">
             <el-button link type="primary" :data-testid="`ad-production-view-${row.id}`" @click.stop="openRecord(row.id)">查看</el-button>
-            <el-button v-if="canEdit" link type="primary" :data-testid="`ad-production-edit-${row.id}`" @click.stop="openRecord(row.id, true)">编辑</el-button>
+            <el-button v-if="canEditRecord(row)" link type="primary" :data-testid="`ad-production-edit-${row.id}`" @click.stop="openRecord(row.id, true)">编辑</el-button>
           </template>
         </el-table-column>
         <template #empty><EmptyState v-if="!loading" :description="`暂无${labels.name}记录`" compact /></template>
@@ -359,41 +410,29 @@ onBeforeUnmount(() => detailRequest?.abort())
       @close="closeDetail"
     >
       <div class="record-detail" data-testid="ad-production-detail">
+        <el-alert v-if="detailActionError" class="detail-action-error" :title="detailActionError" type="warning" :closable="false" show-icon />
         <p v-if="detailLoading" role="status" class="loading-detail">正在加载记录…</p>
         <ErrorState v-else-if="detailFailed" :title="`${labels.name}记录加载失败`" retry-label="重新加载" @retry="loadDetail" />
-        <template v-else-if="record && status">
-          <SectionCard>
-            <h2 class="detail-title">{{ adProductionTitle(record) }}</h2>
-            <dl class="detail-meta">
-              <div><dt>{{ AD_PRODUCTION_PUBLISHER_LABEL }}</dt><dd>{{ publisherName(record) }}</dd></div>
-              <div><dt>需求接收人</dt><dd>{{ designerName(record, 'receiver_id') }}</dd></div>
-              <div><dt>发布时间</dt><dd><time :datetime="record.created_at">{{ formatLocalDateTime(record.created_at) }}</time></dd></div>
-              <div><dt>截止时间</dt><dd><time v-if="record.due_at" :datetime="record.due_at">{{ formatLocalDateTime(record.due_at) }}</time><template v-else>—</template></dd></div>
-              <div><dt>状态</dt><dd><StatusTag :status="record.status" :label="status.label" :type="status.tone" /></dd></div>
-              <div v-if="record.status === 'COMPLETED'"><dt>实际完成人</dt><dd>{{ designerName(record, 'completed_by_id') }}</dd></div>
-            </dl>
-            <div class="detail-content">
-              <h3>需求内容</h3>
-              <RichTextContent :ad-production-id="record.id" :content="record.content" :format="record.content_format" />
-            </div>
-            <div v-if="isMerchantAd && record.status === 'COMPLETED' && record.processing_result" class="detail-content">
-              <h3>处理结果</h3>
-              <p class="processing-result">{{ record.processing_result }}</p>
-            </div>
-          </SectionCard>
-          <SectionCard title="图片">
-            <div v-if="record.images.length" class="ad-image-grid">
-              <AdProductionImage v-for="image in record.images" :key="image.file_id" :source="{ recordId: record.id, fileId: image.file_id, name: image.original_name }" />
-            </div>
-            <p v-else class="no-images">暂无图片</p>
-          </SectionCard>
-        </template>
+        <AdProductionDetail v-else-if="record" :record="record" />
       </div>
       <template #footer>
         <div class="detail-footer">
           <el-button @click="detailOpen = false">关闭</el-button>
-          <el-button v-if="record && canEdit" data-testid="ad-production-detail-edit" @click="openEditor(record)">编辑</el-button>
-          <el-button v-if="record && canEdit" type="primary" data-testid="ad-production-change-status" @click="openEditor(record, true)">更改状态</el-button>
+          <template v-if="record && !detailLoading && !detailFailed">
+            <el-button v-if="canEditRecord(record)" data-testid="ad-production-detail-edit" @click="openRecord(record.id, true)">编辑</el-button>
+            <el-button v-if="canChangeRecordStatus(record)" type="primary" data-testid="ad-production-change-status" @click="openEditor(record, true)">更改状态</el-button>
+            <EntityLifecycleMenu
+              v-if="record.can_delete === true || record.can_withdraw === true"
+              kind="ad-productions"
+              :action="record.can_withdraw ? 'withdraw' : 'delete'"
+              :id="record.id"
+              :revision="record.revision"
+              :title="adProductionTitle(record)"
+              @refresh="loadDetail"
+              @deleted="afterDelete"
+              @withdrawn="afterWithdraw"
+            />
+          </template>
         </div>
       </template>
     </el-drawer>
@@ -404,14 +443,14 @@ onBeforeUnmount(() => detailRequest?.abort())
       :record="editorRecord"
       :mobile="isMobile"
       :status-only="editorStatusOnly"
+      :author-only="editorAuthorOnly"
       @saved="afterSave"
-      @reloaded="record = $event"
+      @reloaded="afterReload"
     />
   </section>
 </template>
 
 <style scoped>
-.processing-result { margin: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
 .ad-production-filters :deep(.filter-fields:has(.el-date-editor)) {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 224px), 1fr));
 }
@@ -450,20 +489,10 @@ onBeforeUnmount(() => detailRequest?.abort())
   white-space: pre-line;
 }
 .pager { margin-top: var(--if-space-4); justify-content: flex-end; }
-.record-detail { container-type: inline-size; }
-.detail-title { margin: 0 0 var(--if-space-4); font-size: 18px; overflow-wrap: anywhere; }
-.detail-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--if-space-3); margin: 0 0 var(--if-space-4); }
-.detail-meta dt { margin-bottom: 4px; color: var(--if-text-secondary); font-size: 12px; }
-.detail-meta dd { min-height: 22px; margin: 0; overflow-wrap: anywhere; }
-.detail-content { padding-top: var(--if-space-4); border-top: 1px solid var(--if-border); }
-.detail-content h3 { margin: 0 0 var(--if-space-2); font-size: 14px; }
-.ad-image-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 108px), 1fr)); gap: var(--if-space-3); }
-.no-images, .loading-detail { margin: 0; color: var(--if-text-secondary); }
+.loading-detail { margin: 0; color: var(--if-text-secondary); }
+.detail-action-error { margin-bottom: var(--if-space-3); }
 .detail-footer { display: flex; flex-wrap: wrap; gap: var(--if-space-2); }
 .detail-footer .el-button + .el-button { margin-left: 0; }
-@container (max-width: 420px) {
-  .detail-meta { grid-template-columns: minmax(0, 1fr); }
-}
 @media (min-width: 768px) and (max-width: 1199px) {
   .record-cards { grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); }
 }

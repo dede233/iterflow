@@ -88,12 +88,27 @@ const responses: Record<string, unknown> = {
   '/api/v1/systems/manage': { systems: [], modules: [] },
 }
 
-test('guest login fits every release viewport', async ({ page }) => {
+test('guest login and brand assets render at every release viewport', async ({ page }, info) => {
+  const favicon = await page.request.get('/brand/iterflow-mark.svg')
+  expect(favicon.ok()).toBe(true)
+  expect(favicon.headers()['content-type']).toContain('image/svg+xml')
+  expect(await favicon.text()).toContain('viewBox="0 0 64 64"')
+
   for (const width of [375, 390, 768, 1280, 1440]) {
     await page.setViewportSize({ width, height: 900 })
     await page.goto('/#/login')
     await expect(page.getByRole('button', { name: '登录' })).toBeVisible()
+    const heading = page.getByRole('heading', { name: '迭程 IterFlow', exact: true })
+    await expect(heading).toBeVisible()
+    const logo = heading.locator('img')
+    await expect(logo).toHaveAttribute('src', '/brand/iterflow-logo.svg')
+    await expect.poll(() => logo.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(334)
+    await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', '/brand/iterflow-mark.svg')
+    await expect.poll(() => page.locator('.auth-brand img').evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(64)
     expect(await page.evaluate(() => document.documentElement.scrollWidth), `${width}px login`).toBeLessThanOrEqual(width + 1)
+    if ([375, 1440].includes(width)) {
+      await page.screenshot({ path: info.outputPath(`brand-login-${width}.png`), animations: 'disabled' })
+    }
   }
 })
 
@@ -138,6 +153,13 @@ test('all 19 authenticated screens render at every release viewport', async ({ p
       await expect(page).toHaveURL(new RegExp(`#${path.split('?')[0].replaceAll('/', '\\/')}(?:\\?|$)`))
       const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth)
       expect(scrollWidth, `${path} at ${width}px`).toBeLessThanOrEqual(width + 1)
+      if (path === '/' && [375, 1440].includes(width)) {
+        const mark = page.locator(width === 375 ? '.mobile-header img.brand-mark' : '.side img.brand-mark')
+        await expect(mark).toBeVisible()
+        await expect(mark).toHaveAttribute('src', '/brand/iterflow-mark.svg')
+        await expect.poll(() => mark.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(64)
+        await page.screenshot({ path: info.outputPath(`brand-nav-${width}.png`), animations: 'disabled' })
+      }
       // Visibility/overflow alone missed unequal buttons and vertically shifted actions.
       const actionLayoutProblems = await page.evaluate(() => {
         const problems: string[] = []

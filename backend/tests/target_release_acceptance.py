@@ -334,7 +334,7 @@ def exercise_targets(fixture, scenario, monkeypatch):
         command.upgrade(cfg, "head")
         if mysql:
             with engine.connect() as conn:
-                assert validate_mysql(conn)["table_count"] == 38
+                assert validate_mysql(conn)["table_count"] == 39
         else:
             command.check(cfg)
         return
@@ -358,7 +358,7 @@ def exercise_targets(fixture, scenario, monkeypatch):
             assert not after.pop("release_frozen") and after == before
         if mysql:
             with engine.connect() as conn:
-                assert validate_mysql(conn)["table_count"] == 38
+                assert validate_mysql(conn)["table_count"] == 39
         else:
             command.check(cfg)
         return

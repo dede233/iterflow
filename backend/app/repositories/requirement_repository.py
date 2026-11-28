@@ -2,9 +2,11 @@ from sqlalchemy import ColumnElement, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.models.entities import (
+    OperationLog,
     Release,
     Requirement,
     RequirementParticipant,
+    RequirementStep,
     User,
     Version,
     VersionRequirement,
@@ -18,6 +20,17 @@ from app.models.enums import (
     VersionStatus,
 )
 from app.repositories.base import BaseRepository
+
+_AFTER_CONFIRMATION = (
+    "CONFIRMED",
+    "PLANNED",
+    "DESIGNING",
+    "DEVELOPING",
+    "TESTING",
+    "DONE",
+    "ONLINE",
+    "PAUSED",
+)
 
 
 class RequirementRepository(BaseRepository[Requirement]):
@@ -68,6 +81,31 @@ class RequirementRepository(BaseRepository[Requirement]):
                 Release.result == ReleaseResult.SUCCESS,
             )
         )
+
+    def has_confirmation_history(self, requirement_id: int, *, lock: bool) -> bool:
+        steps = select(RequirementStep.id).where(
+            RequirementStep.requirement_id == requirement_id,
+            RequirementStep.action.in_(
+                ["CONFIRM", *(f"STATUS_{status}" for status in _AFTER_CONFIRMATION)]
+            ),
+        )
+        # Historical status transitions may predate dedicated workflow records.
+        audit = select(OperationLog.id).where(
+            OperationLog.entity_type == "REQUIREMENT",
+            OperationLog.entity_id == requirement_id,
+            OperationLog.action == "STATUS_CHANGE",
+            or_(
+                OperationLog.before_data["status"].as_string().in_(_AFTER_CONFIRMATION),
+                OperationLog.after_data["status"].as_string().in_(_AFTER_CONFIRMATION),
+            ),
+        )
+        for query in (steps, audit):
+            check = query.limit(1)
+            if lock:
+                check = check.with_for_update()
+            if self.db.scalar(check) is not None:
+                return True
+        return False
 
     def list_scoped(
         self,

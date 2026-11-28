@@ -5,6 +5,7 @@ import BusinessSystemAttribution from '@/components/BusinessSystemAttribution.vu
 import RecentEntityActivity from '@/components/RecentEntityActivity.vue'
 import BusinessSystemSelect from '@/components/BusinessSystemSelect.vue'
 import BatchActionsDialog from '@/components/BatchActionsDialog.vue'
+import EntityLifecycleMenu from '@/components/EntityLifecycleMenu.vue'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, useId, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
@@ -390,6 +391,12 @@ async function load(): Promise<void> {
   }
 }
 
+function onDeleted(): void {
+  emit('updated')
+  if (props.embedded) emit('close')
+  else void router.replace(backTo.value)
+}
+
 onMounted(load)
 </script>
 
@@ -414,6 +421,7 @@ onMounted(load)
         >
           {{ action.label }}
         </el-button>
+        <EntityLifecycleMenu v-if="item.can_delete === true" kind="versions" :id="item.id" :record-number="item.version_no" :revision="item.revision" :title="item.name" @refresh="load" @deleted="onDeleted" />
         </template>
       </PageHeader>
       <BusinessSystemAttribution :system-id="item.system_id" :system-name="item.system_name" />

@@ -4,7 +4,17 @@ from seeded_postgres_fixture import collaboration_pg as collaboration_pg
 
 
 @pytest.mark.parametrize(
-    "scenario", ["batch", "rollback", "delete_race", "link_race", "convert_race", "version_race"]
+    "scenario",
+    [
+        "batch",
+        "rollback",
+        "delete_race",
+        "link_race",
+        "convert_race",
+        "version_race",
+        "version_delete_race",
+        "duplicate_history",
+    ],
 )
 def test_entity_actions_postgres(collaboration_pg, scenario, monkeypatch):
     exercise_actions(collaboration_pg, scenario, monkeypatch)

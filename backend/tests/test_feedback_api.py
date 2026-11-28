@@ -25,6 +25,8 @@ from app.models.entities import (
     FileObject,
     OperationLog,
     Permission,
+    RequirementFeedback,
+    RequirementOnlineFeedback,
     Role,
     RolePermission,
     User,
@@ -71,6 +73,8 @@ def feedback_api(tmp_path: Path) -> Iterator[FeedbackFixture]:
         BusinessModule.__table__,
         Feedback.__table__,
         FeedbackRecipient.__table__,
+        RequirementFeedback.__table__,
+        RequirementOnlineFeedback.__table__,
         CollaborationEvent.__table__,
         FileObject.__table__,
         AttachmentRelation.__table__,
@@ -279,13 +283,18 @@ def test_submitter_without_edit_permission_can_only_edit_own_new_feedback(feedba
     assert hidden.status_code == 404, hidden.text
     visible = client.get(path, headers=headers["pm"])
     assert visible.status_code == 200, visible.text
+    assert visible.json()["can_delete"] is False
+    assert client.get(path, headers=headers["alice"]).json()["can_delete"] is True
     forbidden = client.patch(path, headers=headers["pm"], json=content)
+    assert forbidden.status_code == 403, forbidden.text
+    forbidden = client.request(
+        "DELETE", path, headers=headers["pm"], json={"revision": 1, "reason": "他人提交"}
+    )
     assert forbidden.status_code == 403, forbidden.text
 
     for method, route, body in (
         ("PATCH", f"{path}/status", {"status": "CLOSED", "reason": "申请关闭"}),
         ("PUT", f"{path}/recipients", {"recipient_ids": [ids["cs"]]}),
-        ("DELETE", path, {"reason": "申请删除"}),
     ):
         rejected = client.request(
             method, route, headers=headers["alice"], json={**body, "revision": created["revision"]}
@@ -333,6 +342,68 @@ def test_submitter_without_edit_permission_can_only_edit_own_new_feedback(feedba
     assert edited.status_code == 200, edited.text
     assert edited.json()["title"] == next_edit["title"]
     assert edited.json()["revision"] == latest_revision + 1
+
+    closed = _status(
+        client, headers["cs"], created["id"], latest_revision + 1, "CLOSED", reason="先关闭"
+    )
+    assert closed.status_code == 200, closed.text
+    reopened = _status(
+        client, headers["cs"], created["id"], closed.json()["revision"], "NEW", reason="再打开"
+    )
+    assert reopened.status_code == 200, reopened.text
+    for actor in ("alice", "cs"):
+        assert client.get(path, headers=headers[actor]).json()["can_delete"] is False
+        rejected = client.request(
+            "DELETE",
+            path,
+            headers=headers[actor],
+            json={"revision": reopened.json()["revision"], "reason": "曾经受理"},
+        )
+        assert rejected.status_code == 409, rejected.text
+
+    fresh = _create(client, headers["alice"], title="未受理的误建反馈")
+    fresh_path = f"/api/v1/feedbacks/{fresh['id']}"
+    deleted = client.request(
+        "DELETE", fresh_path, headers=headers["alice"], json={"revision": 1, "reason": "误建反馈"}
+    )
+    assert deleted.status_code == 200, deleted.text
+    assert deleted.json() == {"id": fresh["id"], "revision": 2, "deleted": True}
+    assert client.get(fresh_path, headers=headers["cs"]).status_code == 404
+
+
+def test_reopened_duplicate_keeps_both_feedback_records(feedback_api):
+    client, _session, headers, _ids = feedback_api
+    original = _create(client, headers["alice"], title="原始反馈")
+    duplicate = _create(client, headers["alice"], title="重复反馈")
+    marked = _status(
+        client,
+        headers["cs"],
+        duplicate["id"],
+        duplicate["revision"],
+        "DUPLICATE",
+        duplicate_of_id=original["id"],
+    )
+    assert marked.status_code == 200, marked.text
+    reopened = _status(
+        client,
+        headers["cs"],
+        duplicate["id"],
+        marked.json()["revision"],
+        "NEW",
+        reason="重新处理反馈",
+    )
+    assert reopened.status_code == 200, reopened.text
+    assert reopened.json()["duplicate_of_id"] is None
+    for item in (original, reopened.json()):
+        path = f"/api/v1/feedbacks/{item['id']}"
+        assert client.get(path, headers=headers["alice"]).json()["can_delete"] is False
+        response = client.request(
+            "DELETE",
+            path,
+            headers=headers["alice"],
+            json={"revision": item["revision"], "reason": "有重复记录"},
+        )
+        assert response.status_code == 409 and response.json()["code"] == 40972
 
 
 def test_two_users_feedback_revision_contract_across_update_status_and_convert(feedback_api):

@@ -1,4 +1,5 @@
 from collections.abc import Iterator
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import patch
 
@@ -19,6 +20,7 @@ from app.models.entities import (
     Feedback,
     OperationLog,
     Permission,
+    Release,
     ReleaseBatch,
     ReleaseBatchTarget,
     ReleaseTarget,
@@ -34,6 +36,7 @@ from app.models.entities import (
     VersionRequirement,
 )
 from app.models.enums import DataScope, UserStatus, VersionStatus
+from app.repositories.dashboard_repository import DashboardRepository
 from app.services.requirement_service import RequirementService
 
 SPEC_DIR = Path(__file__).resolve().parents[2] / "spec"
@@ -72,6 +75,7 @@ def ver_api(tmp_path: Path) -> Iterator[Fixture]:
         RequirementStep.__table__,
         RequirementParticipant.__table__,
         Version.__table__,
+        Release.__table__,
         ReleaseTarget.__table__,
         ReleaseBatch.__table__,
         ReleaseBatchTarget.__table__,
@@ -233,6 +237,121 @@ def _relation_write_snapshot(session: Session, version_id: int) -> tuple[int, in
             or 0
         ),
     )
+
+
+def test_version_creator_soft_delete_is_scoped_and_keeps_number(ver_api):
+    client, session, headers, ids = ver_api
+    creator = _custom_creator_headers(
+        session,
+        code="VERSION_CREATOR",
+        permissions={"rd.version.view", "rd.version.create"},
+        scope=DataScope.SELF,
+    )
+    version = _version(client, creator, owner_id=ids["bob"], version_no="V-SOFT-DELETE")
+    version_id = version["id"]
+    path = f"/api/v1/versions/{version_id}"
+    delete_body = {"revision": version["revision"], "reason": "错误创建"}
+    assert client.get(path, headers=creator).json()["can_delete"] is True
+    assert client.get(path, headers=headers["bob"]).json()["can_delete"] is False
+    assert client.get(path, headers=headers["boss"]).json()["can_delete"] is False
+    for actor, status in (("alice", 404), ("boss", 403), ("bob", 403)):
+        response = client.request("DELETE", path, headers=headers[actor], json=delete_body)
+        assert response.status_code == status, response.text
+
+    saved = client.patch(
+        path, headers=headers["boss"], json={"revision": 1, "name": "最新的版本名"}
+    )
+    assert saved.status_code == 200, saved.text
+    assert_revision_conflict(
+        client.request("DELETE", path, headers=creator, json=delete_body),
+        revision=2,
+        updated_by=ids["boss"],
+    )
+    assert (
+        client.request(
+            "DELETE", path, headers=creator, json={"revision": 2, "reason": "  "}
+        ).status_code
+        == 422
+    )
+    deleted = client.request("DELETE", path, headers=creator, json={**delete_body, "revision": 2})
+    assert deleted.status_code == 200, deleted.text
+    assert deleted.json() == {"id": version_id, "revision": 3, "deleted": True}
+
+    assert client.get(path, headers=headers["boss"]).status_code == 404
+    assert client.request("DELETE", path, headers=creator, json=delete_body).status_code == 404
+    listed = client.get("/api/v1/versions?status=PLANNING", headers=headers["boss"]).json()
+    assert listed["items"] == [] and listed["total"] == 0
+    owners = client.get("/api/v1/versions/filter-options/owners", headers=headers["boss"]).json()
+    assert owners["items"] == [] and owners["total"] == 0
+    dashboard = DashboardRepository(session)
+    assert dashboard.version_status_counts(ids["boss"], DataScope.ALL) == {}
+    assert dashboard.recent_active_versions(ids["boss"], DataScope.ALL) == []
+    repeated = client.post(
+        "/api/v1/versions",
+        headers=creator,
+        json={"system_id": 1, "version_no": version["version_no"], "name": "重复版本号"},
+    )
+    assert repeated.status_code == 409 and repeated.json()["code"] == 40934
+    session.expire_all()
+    record = session.get(Version, version_id)
+    assert record.deleted_at is not None and record.revision == 3
+    assert record.deleted_by == record.created_by
+    assert record.delete_reason == delete_body["reason"]
+    audit = session.scalars(
+        select(OperationLog).where(
+            OperationLog.entity_type == "VERSION",
+            OperationLog.entity_id == version_id,
+            OperationLog.action == "SOFT_DELETE",
+        )
+    ).one()
+    assert audit.operator_id == record.created_by
+    assert audit.after_data["reason"] == delete_body["reason"]
+
+
+@pytest.mark.parametrize("history", ["removed_requirement", "release", "batch", "canceled"])
+def test_version_soft_delete_rejects_terminal_or_historical_references(ver_api, history):
+    client, session, headers, _ids = ver_api
+    actor = headers["alice"]
+    version = _version(client, actor)
+    version_id = version["id"]
+    if history == "removed_requirement":
+        requirement = _requirement(client, actor)
+        session.add(
+            VersionRequirement(
+                version_id=version_id, requirement_id=requirement["id"], active=False
+            )
+        )
+    elif history == "release":
+        session.add(
+            Release(
+                id=1,
+                version_id=version_id,
+                released_at=datetime.now(UTC),
+                release_notes="历史成功发布",
+            )
+        )
+    elif history == "batch":
+        session.add(
+            ReleaseBatch(
+                id=1,
+                version_id=version_id,
+                system_id=1,
+                kind="INITIAL",
+                status="CANCELED",
+                release_notes="历史取消发布计划",
+            )
+        )
+    else:
+        session.get(Version, version_id).status = VersionStatus.CANCELED
+    session.commit()
+    path = f"/api/v1/versions/{version_id}"
+    assert client.get(path, headers=actor).json()["can_delete"] is False
+    response = client.request(
+        "DELETE", path, headers=actor, json={"revision": 1, "reason": "已有历史的版本"}
+    )
+    assert response.status_code == 409, response.text
+    assert response.json()["code"] == (40971 if history == "canceled" else 40972)
+    assert session.get(Version, version_id).deleted_at is None
 
 
 def _to_ready(client, headers, version: dict) -> dict:

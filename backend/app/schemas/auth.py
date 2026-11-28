@@ -47,3 +47,7 @@ class AuthMe(BaseModel):
         default=False,
         description="当前账号是否具有启用的系统超级管理员或研发负责人角色。后端在每次读取文档时重新校验。",
     )
+    can_view_mail_deliveries: bool = Field(
+        default=False,
+        description="当前账号是否具有启用的内置 SUPER_ADMIN 角色或原邮件管理权限。",
+    )

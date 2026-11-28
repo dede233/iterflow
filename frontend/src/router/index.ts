@@ -6,6 +6,7 @@ import { pinia } from '@/stores/pinia'
 import { safeInternalRedirect } from '@/auth/redirect'
 
 const adProductionView = () => import('@/views/ad-production/AdProductionListView.vue')
+const adProductionNotificationView = () => import('@/views/ad-production/AdProductionNotificationView.vue')
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -14,6 +15,7 @@ declare module 'vue-router' {
     allowPasswordChangeRequired?: boolean
     requiresAllScope?: boolean
     requiresApiDocsAccess?: boolean
+    requiresMailDeliveryAccess?: boolean
   }
 }
 
@@ -52,9 +54,12 @@ export const router = createRouter({
         { path: 'announcements', name: 'announcements', component: () => import('@/views/announcement/AnnouncementView.vue') },
         { path: 'announcements/:id', name: 'announcement-detail', component: () => import('@/views/announcement/AnnouncementView.vue') },
         { path: 'notifications', name: 'notifications', component: () => import('@/views/notification/NotificationCenterView.vue') },
+        { path: 'notifications/material/:id', name: 'notification-material-detail', component: adProductionNotificationView, props: { kind: 'MATERIAL' } },
+        { path: 'notifications/merchant-ad/:id', name: 'notification-merchant-ad-detail', component: adProductionNotificationView, props: { kind: 'MERCHANT_AD' } },
         { path: 'profile', name: 'profile', component: () => import('@/views/profile/ProfileView.vue') },
         { path: 'admin/audits', name: 'audit-center', component: () => import('@/views/audit/AuditCenterView.vue'), meta: { permission: 'sys.audit.view' } },
         { path: 'admin/api-docs', name: 'api-documentation', component: () => import('@/views/system/ApiDocumentationView.vue'), meta: { requiresApiDocsAccess: true } },
+        { path: 'admin/mail-delivery-monitor', name: 'mail-delivery-monitor', component: () => import('@/views/system/MailDeliveryMonitorView.vue'), meta: { requiresMailDeliveryAccess: true } },
         { path: 'admin/systems', name: 'system-catalog', component: () => import('@/views/system/SystemCatalogView.vue'), meta: { permission: 'sys.system.manage', requiresAllScope: true } },
         { path: 'admin/roles', name: 'role-management', component: () => import('@/views/system/RoleListView.vue'), meta: { permission: ['sys.role.view', 'sys.role.manage'], requiresAllScope: true } },
         { path: 'system/users', name: 'user-list', component: () => import('@/views/system/UserListView.vue'), meta: { permission: 'sys.user.view' } },
@@ -99,6 +104,9 @@ router.beforeEach(async (to) => {
     return { name: 'forbidden' }
   }
   if (to.meta.requiresApiDocsAccess && !auth.canViewApiDocs) {
+    return { name: 'forbidden' }
+  }
+  if (to.meta.requiresMailDeliveryAccess && !auth.canViewMailDeliveries) {
     return { name: 'forbidden' }
   }
   return true

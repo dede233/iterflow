@@ -14,6 +14,7 @@ export const useAuthStore = defineStore('auth', {
     mustChangePassword: (state) => state.user?.must_change_password ?? false,
     permissionCodes: (state) => state.user?.permission_codes ?? [],
     canViewApiDocs: (state) => state.user?.can_view_api_docs === true,
+    canViewMailDeliveries: (state) => state.user?.can_view_mail_deliveries === true,
   },
   actions: {
     applyTokens(tokens: TokenPair): void {

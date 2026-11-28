@@ -24,6 +24,7 @@ const PATHS: Record<string, string> = {
   paperclip: 'M20 12l-8 8a5 5 0 0 1-7-7l9-9a3 3 0 0 1 4 4l-9 9a1 1 0 0 1-2-2l8-8',
   comment: 'M4 5h16v11H8l-4 4z',
   inbox: 'M3 13l3-8h12l3 8v6H3z M3 13h5l1 2h6l1-2h5',
+  mail: 'M3 5h18v14H3z M3 6l9 7 9-7',
   alert: 'M12 3 2 20h20z M12 9v5 M12 17h.01',
   lock: 'M6 11h12v10H6z M8 11V7a4 4 0 0 1 8 0v4',
 }

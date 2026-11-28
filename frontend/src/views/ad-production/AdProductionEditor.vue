@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, reactive, ref, shallowRef } from 'vue'
+import { computed, defineAsyncComponent, onBeforeUnmount, reactive, ref, shallowRef, watch } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import {
-  createAdProduction, getAdProduction, listAdProductionDesigners, updateAdProduction, updateAdProductionStatus,
+  createAdProduction, getAdProduction, listAdProductionCcOptions, listAdProductionDesigners, updateAdProduction, updateAdProductionStatus,
   type AdProduction, type AdProductionDesignerOption, type AdProductionUpdateFields,
 } from '@/api/adProductions'
 import RevisionConflictDialog from '@/components/RevisionConflictDialog.vue'
@@ -17,7 +17,7 @@ import { formatLocalDateTime } from '@/utils/dates'
 import { editorImageEntries } from '@/utils/requirementImages'
 import { plainTextToHtml, richTextPlainText } from '@/utils/richText'
 import AdProductionImage from './AdProductionImage.vue'
-import { adProductionText, adProductionTitle, designerName, publisherName } from './adProductionDisplay'
+import { adProductionText, adProductionTitle, ccUserNames, designerName, publisherName } from './adProductionDisplay'
 
 const RichTextEditor = defineAsyncComponent(() => import('@/components/RichTextEditor.vue'))
 
@@ -32,14 +32,22 @@ type EditableFields = {
   processing_result: string
   due: Date | null
   status: AdProductionStatus
+  cc_user_ids: number[]
 } & Record<DesignerField, number | null>
 
-const props = defineProps<{ kind: AdProductionKind; record: AdProduction | null; mobile: boolean; statusOnly?: boolean }>()
+const props = defineProps<{
+  kind: AdProductionKind
+  record: AdProduction | null
+  mobile: boolean
+  statusOnly?: boolean
+  authorOnly?: boolean
+}>()
 const emit = defineEmits<{ saved: [record: AdProduction]; reloaded: [record: AdProduction] }>()
 const visible = defineModel<boolean>({ required: true })
 const labels = computed(() => AD_PRODUCTION_LABELS[props.kind])
 const isMerchantAd = computed(() => props.kind === 'MERCHANT_AD')
-const statusOptions = computed(() => isMerchantAd.value ? MERCHANT_AD_STATUSES : AD_PRODUCTION_STATUSES)
+const statusOptions = computed(() => (isMerchantAd.value ? MERCHANT_AD_STATUSES : AD_PRODUCTION_STATUSES)
+  .filter(({ value }) => value !== 'WITHDRAWN'))
 
 const MIB = 1024 * 1024
 const IMAGE_LIMIT = 5
@@ -47,6 +55,8 @@ const IMAGE_SIZE_LIMIT = 5 * MIB
 const UPLOAD_SIZE_LIMIT = 15 * MIB
 
 const current = shallowRef(props.record)
+const canEditStatus = computed(() => current.value !== null && !props.authorOnly)
+const canEditReceiver = computed(() => !props.authorOnly || current.value?.status === 'NOT_STARTED')
 
 function editableFields(record: AdProduction | null): EditableFields {
   return {
@@ -57,11 +67,12 @@ function editableFields(record: AdProduction | null): EditableFields {
     status: record?.status ?? 'NOT_STARTED',
     receiver_id: record?.receiver_id ?? null,
     completed_by_id: record?.completed_by_id ?? null,
+    cc_user_ids: record?.cc_users?.map(person => person.id) ?? [],
   }
 }
 
 const initial = reactive(editableFields(current.value))
-const form = reactive<EditableFields>({ ...initial })
+const form = reactive<EditableFields>(editableFields(current.value))
 const formRef = ref<FormInstance>()
 const fileInput = ref<HTMLInputElement>()
 const saving = ref(false)
@@ -72,8 +83,20 @@ const designerMenusOpen = reactive({ receiver_id: false, completed_by_id: false 
 const designerOptions = shallowRef<AdProductionDesignerOption[]>([])
 const designersState = ref<'loading' | 'ready' | 'error'>('loading')
 const designerRequest = new AbortController()
+const ccMenuOpen = ref(false)
+const ccOptions = shallowRef<AdProductionDesignerOption[]>([])
+const selectedCcOptions = shallowRef<AdProductionDesignerOption[]>([])
+const ccLoading = ref(false)
+const ccFailed = ref(false)
+let ccKeyword = ''
+let ccRequest: AbortController | undefined
+const availableCcUsers = computed(() => {
+  const selected = [...(current.value?.cc_users ?? []), ...selectedCcOptions.value]
+    .filter(person => form.cc_user_ids.includes(person.id))
+  return [...new Map([...selected, ...ccOptions.value].map(person => [person.id, person])).values()]
+})
 const visibleDesignerFields = computed(() => designerFields.filter(({ key }) =>
-  key === 'receiver_id' ? !props.statusOnly : form.status === 'COMPLETED',
+  key === 'receiver_id' ? !props.statusOnly : canEditStatus.value && form.status === 'COMPLETED',
 ))
 const staged = shallowRef<{ key: number; file: File }[]>([])
 const removalIds = ref<number[]>([])
@@ -129,21 +152,24 @@ const rules: FormRules<EditableFields> = {
 
 const conflict = useRevisionConflict()
 const deadlineChanged = computed(() => form.due?.getTime() !== initial.due?.getTime())
+const ccChanged = computed(() => form.cc_user_ids.length !== initial.cc_user_ids.length ||
+  form.cc_user_ids.some(id => !initial.cc_user_ids.includes(id)))
 const statusChanged = computed(() => form.status !== initial.status ||
   (form.status === 'COMPLETED' && (form.completed_by_id !== initial.completed_by_id ||
     form.processing_result !== initial.processing_result)))
 const unsaved = useUnsavedChanges({
   isDirty: () => staged.value.length > 0 || removalIds.value.length > 0 ||
-    form.title !== initial.title || form.content !== initial.content || deadlineChanged.value ||
+    form.title !== initial.title || form.content !== initial.content || deadlineChanged.value || ccChanged.value ||
     form.receiver_id !== initial.receiver_id || form.processing_result !== initial.processing_result || statusChanged.value,
   isBusy: () => saving.value,
 })
 
 onBeforeRouteLeave(() => unsaved.requestLeave())
-onMounted(loadDesigners)
+watch(canEditReceiver, allowed => { if (allowed) void loadDesigners() }, { immediate: true })
 onBeforeUnmount(() => {
   disposed = true
   designerRequest.abort()
+  ccRequest?.abort()
   conflict.close()
 })
 
@@ -196,6 +222,32 @@ async function loadDesigners(): Promise<void> {
   }
 }
 
+async function searchCcUsers(keyword = ''): Promise<void> {
+  ccRequest?.abort()
+  const request = new AbortController()
+  ccRequest = request
+  ccKeyword = keyword.trim()
+  ccOptions.value = []
+  ccLoading.value = true
+  ccFailed.value = false
+  try {
+    const options = await listAdProductionCcOptions({
+      kind: props.kind,
+      ad_id: current.value?.id,
+      keyword: Array.from(ccKeyword).slice(0, 100).join('') || undefined,
+    }, request.signal)
+    if (!request.signal.aborted) ccOptions.value = options
+  } catch {
+    if (!request.signal.aborted) ccFailed.value = true
+  } finally {
+    if (!request.signal.aborted) ccLoading.value = false
+  }
+}
+
+function rememberCcUsers(): void {
+  selectedCcOptions.value = availableCcUsers.value.filter(person => form.cc_user_ids.includes(person.id))
+}
+
 function onStatusChange(status: EditableFields['status']): void {
   completionSelected = status === 'COMPLETED'
   fillDefaultCompleter()
@@ -208,11 +260,12 @@ function onDesignerChange(field: DesignerField): void {
 function submittedDesigner(field: DesignerField): number | undefined {
   const id = form[field]
   if (!current.value) return id ?? undefined
+  if (props.authorOnly && (field !== 'receiver_id' || !canEditReceiver.value || id === null)) return
   return id === initial[field] ? undefined : id ?? 0
 }
 
 function submittedProcessingResult(): string | undefined {
-  if (!isMerchantAd.value || form.status !== 'COMPLETED' || form.processing_result === initial.processing_result) return
+  if (!canEditStatus.value || !isMerchantAd.value || form.status !== 'COMPLETED' || form.processing_result === initial.processing_result) return
   return form.processing_result.trim()
 }
 
@@ -276,10 +329,11 @@ async function saveDetails(record: AdProduction | null): Promise<AdProduction | 
     return
   }
   const title = form.title.trim()
+  const cc_user_ids = ccChanged.value ? JSON.stringify(form.cc_user_ids) : undefined
   if (!record) {
     if (form.receiver_id === null) return
     return createAdProduction({
-      ...contentFields, kind: props.kind, title, receiver_id: form.receiver_id, due_at: form.due?.toISOString(),
+      ...contentFields, kind: props.kind, title, receiver_id: form.receiver_id, due_at: form.due?.toISOString(), cc_user_ids,
     }, files, contentImages)
   }
   return updateAdProduction(record.id, {
@@ -287,17 +341,18 @@ async function saveDetails(record: AdProduction | null): Promise<AdProduction | 
     work_date: record.work_date,
     issuer: record.issuer,
     title: form.title !== initial.title ? title : undefined,
-    status: form.status,
+    status: props.authorOnly ? record.status : form.status,
     due_at: deadlineChanged.value ? form.due?.toISOString() : undefined,
     clear_due_at: deadlineChanged.value && !form.due ? true : undefined,
     receiver_id: submittedDesigner('receiver_id'),
     completed_by_id: form.status === 'COMPLETED' ? submittedDesigner('completed_by_id') : undefined,
     processing_result: submittedProcessingResult(),
+    cc_user_ids,
   }, record.revision, files, removalIds.value, contentImages)
 }
 
 async function save(): Promise<void> {
-  if (saving.value || conflict.visible || !formRef.value || (props.statusOnly && !statusChanged.value)) return
+  if (saving.value || conflict.visible || !formRef.value || (props.statusOnly && (!canEditStatus.value || !statusChanged.value))) return
   saving.value = true
   saveError.value = ''
   const record = current.value
@@ -326,6 +381,7 @@ async function save(): Promise<void> {
         { label: '截止时间', value: formatLocalDateTime(latest.due_at) },
         { label: '状态', value: adProductionStatusDisplay(props.kind, latest.status).label },
         ...designerFields.map(({ key, label }) => ({ label, value: designerName(latest, key) })),
+        { label: '抄送人', value: ccUserNames(latest) },
         { label: '需求内容', value: adProductionText(latest) },
         ...(isMerchantAd.value && latest.processing_result ? [{ label: '处理结果', value: latest.processing_result }] : []),
         { label: '图片', value: latest.images.map(image => image.original_name).join('、') },
@@ -340,7 +396,8 @@ async function save(): Promise<void> {
         if (disposed) return
         current.value = latest
         Object.assign(initial, editableFields(latest))
-        Object.assign(form, initial)
+        Object.assign(form, editableFields(latest))
+        selectedCcOptions.value = []
         completionSelected = false
         completedByChanged = false
         staged.value = []
@@ -348,7 +405,7 @@ async function save(): Promise<void> {
         imageError.value = ''
         saveError.value = ''
         formRef.value?.clearValidate()
-        if (props.statusOnly) emit('reloaded', latest)
+        emit('reloaded', latest)
       },
     })) {
       if (!disposed) saveError.value = '记录已更新。请核对最新记录，当前输入已保留。'
@@ -389,7 +446,7 @@ async function save(): Promise<void> {
             <el-form-item v-if="!statusOnly" label="标题" prop="title" for="ad-production-title" :required="!current || !!current.title">
               <el-input id="ad-production-title" v-model="form.title" placeholder="请输入标题" />
             </el-form-item>
-            <div v-if="visibleDesignerFields.length && (designersState !== 'ready' || !designerOptions.length)" class="designer-state" role="status">
+            <div v-if="canEditReceiver && visibleDesignerFields.length && (designersState !== 'ready' || !designerOptions.length)" class="designer-state" role="status">
               <span v-if="designersState === 'loading'">正在加载人员…</span>
               <template v-else-if="designersState === 'error'">
                 <span>人员选项加载失败</span>
@@ -398,7 +455,7 @@ async function save(): Promise<void> {
               <span v-else>暂无可选人员</span>
             </div>
             <div class="editor-grid">
-              <el-form-item v-if="current" label="状态" prop="status" for="ad-production-status" data-testid="ad-production-status" @keydown.esc.capture="onSelectEscape($event, statusMenuOpen)">
+              <el-form-item v-if="canEditStatus" label="状态" prop="status" for="ad-production-status" data-testid="ad-production-status" @keydown.esc.capture="onSelectEscape($event, statusMenuOpen)">
                 <el-select id="ad-production-status" v-model="form.status" class="control" @visible-change="statusMenuOpen = $event" @change="onStatusChange">
                   <el-option v-for="status in statusOptions" :key="status.value" :label="status.label" :value="status.value" />
                 </el-select>
@@ -417,9 +474,9 @@ async function save(): Promise<void> {
                   v-model="form[field.key]"
                   class="control"
                   filterable
-                  :clearable="!!current"
+                  :clearable="!!current && (!authorOnly || current.receiver_id == null)"
                   :value-on-clear="null"
-                  :disabled="designersState === 'loading' || (!designerOptions.length && form[field.key] === null)"
+                  :disabled="(field.key === 'receiver_id' && !canEditReceiver) || designersState === 'loading' || (!designerOptions.length && form[field.key] === null)"
                   placeholder="搜索人员"
                   @visible-change="designerMenusOpen[field.key] = $event"
                   @change="onDesignerChange(field.key)"
@@ -440,7 +497,42 @@ async function save(): Promise<void> {
                 />
               </el-form-item>
             </div>
-            <el-form-item v-if="isMerchantAd && form.status === 'COMPLETED'" label="处理结果" prop="processing_result" for="ad-production-processing-result" required>
+            <el-form-item
+              v-if="!statusOnly"
+              label="抄送人"
+              for="ad-production-cc-users"
+              @keydown.esc.capture="onSelectEscape($event, ccMenuOpen)"
+            >
+              <el-select
+                id="ad-production-cc-users"
+                v-model="form.cc_user_ids"
+                class="control"
+                multiple
+                clearable
+                filterable
+                remote
+                :remote-method="searchCcUsers"
+                :reserve-keyword="false"
+                :loading="ccLoading"
+                collapse-tags
+                collapse-tags-tooltip
+                :max-collapse-tags="2"
+                placeholder="选填，搜索人员"
+                @visible-change="ccMenuOpen = $event"
+                @change="rememberCcUsers"
+              >
+                <el-option v-for="person in availableCcUsers" :key="person.id" :label="person.display_name" :value="person.id" />
+                <template #loading>正在加载人员…</template>
+                <template #empty>
+                  <span v-if="!ccFailed">暂无符合条件的人员</span>
+                </template>
+                <template v-if="ccFailed" #footer>
+                  抄送人选项加载失败
+                  <el-button link type="primary" @click="searchCcUsers(ccKeyword)">重试</el-button>
+                </template>
+              </el-select>
+            </el-form-item>
+            <el-form-item v-if="canEditStatus && isMerchantAd && form.status === 'COMPLETED'" label="处理结果" prop="processing_result" for="ad-production-processing-result" required>
               <el-input
                 id="ad-production-processing-result"
                 v-model="form.processing_result"

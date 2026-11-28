@@ -123,6 +123,7 @@ class AdProductionStatus(StrEnum):
     IN_PROGRESS = "IN_PROGRESS"
     SHIPPING = "SHIPPING"
     COMPLETED = "COMPLETED"
+    WITHDRAWN = "WITHDRAWN"
 
 
 class AdProductionKind(StrEnum):

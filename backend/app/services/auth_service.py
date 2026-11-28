@@ -295,4 +295,5 @@ class AuthService:
             ),
             "permission_codes": sorted(self.users.permission_codes(user.id)),
             "can_view_api_docs": self.users.can_view_api_docs(user.id),
+            "can_view_mail_deliveries": self.users.can_view_mail_deliveries(user.id),
         }

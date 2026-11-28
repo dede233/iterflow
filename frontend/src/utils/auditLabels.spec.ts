@@ -11,6 +11,7 @@ describe('audit display labels', () => {
     expect(auditEntityLabel('REQUIREMENT')).toBe('需求')
     expect(auditEntityLabel('BUSINESS_MODULE')).toBe('业务模块')
     expect(auditActionLabel('STATUS_CHANGE')).toBe('变更状态')
+    expect(auditActionLabel('WITHDRAW')).toBe('撤回制作需求')
     expect(auditActionLabel('MODULE_CREATE')).toBe('创建业务模块')
     expect(auditEntityOptions.find((item) => item.label === '需求')?.value).toBe('REQUIREMENT')
     expect(auditActionOptions.find((item) => item.label === '变更状态')?.value).toBe('STATUS_CHANGE')

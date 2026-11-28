@@ -19,7 +19,11 @@ const failed = ref(false)
 const notifications = useNotificationsStore()
 
 function notificationIcon(entityType: string | null): string {
-  return ({ FEEDBACK: 'feedback', REQUIREMENT: 'requirement', VERSION: 'version', RELEASE: 'release', AD_PRODUCTION: 'megaphone' } as Record<string, string>)[entityType ?? ''] ?? 'bell'
+  return ({
+    FEEDBACK: 'feedback', REQUIREMENT: 'requirement', VERSION: 'version', RELEASE: 'release',
+    AD_PRODUCTION: 'megaphone', AD_PRODUCTION_MATERIAL: 'megaphone',
+    AD_PRODUCTION_MATERIAL_CC: 'megaphone', AD_PRODUCTION_MERCHANT_CC: 'megaphone',
+  } as Record<string, string>)[entityType ?? ''] ?? 'bell'
 }
 
 function notificationTarget(notification: NotificationItem): string | null {
@@ -38,6 +42,15 @@ function notificationTarget(notification: NotificationItem): string | null {
     case 'AD_PRODUCTION':
       return Number.isSafeInteger(notification.entity_id) && notification.entity_id > 0
         ? `/merchant-ads?record_id=${notification.entity_id}` : null
+    case 'AD_PRODUCTION_MATERIAL':
+      return Number.isSafeInteger(notification.entity_id) && notification.entity_id > 0
+        ? `/ad-productions?record_id=${notification.entity_id}` : null
+    case 'AD_PRODUCTION_MATERIAL_CC':
+      return Number.isSafeInteger(notification.entity_id) && notification.entity_id > 0
+        ? `/notifications/material/${notification.entity_id}` : null
+    case 'AD_PRODUCTION_MERCHANT_CC':
+      return Number.isSafeInteger(notification.entity_id) && notification.entity_id > 0
+        ? `/notifications/merchant-ad/${notification.entity_id}` : null
     default:
       return null
   }

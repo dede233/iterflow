@@ -12,6 +12,7 @@ export const auditEntityLabels: Record<string, string> = {
   DICTIONARY: '数据字典',
   BUSINESS_SYSTEM: '业务系统',
   BUSINESS_MODULE: '业务模块',
+  NOTIFICATION: '通知',
 }
 
 export const auditActionLabels: Record<string, string> = {
@@ -46,6 +47,7 @@ export const auditActionLabels: Record<string, string> = {
   PARTICIPANTS_CHANGE: '调整环节人员',
   BULK_ADD: '批量关联需求',
   SOFT_DELETE: '删除',
+  WITHDRAW: '撤回制作需求',
   STATUS_CHANGE: '变更状态',
   CONFIRM_DEVELOPMENT_COMPLETION: '确认本人开发完成',
   RESET_DEVELOPMENT_COMPLETION: '返工清空开发确认',
@@ -78,6 +80,9 @@ export const auditActionLabels: Record<string, string> = {
   LOGOUT: '退出登录',
   PASSWORD_CHANGE: '修改密码',
   PASSWORD_CHANGE_FAILED: '修改密码失败',
+  DELIVERY_MONITOR_VIEW: '查看邮件记录',
+  DELIVERY_DETAIL_VIEW: '查看邮件投递详情',
+  DELIVERY_RESEND: '手动重发邮件',
 }
 
 export const auditEntityOptions = Object.entries(auditEntityLabels).map(([value, label]) => ({ value, label }))

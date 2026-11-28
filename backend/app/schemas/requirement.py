@@ -88,6 +88,7 @@ class RequirementAssigneeChange(BaseModel):
 
 
 class RequirementOut(BaseModel):
+    can_delete: bool = False
     release_frozen: bool = Field(default=False, title="首次发布内容已冻结")
     can_edit_as_creator: bool | None = Field(
         default=None,

@@ -19,7 +19,7 @@ export interface paths {
         put?: never;
         /**
          * 发布制作需求
-         * @description 需要发布类型对应的查看和发布权限。发布须填写标题、需求内容并指定有效接收人，截止时间可选。实际发布时间和发布人由服务端记录。物料制作新建时标记为已完成另需编辑权限。记录、图片和审计一并保存。
+         * @description 需要发布类型对应的查看和发布权限。发布须填写标题、需求内容并指定有效接收人，截止时间可选。实际发布时间和发布人由服务端记录。物料制作新建时标记为已完成另需编辑权限。记录、图片、可选抄送名单、站内通知和审计一并保存。
          */
         post: operations["create_ad_production"];
         delete?: never;
@@ -48,6 +48,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/ad-productions/cc-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 运营协作抄送人选项
+         * @description 发布或编辑对应制作需求时搜索启用账号，最多返回 50 项。提交 ad_id 时，需对该记录有编辑权限，或有对应类型的发布权限且为尚未完成记录的发布人。均须满足对应类型的查看权限和记录的数据范围。
+         */
+        get: operations["list_ad_production_cc_options"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/ad-productions/{ad_id}": {
         parameters: {
             query?: never;
@@ -57,19 +77,43 @@ export interface paths {
         };
         /**
          * 查看制作需求
-         * @description 需要记录所属类型的查看权限和该记录的 DataScope。
+         * @description 登录账号可凭当前抄送关系读取这一条记录，也可凭该类型的查看权限与原有数据范围读取。
          */
         get: operations["get_ad_production"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * 软删除
+         * @description 发布人可软删除从未处理的本人记录。接收与抄送关系保留。
+         */
+        delete: operations["delete_ad_production"];
         options?: never;
         head?: never;
         /**
          * 编辑制作需求
-         * @description 需要记录所属类型的查看和编辑权限，以及相应的 DataScope。用 revision 校验并发，原子更新工作内容、状态和图片。
+         * @description 校验记录所属类型的查看权限、DataScope 和 revision。具备编辑权限的账号可更新制作和处理信息。仅具备发布权限的本人可更正自己尚未完成的记录的标题、内容、截止时间、图片和抄送名单，且只在未开始时可更换有效接收人。发布人更正保留工作日期、发布人、状态和处理信息。记录、人员、图片、通知和审计一并保存。
          */
         patch: operations["update_ad_production"];
+        trace?: never;
+    };
+    "/ad-productions/{ad_id}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 撤回制作需求
+         * @description 发布人带原因撤回处理中的需求，通知接收人与抄送人。
+         */
+        post: operations["withdraw_ad_production"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/ad-productions/{ad_id}/status": {
@@ -101,9 +145,29 @@ export interface paths {
         };
         /**
          * 预览物料制作图片
-         * @description 需要记录所属类型的查看权限和该记录的 DataScope。图片必须当前关联到该记录。
+         * @description 登录账号可凭当前抄送关系读取这一条记录，也可凭该类型的查看权限与原有数据范围读取。图片必须当前关联到该记录。
          */
         get: operations["ad_production_image"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ad-productions/{ad_id}/content-images/{file_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 读取物料制作正文中的图片
+         * @description 登录账号可凭该记录的原有查看权限与数据范围或当前抄送关系读取。图片必须当前关联到此记录的正文。
+         */
+        get: operations["ad_production_content_image"];
         put?: never;
         post?: never;
         delete?: never;
@@ -211,6 +275,46 @@ export interface paths {
          * @description 已有多平台品牌必须使用品牌原子编辑接口，旧单平台写入口返回409；保留独立旧目标及PC编辑。
          */
         patch: operations["update_target_api_v1_systems_release_targets__target_id__patch"];
+        trace?: never;
+    };
+    "/systems/{system_id}/mini-program-targets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 新增小程序品牌及平台
+         * @description 沿用 sys.system.manage 和 ALL 数据范围；以业务系统锁序列化，一次原子保存品牌下微信/支付宝平台。编辑须提交全部成员 ID/revision；平台停用保留历史，不重写快照或发布记录。编码前缀不超过57字符，平台编码使用 _WX/_ALIPAY 后缀。
+         */
+        post: operations["create_mini_program_target_api_v1_systems__system_id__mini_program_targets_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/systems/mini-program-targets/{target_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * 原子编辑小程序品牌及平台
+         * @description 沿用 sys.system.manage 和 ALL 数据范围；以业务系统锁序列化，一次原子保存品牌下微信/支付宝平台。编辑须提交全部成员 ID/revision；平台停用保留历史，不重写快照或发布记录。编码前缀不超过57字符，平台编码使用 _WX/_ALIPAY 后缀。
+         */
+        patch: operations["update_mini_program_target_api_v1_systems_mini_program_targets__target_id__patch"];
         trace?: never;
     };
     "/versions/{version_id}/release-targets": {
@@ -808,7 +912,7 @@ export interface paths {
         post?: never;
         /**
          * 软删除
-         * @description 需现有编辑权限及数据范围；仅待受理反馈/待确认需求，且无需求、反馈、版本或重复反馈引用。保留行、附件、评论、审计及通知历史，普通读取和新关联不可再访问。revision CAS，删除原因必填。
+         * @description 需既有编辑资格或本人创建且有查看权限，并通过数据范围检查；仅从未受理的反馈或从未确认的直接创建需求，且无需求、反馈、版本或重复反馈引用。保留行、附件、评论、审计及通知历史，普通读取和新关联不可再访问。revision CAS，删除原因必填。
          */
         delete: operations["delete_feedback_api_v1_feedbacks__feedback_id__delete"];
         options?: never;
@@ -818,6 +922,26 @@ export interface paths {
          * @description 需要反馈编辑权限，或由有反馈查看权限的提交人编辑本人仍处于 NEW 的反馈。均需符合数据范围并提交最新 revision；旧 revision 返回 409。已有编辑权限的人员可以编辑 CLOSED 反馈，保存不改变状态。
          */
         patch: operations["update_feedback_api_v1_feedbacks__feedback_id__patch"];
+        trace?: never;
+    };
+    "/feedbacks/{feedback_id}/images/{file_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 读取反馈正文中的图片
+         * @description 先校验记录的数据范围和查看权限，再读取属于这条记录正文的图片。
+         */
+        get: operations["feedback_image"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/feedbacks/{feedback_id}/status": {
@@ -1016,7 +1140,7 @@ export interface paths {
         post?: never;
         /**
          * 软删除
-         * @description 需现有编辑权限及数据范围；仅待受理反馈/待确认需求，且无需求、反馈、版本或重复反馈引用。保留行、附件、评论、审计及通知历史，普通读取和新关联不可再访问。revision CAS，删除原因必填。
+         * @description 需既有编辑资格或本人创建且有查看权限，并通过数据范围检查；仅从未受理的反馈或从未确认的直接创建需求，且无需求、反馈、版本或重复反馈引用。保留行、附件、评论、审计及通知历史，普通读取和新关联不可再访问。revision CAS，删除原因必填。
          */
         delete: operations["delete_requirement_api_v1_requirements__requirement_id__delete"];
         options?: never;
@@ -1203,7 +1327,11 @@ export interface paths {
         get: operations["get_version_api_v1_versions__version_id__get"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * 软删除
+         * @description 创建人可软删除从未关联需求或发布的规划中版本，原版本号保留。
+         */
+        delete: operations["delete_version"];
         options?: never;
         head?: never;
         /**
@@ -1508,42 +1636,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/me/wecom-preferences": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** 查看个人企业微信通知设置 */
-        get: operations["get_wecom_preferences"];
-        /** 调整个人企业微信通知偏好 */
-        put: operations["change_wecom_preferences"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/users/{user_id}/wecom-binding": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** 查看企业微信成员绑定 */
-        get: operations["get_user_wecom_binding"];
-        /** 更新企业微信成员绑定 */
-        put: operations["change_user_wecom_binding"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/me/mail-preferences": {
         parameters: {
             query?: never;
@@ -1636,6 +1728,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/mail-delivery-monitor": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查看全局邮件投递记录
+         * @description 启用的内置 SUPER_ADMIN 或具有原邮件管理权限的账号可查看协作通知及邮箱验证的投递记录。原邮件管理权限要求启用的内置管理员或研发负责人角色及 sys.user.edit 权限。SENT 表示 SMTP 服务接受了邮件。收件及阅读状态未知。
+         */
+        get: operations["list_mail_delivery_monitor"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/mail-delivery-monitor/recipients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查找邮件投递接收账号
+         * @description 权限与全局邮件投递记录一致。启用的内置 SUPER_ADMIN 或具有 sys.user.view 和 ALL 数据范围的账号可查询全部账号。其他具备投递查看权限的账号可查询有邮件投递记录的接收账号。支持按姓名或用户名搜索。
+         */
+        get: operations["list_mail_delivery_recipients"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/mail-delivery-monitor/{delivery_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查看邮件投递详情
+         * @description 查看权限与全局邮件投递记录一致。返回投递时收件地址的脱敏值及原事件的标签和时间。每次查看均记录审计。
+         */
+        get: operations["get_mail_delivery_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/mail-delivery-monitor/{delivery_id}/resend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 手动重发邮件
+         * @description 仅启用的内置 SUPER_ADMIN 可将当前已发送或失败且仍满足投递条件的邮件重新加入队列。服务端重新检查接收账号、邮件设置和验证码有效性。成功响应表示已排队，邮件由后台任务投递，原业务事件和验证码有效期保持原值。
+         */
+        post: operations["resend_mail_delivery"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/mail-deliveries": {
         parameters: {
             query?: never;
@@ -1664,6 +1836,42 @@ export interface paths {
         put?: never;
         /** retry_mail_delivery */
         post: operations["retry_mail_delivery"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/wecom-preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 查看个人企业微信通知设置 */
+        get: operations["get_wecom_preferences"];
+        /** 调整个人企业微信通知偏好 */
+        put: operations["change_wecom_preferences"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/{user_id}/wecom-binding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 查看企业微信成员绑定 */
+        get: operations["get_user_wecom_binding"];
+        /** 更新企业微信成员绑定 */
+        put: operations["change_user_wecom_binding"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2119,134 +2327,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/systems/{system_id}/mini-program-targets": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * 新增小程序品牌及平台
-         * @description 沿用 sys.system.manage 和 ALL 数据范围；以业务系统锁序列化，一次原子保存品牌下微信/支付宝平台。编辑须提交全部成员 ID/revision；平台停用保留历史，不重写快照或发布记录。编码前缀不超过57字符，平台编码使用 _WX/_ALIPAY 后缀。
-         */
-        post: operations["create_mini_program_target_api_v1_systems__system_id__mini_program_targets_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/systems/mini-program-targets/{target_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /**
-         * 原子编辑小程序品牌及平台
-         * @description 沿用 sys.system.manage 和 ALL 数据范围；以业务系统锁序列化，一次原子保存品牌下微信/支付宝平台。编辑须提交全部成员 ID/revision；平台停用保留历史，不重写快照或发布记录。编码前缀不超过57字符，平台编码使用 _WX/_ALIPAY 后缀。
-         */
-        patch: operations["update_mini_program_target_api_v1_systems_mini_program_targets__target_id__patch"];
-        trace?: never;
-    };
-    "/feedbacks/{feedback_id}/images/{file_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 读取反馈正文中的图片
-         * @description 先校验记录的数据范围和查看权限，再读取属于这条记录正文的图片。
-         */
-        get: operations["feedback_image"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/ad-productions/{ad_id}/content-images/{file_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 读取物料制作正文中的图片
-         * @description 先校验记录所属类型的查看权限和数据范围，再读取该记录正文的图片。
-         */
-        get: operations["ad_production_content_image"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /**
-         * 制作需求类型
-         * @description 分别对应物料制作和商家广告。
-         * @enum {string}
-         */
-        AdProductionKind: "MATERIAL" | "MERCHANT_AD";
         /** AdProductionCreateForm */
         AdProductionCreateForm: {
-            /**
-             * 需求类型
-             * @description 默认物料制作。发布后类型固定。
-             * @default MATERIAL
-             */
-            kind: components["schemas"]["AdProductionKind"];
             /**
              * 原制作日期
              * @description 旧客户端可提交。默认使用创建时间的 UTC 日期。
              */
             work_date?: string | null;
+            /** 标题 */
+            title: string;
             /**
              * 需求内容
              * @description 纯文本限 3000 字，富文本按可见文字计算 3000 字上限。
              */
             content: string;
-            /** 原下发人 */
-            issuer?: string | null;
-            /**
-             * 状态
-             * @default NOT_STARTED
-             */
-            status: components["schemas"]["AdProductionStatus"];
-            /** 新图片 */
-            images?: string[];
             /**
              * 正文格式
              * @default PLAIN
              * @enum {string}
              */
             content_format: "PLAIN" | "HTML";
+            /** 原下发人 */
+            issuer?: string | null;
             /**
-             * 新正文图片
-             * @description 各图片的文件名传入编辑器中对应的 local-UUID 引用。单张限 4 MiB，本次新增正文图片合计限 8 MiB。
+             * 截止时间
+             * @description 可选。ISO 8601 时间需包含时区。
              */
-            content_images?: string[];
+            due_at?: string | null;
+            /**
+             * 状态
+             * @default NOT_STARTED
+             */
+            status: components["schemas"]["AdProductionStatus"];
             /**
              * 需求接收人 ID
              * @description 发布时必选。必须为启用的设计人员或制作需求完成人。
@@ -2257,16 +2373,66 @@ export interface components {
              * @description 实际完成人 ID，仅在已完成状态可设置，必须为可用的设计人员。0 表示清除。
              */
             completed_by_id?: number | null;
+            /**
+             * 抄送账号
+             * @description JSON 数组字符串，元素为账号 ID，新增账号须启用。省略时保留现状，空数组清空。
+             */
+            cc_user_ids?: string | null;
+            /** 新图片 */
+            images?: string[];
+            /**
+             * 新正文图片
+             * @description 各图片的文件名传入编辑器中对应的 local-UUID 引用。单张限 4 MiB，本次新增正文图片合计限 8 MiB。
+             */
+            content_images?: string[];
+            /**
+             * 需求类型
+             * @description 默认物料制作。发布后类型固定。
+             * @default MATERIAL
+             */
+            kind: components["schemas"]["AdProductionKind"];
+        };
+        /** AdProductionDesignerOption */
+        AdProductionDesignerOption: {
+            /** 设计人员 ID */
+            id: number;
+            /** 设计人员显示名称 */
+            display_name: string;
+        };
+        /**
+         * 制作需求类型
+         * @description 分别对应物料制作和商家广告。
+         * @enum {string}
+         */
+        AdProductionKind: "MATERIAL" | "MERCHANT_AD";
+        /** AdProductionOut */
+        AdProductionOut: {
+            /** 制作需求 ID */
+            id: number;
+            /**
+             * 原制作日期
+             * Format: date
+             */
+            work_date: string;
             /** 标题 */
-            title: string;
+            title?: string | null;
+            /** 需求内容 */
+            content: string;
+            /**
+             * 正文格式
+             * @default PLAIN
+             * @enum {string}
+             */
+            content_format: "PLAIN" | "HTML";
+            /** 原下发人 */
+            issuer: string;
             /**
              * 截止时间
              * @description 可选。ISO 8601 时间需包含时区。
              */
             due_at?: string | null;
-        };
-        /** AdProductionOut */
-        AdProductionOut: {
+            /** 状态 */
+            status: components["schemas"]["AdProductionStatus"];
             /**
              * 需求类型
              * @default MATERIAL
@@ -2277,21 +2443,23 @@ export interface components {
              * @description 商家广告完成时登记的实际处理结果。
              */
             processing_result?: string | null;
-            /** 制作需求 ID */
-            id: number;
-            /**
-             * 原制作日期
-             * Format: date
-             */
-            work_date: string;
-            /** 需求内容 */
-            content: string;
-            /** 原下发人 */
-            issuer: string;
-            /** 状态 */
-            status: components["schemas"]["AdProductionStatus"];
+            /** 需求接收人 ID */
+            receiver_id?: number | null;
+            /** 接单人姓名 */
+            receiver_display_name?: string | null;
+            /** 实际完成人 ID */
+            completed_by_id?: number | null;
+            /** 实际完成人姓名 */
+            completed_by_display_name?: string | null;
+            /** 抄送人 */
+            cc_users: components["schemas"]["AdProductionDesignerOption"][];
             /** 创建人 ID */
             created_by: number;
+            /**
+             * 需求发布人
+             * @description 根据实际创建记录的账号读取显示名称。
+             */
+            publisher_display_name?: string | null;
             /**
              * 发布时间
              * Format: date-time
@@ -2304,34 +2472,18 @@ export interface components {
             updated_at: string;
             /** 修订号 */
             revision: number;
+            /**
+             * 可删除
+             * @default false
+             */
+            can_delete: boolean;
+            /**
+             * 可撤回
+             * @default false
+             */
+            can_withdraw: boolean;
             /** 图片 */
             images: components["schemas"]["AttachmentOut"][];
-            /**
-             * 正文格式
-             * @default PLAIN
-             * @enum {string}
-             */
-            content_format: "PLAIN" | "HTML";
-            /** 需求接收人 ID */
-            receiver_id?: number | null;
-            /** 接单人姓名 */
-            receiver_display_name?: string | null;
-            /** 实际完成人 ID */
-            completed_by_id?: number | null;
-            /** 实际完成人姓名 */
-            completed_by_display_name?: string | null;
-            /** 标题 */
-            title?: string | null;
-            /**
-             * 截止时间
-             * @description 可选。ISO 8601 时间需包含时区。
-             */
-            due_at?: string | null;
-            /**
-             * 需求发布人
-             * @description 根据实际创建记录的账号读取显示名称。
-             */
-            publisher_display_name?: string | null;
         };
         /** AdProductionPage */
         AdProductionPage: {
@@ -2346,48 +2498,56 @@ export interface components {
         };
         /**
          * 制作状态
-         * @description 物料制作显示未开始、进行中、邮寄中、已完成。商家广告显示未处理、处理中、已处理。
+         * @description 物料制作显示未开始、进行中、邮寄中、已完成。商家广告显示未处理、处理中、已处理。两类均可由发布人撤回处理中的记录。
          * @enum {string}
          */
-        AdProductionStatus: "NOT_STARTED" | "IN_PROGRESS" | "SHIPPING" | "COMPLETED";
-        /** AdProductionUpdateForm */
-        AdProductionUpdateForm: {
+        AdProductionStatus: "NOT_STARTED" | "IN_PROGRESS" | "SHIPPING" | "COMPLETED" | "WITHDRAWN";
+        /** AdProductionStatusChange */
+        AdProductionStatusChange: {
+            /** 修订号 */
+            revision: number;
+            /** 状态 */
+            status: components["schemas"]["AdProductionStatus"];
+            /**
+             * 实际完成人 ID
+             * @description 仅在已完成状态设置，0 表示清除。
+             */
+            completed_by_id?: number | null;
             /**
              * 处理结果
              * @description 商家广告确认完成时填写，最多 4000 字。
              */
             processing_result?: string | null;
+        };
+        /** AdProductionUpdateForm */
+        AdProductionUpdateForm: {
             /**
              * 原制作日期
              * Format: date
              */
             work_date: string;
+            /** 标题 */
+            title?: string | null;
             /**
              * 需求内容
              * @description 纯文本限 3000 字，富文本按可见文字计算 3000 字上限。
              */
             content: string;
-            /** 原下发人 */
-            issuer: string;
-            /** 状态 */
-            status: components["schemas"]["AdProductionStatus"];
-            /** 新图片 */
-            images?: string[];
-            /** 修订号 */
-            revision: number;
-            /** 移除图片 ID */
-            remove_image_ids?: number[];
             /**
              * 正文格式
              * @default PLAIN
              * @enum {string}
              */
             content_format: "PLAIN" | "HTML";
+            /** 原下发人 */
+            issuer: string;
             /**
-             * 新正文图片
-             * @description 各图片的文件名传入编辑器中对应的 local-UUID 引用。单张限 4 MiB，本次新增正文图片合计限 8 MiB。
+             * 截止时间
+             * @description 可选。ISO 8601 时间需包含时区。
              */
-            content_images?: string[];
+            due_at?: string | null;
+            /** 状态 */
+            status: components["schemas"]["AdProductionStatus"];
             /**
              * 需求接收人 ID
              * @description 接单人 ID，必须为可用的设计人员。0 表示清除。
@@ -2398,19 +2558,33 @@ export interface components {
              * @description 实际完成人 ID，仅在已完成状态可设置，必须为可用的设计人员。0 表示清除。
              */
             completed_by_id?: number | null;
-            /** 标题 */
-            title?: string | null;
             /**
-             * 截止时间
-             * @description 可选。ISO 8601 时间需包含时区。
+             * 抄送账号
+             * @description JSON 数组字符串，元素为账号 ID，新增账号须启用。省略时保留现状，空数组清空。
              */
-            due_at?: string | null;
+            cc_user_ids?: string | null;
+            /** 新图片 */
+            images?: string[];
+            /**
+             * 新正文图片
+             * @description 各图片的文件名传入编辑器中对应的 local-UUID 引用。单张限 4 MiB，本次新增正文图片合计限 8 MiB。
+             */
+            content_images?: string[];
+            /** 修订号 */
+            revision: number;
             /**
              * 清除截止时间
              * @description 与提交新的截止时间互斥。均省略时保留原截止时间。
              * @default false
              */
             clear_due_at: boolean;
+            /**
+             * 处理结果
+             * @description 商家广告确认完成时填写，最多 4000 字。
+             */
+            processing_result?: string | null;
+            /** 移除图片 ID */
+            remove_image_ids?: number[];
         };
         /** AddRequirementRequest */
         AddRequirementRequest: {
@@ -2627,6 +2801,12 @@ export interface components {
              * @default false
              */
             can_view_api_docs: boolean;
+            /**
+             * 是否可查看全局邮件投递记录
+             * @description 当前账号是否具有启用的内置 SUPER_ADMIN 角色或原邮件管理权限。
+             * @default false
+             */
+            can_view_mail_deliveries: boolean;
         };
         /** BatchActionItem */
         BatchActionItem: {
@@ -3272,14 +3452,6 @@ export interface components {
             module_id?: number | null;
             /** 描述 */
             description: string;
-            /** 预期结果 */
-            expected_result?: string | null;
-            /** 实际结果 */
-            actual_result?: string | null;
-            /** 复现步骤 */
-            reproduce_steps?: string | null;
-            /** 反馈接收人 */
-            recipient_ids: number[];
             /**
              * 正文格式
              * @default PLAIN
@@ -3290,9 +3462,22 @@ export interface components {
             description_images?: {
                 [key: string]: string;
             };
+            /** 预期结果 */
+            expected_result?: string | null;
+            /** 实际结果 */
+            actual_result?: string | null;
+            /** 复现步骤 */
+            reproduce_steps?: string | null;
+            /** 反馈接收人 */
+            recipient_ids: number[];
         };
         /** FeedbackOut */
         FeedbackOut: {
+            /**
+             * 可删除
+             * @default false
+             */
+            can_delete: boolean;
             /**
              * 提交人显示名称
              * @description 当前反馈提交人的显示名称；仅随已授权的反馈返回，不提供用户管理信息。
@@ -3328,6 +3513,12 @@ export interface components {
             submitter_id: number;
             /** 描述 */
             description: string;
+            /**
+             * 正文格式
+             * @default PLAIN
+             * @enum {string}
+             */
+            description_format: "PLAIN" | "HTML";
             /** 预期结果 */
             expected_result: string | null;
             /** 实际结果 */
@@ -3355,12 +3546,6 @@ export interface components {
              * @description 对象的乐观锁修订号；写入时提交最后读取的修订号。
              */
             revision: number;
-            /**
-             * 正文格式
-             * @default PLAIN
-             * @enum {string}
-             */
-            description_format: "PLAIN" | "HTML";
         };
         /** FeedbackPage */
         FeedbackPage: {
@@ -3420,17 +3605,6 @@ export interface components {
             module_id?: number | null;
             /** 描述 */
             description?: string | null;
-            /** 预期结果 */
-            expected_result?: string | null;
-            /** 实际结果 */
-            actual_result?: string | null;
-            /** 复现步骤 */
-            reproduce_steps?: string | null;
-            /**
-             * 修订号
-             * @description 对象的乐观锁修订号；写入时提交最后读取的修订号。
-             */
-            revision: number;
             /**
              * 正文格式
              * @description 省略时沿用记录的格式。更新此字段时须一并提交详细描述。
@@ -3442,6 +3616,17 @@ export interface components {
             description_images?: {
                 [key: string]: string;
             };
+            /** 预期结果 */
+            expected_result?: string | null;
+            /** 实际结果 */
+            actual_result?: string | null;
+            /** 复现步骤 */
+            reproduce_steps?: string | null;
+            /**
+             * 修订号
+             * @description 对象的乐观锁修订号；写入时提交最后读取的修订号。
+             */
+            revision: number;
         };
         /**
          * FeedbackUrgency
@@ -3531,6 +3716,147 @@ export interface components {
              */
             ok: boolean;
         };
+        /** MailDeliveryDetail */
+        MailDeliveryDetail: {
+            /** 投递标识 */
+            id: string;
+            /** 接收账号用户名 */
+            username: string;
+            /**
+             * 接收账号姓名
+             * @description 姓名为空时返回用户名。
+             */
+            display_name: string;
+            /** 邮件类型 */
+            kind: components["schemas"]["MailDeliveryKind"];
+            /** 投递状态 */
+            status: components["schemas"]["MailDeliveryStatus"];
+            /** 尝试次数 */
+            attempts: number;
+            /**
+             * 安全错误码
+             * @description 仅返回已知的内部错误码或 SMTP 数字响应码。无法识别的值统一为 UNKNOWN。
+             */
+            error_code: string | null;
+            /**
+             * 投递记录创建时间
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * 下次尝试时间
+             * @description 等待、重试及结果未确定时返回调度时间，其他状态返回 null。
+             */
+            next_attempt_at: string | null;
+            /**
+             * 投递时的脱敏收件地址
+             * @description 使用投递记录中保存的地址。未保存或格式无效时返回 null。
+             */
+            masked_email: string | null;
+            /**
+             * 邮件事件标签
+             * @description 根据原事件动作生成的固定中文标签。
+             */
+            event_label: string;
+            /**
+             * 原事件发生时间
+             * Format: date-time
+             */
+            event_created_at: string;
+        };
+        /** MailDeliveryItem */
+        MailDeliveryItem: {
+            /** 投递标识 */
+            id: string;
+            /** 接收账号 ID */
+            user_id: number;
+            /** 接收账号用户名 */
+            username: string;
+            /**
+             * 接收账号姓名
+             * @description 姓名为空时返回用户名。
+             */
+            display_name: string;
+            /** 邮件类型 */
+            kind: components["schemas"]["MailDeliveryKind"];
+            /** 投递状态 */
+            status: components["schemas"]["MailDeliveryStatus"];
+            /** 尝试次数 */
+            attempts: number;
+            /**
+             * 安全错误码
+             * @description 仅返回已知的内部错误码或 SMTP 数字响应码。无法识别的值统一为 UNKNOWN。
+             */
+            error_code: string | null;
+            /**
+             * 投递记录创建时间
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * 下次尝试时间
+             * @description 等待、重试及结果未确定时返回调度时间，其他状态返回 null。
+             */
+            next_attempt_at: string | null;
+            /**
+             * 重发操作凭证
+             * @description 仅有手动重发权限且当前符合条件的邮件投递记录返回凭证。
+             */
+            resend_token: string | null;
+            /** 重发受限原因 */
+            resend_block_reason: string | null;
+        };
+        /**
+         * MailDeliveryKind
+         * @enum {string}
+         */
+        MailDeliveryKind: "EMAIL_VERIFICATION" | "COLLABORATION";
+        /** MailDeliveryPage */
+        MailDeliveryPage: {
+            /** 投递记录列表 */
+            items: components["schemas"]["MailDeliveryItem"][];
+            /** 当前页码 */
+            page: number;
+            /** 每页条数 */
+            page_size: number;
+            /** 筛选后总条数 */
+            total: number;
+            /** 当前账号具有邮件手动重发权限 */
+            can_resend_mail_deliveries: boolean;
+        };
+        /** MailDeliveryRecipient */
+        MailDeliveryRecipient: {
+            /** 接收账号 ID */
+            user_id: number;
+            /**
+             * 接收账号姓名
+             * @description 姓名为空时返回用户名。
+             */
+            display_name: string;
+            /** 接收账号用户名 */
+            username: string;
+        };
+        /** MailDeliveryRecipientPage */
+        MailDeliveryRecipientPage: {
+            /** 接收账号列表 */
+            items: components["schemas"]["MailDeliveryRecipient"][];
+            /** 当前页码 */
+            page: number;
+            /** 每页条数 */
+            page_size: number;
+            /** 筛选后总条数 */
+            total: number;
+        };
+        /** MailDeliveryResend */
+        MailDeliveryResend: {
+            /** 重发操作凭证 */
+            resend_token: string;
+        };
+        /**
+         * MailDeliveryStatus
+         * @enum {string}
+         */
+        MailDeliveryStatus: "PENDING" | "SENDING" | "RETRY" | "SENT" | "FAILED" | "SKIPPED" | "UNCERTAIN";
         /** MailNoticeAcknowledge */
         MailNoticeAcknowledge: {
             /** 修订号 */
@@ -3586,6 +3912,41 @@ export interface components {
          * @enum {string}
          */
         ManualVersionStatus: "PLANNING" | "DEVELOPING" | "TESTING" | "READY" | "CANCELED";
+        /** MiniProgramPlatformInput */
+        MiniProgramPlatformInput: {
+            /**
+             * 小程序平台
+             * @enum {string}
+             */
+            platform: "WECHAT_MINI_PROGRAM" | "ALIPAY_MINI_PROGRAM";
+            /** 小程序 AppID */
+            app_id?: string | null;
+            /**
+             * 是否启用该平台
+             * @default true
+             */
+            enabled: boolean;
+        };
+        /** MiniProgramTargetCreate */
+        MiniProgramTargetCreate: {
+            /** 品牌目标编码 */
+            code: string;
+            /** 小程序品牌名称 */
+            name: string;
+            /** 微信及支付宝配置 */
+            platforms: components["schemas"]["MiniProgramPlatformInput"][];
+        };
+        /** MiniProgramTargetUpdate */
+        MiniProgramTargetUpdate: {
+            /** 品牌目标编码 */
+            code: string;
+            /** 小程序品牌名称 */
+            name: string;
+            /** 微信及支付宝配置 */
+            platforms: components["schemas"]["MiniProgramPlatformInput"][];
+            /** 编辑时的完整平台成员与修订号 */
+            members: components["schemas"]["TargetMemberRevision"][];
+        };
         /** MoveRequirementRequest */
         MoveRequirementRequest: {
             /** 需求 ID */
@@ -3678,16 +4039,6 @@ export interface components {
             module_id?: number | null;
             /** 描述 */
             description: string;
-            /** 预期结果 */
-            expected_result?: string | null;
-            /** 实际结果 */
-            actual_result?: string | null;
-            /** 复现步骤 */
-            reproduce_steps?: string | null;
-            /** 反馈接收人 */
-            recipient_ids: number[];
-            /** 需求修订号 */
-            revision: number;
             /**
              * 正文格式
              * @default PLAIN
@@ -3698,6 +4049,16 @@ export interface components {
             description_images?: {
                 [key: string]: string;
             };
+            /** 预期结果 */
+            expected_result?: string | null;
+            /** 实际结果 */
+            actual_result?: string | null;
+            /** 复现步骤 */
+            reproduce_steps?: string | null;
+            /** 反馈接收人 */
+            recipient_ids: number[];
+            /** 需求修订号 */
+            revision: number;
         };
         /** OnlineReviewFeedbackItem */
         OnlineReviewFeedbackItem: {
@@ -4284,6 +4645,11 @@ export interface components {
         /** RequirementOut */
         RequirementOut: {
             /**
+             * 可删除
+             * @default false
+             */
+            can_delete: boolean;
+            /**
              * 首次发布内容已冻结
              * @default false
              */
@@ -4536,6 +4902,13 @@ export interface components {
          * @enum {string}
          */
         StorageDriver: "LOCAL" | "S3";
+        /** TargetMemberRevision */
+        TargetMemberRevision: {
+            /** 平台目标 ID */
+            id: number;
+            /** 平台修订号 */
+            revision: number;
+        };
         /** TargetReleaseOption */
         TargetReleaseOption: {
             /** 发布目标 ID */
@@ -4799,6 +5172,11 @@ export interface components {
          */
         VersionOut: {
             /**
+             * 可删除
+             * @default false
+             */
+            can_delete: boolean;
+            /**
              * 首次发布内容已冻结
              * @default false
              */
@@ -4927,6 +5305,37 @@ export interface components {
              */
             revision: number;
         };
+        /** WecomBindingChange */
+        WecomBindingChange: {
+            /** 修订号 */
+            revision: number;
+            /** 企业微信成员 ID */
+            member_user_id: string | null;
+        };
+        /** WecomPreferenceChange */
+        WecomPreferenceChange: {
+            /** 修订号 */
+            revision: number;
+            /**
+             * 企业微信通知偏好
+             * @enum {string}
+             */
+            mode: "OFF" | "TASKS" | "ALL";
+        };
+        /** WecomPreferencesOut */
+        WecomPreferencesOut: {
+            /** 修订号 */
+            revision: number;
+            /** 企业微信成员 ID */
+            member_user_id: string | null;
+            /**
+             * 企业微信通知偏好
+             * @enum {string}
+             */
+            mode: "OFF" | "TASKS" | "ALL";
+            /** 企业微信通知是否启用 */
+            enabled: boolean;
+        };
         /**
          * WorkflowAction
          * @description REOPEN 仅允许已取消且不属于已发布版本的需求，原因必填；回到 DRAFT 并清除当前确认资格，保留历史、人员及关联。
@@ -4981,103 +5390,6 @@ export interface components {
             detail: {
                 [key: string]: unknown;
             };
-        };
-        /** MiniProgramPlatformInput */
-        MiniProgramPlatformInput: {
-            /**
-             * 小程序平台
-             * @enum {string}
-             */
-            platform: "WECHAT_MINI_PROGRAM" | "ALIPAY_MINI_PROGRAM";
-            /** 小程序 AppID */
-            app_id?: string | null;
-            /**
-             * 是否启用该平台
-             * @default true
-             */
-            enabled: boolean;
-        };
-        /** TargetMemberRevision */
-        TargetMemberRevision: {
-            /** 平台目标 ID */
-            id: number;
-            /** 平台修订号 */
-            revision: number;
-        };
-        /** MiniProgramTargetCreate */
-        MiniProgramTargetCreate: {
-            /** 品牌目标编码 */
-            code: string;
-            /** 小程序品牌名称 */
-            name: string;
-            /** 微信及支付宝配置 */
-            platforms: components["schemas"]["MiniProgramPlatformInput"][];
-        };
-        /** MiniProgramTargetUpdate */
-        MiniProgramTargetUpdate: {
-            /** 品牌目标编码 */
-            code: string;
-            /** 小程序品牌名称 */
-            name: string;
-            /** 微信及支付宝配置 */
-            platforms: components["schemas"]["MiniProgramPlatformInput"][];
-            /** 编辑时的完整平台成员与修订号 */
-            members: components["schemas"]["TargetMemberRevision"][];
-        };
-        /** WecomBindingChange */
-        WecomBindingChange: {
-            /** 修订号 */
-            revision: number;
-            /** 企业微信成员 ID */
-            member_user_id: string | null;
-        };
-        /** WecomPreferenceChange */
-        WecomPreferenceChange: {
-            /** 修订号 */
-            revision: number;
-            /**
-             * 企业微信通知偏好
-             * @enum {string}
-             */
-            mode: "OFF" | "TASKS" | "ALL";
-        };
-        /** WecomPreferencesOut */
-        WecomPreferencesOut: {
-            /** 修订号 */
-            revision: number;
-            /** 企业微信成员 ID */
-            member_user_id: string | null;
-            /**
-             * 企业微信通知偏好
-             * @enum {string}
-             */
-            mode: "OFF" | "TASKS" | "ALL";
-            /** 企业微信通知是否启用 */
-            enabled: boolean;
-        };
-        /** AdProductionDesignerOption */
-        AdProductionDesignerOption: {
-            /** 设计人员 ID */
-            id: number;
-            /** 设计人员显示名称 */
-            display_name: string;
-        };
-        /** AdProductionStatusChange */
-        AdProductionStatusChange: {
-            /**
-             * 处理结果
-             * @description 商家广告确认完成时填写，最多 4000 字。
-             */
-            processing_result?: string | null;
-            /** 修订号 */
-            revision: number;
-            /** 状态 */
-            status: components["schemas"]["AdProductionStatus"];
-            /**
-             * 实际完成人 ID
-             * @description 仅在已完成状态设置，0 表示清除。
-             */
-            completed_by_id?: number | null;
         };
     };
     responses: never;
@@ -5245,6 +5557,66 @@ export interface operations {
             };
         };
     };
+    list_ad_production_cc_options: {
+        parameters: {
+            query?: {
+                kind?: components["schemas"]["AdProductionKind"];
+                ad_id?: number | null;
+                keyword?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdProductionDesignerOption"][];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 请求参数或业务数据无效 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     get_ad_production: {
         parameters: {
             query?: never;
@@ -5303,6 +5675,77 @@ export interface operations {
             };
         };
     };
+    delete_ad_production: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ad_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EntityDelete"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntityDeleted"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description revision CAS 冲突 (40910) 或该操作的业务冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 请求参数或业务数据无效 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     update_ad_production: {
         parameters: {
             query?: never;
@@ -5315,6 +5758,77 @@ export interface operations {
         requestBody: {
             content: {
                 "multipart/form-data": components["schemas"]["AdProductionUpdateForm"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdProductionOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description revision CAS 冲突 (40910) 或该操作的业务冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 请求参数或业务数据无效 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    withdraw_ad_production: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ad_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EntityDelete"];
             };
         };
         responses: {
@@ -5446,6 +5960,67 @@ export interface operations {
         };
     };
     ad_production_image: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ad_id: number;
+                file_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": unknown;
+                    "image/jpeg": unknown;
+                    "image/webp": unknown;
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 请求参数或业务数据无效 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    ad_production_content_image: {
         parameters: {
             query?: never;
             header?: never;
@@ -5822,6 +6397,148 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReleaseTargetOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或 revision 冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_mini_program_target_api_v1_systems__system_id__mini_program_targets_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                system_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MiniProgramTargetCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseTargetOut"][];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 业务状态或 revision 冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_mini_program_target_api_v1_systems_mini_program_targets__target_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                target_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MiniProgramTargetUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseTargetOut"][];
                 };
             };
             /** @description 未登录或登录凭证不可用 */
@@ -8216,6 +8933,67 @@ export interface operations {
             };
         };
     };
+    feedback_image: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                feedback_id: number;
+                file_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": unknown;
+                    "image/jpeg": unknown;
+                    "image/webp": unknown;
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     change_feedback_status_api_v1_feedbacks__feedback_id__status_patch: {
         parameters: {
             query?: never;
@@ -9735,6 +10513,77 @@ export interface operations {
             };
         };
     };
+    delete_version: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                version_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EntityDelete"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntityDeleted"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description revision CAS 冲突 (40910) 或该操作的业务冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevisionConflictResponse"] | components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     update_version_api_v1_versions__version_id__patch: {
         parameters: {
             query?: never;
@@ -10718,233 +11567,6 @@ export interface operations {
             };
         };
     };
-    get_wecom_preferences: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["WecomPreferencesOut"];
-                };
-            };
-            /** @description 未登录或登录凭证不可用 */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description 无权执行该操作 */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-        };
-    };
-    change_wecom_preferences: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["WecomPreferenceChange"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["WecomPreferencesOut"];
-                };
-            };
-            /** @description 未登录或登录凭证不可用 */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description 无权执行该操作 */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description 绑定、偏好或 revision 冲突 */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_user_wecom_binding: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                user_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["WecomPreferencesOut"];
-                };
-            };
-            /** @description 未登录或登录凭证不可用 */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description 无权执行该操作 */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description 资源不存在或不在当前数据范围 */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    change_user_wecom_binding: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                user_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["WecomBindingChange"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["WecomPreferencesOut"];
-                };
-            };
-            /** @description 未登录或登录凭证不可用 */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description 无权执行该操作 */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description 资源不存在或不在当前数据范围 */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description 绑定、偏好或 revision 冲突 */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     get_mail_preferences: {
         parameters: {
             query?: never;
@@ -11202,6 +11824,240 @@ export interface operations {
             };
         };
     };
+    list_mail_delivery_monitor: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number;
+                status?: components["schemas"]["MailDeliveryStatus"] | null;
+                kind?: components["schemas"]["MailDeliveryKind"] | null;
+                user_id?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MailDeliveryPage"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_mail_delivery_recipients: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number;
+                keyword?: string;
+                selected_id?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MailDeliveryRecipientPage"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_mail_delivery_detail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                delivery_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description 禁止缓存邮件投递详情 */
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MailDeliveryDetail"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 邮件投递记录不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resend_mail_delivery: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                delivery_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MailDeliveryResend"];
+            };
+        };
+        responses: {
+            /** @description 已加入邮件投递队列 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无手动重发权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 邮件投递记录不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 投递状态已变化或不再满足重发条件 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_mail_deliveries: {
         parameters: {
             query?: {
@@ -11287,6 +12143,233 @@ export interface operations {
             };
             /** @description 无权执行该操作 */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_wecom_preferences: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WecomPreferencesOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    change_wecom_preferences: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WecomPreferenceChange"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WecomPreferencesOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 绑定、偏好或 revision 冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_user_wecom_binding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WecomPreferencesOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    change_user_wecom_binding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WecomBindingChange"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WecomPreferencesOut"];
+                };
+            };
+            /** @description 未登录或登录凭证不可用 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 无权执行该操作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 资源不存在或不在当前数据范围 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 绑定、偏好或 revision 冲突 */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12969,270 +14052,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    create_mini_program_target_api_v1_systems__system_id__mini_program_targets_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                system_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["MiniProgramTargetCreate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ReleaseTargetOut"][];
-                };
-            };
-            /** @description 未登录或登录凭证不可用 */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description 无权执行该操作 */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description 资源不存在或不在当前数据范围 */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description 业务状态或 revision 冲突 */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    update_mini_program_target_api_v1_systems_mini_program_targets__target_id__patch: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                target_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["MiniProgramTargetUpdate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ReleaseTargetOut"][];
-                };
-            };
-            /** @description 未登录或登录凭证不可用 */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description 无权执行该操作 */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description 资源不存在或不在当前数据范围 */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description 业务状态或 revision 冲突 */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    feedback_image: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                feedback_id: number;
-                file_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "image/png": unknown;
-                    "image/jpeg": unknown;
-                    "image/webp": unknown;
-                };
-            };
-            /** @description 未登录或登录凭证不可用 */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description 无权执行该操作 */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description 资源不存在或不在当前数据范围 */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    ad_production_content_image: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                ad_id: number;
-                file_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "image/png": unknown;
-                    "image/jpeg": unknown;
-                    "image/webp": unknown;
-                };
-            };
-            /** @description 未登录或登录凭证不可用 */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description 无权执行该操作 */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description 资源不存在或不在当前数据范围 */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description 请求参数或业务数据无效 */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

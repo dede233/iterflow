@@ -1,0 +1,6 @@
+from seeded_postgres_fixture import collaboration_pg as collaboration_pg
+from soft_deletion_migration_acceptance import exercise_soft_deletion_migration
+
+
+def test_soft_deletion_migration_postgres(collaboration_pg):
+    exercise_soft_deletion_migration(collaboration_pg)

@@ -80,7 +80,7 @@ class VersionRequirementWorkflowService:
         # queries. A requirement's personnel edits hold the same requirement lock.
         version = self.db.scalar(
             select(Version)
-            .where(Version.id == version_id)
+            .where(Version.id == version_id, Version.deleted_at.is_(None))
             .with_for_update()
             .execution_options(populate_existing=True)
         )

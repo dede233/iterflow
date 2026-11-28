@@ -6,25 +6,32 @@ export type AdProduction = components['schemas']['AdProductionOut']
 export type AdProductionDesignerOption = components['schemas']['AdProductionDesignerOption']
 type AdProductionPage = components['schemas']['AdProductionPage']
 type AdProductionListParams = NonNullable<paths['/ad-productions']['get']['parameters']['query']>
+type AdProductionCcOptionsParams = NonNullable<paths['/ad-productions/cc-options']['get']['parameters']['query']>
 type CreateForm = components['schemas']['AdProductionCreateForm']
 type UpdateForm = components['schemas']['AdProductionUpdateForm']
 type AdProductionStatusChange = components['schemas']['AdProductionStatusChange']
-export type AdProductionCreateFields = Pick<CreateForm, 'title' | 'content' | 'content_format' | 'receiver_id' | 'due_at' | 'kind'>
+export type AdProductionCreateFields = Pick<CreateForm, 'title' | 'content' | 'content_format' | 'receiver_id' | 'due_at' | 'kind' | 'cc_user_ids'>
 export type AdProductionUpdateFields = Pick<UpdateForm,
   'work_date' | 'title' | 'content' | 'content_format' | 'status' | 'issuer' | 'receiver_id' | 'completed_by_id' | 'due_at'
-> & Partial<Pick<UpdateForm, 'clear_due_at' | 'processing_result'>>
+> & Partial<Pick<UpdateForm, 'clear_due_at' | 'processing_result' | 'cc_user_ids'>>
 
 export async function listAdProductions(params: AdProductionListParams): Promise<AdProductionPage> {
   return (await api.get<AdProductionPage>('/ad-productions', { params })).data
 }
 
 export async function getAdProduction(id: number, signal?: AbortSignal): Promise<AdProduction> {
-  return (await api.get<AdProduction>(`/ad-productions/${id}`, { signal })).data
+  return (await api.get<AdProduction>(`/ad-productions/${id}`, { signal, skipForbiddenAlert: true })).data
 }
 
 export async function listAdProductionDesigners(kind: AdProductionKind, signal: AbortSignal): Promise<AdProductionDesignerOption[]> {
   return (await api.get<AdProductionDesignerOption[]>('/ad-productions/designer-options', {
     params: { kind }, signal, skipForbiddenAlert: true,
+  })).data
+}
+
+export async function listAdProductionCcOptions(params: AdProductionCcOptionsParams, signal: AbortSignal): Promise<AdProductionDesignerOption[]> {
+  return (await api.get<AdProductionDesignerOption[]>('/ad-productions/cc-options', {
+    params, signal, skipForbiddenAlert: true,
   })).data
 }
 
@@ -66,6 +73,12 @@ export async function updateAdProduction(
 
 export async function updateAdProductionStatus(id: number, fields: AdProductionStatusChange): Promise<AdProduction> {
   return (await api.patch<AdProduction>(`/ad-productions/${id}/status`, fields, {
+    skipConflictAlert: true, skipForbiddenAlert: true,
+  })).data
+}
+
+export async function withdrawAdProduction(id: number, payload: components['schemas']['EntityDelete']): Promise<AdProduction> {
+  return (await api.post<AdProduction>(`/ad-productions/${id}/withdraw`, payload, {
     skipConflictAlert: true, skipForbiddenAlert: true,
   })).data
 }

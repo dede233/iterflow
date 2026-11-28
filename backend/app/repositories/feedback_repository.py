@@ -1,10 +1,11 @@
-from sqlalchemy import ColumnElement, func, or_, select
+from sqlalchemy import ColumnElement, String, and_, cast, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.models.entities import (
     BusinessModule,
     BusinessSystem,
     Feedback,
+    OperationLog,
     RequirementOnlineFeedback,
     User,
 )
@@ -42,6 +43,49 @@ class FeedbackRepository(BaseRepository[Feedback]):
         if data_scope is not DataScope.ALL:
             stmt = stmt.where(Feedback.submitter_id == user_id)
         return self.db.scalar(stmt)
+
+    def has_acceptance_history(self, feedback_id: int, *, lock: bool) -> bool:
+        query = (
+            select(OperationLog.id)
+            .where(
+                OperationLog.entity_type == "FEEDBACK",
+                OperationLog.entity_id == feedback_id,
+                OperationLog.action == "STATUS_CHANGE",
+                or_(
+                    OperationLog.before_data["status"].as_string() == FeedbackStatus.ACCEPTED,
+                    OperationLog.after_data["status"].as_string() == FeedbackStatus.ACCEPTED,
+                ),
+            )
+            .limit(1)
+        )
+        if lock:
+            query = query.with_for_update()
+        return self.db.scalar(query) is not None
+
+    def has_duplicate_history(self, feedback_id: int, *, lock: bool) -> bool:
+        # Reopening a duplicate clears its live pointer. Both the original
+        # and the duplicate remain referenced by the original audit record.
+        previous = cast(OperationLog.before_data["duplicate_of_id"].as_string(), String)
+        current = cast(OperationLog.after_data["duplicate_of_id"].as_string(), String)
+        query = (
+            select(OperationLog.id)
+            .where(
+                OperationLog.entity_type == "FEEDBACK",
+                OperationLog.action == "STATUS_CHANGE",
+                or_(
+                    and_(
+                        OperationLog.entity_id == feedback_id,
+                        or_(previous.not_in(("", "null")), current.not_in(("", "null"))),
+                    ),
+                    previous == str(feedback_id),
+                    current == str(feedback_id),
+                ),
+            )
+            .limit(1)
+        )
+        if lock:
+            query = query.with_for_update()
+        return self.db.scalar(query) is not None
 
     def list_online_for_requirement(
         self, requirement_id: int, user_id: int, data_scope: DataScope, page: int, page_size: int

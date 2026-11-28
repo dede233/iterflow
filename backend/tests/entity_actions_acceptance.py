@@ -13,6 +13,7 @@ from app.models.entities import (
     OperationLog,
     Requirement,
     RequirementFeedback,
+    Version,
     VersionRequirement,
 )
 from app.models.enums import DataScope
@@ -54,6 +55,45 @@ def exercise_actions(fixture, scenario, monkeypatch):
     )
     assert response.status_code == 200, response.text
     feedback = response.json()
+    if scenario == "duplicate_history":
+        response = client.post(
+            "/api/v1/feedbacks",
+            headers=headers,
+            json={
+                "title": "历史重复反馈",
+                "description": "重复反馈内容",
+                "feedback_type": "OTHER",
+                "recipient_ids": [uid],
+            },
+        )
+        assert response.status_code == 200, response.text
+        duplicate = response.json()
+        duplicate_path = f"/api/v1/feedbacks/{duplicate['id']}"
+        marked = client.patch(
+            duplicate_path + "/status",
+            headers=headers,
+            json={"status": "DUPLICATE", "revision": 1, "duplicate_of_id": feedback["id"]},
+        )
+        assert marked.status_code == 200, marked.text
+        reopened = client.patch(
+            duplicate_path + "/status",
+            headers=headers,
+            json={"status": "NEW", "revision": marked.json()["revision"], "reason": "重新打开"},
+        )
+        assert reopened.status_code == 200, reopened.text
+        assert reopened.json()["duplicate_of_id"] is None
+        for item in (feedback, reopened.json()):
+            path = f"/api/v1/feedbacks/{item['id']}"
+            assert client.get(path, headers=headers).json()["can_delete"] is False
+            rejected = client.request(
+                "DELETE",
+                path,
+                headers=headers,
+                json={"revision": item["revision"], "reason": "保留重复历史"},
+            )
+            assert rejected.status_code == 409, rejected.text
+            assert rejected.json()["code"] == 40972
+        return
     if scenario == "batch":
         response = client.post(
             "/api/v1/requirements/batch-actions",
@@ -100,7 +140,7 @@ def exercise_actions(fixture, scenario, monkeypatch):
             assert stored.deleted_at is None and stored.revision == 1
         return
     version = None
-    if scenario == "version_race":
+    if scenario in {"version_race", "version_delete_race"}:
         response = client.post(
             "/api/v1/versions",
             headers=headers,
@@ -122,6 +162,11 @@ def exercise_actions(fixture, scenario, monkeypatch):
             barrier.wait(timeout=10)
             try:
                 if delete:
+                    if scenario == "version_delete_race":
+                        VersionService(db).delete(
+                            version["id"], EntityDelete(revision=1, reason="误建版本"), uid
+                        )
+                        return "deleted"
                     EntityActionsService(db).delete(
                         kind, entity_id, EntityDelete(revision=1, reason="误建删除"), uid
                     )
@@ -131,7 +176,7 @@ def exercise_actions(fixture, scenario, monkeypatch):
                         kind, entity_id, EntityDelete(revision=1, reason="重复删除"), uid
                     )
                     return "deleted"
-                if scenario == "version_race":
+                if scenario in {"version_race", "version_delete_race"}:
                     VersionService(db).add_requirement(
                         version["id"],
                         AddRequirementRequest(
@@ -164,10 +209,15 @@ def exercise_actions(fixture, scenario, monkeypatch):
         outcomes = list(pool.map(run, [True, False]))
     assert outcomes.count("blocked") == 1, outcomes
     with Session(engine) as db:
-        stored = db.get(Feedback if kind == "feedback" else Requirement, entity_id)
+        if scenario == "version_delete_race":
+            stored = db.get(Version, version["id"])
+        else:
+            stored = db.get(Feedback if kind == "feedback" else Requirement, entity_id)
         relations = db.scalar(
             select(func.count()).select_from(
-                VersionRequirement if scenario == "version_race" else RequirementFeedback
+                VersionRequirement
+                if scenario in {"version_race", "version_delete_race"}
+                else RequirementFeedback
             )
         )
         if "deleted" in outcomes:

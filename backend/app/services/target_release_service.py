@@ -237,9 +237,10 @@ class TargetReleaseService:
         )
         if "*" not in codes and not allowed.intersection(codes):
             raise PermissionDenied()
-        query = select(Version).where(Version.id == ident)
-        if users.data_scope(actor_id) is not DataScope.ALL:
-            query = query.where(VersionRepository.self_criterion(actor_id))
+        query = select(Version).where(
+            Version.id == ident,
+            *VersionRepository.scope_criteria(actor_id, users.data_scope(actor_id)),
+        )
         if write:
             query = query.with_for_update()
         item = self.db.scalar(query.execution_options(populate_existing=True))
@@ -587,11 +588,7 @@ class TargetReleaseService:
         codes = users.permission_codes(actor_id)
         if "*" not in codes and "rd.release.view" not in codes:
             raise PermissionDenied()
-        return (
-            []
-            if users.data_scope(actor_id) is DataScope.ALL
-            else [VersionRepository.self_criterion(actor_id)]
-        )
+        return VersionRepository.scope_criteria(actor_id, users.data_scope(actor_id))
 
     def records(self, actor_id, page, page_size, target_id=None, version_id=None):
         criteria = [ReleaseBatchTarget.completed_at.is_not(None), *self.record_scope(actor_id)]

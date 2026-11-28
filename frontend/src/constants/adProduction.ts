@@ -20,6 +20,7 @@ export const AD_PRODUCTION_STATUS_DISPLAY = {
   IN_PROGRESS: { label: '进行中', tone: 'progress' },
   SHIPPING: { label: '邮寄中', tone: 'warning' },
   COMPLETED: { label: '已完成', tone: 'success' },
+  WITHDRAWN: { label: '已撤回', tone: 'neutral' },
 } as const satisfies Record<AdProductionStatus, { label: string; tone: string }>
 
 export const AD_PRODUCTION_STATUSES = (Object.keys(AD_PRODUCTION_STATUS_DISPLAY) as AdProductionStatus[])

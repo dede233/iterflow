@@ -115,57 +115,6 @@ test('profile password entry and logout work for a MEMBER without management per
   expect(await page.evaluate(() => localStorage.getItem('iterflow.access_token'))).toBeNull()
 })
 
-test('an administrator can collapse mail deliveries while a retry is in progress', async ({ page }) => {
-  await page.setViewportSize({ width: 375, height: 812 })
-  await page.route('**/api/v1/auth/me', route => route.fulfill({
-    json: { ...member, can_view_api_docs: true, permission_codes: ['sys.user.edit'] },
-  }))
-  let deliveryStatus = 'FAILED'
-  let finishRetry!: () => void
-  const retryGate = new Promise<void>(resolve => { finishRetry = resolve })
-  const requestedPages: string[] = []
-  await page.route('**/api/v1/admin/mail-deliveries?*', route => {
-    requestedPages.push(new URL(route.request().url()).searchParams.get('page') ?? '')
-    return route.fulfill({ json: [{ id: 'delivery-7', event_id: 'event-7', user_id: 42, channel: 'EMAIL', status: deliveryStatus, attempts: 1, last_error: null, next_attempt_at: '2026-11-26T08:00:00Z' }] })
-  })
-  const retryPath = '/admin/mail-deliveries/delivery-7/retry'
-  await page.route(`**/api/v1${retryPath}`, async route => {
-    await retryGate
-    deliveryStatus = 'SENT'
-    await route.fulfill({ status: 204 })
-  })
-  await page.goto('/#/profile')
-  const toggle = page.getByRole('button', { name: /^(查看|收起)邮件投递记录$/ })
-  const record = page.getByText(/用户 #42 · (发送失败|已发送)/)
-  await expect(toggle).toHaveText('查看邮件投递记录')
-  await expect(toggle).toHaveAttribute('aria-expanded', 'false')
-  await expect(record).toBeHidden()
-  expect(requestedPages).toEqual([])
-  await toggle.click()
-  await expect(toggle).toHaveText('收起邮件投递记录')
-  await expect(toggle).toHaveAttribute('aria-expanded', 'true')
-  await expect(record).toContainText('发送失败')
-
-  const retried = page.waitForResponse(response => response.url().endsWith(retryPath))
-
-  try {
-    await page.getByRole('button', { name: '重新投递' }).click()
-    await toggle.click()
-    await expect(record).toBeHidden()
-    await expect(toggle).toHaveAttribute('aria-expanded', 'false')
-  } finally {
-    finishRetry()
-  }
-
-  await retried
-  await expect(toggle).toHaveText('查看邮件投递记录')
-  await expect(record).toBeHidden()
-  await toggle.press('Enter')
-  await expect(record).toContainText('已发送')
-  expect(requestedPages.length).toBeGreaterThanOrEqual(2)
-  expect(requestedPages.every(page => page === '1')).toBe(true)
-})
-
 test('chooses a notification email with the keyboard before requesting verification', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   const preferences = { revision: 3, mode: 'TASKS', email: member.email, verified: true, pending_email: null, smtp_enabled: true, notice_acknowledged: true }

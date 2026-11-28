@@ -651,6 +651,8 @@ def exercise_ad_production_publication(api):
     assert started.status_code == 200, started.text
     assert started.json() == {
         **row,
+        "can_delete": False,
+        "can_withdraw": False,
         "status": "IN_PROGRESS",
         "revision": 2,
         "updated_at": started.json()["updated_at"],

@@ -66,6 +66,10 @@ describe('notification business navigation', () => {
     ['VERSION', 789, '/versions/789'],
     ['RELEASE', 123, '/releases/123'],
     ['RELEASE', null, '/releases'],
+    ['AD_PRODUCTION_MATERIAL', 123, '/ad-productions?record_id=123'],
+    ['AD_PRODUCTION', 123, '/merchant-ads?record_id=123'],
+    ['AD_PRODUCTION_MATERIAL_CC', 123, '/notifications/material/123'],
+    ['AD_PRODUCTION_MERCHANT_CC', 123, '/notifications/merchant-ad/123'],
   ])('marks %s notification (id %s) read before navigating to %s', async (entityType, entityId, target) => {
     const wrapper = await view(notification({ entity_type: entityType, entity_id: entityId }))
     mocks.markRead.mockImplementation(async () => {

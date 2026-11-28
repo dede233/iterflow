@@ -20,7 +20,7 @@ const error = ref('')
 const message = ref('')
 const bound = computed(() => Boolean(preferences.value?.member_user_id))
 const canSave = computed(() =>
-  Boolean(preferences.value && mode.value !== preferences.value.mode &&
+  Boolean(preferences.value?.enabled && mode.value !== preferences.value.mode &&
     (mode.value === 'OFF' || bound.value) && !loading.value && !saving.value && !refreshRequired.value),
 )
 
@@ -70,21 +70,17 @@ onMounted(load)
 </script>
 
 <template>
-  <SectionCard title="企业微信通知">
+  <SectionCard v-if="preferences?.enabled" title="企业微信通知">
     <div class="wecom-settings" :aria-busy="loading || saving">
-      <p v-if="loading && !preferences" role="status">正在加载企业微信通知设置…</p>
       <el-alert v-if="error" :title="error" type="warning" show-icon :closable="false" />
-      <el-button v-if="refreshRequired || (!preferences && error)" :loading="loading" @click="load">
-        {{ preferences ? '刷新设置' : '重新加载' }}
+      <el-button v-if="refreshRequired" :loading="loading" @click="load">
+        刷新设置
       </el-button>
-      <el-form v-if="preferences" label-position="top" @submit.prevent="save">
+      <el-form label-position="top" @submit.prevent="save">
         <div class="wecom-status">
           <StatusTag :status="bound ? 'BOUND' : 'UNBOUND'" :type="bound ? 'success' : 'info'" :label="bound ? '已绑定' : '未绑定'" />
           <span v-if="!bound">请联系超级管理员绑定企业微信成员账号。</span>
         </div>
-        <p v-if="!preferences.enabled" class="wecom-note">
-          企业微信通知服务尚未启用。<template v-if="bound">仍可保存接收偏好。</template>
-        </p>
         <el-form-item label="接收范围">
           <el-select v-model="mode" aria-label="接收范围" :disabled="loading || saving || (!bound && mode === 'OFF')">
             <el-option v-for="(label, value) in modeLabels" :key="value" :label="label" :value="value" :disabled="value !== 'OFF' && !bound" />

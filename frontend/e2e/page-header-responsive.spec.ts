@@ -8,6 +8,7 @@ const date = '2026-10-03T00:00:00Z'
 const feedback = {
   id: 1, feedback_no: 'FB-20261003-0001', title, feedback_type: 'OTHER', urgency: 'NORMAL',
   status: 'NEW', description: '仅用于公共头部布局回归', submitter_id: 1,
+  can_delete: true,
   system_id: null, module_id: null, main_requirement_id: null, duplicate_of_id: null,
   created_at: date, updated_at: date, updated_by: 1, revision: 1,
 }
@@ -62,7 +63,7 @@ async function fixture(page: Page) {
 }
 
 const screens = [
-  { name: 'Feedback', path: '/feedbacks/1', buttons: ['编辑', '删除', '受理并转需求', '标记重复', '无法复现', '关闭'] },
+  { name: 'Feedback', path: '/feedbacks/1', buttons: ['编辑', '更多', '受理并转需求', '标记重复', '无法复现', '关闭'] },
   { name: 'Requirement', path: '/requirements/2', buttons: ['编辑'] },
   { name: 'Version', path: '/versions/3', buttons: ['编辑', '发布版本', '取消版本'] },
 ]

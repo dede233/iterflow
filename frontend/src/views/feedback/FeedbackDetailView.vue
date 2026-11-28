@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import BusinessSystemAttribution from '@/components/BusinessSystemAttribution.vue'
 import RecentEntityActivity from '@/components/RecentEntityActivity.vue'
-import DeleteEntityButton from '@/components/DeleteEntityButton.vue'
+import EntityLifecycleMenu from '@/components/EntityLifecycleMenu.vue'
 import CollaborationPeople from '@/components/CollaborationPeople.vue'
 import { computed, defineAsyncComponent, onMounted, onScopeDispose, reactive, ref, shallowRef, watch } from 'vue'
 import { ElMessage, type UploadRequestOptions } from 'element-plus'
@@ -571,7 +571,7 @@ onMounted(async () => {
         <template #actions>
           <RouterLink v-if="!props.embedded" class="back-link" :to="backTo">返回列表</RouterLink>
           <el-button v-if="canEditContent" @click="openEdit">编辑</el-button>
-          <DeleteEntityButton v-if="canEdit && item.status === 'NEW' && !item.main_requirement_id" kind="feedbacks" :id="item.id" :revision="item.revision" :title="item.title" @refresh="load" @deleted="onDeleted" />
+          <EntityLifecycleMenu v-if="item.can_delete === true" kind="feedbacks" :id="item.id" :record-number="item.feedback_no" :revision="item.revision" :title="item.title" @refresh="load" @deleted="onDeleted" />
           <template v-if="!isAccepted">
             <el-button v-if="canAcceptAndConvert" type="primary" @click="openConvert('accept')">受理并转需求</el-button>
             <el-button v-else-if="canConvertOnly" type="primary" @click="openConvert()">转需求</el-button>

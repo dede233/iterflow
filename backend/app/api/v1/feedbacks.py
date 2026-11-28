@@ -134,7 +134,7 @@ def delete_feedback(
     feedback_id: int,
     payload: EntityDelete,
     db: Session = Depends(get_db),
-    user: User = Depends(require_permission("rd.feedback.edit")),
+    user: User = Depends(require_any_permission("rd.feedback.edit", "rd.feedback.view")),
 ):
     return EntityActionsService(db).delete("feedback", feedback_id, payload, user.id)
 
@@ -145,7 +145,12 @@ def get_feedback(
     db: Session = Depends(get_db),
     user: User = Depends(require_permission("rd.feedback.view")),
 ):
-    return FeedbackService(db).to_output(_scoped_feedback_or_404(db, user, feedback_id))
+    item = _scoped_feedback_or_404(db, user, feedback_id)
+    return (
+        FeedbackService(db)
+        .to_output(item)
+        .model_copy(update={"can_delete": EntityActionsService(db).can_delete(item, user.id)})
+    )
 
 
 @router.get(

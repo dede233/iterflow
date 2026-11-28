@@ -22,3 +22,7 @@ export function designerName(record: AdProduction, field: 'receiver_id' | 'compl
   const name = field === 'receiver_id' ? record.receiver_display_name : record.completed_by_display_name
   return name || (id == null ? '—' : `用户 #${id}`)
 }
+
+export function ccUserNames(record: AdProduction): string {
+  return record.cc_users?.map(person => person.display_name).join('、') || '—'
+}

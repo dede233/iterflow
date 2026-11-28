@@ -7,7 +7,6 @@ import type { components } from '@/types/openapi.generated'
 import EmailSuggestionInput from './ui/EmailSuggestionInput.vue'
 import SectionCard from './ui/SectionCard.vue'
 type Preferences = components['schemas']['MailPreferencesOut']
-type Delivery = components['schemas']['DeliveryOut']
 const auth = useAuthStore()
 const item = ref<Preferences | null>(null)
 const mode = ref<Preferences['mode']>('TASKS'), email = ref(''), code = ref('')
@@ -15,14 +14,10 @@ const failed = ref(false), busy = ref(false), message = ref('')
 const reverifying = ref(false)
 const unbindDialog = ref(false), unbindRevision = ref<number | null>(null), unbindError = ref(''), unbindConflict = ref(false)
 const showVerification = computed(() => !item.value?.verified || reverifying.value)
-const deliveries = ref<Delivery[]>([]), page = ref(1), deliveriesOpen = ref(false), deliveryFailed = ref(false)
-const admin = computed(() => auth.canViewApiDocs && auth.hasPermission('sys.user.edit'))
 const identity = computed(() => `${auth.user?.id}:${auth.accessToken}:${auth.permissionCodes.join(',')}`)
 let sequence = 0
-let deliverySequence = 0
 async function load() {
   const request = ++sequence; failed.value = false; busy.value = false; item.value = null; reverifying.value = false; unbindDialog.value = false; unbindRevision.value = null; unbindError.value = ''; unbindConflict.value = false; message.value = ''
-  deliveries.value = []; page.value = 1; deliveriesOpen.value = false; deliveryFailed.value = false
   if (!auth.user) return
   try { const { data } = await api.get<Preferences>('/me/mail-preferences'); if (request !== sequence) return; item.value = data; mode.value = data.mode; email.value = data.pending_email || data.email || ''; code.value = '' }
   catch { if (request === sequence) failed.value = true }
@@ -62,34 +57,6 @@ async function unbind() {
     unbindConflict.value = (error as { response?: { status?: number } })?.response?.status === 409
   } finally { if (request === sequence) busy.value = false }
 }
-async function loadDeliveries() {
-  if (!admin.value) return
-  const request = ++deliverySequence
-  const session = sequence
-  deliveryFailed.value = false
-  try {
-    const { data } = await api.get<Delivery[]>('/admin/mail-deliveries', { params: { page: page.value } })
-    if (session === sequence && request === deliverySequence && admin.value) deliveries.value = data
-  } catch {
-    if (session === sequence && request === deliverySequence && admin.value) deliveryFailed.value = true
-  }
-}
-async function toggleDeliveries() {
-  deliveriesOpen.value = !deliveriesOpen.value
-  if (deliveriesOpen.value) await loadDeliveries()
-}
-async function retry(row: Delivery) {
-  if (!admin.value || busy.value) return
-  const request = sequence
-  busy.value = true
-  try {
-    await api.post(`/admin/mail-deliveries/${row.id}/retry`, { attempts: row.attempts })
-    if (request === sequence && deliveriesOpen.value) await loadDeliveries()
-  }
-  catch { /* No automatic replay. */ }
-  finally { if (request === sequence) busy.value = false }
-}
-const statusLabels: Record<string, string> = { PENDING: '待发送', SENDING: '发送中', RETRY: '等待重试', UNCERTAIN: '结果不确定，等待重试', FAILED: '发送失败', SKIPPED: '已跳过', SENT: '已发送' }
 </script>
 <template>
   <SectionCard id="mail-notifications" title="邮件通知" description="站内通知独立保留；邮件送达不代表业务确认。">
@@ -131,25 +98,10 @@ const statusLabels: Record<string, string> = { PENDING: '待发送', SENDING: '�
         </div>
       </template>
     </el-dialog>
-    <template v-if="admin">
-      <el-divider />
-      <el-button :aria-expanded="deliveriesOpen" aria-controls="mail-delivery-records" @click="toggleDeliveries">
-        {{ deliveriesOpen ? '收起邮件投递记录' : '查看邮件投递记录' }}
-      </el-button>
-      <div v-show="deliveriesOpen" id="mail-delivery-records" class="mail-deliveries">
-        <p v-if="deliveryFailed" role="alert">投递记录加载失败，请重试。 <el-button link type="primary" @click="loadDeliveries">重试</el-button></p>
-        <p v-for="row in deliveries" :key="row.id">
-          用户 #{{ row.user_id }} · {{ statusLabels[row.status] || row.status }} · 尝试 {{ row.attempts }} 次 · {{ row.last_error || '-' }}
-          <el-button v-if="row.status === 'FAILED'" :loading="busy" @click="retry(row)">重新投递</el-button>
-        </p>
-        <el-button :disabled="page <= 1" @click="page--; loadDeliveries()">上一页</el-button>
-        <el-button :disabled="deliveries.length < 50" @click="page++; loadDeliveries()">下一页</el-button>
-      </div>
-    </template>
   </SectionCard>
 </template>
 <style scoped>
-.el-form { max-width: 560px; }.el-form-item { margin-top: 16px; }.el-select { width: 100%; }.mail-deliveries p { overflow-wrap: anywhere; border-bottom: 1px solid var(--if-border, #eee); padding: 10px 0; }
+.el-form { max-width: 560px; }.el-form-item { margin-top: 16px; }.el-select { width: 100%; }
 .verification-row { display: flex; align-items: stretch; gap: 8px; width: 100%; min-width: 0; }
 .verification-row .el-input { flex: 1; min-width: 0; }
 .verification-row .el-button { flex: none; margin: 0; white-space: nowrap; }

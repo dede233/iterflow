@@ -10,10 +10,19 @@ from app.models.entities import (
     Requirement,
     RequirementFeedback,
     RequirementOnlineFeedback,
+    RequirementParticipant,
     User,
     VersionRequirement,
 )
-from app.models.enums import ManualFeedbackStatus, ManualRequirementStatus, UserStatus
+from app.models.enums import (
+    DataScope,
+    FeedbackStatus,
+    ManualFeedbackStatus,
+    ManualRequirementStatus,
+    RequirementSource,
+    RequirementStatus,
+    UserStatus,
+)
 from app.repositories.feedback_repository import FeedbackRepository
 from app.repositories.requirement_repository import RequirementRepository
 from app.repositories.user_repository import UserRepository
@@ -39,6 +48,81 @@ class EntityActionsService:
     def __init__(self, db: Session):
         self.db = db
 
+    def _can_delete_as_editor_or_creator(
+        self, item: Feedback | Requirement, operator_id: int
+    ) -> bool:
+        creator_id: int | None
+        if isinstance(item, Feedback):
+            kind, creator_id = "feedback", item.submitter_id
+        else:
+            kind, creator_id = "requirement", item.created_by
+        codes = UserRepository(self.db).permission_codes(operator_id)
+        return not codes.isdisjoint(("*", f"rd.{kind}.edit")) or (
+            creator_id == operator_id and f"rd.{kind}.view" in codes
+        )
+
+    def _ensure_deletable(self, item: Feedback | Requirement, *, lock: bool) -> None:
+        entity_id = item.id
+        if isinstance(item, Feedback):
+            if item.status != FeedbackStatus.NEW:
+                raise AppError(40971, "仅待受理反馈可删除", 409)
+            if (
+                item.accepted_at is not None
+                or item.accepted_by is not None
+                or FeedbackRepository(self.db).has_acceptance_history(entity_id, lock=lock)
+            ):
+                raise AppError(40971, "反馈已有受理记录, 不能删除", 409)
+            has_pointer = item.main_requirement_id is not None or item.duplicate_of_id is not None
+            checks = (
+                select(Feedback.id).where(Feedback.duplicate_of_id == entity_id),
+                select(RequirementFeedback.id).where(RequirementFeedback.feedback_id == entity_id),
+                select(RequirementOnlineFeedback.feedback_id).where(
+                    RequirementOnlineFeedback.feedback_id == entity_id
+                ),
+            )
+        else:
+            if item.status != RequirementStatus.DRAFT:
+                raise AppError(40971, "仅待确认需求可删除", 409)
+            if (
+                item.confirmed_revision is not None
+                or item.legacy_completed
+                or RequirementRepository(self.db).has_confirmation_history(entity_id, lock=lock)
+            ):
+                raise AppError(40971, "需求已有确认记录, 不能删除", 409)
+            has_pointer = (
+                item.source != RequirementSource.DIRECT or item.current_version_id is not None
+            )
+            checks = (
+                select(VersionRequirement.id).where(VersionRequirement.requirement_id == entity_id),
+                select(RequirementFeedback.id).where(
+                    RequirementFeedback.requirement_id == entity_id
+                ),
+                select(RequirementOnlineFeedback.feedback_id).where(
+                    RequirementOnlineFeedback.requirement_id == entity_id
+                ),
+            )
+        if has_pointer:
+            raise AppError(40972, "记录已有业务关联或历史引用, 不能删除", 409)
+        for query in checks:
+            query = query.limit(1)
+            if lock:
+                query = query.with_for_update()
+            if self.db.scalar(query) is not None:
+                raise AppError(40972, "记录已有业务关联或历史引用, 不能删除", 409)
+        if isinstance(item, Feedback) and FeedbackRepository(self.db).has_duplicate_history(
+            entity_id, lock=lock
+        ):
+            raise AppError(40972, "记录已有业务关联或历史引用, 不能删除", 409)
+
+    def can_delete(self, item: Feedback | Requirement, operator_id: int) -> bool:
+        if not self._can_delete_as_editor_or_creator(item, operator_id):
+            return False
+        try:
+            self._ensure_deletable(item, lock=False)
+        except AppError:
+            return False
+        return True
+
     def delete(
         self,
         kind: Literal["feedback", "requirement"],
@@ -55,54 +139,31 @@ class EntityActionsService:
         # relation facts after the lock, including under MySQL REPEATABLE READ.
         if isinstance(item, Requirement):
             WorkflowService(self.db).lock(item)
+            if (
+                scope is not DataScope.ALL
+                and operator_id not in {item.created_by, item.owner_id}
+                and self.db.scalar(
+                    select(RequirementParticipant.user_id)
+                    .where(
+                        RequirementParticipant.requirement_id == entity_id,
+                        RequirementParticipant.user_id == operator_id,
+                        RequirementParticipant.active.is_(True),
+                    )
+                    .limit(1)
+                    .with_for_update()
+                )
+                is None
+            ):
+                raise NotFoundError()
         else:
             self.db.refresh(item, with_for_update=True)
         if item.deleted_at is not None:
             raise NotFoundError()
+        if not self._can_delete_as_editor_or_creator(item, operator_id):
+            raise PermissionDenied()
         if item.revision != payload.revision:
             raise ConflictError("记录已被其他用户修改", revision_conflict_data(item))
-        expected = "NEW" if kind == "feedback" else "DRAFT"
-        if item.status != expected:
-            raise AppError(40971, "仅待受理反馈或待确认需求可删除", 409)
-        if kind == "feedback":
-            relation = select(RequirementFeedback.id).where(
-                RequirementFeedback.feedback_id == entity_id
-            )
-            online_relation = select(RequirementOnlineFeedback.feedback_id).where(
-                RequirementOnlineFeedback.feedback_id == entity_id
-            )
-            referenced = self.db.scalar(
-                select(Feedback.id)
-                .where(Feedback.duplicate_of_id == entity_id)
-                .limit(1)
-                .with_for_update()
-            )
-            has_pointer = isinstance(item, Feedback) and (
-                item.main_requirement_id is not None or item.duplicate_of_id is not None
-            )
-        else:
-            relation = select(RequirementFeedback.id).where(
-                RequirementFeedback.requirement_id == entity_id
-            )
-            online_relation = select(RequirementOnlineFeedback.feedback_id).where(
-                RequirementOnlineFeedback.requirement_id == entity_id
-            )
-            referenced = self.db.scalar(
-                select(VersionRequirement.id)
-                .where(VersionRequirement.requirement_id == entity_id)
-                .limit(1)
-                .with_for_update()
-            )
-            has_pointer = isinstance(item, Requirement) and item.current_version_id is not None
-        if (
-            has_pointer
-            or referenced is not None
-            or self.db.scalar(relation.limit(1).with_for_update()) is not None
-            # Provenance is inserted with a new Feedback or under the source
-            # Requirement lock. Existing feedback cannot acquire it later.
-            or self.db.scalar(online_relation.limit(1)) is not None
-        ):
-            raise AppError(40972, "记录已有业务关联或历史引用, 不能删除", 409)
+        self._ensure_deletable(item, lock=True)
         now = datetime.now(UTC)
         if not repo.update_with_revision(
             entity_id,

@@ -33,7 +33,7 @@ async function submit(): Promise<void> {
   <AuthShell>
     <el-card class="card" shadow="never">
       <div class="eyebrow">欢迎回来</div>
-      <h1 id="login-title">迭程 IterFlow</h1>
+      <h1 id="login-title"><img class="login-logo" src="/brand/iterflow-logo.svg" alt="迭程 IterFlow" width="234" height="56" /></h1>
       <p>使用你的团队账号登录。</p>
       <el-form label-position="top" @submit.prevent="submit">
         <el-form-item label="用户名">
@@ -53,6 +53,7 @@ async function submit(): Promise<void> {
 .card :deep(.el-card__body) { padding: 34px; }
 .eyebrow { margin-bottom: 8px; color: var(--if-brand-600); font-size: 12px; font-weight: 700; letter-spacing: .08em; }
 h1 { margin: 0 0 8px; font-size: 27px; line-height: 1.3; }
+.login-logo { display: block; max-width: 100%; height: auto; }
 p { margin: 0 0 30px; color: var(--if-text-2); font-size: 14px; }
 .full-width { width: 100%; min-height: 42px; margin-top: 8px; font-weight: 650; }
 @media (max-width: 767px) { .card :deep(.el-card__body) { padding: 26px 22px; } }

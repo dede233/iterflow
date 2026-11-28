@@ -10,7 +10,15 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import create_access_token
 from app.main import app
-from app.models.entities import Notification, Permission, Role, RolePermission, User, UserRole
+from app.models.entities import (
+    AdProduction,
+    Notification,
+    Permission,
+    Role,
+    RolePermission,
+    User,
+    UserRole,
+)
 
 Fixture = tuple[TestClient, Session, dict[str, str], dict[str, str]]
 
@@ -20,7 +28,7 @@ def notification_api(tmp_path: Path) -> Iterator[Fixture]:
     engine = create_engine(
         f"sqlite:///{tmp_path / 'notifications.db'}", connect_args={"check_same_thread": False}
     )
-    for model in (User, Role, Permission, UserRole, RolePermission, Notification):
+    for model in (User, Role, Permission, UserRole, RolePermission, AdProduction, Notification):
         model.__table__.create(engine)
     with Session(engine) as db:
         db.add_all(

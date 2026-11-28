@@ -36,6 +36,7 @@ from app.models.entities import (
     User,
     UserRole,
     Version,
+    VersionRequirement,
 )
 from app.models.enums import DataScope, UserStatus
 
@@ -81,6 +82,7 @@ def req_api(tmp_path: Path) -> Iterator[Fixture]:
         RequirementParticipant.__table__,
         RequirementFeedback.__table__,
         RequirementOnlineFeedback.__table__,
+        VersionRequirement.__table__,
         FileObject.__table__,
         AttachmentRelation.__table__,
     ):
@@ -328,7 +330,12 @@ def test_creator_without_edit_permission_can_only_edit_own_draft_requirement(req
         detail = client.get(path, headers=headers[actor])
         assert detail.status_code == 200, detail.text
         assert detail.json()["can_edit_as_creator"] is editable
+        assert detail.json()["can_delete"] is editable
     forbidden = client.patch(path, headers=headers["reader"], json=body)
+    assert forbidden.status_code == 403, forbidden.text
+    forbidden = client.request(
+        "DELETE", path, headers=headers["reader"], json={"revision": 1, "reason": "他人创建"}
+    )
     assert forbidden.status_code == 403, forbidden.text
     listed = client.get("/api/v1/requirements", headers=headers["alice"])
     assert listed.status_code == 200, listed.text
@@ -337,7 +344,6 @@ def test_creator_without_edit_permission_can_only_edit_own_draft_requirement(req
     for method, route, payload in (
         ("PATCH", f"{path}/status", {"status": "CONFIRMED"}),
         ("PUT", f"{path}/participants", {"participants": participants}),
-        ("DELETE", path, {"reason": "申请删除"}),
     ):
         rejected = client.request(
             method,
@@ -396,6 +402,37 @@ def test_creator_without_edit_permission_can_only_edit_own_draft_requirement(req
     assert edited.status_code == 200, edited.text
     assert edited.json()["title"] == next_edit["title"]
     assert edited.json()["revision"] == latest_revision + 1
+
+    canceled = client.patch(
+        f"{path}/status",
+        headers=headers["boss"],
+        json={"status": "CANCELED", "revision": latest_revision + 1, "reason": "先取消"},
+    )
+    assert canceled.status_code == 200, canceled.text
+    reopened = client.post(
+        f"{path}/workflow",
+        headers=headers["boss"],
+        json={"action": "REOPEN", "revision": canceled.json()["revision"], "reason": "再打开"},
+    )
+    assert reopened.status_code == 200, reopened.text
+    for actor in ("alice", "boss"):
+        assert client.get(path, headers=headers[actor]).json()["can_delete"] is False
+        rejected = client.request(
+            "DELETE",
+            path,
+            headers=headers[actor],
+            json={"revision": reopened.json()["revision"], "reason": "曾经确认"},
+        )
+        assert rejected.status_code == 409, rejected.text
+
+    fresh = _create_req(client, headers["alice"], title="未确认的误建需求")
+    fresh_path = f"/api/v1/requirements/{fresh['id']}"
+    deleted = client.request(
+        "DELETE", fresh_path, headers=headers["alice"], json={"revision": 1, "reason": "误建需求"}
+    )
+    assert deleted.status_code == 200, deleted.text
+    assert deleted.json() == {"id": fresh["id"], "revision": 2, "deleted": True}
+    assert client.get(fresh_path, headers=headers["boss"]).status_code == 404
 
 
 def test_two_users_requirement_update_and_status_revision_contract(req_api):
@@ -888,9 +925,10 @@ def test_converter_without_requirement_view_can_create_but_not_link(req_api):
             route, headers=headers["converter"], json={**payload, "accept_on_convert": True}
         )
         assert combined.status_code == 403, combined.text
-    assert (
-        client.get(path.removesuffix("/convert"), headers=headers["alice"]).json() == new_feedback
-    )
+    assert client.get(path.removesuffix("/convert"), headers=headers["alice"]).json() == {
+        **new_feedback,
+        "can_delete": True,
+    }
     create = client.post(path, headers=headers["converter"], json=payload)
     assert create.status_code == 200, create.text
 
@@ -986,7 +1024,7 @@ def test_accept_and_convert_requires_in_scope_current_new_feedback_and_eligible_
         json={**payload, "accept_reason": "普通非接收人"},
     )
     assert unauthorized.status_code == 403, unauthorized.text
-    assert client.get(path, headers=headers["alice"]).json() == feedback
+    assert client.get(path, headers=headers["alice"]).json() == {**feedback, "can_delete": True}
     row = session.get(Feedback, feedback["id"])
     assert row.handler_id is row.accepted_by is row.accepted_at is None
     assert session.scalar(select(Requirement.id)) is None
@@ -1037,7 +1075,7 @@ def test_accept_and_link_existing_records_actual_delegated_operator(req_api):
             f"{path}/convert", headers=headers["boss"], json={**payload, "accept_reason": reason}
         )
         assert rejected.status_code == code, rejected.text
-    assert client.get(path, headers=headers["alice"]).json() == feedback
+    assert client.get(path, headers=headers["alice"]).json() == {**feedback, "can_delete": True}
 
     reason = "接收人暂时无法处理, 由主管代受理"
     linked = client.post(
@@ -1108,7 +1146,7 @@ def test_accept_and_convert_rolls_back_when_image_binding_fails(req_api, monkeyp
         },
     )
     assert invalid.status_code == 422 and invalid.json()["code"] == 42265
-    assert client.get(path, headers=headers["alice"]).json() == feedback
+    assert client.get(path, headers=headers["alice"]).json() == {**feedback, "can_delete": True}
     row = session.get(Feedback, feedback["id"])
     assert row.handler_id is row.accepted_by is row.accepted_at is None
     assert session.scalar(select(Requirement.id)) is None

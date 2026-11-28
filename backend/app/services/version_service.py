@@ -30,6 +30,7 @@ from app.models.enums import (
 from app.repositories.requirement_repository import RequirementRepository
 from app.repositories.user_repository import UserRepository
 from app.repositories.version_repository import VersionRepository
+from app.schemas.entity_actions import EntityDelete, EntityDeleted
 from app.schemas.version import (
     AddRequirementRequest,
     BulkAddRequirements,
@@ -109,6 +110,68 @@ class VersionService:
         return (
             self.db.scalar(select(Version.id).where(Version.version_no == version_no)) is not None
         )
+
+    @staticmethod
+    def _can_delete_as_creator(version: Version, operator_id: int, codes: set[str]) -> bool:
+        return version.created_by == operator_id and not codes.isdisjoint(
+            ("*", "rd.version.create", "rd.version.edit")
+        )
+
+    def _ensure_deletable(self, version: Version, *, lock: bool) -> None:
+        if VersionStatus(version.status) in TERMINAL_VERSION_STATES:
+            raise AppError(40971, "仅规划中的版本可删除", 409)
+        # Empty historical nonterminal versions derive PLANNING. Every
+        # relationship row counts, including one that has since been removed.
+        if (
+            version.release_frozen
+            or version.released_at is not None
+            or self.repo.has_delete_references(version.id, lock=lock)
+        ):
+            raise AppError(40972, "版本已有需求关联或发布历史, 不能删除", 409)
+
+    def can_delete(self, version: Version, operator_id: int) -> bool:
+        if not self._can_delete_as_creator(
+            version, operator_id, UserRepository(self.db).permission_codes(operator_id)
+        ):
+            return False
+        try:
+            self._ensure_deletable(version, lock=False)
+        except AppError:
+            return False
+        return True
+
+    def delete(self, version_id: int, payload: EntityDelete, operator_id: int) -> EntityDeleted:
+        users = UserRepository(self.db)
+        scope = users.data_scope(operator_id)
+        current = self._lock_version(version_id)
+        self._ensure_version_scope(current, operator_id, scope)
+        if not self._can_delete_as_creator(
+            current, operator_id, users.permission_codes(operator_id)
+        ):
+            raise PermissionDenied("仅版本创建人本人可删除")
+        self._ensure_version_revision(current, payload.revision)
+        self._ensure_deletable(current, lock=True)
+        now = datetime.now(UTC)
+        if not self.repo.update_with_revision(
+            version_id,
+            payload.revision,
+            {
+                "deleted_at": now,
+                "deleted_by": operator_id,
+                "delete_reason": payload.reason,
+                "updated_by": operator_id,
+            },
+        ):
+            raise self._version_conflict(version_id)
+        self.audit.log(
+            "VERSION",
+            version_id,
+            "SOFT_DELETE",
+            before={"status": VersionStatus.PLANNING, "deleted_at": None},
+            after={"deleted_at": now.isoformat(), "reason": payload.reason},
+        )
+        self.db.commit()
+        return EntityDeleted(id=version_id, revision=payload.revision + 1)
 
     @staticmethod
     def _duplicate_version_no(version_no: str) -> AppError:
@@ -328,7 +391,7 @@ class VersionService:
         versions = list(
             self.db.scalars(
                 select(Version)
-                .where(Version.id.in_(sorted(version_ids)))
+                .where(Version.id.in_(sorted(version_ids)), Version.deleted_at.is_(None))
                 .order_by(Version.id)
                 .with_for_update()
                 .execution_options(populate_existing=True)
@@ -754,14 +817,7 @@ class VersionService:
         """
         # Row-lock the version so concurrent publishes serialise (the atomic
         # conditional UPDATE below is the definitive guard; SQLite ignores the lock).
-        version = self.db.scalar(
-            select(Version)
-            .where(Version.id == version_id)
-            .with_for_update()
-            .execution_options(populate_existing=True)
-        )
-        if not version:
-            raise NotFoundError("版本不存在")
+        version = self._lock_version(version_id)
         if version.revision != payload.revision:
             raise self._version_conflict(version_id)
 
@@ -802,6 +858,7 @@ class VersionService:
                 .where(
                     Version.id == version_id,
                     Version.revision == payload.revision,
+                    Version.deleted_at.is_(None),
                     Version.status.not_in(TERMINAL_VERSION_STATES),
                 )
                 .values(

@@ -355,7 +355,13 @@ def exercise_targets(fixture, scenario, monkeypatch):
         command.upgrade(cfg, "head")
         with engine.connect() as conn:
             after = dict(conn.execute(text("SELECT * FROM rd_version")).mappings().one())
-            assert not after.pop("release_frozen") and after == before
+            assert after == {
+                **before,
+                "release_frozen": False,
+                "deleted_at": None,
+                "deleted_by": None,
+                "delete_reason": None,
+            }
         if mysql:
             with engine.connect() as conn:
                 assert validate_mysql(conn)["table_count"] == 39

@@ -10364,7 +10364,8 @@ components:
             仅返回已知的内部错误码或 SMTP 数字响应码。无法识别的值统一为 UNKNOWN。
             邮件跳过原因包括 EMAIL_NOT_CONFIGURED（未配置邮箱）、EMAIL_ADDRESS_CHANGED（地址与排队时不同）、
             EMAIL_NOT_VERIFIED（当前邮箱未验证）、EVENT_BEFORE_EMAIL_VERIFICATION（事件早于当前邮箱验证）、
-            EMAIL_NOTIFICATIONS_OFF（业务邮件通知已关闭）、EMAIL_NOT_A_TASK（仅接收待办而事件不属于待办）和
+            EMAIL_NOTIFICATIONS_OFF（业务邮件通知已关闭）、EMAIL_NOT_A_TASK（仅接收待办而事件不属于待办）、
+            OPS_ASSIGNMENT_NO_LONGER_ACTIONABLE（制作需求已完成或撤回。原分配待办已失效）和
             VERIFICATION_EXPIRED_OR_REPLACED（原邮箱验证已失效或已被替换）。历史记录可继续返回 PREFERENCE_OR_EMAIL_CHANGED。
         created_at:
           type: string
@@ -10439,7 +10440,8 @@ components:
             仅返回已知的内部错误码或 SMTP 数字响应码。无法识别的值统一为 UNKNOWN。
             邮件跳过原因包括 EMAIL_NOT_CONFIGURED（未配置邮箱）、EMAIL_ADDRESS_CHANGED（地址与排队时不同）、
             EMAIL_NOT_VERIFIED（当前邮箱未验证）、EVENT_BEFORE_EMAIL_VERIFICATION（事件早于当前邮箱验证）、
-            EMAIL_NOTIFICATIONS_OFF（业务邮件通知已关闭）、EMAIL_NOT_A_TASK（仅接收待办而事件不属于待办）和
+            EMAIL_NOTIFICATIONS_OFF（业务邮件通知已关闭）、EMAIL_NOT_A_TASK（仅接收待办而事件不属于待办）、
+            OPS_ASSIGNMENT_NO_LONGER_ACTIONABLE（制作需求已完成或撤回。原分配待办已失效）和
             VERIFICATION_EXPIRED_OR_REPLACED（原邮箱验证已失效或已被替换）。历史记录可继续返回 PREFERENCE_OR_EMAIL_CHANGED。
         created_at:
           type: string

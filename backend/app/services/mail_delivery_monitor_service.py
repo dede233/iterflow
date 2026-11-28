@@ -35,6 +35,7 @@ _RECIPIENT_BLOCK_REASONS = {
     "EVENT_BEFORE_EMAIL_VERIFICATION": "原事件发生在接收人验证当前邮箱之前",
     "EMAIL_NOTIFICATIONS_OFF": "接收人已关闭业务邮件通知",
     "EMAIL_NOT_A_TASK": "接收人仅接收待办邮件。原事件不属于待办",
+    "OPS_ASSIGNMENT_NO_LONGER_ACTIONABLE": "制作需求已完成或撤回。原分配待办已失效",
     "VERIFICATION_EXPIRED_OR_REPLACED": "验证码已失效或已被替换。请重新发起验证",
     "SMTP_DISABLED": "邮件服务尚未启用",
     "NOT_ALLOWLISTED": "接收邮箱不在当前环境的发送许可名单中",

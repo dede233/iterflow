@@ -14,6 +14,7 @@ from app.core.exceptions import ConflictError, NotFoundError
 from app.core.wecom import WecomDeliveryError, send_wecom
 from app.domain.ad_production_permissions import viewable_ad_production_kinds
 from app.models.entities import (
+    AdProduction,
     CollaborationEvent,
     Feedback,
     MailPreference,
@@ -25,7 +26,7 @@ from app.models.entities import (
     Version,
     WecomPreference,
 )
-from app.models.enums import NotificationType, UserStatus
+from app.models.enums import AdProductionStatus, NotificationType, UserStatus
 from app.repositories.ad_production_repository import AdProductionRepository
 from app.repositories.feedback_repository import FeedbackRepository
 from app.repositories.mail_delivery_repository import MailDeliveryRepository
@@ -527,6 +528,12 @@ class DeliveryService:
                 return None, "VERIFICATION_EXPIRED_OR_REPLACED"
             email = pref.pending_email
         else:
+            if event.action == "OPS_ASSIGNED" and event.entity_type in AD_PRODUCTION_EVENT_KINDS:
+                status = self.db.scalar(
+                    select(AdProduction.status).where(AdProduction.id == event.entity_id)
+                )
+                if status in {AdProductionStatus.COMPLETED, AdProductionStatus.WITHDRAWN}:
+                    return None, "OPS_ASSIGNMENT_NO_LONGER_ACTIONABLE"
             email = user.email
 
         if not email:

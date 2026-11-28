@@ -135,3 +135,53 @@ def exercise_ops_mail(api, kind, smtp_sink, monkeypatch):
     assert {(row.user_id, row.status, row.last_error) for row in rows(removed, "OPS_ASSIGNED")} == {
         (receiver_id, "SKIPPED", "ACCESS_REVOKED")
     }
+
+    # Expand the assignment before the terminal action, then deliver both events.
+    # ALL allows the receiver to get a withdrawal email while the stale task is skipped.
+    with Session(engine) as db:
+        db.get(MailPreference, receiver_id).mode = "ALL"
+        db.commit()
+    for terminal, expected_action, mailbox in (
+        ("COMPLETED", "OPS_COMPLETED", MAILBOXES["publisher"]),
+        ("WITHDRAWN", "OPS_WITHDRAWN", MAILBOXES["receiver"]),
+    ):
+        queued = create()
+        with Session(engine) as db:
+            DeliveryService(db).expand()
+        (assignment,) = rows(queued, "OPS_ASSIGNED")
+        assert assignment.status == "PENDING"
+        queued = _record(_status(client, receiver, queued, "IN_PROGRESS"))
+        if terminal == "COMPLETED":
+            queued = _record(
+                _status(
+                    client,
+                    receiver,
+                    queued,
+                    terminal,
+                    completed_by_id=receiver_id,
+                    **completion_fields,
+                )
+            )
+        else:
+            queued = _record(
+                client.post(
+                    f"/api/v1/ad-productions/{queued['id']}/withdraw",
+                    headers=admin,
+                    json={"revision": queued["revision"], "reason": "隔离演练撤回"},
+                )
+            )
+        before = len(smtp_sink)
+        drain(engine)
+        assert {
+            (row.user_id, row.status, row.last_error) for row in rows(queued, "OPS_ASSIGNED")
+        } == {(receiver_id, "SKIPPED", "OPS_ASSIGNMENT_NO_LONGER_ACTIONABLE")}
+        (terminal_delivery,) = rows(queued, expected_action)
+        assert terminal_delivery.status == "SENT"
+        new_messages = smtp_sink[before:]
+        subject = "制作需求已完成" if terminal == "COMPLETED" else "制作需求已撤回"
+        assert [
+            str(message["To"]) for message in new_messages if subject in str(message["Subject"])
+        ] == [mailbox]
+        assert all("有制作需求待处理" not in str(message["Subject"]) for message in new_messages)
+        monitored = _record(client.get(f"{MONITOR}/{assignment.id}", headers=admin))
+        assert monitored["error_code"] == "OPS_ASSIGNMENT_NO_LONGER_ACTIONABLE"

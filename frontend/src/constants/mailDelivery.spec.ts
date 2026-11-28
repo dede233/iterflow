@@ -9,6 +9,7 @@ describe('localized mail delivery diagnostics', () => {
     ['EVENT_BEFORE_EMAIL_VERIFICATION', '业务事件发生在当前邮箱验证之前'],
     ['EMAIL_NOTIFICATIONS_OFF', '收件人已关闭业务邮件通知'],
     ['EMAIL_NOT_A_TASK', '收件人仅接收待办邮件，此事件不属于待办'],
+    ['OPS_ASSIGNMENT_NO_LONGER_ACTIONABLE', '制作需求已完成或撤回。原分配待办已失效'],
     ['VERIFICATION_EXPIRED_OR_REPLACED', '验证码已失效或已被替换'],
     ['PREFERENCE_OR_EMAIL_CHANGED', '邮件偏好或通知邮箱已变更'],
     ['SMTP_421', '邮件服务暂不可用'],

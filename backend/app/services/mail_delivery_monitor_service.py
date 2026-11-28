@@ -28,14 +28,24 @@ from app.services.audit_service import AuditService
 from app.services.delivery_service import ACTION_LABELS, DeliveryService
 from app.services.mail_preferences_service import aware
 
+_RECIPIENT_BLOCK_REASONS = {
+    "EMAIL_ADDRESS_CHANGED": "接收人当前邮箱与该邮件排队时的地址不同",
+    "EMAIL_NOT_CONFIGURED": "接收人尚未配置通知邮箱",
+    "EMAIL_NOT_VERIFIED": "接收人尚未验证当前邮箱",
+    "EVENT_BEFORE_EMAIL_VERIFICATION": "原事件发生在接收人验证当前邮箱之前",
+    "EMAIL_NOTIFICATIONS_OFF": "接收人已关闭业务邮件通知",
+    "EMAIL_NOT_A_TASK": "接收人仅接收待办邮件。原事件不属于待办",
+    "VERIFICATION_EXPIRED_OR_REPLACED": "验证码已失效或已被替换。请重新发起验证",
+    "SMTP_DISABLED": "邮件服务尚未启用",
+    "NOT_ALLOWLISTED": "接收邮箱不在当前环境的发送许可名单中",
+}
 _SAFE_ERROR_CODES = frozenset(
     {
+        *_RECIPIENT_BLOCK_REASONS,
         "ACCESS_REVOKED",
-        "NOT_ALLOWLISTED",
         "PREFERENCE_OR_EMAIL_CHANGED",
         "RETRY_LIMIT",
         "SMTP_CONNECTION_ERROR",
-        "SMTP_DISABLED",
         "SMTP_OUTCOME_UNCERTAIN",
         "SMTP_RECIPIENT_REFUSED",
     }
@@ -134,15 +144,9 @@ class MailDeliveryMonitorService:
         _, error = self.sender.email_target(
             row, event, recipient, preference, get_settings(), datetime.now(UTC)
         )
-        if error == "PREFERENCE_OR_EMAIL_CHANGED":
-            if event.action == "VERIFY_EMAIL":
-                return "验证码已失效或邮箱已变更。请重新发起验证"
-            return "接收人的邮箱或邮件设置已变化。当前不满足投递条件"
-        if error == "SMTP_DISABLED":
-            return "邮件服务尚未启用"
-        if error == "NOT_ALLOWLISTED":
-            return "接收邮箱不在当前环境的发送许可名单中"
-        return None
+        if error is None:
+            return None
+        return _RECIPIENT_BLOCK_REASONS.get(error, "接收人当前不满足投递条件")
 
     def list(
         self,

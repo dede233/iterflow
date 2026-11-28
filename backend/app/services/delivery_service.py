@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.core.config import Settings, get_settings
 from app.core.exceptions import ConflictError, NotFoundError
 from app.core.wecom import WecomDeliveryError, send_wecom
+from app.domain.ad_production_permissions import viewable_ad_production_kinds
 from app.models.entities import (
     CollaborationEvent,
     Feedback,
@@ -25,11 +26,19 @@ from app.models.entities import (
     WecomPreference,
 )
 from app.models.enums import NotificationType, UserStatus
+from app.repositories.ad_production_repository import AdProductionRepository
 from app.repositories.feedback_repository import FeedbackRepository
 from app.repositories.mail_delivery_repository import MailDeliveryRepository
 from app.repositories.requirement_repository import RequirementRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.mail import DeliveryOut
+from app.services.ad_production_notifications import (
+    AD_PRODUCTION_ACTION_LABELS,
+    AD_PRODUCTION_CC_EVENTS,
+    AD_PRODUCTION_EVENT_KINDS,
+    AD_PRODUCTION_KIND_LABELS,
+    AD_PRODUCTION_MAIL_PATHS,
+)
 from app.services.audit_service import AuditService
 from app.services.collaboration_service import CollaborationService
 from app.services.mail_preferences_service import (
@@ -40,6 +49,7 @@ from app.services.mail_preferences_service import (
 )
 
 ACTION_LABELS = {
+    **AD_PRODUCTION_ACTION_LABELS,
     "RECIPIENT_ADDED": "有反馈需要处理",
     "HANDLER_TRANSFER": "反馈处理人已调整",
     "STATUS_ACCEPTED": "反馈已受理",
@@ -114,6 +124,8 @@ class DeliveryService:
         repo = UserRepository(self.db)
         kind = event.entity_type.lower()
         permissions = repo.permission_codes(user.id)
+        if event.entity_type in AD_PRODUCTION_EVENT_KINDS:
+            return self._ad_production_authorized(event, user.id, repo, permissions)
         if f"rd.{kind}.view" not in permissions and "*" not in permissions:
             return False
         scope = repo.data_scope(user.id)
@@ -150,7 +162,30 @@ class DeliveryService:
             )
         return False
 
+    def _ad_production_authorized(
+        self, event: CollaborationEvent, uid: int, users: UserRepository, permissions: set[str]
+    ) -> bool:
+        kind = AD_PRODUCTION_EVENT_KINDS[event.entity_type]
+        repo = AdProductionRepository(self.db)
+        scope = users.data_scope(uid)
+        if event.entity_type in AD_PRODUCTION_CC_EVENTS:
+            if event.action not in {"OPS_CC_ADDED", "OPS_CC_UPDATED"}:
+                return False
+            # Empty kinds limit access to an active CC relationship, even for all-scope users.
+            item = repo.get_readable(event.entity_id, uid, scope, ())
+            return item is not None and item.kind == kind
+        if kind not in viewable_ad_production_kinds(permissions):
+            return False
+        item = repo.get_scoped(event.entity_id, uid, scope, (kind,))
+        if item is None:
+            return False
+        if event.action == "OPS_COMPLETED":
+            return item.created_by == uid
+        return event.action in {"OPS_ASSIGNED", "OPS_WITHDRAWN"} and item.receiver_id == uid
+
     def is_task(self, event: CollaborationEvent, uid: int) -> bool:
+        if event.entity_type in AD_PRODUCTION_EVENT_KINDS:
+            return event.action == "OPS_ASSIGNED"
         if event.action in {
             "PUBLISHED",
             "RECIPIENT_ADDED",
@@ -219,14 +254,18 @@ class DeliveryService:
                 email = (
                     pref.pending_email if event.action == "VERIFY_EMAIL" and pref else user.email
                 )
-                channels = ["EMAIL"] if event.action == "VERIFY_EMAIL" else ["SITE", "EMAIL"]
+                # Operations notifications already have a site record in the business transaction.
+                email_only = (
+                    event.action == "VERIFY_EMAIL" or event.entity_type in AD_PRODUCTION_EVENT_KINDS
+                )
+                channels = ["EMAIL"] if email_only else ["SITE", "EMAIL"]
                 for channel in channels:
                     self.db.add(
                         NotificationDelivery(
                             event_id=event.id, user_id=uid, channel=channel, queued_email=email
                         )
                     )
-                if settings.wecom_enabled and event.action != "VERIFY_EMAIL":
+                if settings.wecom_enabled and not email_only:
                     wecom_pref = self.db.get(WecomPreference, uid)
                     if (
                         wecom_pref
@@ -289,6 +328,27 @@ class DeliveryService:
                     button_label="打开个人中心",
                     button_url=profile_url,
                     note=f"{escape(instructions)}<br>{escape(ignore)}",
+                ),
+                subtype="html",
+            )
+        elif event.entity_type in AD_PRODUCTION_EVENT_KINDS:
+            production_kind = AD_PRODUCTION_EVENT_KINDS[event.entity_type]
+            kind_label = AD_PRODUCTION_KIND_LABELS[production_kind]
+            heading = AD_PRODUCTION_ACTION_LABELS[event.action]
+            path = AD_PRODUCTION_MAIL_PATHS[production_kind]
+            link = f"{settings.app_public_url.rstrip('/')}/#/{path}/{event.entity_id}"
+            summary = f"{kind_label}于 {_mail_time(event.created_at)} 更新。请登录系统查看详情。"
+            note = "此邮件由迭程 IterFlow 自动发送。业务状态以系统记录为准。"
+            message["Subject"] = f"迭程 IterFlow｜{kind_label} · {heading}"
+            message.set_content(f"您好，\n\n{heading}。{summary}\n\n{link}\n\n{note}")
+            message.add_alternative(
+                self._html_message(
+                    eyebrow=kind_label,
+                    heading=heading,
+                    intro=summary,
+                    button_label=f"查看{kind_label}详情",
+                    button_url=link,
+                    note=note,
                 ),
                 subtype="html",
             )
@@ -461,21 +521,28 @@ class DeliveryService:
         settings: Settings,
         now: datetime,
     ) -> tuple[str | None, str | None]:
-        if event.action == "VERIFY_EMAIL":
-            email = pref.pending_email if pref else None
-            eligible = current_email_challenge_id(pref, user.revision, now) == event.id
+        is_verification = event.action == "VERIFY_EMAIL"
+        if is_verification:
+            if pref is None or current_email_challenge_id(pref, user.revision, now) != event.id:
+                return None, "VERIFICATION_EXPIRED_OR_REPLACED"
+            email = pref.pending_email
         else:
             email = user.email
+
+        if not email:
+            return None, "EMAIL_NOT_CONFIGURED"
+        if email != row.queued_email:
+            return None, "EMAIL_ADDRESS_CHANGED"
+        if not is_verification:
             verified_at = current_email_verified_at(email, pref)
-            eligible = (
-                pref is not None
-                and pref.mode != "OFF"
-                and verified_at is not None
-                and aware(event.created_at) >= aware(verified_at)
-                and (pref.mode == "ALL" or self.is_task(event, user.id))
-            )
-        if not eligible or not email or email != row.queued_email:
-            return None, "PREFERENCE_OR_EMAIL_CHANGED"
+            if pref is None or verified_at is None:
+                return None, "EMAIL_NOT_VERIFIED"
+            if aware(event.created_at) < aware(verified_at):
+                return None, "EVENT_BEFORE_EMAIL_VERIFICATION"
+            if pref.mode == "OFF":
+                return None, "EMAIL_NOTIFICATIONS_OFF"
+            if pref.mode != "ALL" and not self.is_task(event, user.id):
+                return None, "EMAIL_NOT_A_TASK"
         if not settings.smtp_enabled:
             return None, "SMTP_DISABLED"
         if settings.app_env != "production" and email.lower() not in {

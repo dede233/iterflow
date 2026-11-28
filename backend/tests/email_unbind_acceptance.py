@@ -170,7 +170,13 @@ def exercise_unbind(fixture, scenario, monkeypatch):
                 )
             )
             assert len(emails) >= 2 and all(row.status == "SKIPPED" for row in emails)
-            assert all(row.last_error == "PREFERENCE_OR_EMAIL_CHANGED" for row in emails)
+            assert {
+                (db.get(CollaborationEvent, row.event_id).action == "VERIFY_EMAIL", row.last_error)
+                for row in emails
+            } == {
+                (False, "EMAIL_NOT_CONFIGURED"),
+                (True, "VERIFICATION_EXPIRED_OR_REPLACED"),
+            }
             assert (
                 db.scalar(
                     select(func.count())

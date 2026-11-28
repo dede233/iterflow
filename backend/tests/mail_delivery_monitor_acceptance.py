@@ -530,7 +530,7 @@ def exercise_mail_delivery_resend(api, monkeypatch):
         db.commit()
         assert DeliveryService(db).deliver_one()
         row = db.get(NotificationDelivery, delivery_id)
-        assert (row.status, row.last_error) == ("SKIPPED", "PREFERENCE_OR_EMAIL_CHANGED")
+        assert (row.status, row.last_error) == ("SKIPPED", "VERIFICATION_EXPIRED_OR_REPLACED")
         assert db.scalar(select(func.count()).select_from(Notification)) == 0
         assert db.scalar(select(func.count()).select_from(CollaborationEvent)) == 1
         assert db.scalar(select(func.count()).select_from(NotificationDelivery)) == 1
@@ -545,7 +545,9 @@ def exercise_mail_delivery_resend(api, monkeypatch):
             == 2
         )
     assert smtp.call_count == 2
-    assert item()["resend_token"] is None
+    skipped = item()
+    assert skipped["resend_token"] is None
+    assert skipped["error_code"] == "VERIFICATION_EXPIRED_OR_REPLACED"
     assert enqueue(new_token).status_code == 409
 
 

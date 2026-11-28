@@ -674,7 +674,9 @@ class AdProductionService:
                 "CREATE",
                 after=self._audit_snapshot(item, images, cc_user_ids),
             )
-            AdProductionNotifications(self.db).queue(item, cc_user_ids, newly_added_ids=cc_user_ids)
+            AdProductionNotifications(self.db).queue(
+                item, cc_user_ids, actor_id=actor.id, newly_added_ids=cc_user_ids
+            )
             output = self._output_for_actor(
                 item, images, self.repo.cc_users([item.id]).get(item.id, ()), actor.id
             )
@@ -703,6 +705,7 @@ class AdProductionService:
                 )
 
             previous = item.status
+            previous_receiver_id = item.receiver_id
             workflow_values = {}
             if can_edit:
                 people = self._people_changes(
@@ -788,9 +791,10 @@ class AdProductionService:
             AdProductionNotifications(self.db).queue(
                 item,
                 cc_user_ids,
+                actor_id=actor.id,
                 newly_added_ids=added_cc_ids,
                 previous_status=previous,
-                reassigned=not can_edit and "receiver_id" in people,
+                reassigned=item.receiver_id != previous_receiver_id,
             )
             self.db.commit()
         except Exception:
@@ -830,7 +834,10 @@ class AdProductionService:
                 item, (file for _, file in self.repo.active_images([ad_id])), cc_users, actor.id
             )
             AdProductionNotifications(self.db).queue(
-                item, {user_id for user_id, _ in cc_users}, previous_status=previous
+                item,
+                {user_id for user_id, _ in cc_users},
+                actor_id=actor.id,
+                previous_status=previous,
             )
             self.db.commit()
         except Exception:
@@ -892,7 +899,10 @@ class AdProductionService:
                 after={**self._status_snapshot(item), "reason": payload.reason},
             )
             AdProductionNotifications(self.db).queue(
-                item, {user_id for user_id, _ in cc_users}, previous_status=previous
+                item,
+                {user_id for user_id, _ in cc_users},
+                actor_id=actor.id,
+                previous_status=previous,
             )
             output = self._output_for_actor(
                 item, (file for _, file in self.repo.active_images([ad_id])), cc_users, actor.id

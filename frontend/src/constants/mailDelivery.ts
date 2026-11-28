@@ -28,6 +28,13 @@ export const MAIL_DELIVERY_KINDS = Object.entries(MAIL_DELIVERY_KIND_LABELS).map
 
 const reasonLabels = {
   ACCESS_REVOKED: '收件人已失去业务访问权限',
+  EMAIL_ADDRESS_CHANGED: '当前邮箱与该邮件排队时的地址不同',
+  EMAIL_NOT_CONFIGURED: '收件人尚未配置通知邮箱',
+  EMAIL_NOT_VERIFIED: '收件人尚未验证当前邮箱',
+  EVENT_BEFORE_EMAIL_VERIFICATION: '业务事件发生在当前邮箱验证之前',
+  EMAIL_NOTIFICATIONS_OFF: '收件人已关闭业务邮件通知',
+  EMAIL_NOT_A_TASK: '收件人仅接收待办邮件，此事件不属于待办',
+  VERIFICATION_EXPIRED_OR_REPLACED: '验证码已失效或已被替换',
   PREFERENCE_OR_EMAIL_CHANGED: '邮件偏好或通知邮箱已变更',
   SMTP_DISABLED: '邮件服务尚未启用',
   NOT_ALLOWLISTED: '收件地址不在允许发送范围内',
